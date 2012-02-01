@@ -1,0 +1,121 @@
+<html>
+  <title id="title">TwitterFS - A HackCamp 2010 Production</title>
+  <link rel="stylesheet" type="text/css" href="/style.css"></link>
+  <body>
+    <div id="blog-entry">
+      <h1 id="post-title">TwitterFS - A HackCamp 2010 Production</h1>
+      <div id="post">
+		<p>I’ve just spent the weekend at the Google offices in London, taking part in HackCamp, which was a replacement event for BarCamp which was cancelled due to problems with the venue.</p>
+<p>I went not knowing what I’d be doing or what I’d be doing it with, and after a presentation by @themattharris on Twitter annotations at the start of the day, @JHollingworth and I decided that with an absence of good ideas it would be fun to abuse a new feature (annotations) by doing something pointless and absolutely useless to anybody, even ourselves.</p>
+<p>Hence the idea of TwitterFS was born.</p>
+<p><strong>The setup</strong></p>
+<ul>
+    <li>With twitter annotations, we now have the ability to store 512 bytes of arbitrary data against each tweet </li>
+    <li>Each tweet has a unique identifier assigned to it on save </li>
+    <li>Each tweet can have 140 additional characters stored in the content of the tweet itself </li>
+    <li>Tweets cannot be modified once written </li>
+</ul>
+<p>With twitter annotations, it became obvious that the thing that we needed to do was create a low availability, low consistency and low performance file system against Twitter.</p>
+<p>Twitter could then be used as an “in the cloud store” of arbitrary data which could then be synched between machines ala drop box. (TwitterBox?)</p>
+<p><strong>So what do we have?</strong></p>
+<p>Effectively, in our file system each tweet is an inode, an an inode contains the data for that inode and a link to the next inode (if the data is too large to be stored on a single inode).</p>
+<ul>
+    <li>Directories can be implemented as a sequence of inodes which contain a list of ids for other inodes </li>
+    <li>Files can be implemented as a sequence of inodes which contain the data for that file </li>
+</ul>
+<p>In an ordinary file system, we have a finite amount of space and when files are deleted or modified, any freed up inodes need re-allocating so they can be written to again when more data is added.</p>
+<p>This is not the case with Twitter as we cannot re-allocate tweets, but we can therefore treat Twitter as an append-only <em>infinite sized </em>hard drive. </p>
+<ul>
+    <li>Adding a file means
+    <ul>
+        <li>breaking up the file into separate inodes </li>
+        <li>writing them all to twitter (backwards) </li>
+        <li>writing the last written inode into the directory the file belongs to </li>
+        <li>re-writing any directories in the tree for that file (up to and including the “root” directory) </li>
+    </ul>
+    </li>
+    <li>Deleting a file means
+    <ul>
+        <li>Removing the reference from the directory it belongs to </li>
+        <li>re-writing any directories in the tree for that directory (up to and including the “root” directory) </li>
+    </ul>
+    </li>
+    <li>Editing a file means
+    <ul>
+        <li>Deleting the file </li>
+        <li>Adding the file </li>
+    </ul>
+    </li>
+</ul>
+<p>The same goes for directories.</p>
+<p>On top of this, a file system watcher was written which would detect changes on the hard drive, add/remove files/directories to the in-memory store and flush the changes to twitter when they were made. (And detect changes to twitter and perform the reverse operation).</p>
+<p>Obviously loading the entire tweet stream would defeat the point of storing the data on twitter, so a look-ahead/caching algorithm was implemented, pulling back 200 nodes when 1 was requested and keeping our requests to a minimum.</p>
+<p><strong>What the code looks like</strong></p>
+<p>This is a bit of code that loads two files into the root directory, a directory and another file so you can see that the act of dealing with Twitter is not the concern of the application. In one of our tests, data was a byte array loaded from an image on the hard drive and that worked fine too.</p>
+<div class="csharpcode">
+<pre class="alt"><span class="lnum">   1:  </span>  persister = TwitterPersister.<span class="kwrd">new</span></pre>
+<pre><span class="lnum">   2:  </span>&nbsp;</pre>
+<pre class="alt"><span class="lnum">   3:  </span>    fs = FileSystem.<span class="kwrd">new</span> persister, :isnew =&gt; <span class="kwrd">true</span></pre>
+<pre><span class="lnum">   4:  </span>    root = fs.root</pre>
+<pre class="alt"><span class="lnum">   5:  </span>    </pre>
+<pre><span class="lnum">   6:  </span>    documenta = Document.<span class="kwrd">new</span>(fs, :title =&gt; <span class="str">"Document A"</span>, :data =&gt;  <span class="str">"Some Data (a)"</span>)</pre>
+<pre class="alt"><span class="lnum">   7:  </span>    documentb = Document.<span class="kwrd">new</span>(fs, :title =&gt; <span class="str">"Document B"</span>, :data =&gt; <span class="str">"Some other data (b)"</span>)</pre>
+<pre><span class="lnum">   8:  </span>    </pre>
+<pre class="alt"><span class="lnum">   9:  </span>    root.add_documents([documenta, documentb])</pre>
+<pre><span class="lnum">  10:  </span>    </pre>
+<pre class="alt"><span class="lnum">  11:  </span>    dir = Directory.<span class="kwrd">new</span>(fs, nil)</pre>
+<pre><span class="lnum">  12:  </span>    documentc = Document.<span class="kwrd">new</span>(fs, :title =&gt; <span class="str">"Document C"</span>, :data =&gt; <span class="str">"Some lovely data (c)"</span>)</pre>
+<pre class="alt"><span class="lnum">  13:  </span>    dir.add_document(documentc)</pre>
+<pre><span class="lnum">  14:  </span>    </pre>
+<pre class="alt"><span class="lnum">  15:  </span>    root.add_directory(dir)</pre>
+<pre><span class="lnum">  16:  </span>    </pre>
+<pre class="alt"><span class="lnum">  17:  </span>    fs.flush()</pre>
+</div>
+<style type="text/css">![CDATA[
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+<p>&nbsp;</p>
+<p><strong>How did it go?</strong></p>
+<p>Implementing a file system against a persistence store that is unreliable was always going to cause problems, when it came to do the presentation we still didn’t have access to the annotations feature due to Twitter falling over all weekend, so we had to start cramming the file data into the tweet itself (70 bytes per inode – ouch!), and then Twitter itself went down anyway.</p>
+<p>I doubt we’ve won anything (although we got some laughter), but I’m overall quite impressed with how far we got (all the above has been written and tested)</p>
+<p><em><strong>(Edit, okay – we won “Stupidest hack most likely to win a million dollars of VC funding”, sweet!)</strong></em></p>
+<ul>
+    <li>The slides for our 1-minute presentation can be found <a href="http://docs.google.com/present/edit?id=0AbzpogpN8bB-ZGhnNDN0cjlfN2Y2ZnZocmZk&amp;hl=en">here</a> </li>
+    <li>The code for TwitterFS and the commit history for the weekend can be found <a href="http://github.com/jhollingworth/TwitterFS/commits/master">here</a> </li>
+    <li>The account we used for testing can be found <a href="http://twitter.com/tweeterfs">here</a> </li>
+</ul>
+<p>We ended up writing the whole thing in Ruby because we’re C# developers by day and as we were doing something ultimately pointless we tried to give it a bit of a point by working in something we were unfamiliar with for education purposes.</p>
+<p>My opinion on that? I really liked working within another dynamic language, our tests were a bit crap because we were unfamiliar with the frameworks and it was a pain to get working properly on my windows laptop (I ended up using cygwin for *everything*), but it’s given me some enthusiasm for going and giving Rails a second glance.</p>
+<p>Anyway, normal service will resume tomorrow and I’ll be pushing out another RavenDB/CouchDB entry or two this week, just in case you were wondering where they had gotten to :)</p>
+	</div>
+      <div id="links">
+        <a href="/">Go back to the index</a>
+      </div>
+      <div id="post-comments">
+      
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,28 @@
+
+		This week I decided to pick up Ayende's latest project -&nbsp; RavenDB and have a go at building an application against it.<br>
+I haven't really had chance to play with any of the latest batch of document databases, and I figured I'd find this 'newer' project more interesting than any of the well established crowd.<br>
+<br>
+I'm going to do a few blog posts on the subject as I go through, but as all series need an introduction I thought I'd share some of my initial thoughts on my first steps onto this project.<br>
+<ul>
+    <li>RavenDB is very new, and there are features that you can see *will* be there, but you have to work around&nbsp; them for now if you want to use RavenDB! That said, my first post to the mailing list was met with a response of "I've done that and it will be in tomorrow". I get the feeling Ayende is working overtime on this project.</li>
+    <li>The Web interface for managing RavenDB is just *amazing*, very smooth work</li>
+    <li>RavenDB has a few things that I wasn't expecting from a document database:
+    <ul>
+        <li>Transactions (both Unit of Work and across multiple requests)</li>
+        <li>Unit of Work, and the .NET client tracks loaded entities and changes to those entities</li>
+    </ul>
+    </li>
+</ul>
+To the people who are complaining that Ayende is wasting his time on "yet another DocDB", from just the top two things alone I'd say "wait and see", I get the feeling that this project has a lot of potential.<br>
+One thing I really like so far is the ability to write Map/Reduce functions as Linq queries attached to an Index. The only oddity here is that (currently) you have to write these as strings in the .NET client (because they'll be sent across the wire to the server). They are then compiled into actual Linq queries and executed against the objects to create indexes on the relevant parts of your documents.<br>
+<br>
+You can't use all the code you'd like to inside those linq queries, I've already ran into problems trying to nest lambda expressions inside of them because of the way they're built on the server (There is a load of expression parsing going on, as well as code generation against the queries).<br>
+<br>
+Creating all those indexes up front feels a lot like writing stored procedures against a traditional RDBMS, only with the benefit that all the hard work will be done on write, and reading will be cheap. I don't actually mind being up front about it, but it has meant I've had to write a few scripts to "initialize" the RavenDB on creation (for integration testing as well as deployment).<br>
+<br>
+I'm actually using RavenDB as my primary data store in my test project, but I probably wouldn't if I was building a big application, NoSQL doesn't mean not using SQL, it means not only using SQL and there are still a few things that I'd prefer to have stuck behind NHibernate and in a traditional database.<br>
+<br>
+I really like that I can just host RavenDB inside my project without running any external server, and changing my code so that RavenDB runs on a proper external server is a trivial task. So nifty.<br>
+<br>
+My first blog post on the subject will probably deal with the process of creating a first project against RavenDB along with some of the current gotchas that will probably cease to be as the project becomes more mature. I'll then move onto some more complex map/reduce scenarios and talk a bit about how I'm exposing the data store to my application.
+	

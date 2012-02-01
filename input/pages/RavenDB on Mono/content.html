@@ -1,0 +1,19 @@
+
+		<p>So is it possible?</p> <p>Yes, it is.</p> <p>There, that was a short blog entry wasn’t it?</p> <p>I’ve patched RavenDB in a few places, both to workaround the bug/mismatch between Mono and Microsoft’s implementation of ThreadLocal.Value, dealing with the standard path-based issues and adding a couple of specific checks for Mono in the outer layers of the application (Did you know that Environment.UserInteractive is always false in Mono?)</p> <p>I’ve submitted the pull request, but if you <em>really</em> want to get RavenDB working on Mono <em>right now</em>, then I suggest you do the following:</p> <ul> <li>Download and install Mono 2.8 (Yup, you don’t need to build from source – hurrah) </li> <li>Pull my fork and branch of RavenDB for Mono <a title="https://github.com/robashton/ravendb/tree/mono" href="https://github.com/robashton/ravendb/tree/mono">https://github.com/robashton/ravendb/tree/mono</a> </li> <li>Run xBuild with the following arguments </li></ul> <div style="border-bottom: silver 1px solid; text-align: left; border-left: silver 1px solid; padding-bottom: 4px; line-height: 12pt; background-color: #f4f4f4; margin: 20px 0px 10px; padding-left: 4px; width: 97.5%; padding-right: 4px; font-family: 'Courier New', courier, monospace; direction: ltr; height: 36px; max-height: 200px; font-size: 8pt; overflow: auto; border-top: silver 1px solid; cursor: text; border-right: silver 1px solid; padding-top: 4px;" id="codeSnippetWrapper"> <div style="border-bottom-style: none; text-align: left; padding-bottom: 0px; line-height: 12pt; border-right-style: none; background-color: #f4f4f4; padding-left: 0px; width: 100%; padding-right: 0px; font-family: 'Courier New', courier, monospace; direction: ltr; border-top-style: none; color: black; font-size: 8pt; border-left-style: none; overflow: visible; padding-top: 0px;" id="codeSnippet"><pre style="border-bottom-style: none; text-align: left; padding-bottom: 0px; line-height: 12pt; border-right-style: none; background-color: white; margin: 0em; padding-left: 0px; width: 100%; padding-right: 0px; font-family: 'Courier New', courier, monospace; direction: ltr; border-top-style: none; color: black; font-size: 8pt; border-left-style: none; overflow: visible; padding-top: 0px;">MONO_IOMAP=all xbuild /property:DocumentationFile=<span style="color: #006080;">''</span> /property:TreatWarningsAsErrors=<span style="color: #006080;">'false'</span> RavenDB.sln</pre><!--CRLF--></div></div>This will build RavenDB on Mono, so you don’t need Windows if you haven’t got it. 
+<ul>
+<li>Run Mono Raven.Server.exe </li>
+<li>Proceed as normal </li></ul>
+<p>I’ve tested the following configurations</p>
+<ul>
+<li>Raven.Server running as an HTTP process </li>
+<li>Connecting to the Raven server from client code </li>
+<li>Running RavenDB Embedded within an application </li>
+<li>Running RavenDB Embedded with an HTTP server in an application </li></ul>
+<p>Some caveats to this</p>
+<ul>
+<li>the xUnit tests currently hang if you don’t clean the test-bed every time you run them, this is likely a problem with the tests that need fixing </li>
+<li>Basic functions appear to be fully capable, you don’t get DTC (Obviously), some sharding stuff appears to be a bit off and multi-tenancy seems to be a bit weird too.</li></ul>
+<p>NB: This is unofficial support for Mono, it's a low priority as far as the core project goes, but I am eager to make this work</p>
+<p><strong>Thanks and Attribution:</strong></p>
+<p>Jérémie Laval (<a title="http://twitter.com/#!/jeremie_laval" href="http://twitter.com/#!/jeremie_laval">http://twitter.com/#!/jeremie_laval</a>) has been instrumental in moving this forwards with a heap of Mono know-how, the instructions on now to build on Mono have come from him, as have a number of fixes. He is currently working on some other issues with some failing tests too, looks like this ball is going to keep rolling!</p>
+	

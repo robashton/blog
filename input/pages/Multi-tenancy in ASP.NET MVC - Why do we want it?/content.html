@@ -1,0 +1,84 @@
+
+		<p><font face="Arial">I'll be gratuitously "borrowing" a lot&nbsp; of material from my DDD8 slides in this post, it seemed like the right thing to do given that this series is a write-up and then continuation of that talk.</font></p>
+<font face="Arial">
+<p><font face="Arial">When dealing with more than one customer in the desktop market, it is customary to have a single product which is extendable through the use of plug-ins and an API, and often you can leave it up to your consumer base to write those plug-ins and add to your product in a manner they see fit.</font></p>
+<p><font face="Arial">In the web world it's a bit different, and you don't typically get that kind of behaviour (Facebook applications may or may not count, depending on how you look at it).</font></p>
+<p><font face="Arial"><br>
+In a simple world, you'll have a single product which is used directly off the shelf by multiple customers:</font></p>
+<p><img alt="Single product" src="http://fear.the.codeofrob.com/mt_why/single_product.png"></p>
+<p><font face="Arial">When building web applications for a varied and paying customer base, It is likely that you have customers that are fickle and will want things done their way. </font></p>
+<p><font face="Arial">It often does not make business sense to turn good business down, and the business is what pays the hungry developer and thus when you finally get a customer who wants things done differently,&nbsp; the business tells the developer to jump and the business's required response is the proverbial "how high?".</font></p>
+<p><font face="Arial">Consider the above diagram then, and imagine Customer A asking for something 'just a little bit different' and think about what your options could be.</font></p>
+<p><font face="Arial">We'll get the obvious dusted out of the way first:<br>
+</font></p>
+<p><img alt="if( featureIsEnabled....)" src="http://fear.the.codeofrob.com/mt_why/feature_code.png"></p>
+<p><font face="Arial">When I switched to the above code as a slide in my multi-tenant talk, I was greeted with laughter, but we've all known products which have ended up with such delightful nuggets in them. <br>
+It's blindingly obvious that it's not the right solution, and that as you progress down the route of making further modifications for either Customer A, B or C you'll end up with an un-maintainable mess of switches and flags. 'Nuff said.</font></p>
+<font face="Arial">
+<p><br>
+</p>
+<p>You could then decide that you're going to keep that customer as a new product in its own right - that would remove the need for all those on-off switches.</p>
+<p><font face="Arial"><font face="Arial"><img alt="A bespoke copy" src="http://fear.the.codeofrob.com/mt_why/bespoke_copy.png"><br>
+</font></font></p>
+<p><font face="Arial"><font face="Arial"><font face="Arial">This should very obviously be a big no-no as maintaining that then bespoke product and keeping it up to date with any changes then made to your core product is going to be nothing more than a giant headache. <br>
+As you get more customers, the number of developers you'll need to hire will increase almost in direct proportion to the number of codebases you have to maintain!&nbsp; (Again, I've seen this done - so don't think I'm just pointing out the obvious for the sake of it)</font></font></font></p>
+<p><font face="Arial">Let's move onto the more-often used approach, of branching from a base product for your different needs, and utilising the power of a source control system to keep changes in sync between your code-bases.<br>
+</font></p>
+<p><font face="Arial"><img alt="Branching as an alternative" src="http://fear.the.codeofrob.com/mt_why/bespoke_branch.png"></font></p>
+<p><font face="Arial">Customer A can be kept up to date by merging changes from the core product, and Customer B/C can get additional features from Customer A's branch if and when they desire it.</font></p>
+<p><font face="Arial">At first glances, it seems like this solution fits our needs - and indeed it can work well in a lot of given&nbsp; scenarios. The problem comes when you scale this solution up to more than this small example - as few of us are (un)lucky enough to&nbsp;be able to deal with only three customers and remain financially viable!</font></p>
+<p><font face="Arial">Here is a small example of 30 customers sharing 15 code-bases!<br>
+</font></p>
+<p><font face="Arial"><img alt="A mess of branching dependencies" src="http://fear.the.codeofrob.com/mt_why/bespoke_mess.png"></font></p>
+<font face="Arial">
+<p><font face="Arial">Yowsers! <br>
+How do you keep track of who has what features? <br>
+How do you test all of those different branches of code? <br>
+How do you deploy those branches of code?<br>
+How do you make a new version of the product and serve it to a customer?<br>
+How many developers do you need to manage that process?</font></p>
+<p><font face="Arial">It's never as simple as it looks, and you end up with not only the above problems, but you end up with the additional problems of what happens when a branch becomes radically different and you're unable to merge changes around.<br>
+</font><font face="Arial"><font face="Arial">There is too much developer interaction here - and your skilled staff end up having to spend most of their time creating new branches/pushing changes around instead of spending their time doing what they're actually trained to do - writing code.&nbsp;</font></font></p>
+<p><font face="Arial"><font face="Arial"><br>
+Adding a new customer shouldn't be about changing code, it should be about manipulating configuration, and modifying a customer shouldn't be about changing code, it should also be about manipulating configuration.&nbsp;<br>
+</font></font></p>
+<p><font face="Arial">In other words, problems should only be solved once - and configuration should be used to give or take features to and from customers.<br>
+</font><font face="Arial"><font face="Arial"></font></font></p>
+<font face="Arial"><font face="Arial"><strong>
+<h3><font face="Arial"><font face="Arial"><strong>Enter multi-tenancy...</strong></font></font></h3>
+</strong></font>
+<p><font face="Arial">The core concept of a well written multi-tenant application is that you should have a single code base, and a number of configurations - where each configuration tells the runtime what functionality should be available and what the look/feel should be.</font></p>
+<p><font face="Arial">Before continuing, I'd like to define a few of the terms I'll be using throughout this series of blog entries.</font></p>
+<ul>
+    <li><font face="Arial">Module: A discrete set of functionality</font> </li>
+    <li><font face="Arial">Theme: The look and feel</font> </li>
+    <li><font face="Arial">Configuration:&nbsp; A selection of modules, and a single theme</font> </li>
+</ul>
+<font face="Arial">
+<p><font face="Arial">This is a personal leaning, and I know that some people would set this up differently. Each to their own, we've got to draw lines somewhere!</font></p>
+<p><font face="Arial"><br>
+</font><font face="Arial"><font face="Arial">Anyway - as far as I'm concerned, Multi-tenancy gives us some of the following benefits:</font> </font></p>
+<p><font face="Arial">Deployment becomes a simple case of installing your application onto a server, and setting up the configurations for that application.</font></p>
+<p><font face="Arial">When a request comes in, context is determined by some means (auth credentials, the hostname, whatever), and the relevant configuration is selected from that context. </font></p>
+<p><font face="Arial"><img alt="A single server serving multiple customers" src="http://fear.the.codeofrob.com/mt_why/multi_tenant_single.png"></font></p>
+<p><font face="Arial"><font face="Arial">This is a very simple way of working, and if you design your application correctly, it becomes obvious that your hosting/maintenance costs can be reduced.</font></font></p>
+<p><font face="Arial">You can have multiple servers with the exact same codebase installed on them, and with all the configurations available to them (In other words, identical).&nbsp; Scaling up becomes a simple matter of adding more of those identical servers - and if you're really smart you can load balance across your VPSs and power them up/down as required. <br>
+You no longer need to worry (too much) about the fact that you have all of those customers, and you can concentrate on the health of your system as a whole.<br>
+</font></p>
+<p><img alt="Load balanced multi-tenant system" src="http://fear.the.codeofrob.com/mt_why/multi_tenant_balanced.png"></p>
+<p><br>
+&nbsp;Some more benefits:</p>
+<ul>
+    <li><font face="Arial">You add a feature once, and deploy it to your customers through the use of configuration</font> </li>
+    <li><font face="Arial">You can fix a bug, and deploy the fix once&nbsp;</font> </li>
+    <li><font face="Arial">&nbsp;Potentially easy management of your infrastructure (This actually&nbsp;comes through good design, and multi-tenancy just aids in that goal)</font> </li>
+    <li><font face="Arial">Developers get to spend their time coding new features/fixing bugs</font> </li>
+    <li><font face="Arial">New customers can have a site created in minutes and start to give feedback immediately</font> </li>
+</ul>
+<p><font face="Arial">Everybody is a winner and we all get to go home and have pie and punch.</font></p>
+<p><font face="Arial">In the next entry, things will hot up as I'll start to look at ASP.NET MVC and determine the components that we can use to aid us in creating a multi-tenant application.<br>
+</font></p>
+</font></font>
+<p>&nbsp;</p>
+</font></font></font>
+	

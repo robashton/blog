@@ -1,0 +1,45 @@
+<html>
+  <title id="title">CQRS is too complicated</title>
+  <link rel="stylesheet" type="text/css" href="/style.css"></link>
+  <body>
+    <div id="blog-entry">
+      <h1 id="post-title">CQRS is too complicated</h1>
+      <div id="post">
+		<p>Is something I hear all too often at conferences and on Twitter, and more often or not it is said because of either a basic misunderstanding of what CQRS is or is not - or perhaps because they've dipped their toes into the hyperactive DDDCQRS mailing list and been scared away by all the white coat discussion that goes on in there a lot of the time.</p>
+<p>The other day, the sentiment was yet again voiced by somebody of whose opinion I respect on Twitter and I ended up in about five minutes writing a gist explaining why I didn't think this was the case (Writing 4000 word essays is an hour's work if I'm feeling ranty), I've tidied it up a bit and decided to throw it below as it works well in a blog entry.</p>
+<p><strong>A basic summary</strong></p>
+<p>At the highest level CQRS just means maintaining a happy division between the reads and writes across your system - that is, having the reads in your system executed in a thin clean manner appropriate to the views you want to retrieve (one model), and your writes going through all the crazy logic you need such as validation, updating queues, third party systems, processing business rules (another model)</p>
+<p>Consider the traditional and very-tongue-in-cheek N-Tier architecture I have created here in powerpoint, seen in a million "architecture" presentations in ASP.NET webforms shops across the world:</p>
+<p>&nbsp;<img alt="" width="400" height="326" src="/images/internal_codeofrob_com/1.png"></p>
+<p>Now modify it a little bit so that our reads haven't got to go through all that cruft, haven't got to somehow amene themselves to a bunch of "DAL objects" that are created with the very&nbsp;best intention of standardising our access to some form of database (and normally optimised for the write actions anyway).</p>
+<p><img alt="" width="400" height="310" src="/images/internal_codeofrob_com/2.png"></p>
+<p>We can&nbsp;instantly make our lives a lot easier by creating a pile of code optimised for creating views for our presentation layer,&nbsp;perhaps doing a bit of raw SQL or calling a sproc to generate the view for us. We can helpfully formalise this arrangement and for the most part set down a rule that the direction of travel down those two paths is one way (towards the DB for writes and away from the DB for reads).&nbsp; Funnily enough - most systems that do that <strong>BOL</strong>/BLL/DAL<strong>/OCKS</strong> stuff end up with something that looks like this anyway because it's too hard to do everything through a single model.</p>
+<p>This is now a form of CQRS - at the highest level we've effectively split our system into two models&nbsp;and done something that's very similar to what we'd call CQS if we were&nbsp;doing it at the method level.&nbsp; This in itself should surely be enough to convince you&nbsp; that CQRS itself is not complicated and it might be a useful thing to look further into.</p>
+<p>Of course, as you go further down the rabbit hole...</p>
+<p><strong>Some examples</strong></p>
+<p>CQRS can be achieved by using a document database like Raven or Couch - using your documents as a write store, using your indexes as a query store. </p>
+<p>&nbsp;<img alt="" width="400" height="299" src="/images/internal_codeofrob_com/32.png"></p>
+<p>It can be achieved with your favourite ORM (Even better if you can actually use that O and that M and get some good old OO going) - if you want to use your objects for encapsulating business logic and go directly to the the queries to project the data you need for views (HQL, SQL directly, SPROCS, whatever) - from the same database even, providing this remains efficient enough for your needs. <em>(Funnily enough, "our" collective weak attempts at creating domain models with NHibernate are what led to us re-discovering the need for two models in the first place in my opinion).</em></p>
+<p>&nbsp;<img alt="" width="400" height="312" src="/images/internal_codeofrob_com/4.png"></p>
+<p>Of course you may well end up with two databases anyway, as trying to query a database comprised of tables that represent state in your "objects" can be pretty inefficient, with the read store updated from the write store using hooks in your write system to generate pre-calculated views or data that's more applicable to generating views - this is not a bad model and can work too, it's still CQRS.</p>
+<p>&nbsp;<img alt="" width="400" height="319" src="/images/internal_codeofrob_com/5.png"></p>
+<p>CQRS gets the "complicated" label because people often associate it directly with event sourcing, which requires that little bit more of up-front development in order to get the level of elegance you won't find in the above scenarios. However, even event sourcing is really simple once you look at it - and is a natural progression from some of the other ways of "doing" CQRS - which can be a bit muddy (not that there is anything wrong with systems that are a bit muddy). <em>Note that I'm not mentioning DDD here At All - which is where a lot of heavy&nbsp;learning lies, and nearly none of us do anyway.</em></p>
+<p>Consider hooking those events in your system to manually flatten/re-arrange data into other stores as outlined above? Does that work for that one other store? How about a reporting store? How about full text search? What about integration with third party systems and the data they want to see from you? How about the boardroom reports your CEO now wants on his desk each morning before he starts his day?</p>
+<p><img alt="" width="400" height="351" src="/images/internal_codeofrob_com/6.png"></p>
+<p>Youch. Deciding your single source of truth is the already written state gives you an amount of inflexibility, which you may or may not be happy with&nbsp;up to a point.</p>
+<p>Updating other views of this truth after small changes can be inefficient&nbsp;and awkward. Recovering after introducing any write bugs to the system can be expensive also. Hell - even changing your model can also be expensive as database migrations are hardly the easiest things if you're trying to work with multiple stores and layers all over the place. When your powerpoint presentations start looking like this you have&nbsp;complexity issues- and these complexity issues aren't caused by CQRS, they're caused by having complex powerpont presentations.</p>
+<p>Moving to events and jumping through a few hoops to make this possible <em>can</em> open up a world of simplicity, and if it's not for you there are other options open to you. CQRS is not complicated - trying to shoehorn the responsibilities of read and write through a single model is complicated. Most of us realise that going through a standard "BLL, DAL, BOL, TLA, CRA, P) layer for both reads/writes is dumb, and CQRS is a good way of formalising this decision.</p>
+<p><strong>Another tdlr;</strong></p>
+<p>You can see that clearly there is a natural progression from the very basics to having the need to go for a full blown event sourcing system with publishers/subscribers/servers/eventual consistency once the complexity of trying to manage a more "simple" solution starts to overwhelm.</p>
+<p>Unless you have that complexity and&nbsp;that need&nbsp;then of course trying to thrust an ivory tower designed architecture onto a system that doesn't need it is going to seem complicated. Hint: If your technical solution is more complicated than your original problem you're probably doing it wrong.</p>
+<p><a href="http://cre8ivethought.com/blog/index"><img alt="" width="500" height="405" src="/images/internal_codeofrob_com/DDDOverview_big.jpg"></a></p>
+	</div>
+      <div id="links">
+        <a href="/">Go back to the index</a>
+      </div>
+      <div id="post-comments">
+      
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,53 @@
+<html>
+  <title id="title">Multi-tenancy in ASP.NET MVC - Controller Actions (Part II)</title>
+  <link rel="stylesheet" type="text/css" href="/style.css"></link>
+  <body>
+    <div id="blog-entry">
+      <h1 id="post-title">Multi-tenancy in ASP.NET MVC - Controller Actions (Part II)</h1>
+      <div id="post">
+		<p><font face="Arial"><strong>(Or a post-mortem examination of what MvcEx taught me about MVC frameworks)</strong></font></p>
+<p><strong>Previous entries in the series</strong></p>
+<ul>
+    <li><a href="http://codeofrob.com/archive/2010/02/01/multi-tenancy-in-asp.net-mvc-why-do-we-want-to.aspx">Why we want it</a> </li>
+    <li><a href="http://codeofrob.com/archive/2010/02/04/multi-tenancy-in-asp.net-mvc-breaking-it-down.aspx">Breaking it down + Themes</a> </li>
+    <li><a href="http://codeofrob.com/archive/2010/02/08/multi-tenancy-in-asp.net-mvc-views.aspx">Views</a> </li>
+    <li><a href="http://codeofrob.com/archive/2010/02/14/multi-tenancy-in-asp.net-mvc-controller-actions-part-i.aspx">Controller Actions (Part I)</a> </li>
+</ul>
+<p><font face="Arial">A long time overdue (our multi-tenant product is nearly ready for release woohoo!) - I'm going to write a bit more about compositing controllers from "action containers" - which is how my reference multi-tenancy framework (MvcEx) currently does things. I want to explain my motivation for attempting that solution and to give a few opinions on the suitability of MS MVC for the task of building multi-tenant applications in this way.</font></p>
+<p><font face="Arial">As outlined in the previous entry about controller actions, when building a multi-tenant and internally extensible application it is convenient that modules be able to contribute actions (or more importantly, override existing actions) to supplement the views exposed by those modules.</font></p>
+<p><font face="Arial">The solution in the previous entry was to select the appropriate controller based on the context of the current request, but I was curious as to whether a neater solution could be created within our chosen framework to separate our concerns into application concerns and module concerns:</font></p>
+<ul>
+    <li><font face="Arial">Give control of the application to the application itself (OnActionExecuting etc)</font> </li>
+    <li><font face="Arial">Give&nbsp;production of the actions to the action containers held in the modules</font> </li>
+</ul>
+<p><font face="Arial">If I was building an MVC framework from scratch, I wouldn't have built a framework that forced you to inherit from a base class (Controller), with all the baggage and responsibility in one place like that, but it works for a lot of people and a lot of applications so I can't really complain too much...</font></p>
+<p><font face="Arial">Anyway, we are using MS MVC and are therefore have to live with these design decisions and can work around them as best we can to achieve what we want(as we have been doing so for the past few entries in this series)</font></p>
+<p><font face="Arial">The application needs to be able to intercept each action, to perform custom logic on models which are being received/sent to the client, to handle controller-specific errors etc.</font></p>
+<p><font face="Arial">The modules simply need to be able to provide actions, and ideally should be bound to the behaviour of the entire application so you don't get unexpected happenings down the line when you've written your 20th module and wonder why it's not working quite right. (Forgot to inherit from the right base class etc etc...)</font></p>
+<p><font face="Arial">It turns out that none of this is particularly easy, and the MvcEx solution was to create a framework which scans for classes labelled as being action containers (something with an attribute of MvcExActionContainer("Name")), gather together its methods and create a controller which derived from an application provided Controller with all the relevant actions created on it.</font></p>
+<p><font face="Arial">This required a lot of Reflection.Emit (Fun!), but the other problems encountered were:</font></p>
+<ul>
+    <li><font face="Arial">A lot of the methods on Controller are actually useful, and I ended up having to use T4 to generate a wrapper around some sort of (optional) ActionContainer base class to call into these.</font> </li>
+    <li><font face="Arial">If you're trying to maintain code that can easily be ported from a default MS MVC application then you need to copy all the attributes across from an action method to the generated controller</font> </li>
+    <li><font face="Arial">Even if you don't use the attributes and find a different way of expressing action modifiers, they still need writing out to the generated controller because that is how MS MVC works.</font> </li>
+</ul>
+<p><font face="Arial">Even if we used MEF to do the work of compositing the controllers, we would still have the problem that we were trying to impose a manner of working to the MS MVC framework that the MS MVC framework is not really geared up to do! (in my opinion).</font></p>
+<p><font face="Arial"><strong>Summary</strong></font></p>
+<p><font face="Arial">In summary, the way MvcEx does things was a bad decision, and I'll probably change it for the method the previous blog entry uses in the near future (Simply choosing the controller we want to use).</font></p>
+<p><font face="Arial">Although it's not ideal in so far as it doesn't solve the problems we have with the design of MS MVC,&nbsp; if we go down the route of trying to hide our flawed framework with a load of abstractions (MVC Turbine etc), we end up in a situation where we might have been better off writing our own MVC framework or using something else more suited to the kind of applications we want to build.&nbsp;(<a href="http://fubumvc.com">Fubu MVC</a>, <a href="http://trac.caffeine-it.com/openrasta">Open Rasta</a>, etc)</font></p>
+<p>It is of course probably worth contributing to that particular discussion at the <a href="http://aspnet.uservoice.com/forums/41199-general/suggestions/487031-multi-tenancy-in-asp-net-mvc?ref=title">asp.net uservoice thread</a>, as our best hope is that the MS MVC guys take note of the multi-tenancy discussion and give some love to the framework in that area.</p>
+<p><font face="Arial"><strong>Coming up...</strong></font></p>
+<p><font face="Arial">With the blogging started up once more, I'll be continuing this series by delving into a few questions I've had on the subject of multi-tenancy regarding configuration, deployment, internalisation and a few other hurdles we've had to cross whilst building our multi-tenant software on top of MS MVC.</font></p>
+<p><font face="Arial"></font></p>
+<p><br>
+</p>
+	</div>
+      <div id="links">
+        <a href="/">Go back to the index</a>
+      </div>
+      <div id="post-comments">
+      
+      </div>
+    </div>
+  </body>
+</html>

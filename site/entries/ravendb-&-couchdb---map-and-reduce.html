@@ -1,0 +1,263 @@
+<html>
+  <title id="title">RavenDB & CouchDB - Map and Reduce</title>
+  <link rel="stylesheet" type="text/css" href="/style.css"></link>
+  <body>
+    <div id="blog-entry">
+      <h1 id="post-title">RavenDB & CouchDB - Map and Reduce</h1>
+      <div id="post">
+		<p><strong>Previous entries in the series</strong></p>  <ul>   <li><a href="http://codeofrob.com/archive/2010/05/31/ravendb-whats-the-difference.aspx">RavenDB – What’s the difference?</a> </li>    <li><a href="http://codeofrob.com/archive/2010/06/02/ravendb-amp-couchdb-ndash-basic-queries.aspx">RavenDB &amp; CouchDB – Simple Queries</a> </li> </ul>  <p>One of the recurring features present in the popular document databases is the use of map-reduce functions as the primary way to create views on the stored data.</p>  <p><strong>Map Reduce</strong></p>  <p>At this point, I could go into a long description of what map/reduce actually is but that kind of thing is available via the use of a convenient <a href="http://www.google.com/search?sourceid=chrome&amp;ie=UTF-8&amp;q=map+reduce">google search</a>.</p>  <p>The short of it is that you map some data from each document into a structure to be queried on, and then run (and re-run) a reduce function over the mapped data in order to group it by some key.</p>  <p>Now, these map functions can get quite complicated, but the concept remains the same from the most basic versions up to the more complicated reports on the data.</p>  <p>Let’s look at the standard example of getting the number of comments across all the blog entries by a certain author.</p>  <p>Here is the structure of our example document:</p>  <div class="csharpcode">   <pre class="alt"><span class="lnum">   1:  </span>{</pre>
+
+  <pre><span class="lnum">   2:  </span>    title: <span class="str">'robashton'</span>,</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>    category: <span class="str">'tech'</span>,</pre>
+
+  <pre><span class="lnum">   4:  </span>    content: <span class="str">'blah blah blah'</span>,</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>    comments: [</pre>
+
+  <pre><span class="lnum">   6:  </span>        { author: <span class="str">'anon'</span>, content: <span class="str">'blah'</span> },</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>        { author: <span class="str">'anon'</span>, content: <span class="str">'more blah'</span> }</pre>
+
+  <pre><span class="lnum">   8:  </span>    ]</pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>}</pre>
+</div>
+
+<div class="csharpcode">&nbsp;</div>
+
+<div class="csharpcode">&nbsp;</div>
+
+<p>The important data here is ‘author’ and the length of the comments array, so naturally we would map these in our map function.</p>
+
+<p><strong>In RavenDB</strong></p>
+<style type="text/css">![CDATA[
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>from doc <span class="kwrd">in</span> docs</pre>
+
+  <pre><span class="lnum">   2:  </span>select <span class="kwrd">new</span></pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>{</pre>
+
+  <pre><span class="lnum">   4:  </span>     author = doc.author,</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>     count = doc.comments.Length</pre>
+
+  <pre><span class="lnum">   6:  </span>}</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p><strong>In CouchDB</strong></p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span><span class="kwrd">function</span>(doc) {</pre>
+
+  <pre><span class="lnum">   2:  </span>  emit(doc.author, doc.comments.length);</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>}</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>There isn’t anything much to say about these, the RavenDB map function just returns the mapped data, and the CouchDB function emits the mapped field(s) as a key alongside the value(s) associated with that key.</p>
+
+<p>The reduction will therefore take place on ‘author’ (the key), and we would sum all the comment counts (the value) for that author in the reduce function.</p>
+
+<p><strong>In RavenDB</strong></p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>from result <span class="kwrd">in</span> results</pre>
+
+  <pre><span class="lnum">   2:  </span>group result by result.author into g</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>select <span class="kwrd">new</span> </pre>
+
+  <pre><span class="lnum">   4:  </span>{</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>     author = g.Key,</pre>
+
+  <pre><span class="lnum">   6:  </span>     count = g.Sum(x =&gt; x.count)</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>}</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>&nbsp;</p>
+
+<p><strong>In CouchDB</strong></p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span><span class="kwrd">function</span> (key, values, rereduce) {</pre>
+
+  <pre><span class="lnum">   2:  </span>   <span class="kwrd">return</span> sum(values);    </pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>}</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>&nbsp;</p>
+
+<p>The structure of these two functions immediately strike us as being very different and questions are therefore raised by that.</p>
+
+<ul>
+  <li>In RavenDB the reduce function is handed a selection of mapped values and its job is to group them by some key and return a new set of mapped values. </li>
+
+  <li>In CouchDB, the map function emits the key to reduce on, and a separate value to be combined by the reduce method. This means that when the reduce method is called, it might have a collection of those values, but they’re <em>already grouped by key</em>. </li>
+
+  <li>in RavenDB, the input of the reduce function must consume the output of the Map function, and then re-output the input of the reduce function. What this roughly equates to is <em>the reduce function and map function must return the same result shape.</em> </li>
+
+  <li>In CouchDB , the result shape of the map and reduce functions don’t <em>have</em> to bear any relation to each other, and of course emit can be called multiple times per document. This is slightly more complicated, and while it can be more flexible, it also leads to a greater amount of complexity in the reduce function because the input can be different depending on the context in which it is called. </li>
+</ul>
+
+<p>The reduce function can be called more than once for a set of documents (and this holds true for both Raven + Couch, that’s&nbsp; the whole point of map/reduce), and in CouchDB an extra parameter is present called “rereduce”, which specifies whether this is the first pass or a subsequent pass. If the result shapes differ between the map function and reduce function, a check is required so different logic can be performed based on this.</p>
+
+<p>For those of you who skipped that big body of text, the important thing to take away is that <em><strong>in RavenDB the responsibility of deciding what to group the documents on falls to the Reduce function, and in CouchDB the responsibility falls to the Map function.</strong></em></p>
+
+<p>So, these are two rather different ways of thinking about MapReduce and this is definitely something to be aware of when trying to jump between the two.</p>
+
+<p>This was quite a long entry with a really short summary, so in the next entry, I’ll be listing and explaining some of the actual functionality differences between CouchDB and RavenDB.</p>
+	</div>
+      <div id="links">
+        <a href="/">Go back to the index</a>
+      </div>
+      <div id="post-comments">
+      
+      </div>
+    </div>
+  </body>
+</html>

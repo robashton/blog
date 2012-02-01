@@ -1,0 +1,480 @@
+
+		<p>The code for this and all other entries can be found here: <a href="http://github.com/robashton/RavenGallery/">http://github.com/robashton/RavenGallery/</a>&nbsp;</p>  <p>Now we’re here, let’s talk about registration using the system outlined on the previous pages when combined with RavenDB.</p>  <p><strong>Registration Validation</strong></p>  <p>We’re going to assume we have a form which can be represented by the following view model:</p>  <div class="csharpcode">   <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">class</span> UserRegisterViewModel</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        [DisplayName(<span class="str">"Username"</span>)]</pre>
+
+  <pre><span class="lnum">   4:  </span>        <span class="kwrd">public</span> <span class="kwrd">string</span> Username</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>        {</pre>
+
+  <pre><span class="lnum">   6:  </span>            get;</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>            set;</pre>
+
+  <pre><span class="lnum">   8:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>&nbsp;</pre>
+
+  <pre><span class="lnum">  10:  </span>         [DisplayName(<span class="str">"Password"</span>)]</pre>
+
+  <pre class="alt"><span class="lnum">  11:  </span>        <span class="kwrd">public</span> <span class="kwrd">string</span> Password</pre>
+
+  <pre><span class="lnum">  12:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">  13:  </span>            get;</pre>
+
+  <pre><span class="lnum">  14:  </span>            set;</pre>
+
+  <pre class="alt"><span class="lnum">  15:  </span>        }</pre>
+
+  <pre><span class="lnum">  16:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">  17:  </span>        [DisplayName(<span class="str">"Stay logged in"</span>)]</pre>
+
+  <pre><span class="lnum">  18:  </span>        <span class="kwrd">public</span> Boolean StayLoggedIn</pre>
+
+  <pre class="alt"><span class="lnum">  19:  </span>        {</pre>
+
+  <pre><span class="lnum">  20:  </span>            get;</pre>
+
+  <pre class="alt"><span class="lnum">  21:  </span>            set;</pre>
+
+  <pre><span class="lnum">  22:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">  23:  </span>    }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>There, that was easy – but remember on the previous page where I said we only needed views for views and entities for behaviour?&nbsp; There are always exceptions, and for validation purposes I’m going to define an interface called IUserService which we can ask if users exist or not.</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span> <span class="kwrd">public</span> <span class="kwrd">class</span> UserRegisterViewModelValidator : AbstractValidator&lt;UserRegisterViewModel&gt;</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="kwrd">public</span> UserRegisterViewModelValidator(IUserService userService)</pre>
+
+  <pre><span class="lnum">   4:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>            <span class="kwrd">this</span>.RuleFor(x =&gt; x.Username).NotEmpty().Must(x =&gt; !userService.DoesUserExistWithUsername(x));</pre>
+
+  <pre><span class="lnum">   6:  </span>            <span class="kwrd">this</span>.RuleFor(x =&gt; x.Password).NotEmpty();</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>            <span class="kwrd">this</span>.RuleFor(x =&gt; x.StayLoggedIn).NotEmpty();</pre>
+
+  <pre><span class="lnum">   8:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>    }</pre>
+</div>
+
+<div class="csharpcode">&nbsp;</div>
+
+<div class="csharpcode">So, we have</div>
+
+<div class="csharpcode">&nbsp;</div>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">class</span> UserService : IUserService</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="kwrd">public</span> <span class="kwrd">bool</span> DoesUserExistWithUsername(<span class="kwrd">string</span> username)</pre>
+
+  <pre><span class="lnum">   4:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>            <span class="kwrd">throw</span> <span class="kwrd">new</span> NotImplementedException();</pre>
+
+  <pre><span class="lnum">   6:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>    }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style><style type="text/css">![CDATA[
+
+
+
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>I am just going to hard code the query into this service, and I really need an integration test for this, so that’s what I’m going to do, I’m going to fire up a local instance of RavenDB, populate it with some data and run some tests against it. I always write integration tests against RavenDB, even for trivial things like this – just in case RavenDB changes or I make a whoopsee somewhere down the line.</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>    [TestFixture]</pre>
+
+  <pre><span class="lnum">   2:  </span>    <span class="kwrd">public</span> <span class="kwrd">class</span> UserServiceTests : LocalRavenTest</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>    {</pre>
+
+  <pre><span class="lnum">   4:  </span>        [Test]</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>        <span class="kwrd">public</span> <span class="kwrd">void</span> WhenUserExists_DoesUserExistWithUsername_ReturnsTrue()</pre>
+
+  <pre><span class="lnum">   6:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>            <span class="kwrd">using</span> (var session = Store.OpenSession())</pre>
+
+  <pre><span class="lnum">   8:  </span>            {</pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>                session.Store(<span class="kwrd">new</span> UserDocument()</pre>
+
+  <pre><span class="lnum">  10:  </span>                {</pre>
+
+  <pre class="alt"><span class="lnum">  11:  </span>                     PasswordHash = <span class="str">"pass"</span>,</pre>
+
+  <pre><span class="lnum">  12:  </span>                     Username = <span class="str">"testUser"</span></pre>
+
+  <pre class="alt"><span class="lnum">  13:  </span>                });</pre>
+
+  <pre><span class="lnum">  14:  </span>                session.SaveChanges();</pre>
+
+  <pre class="alt"><span class="lnum">  15:  </span>&nbsp;</pre>
+
+  <pre><span class="lnum">  16:  </span>                UserService service = <span class="kwrd">new</span> UserService(session);</pre>
+
+  <pre class="alt"><span class="lnum">  17:  </span>                <span class="kwrd">bool</span> result = service.DoesUserExistWithUsername(<span class="str">"testUser"</span>);</pre>
+
+  <pre><span class="lnum">  18:  </span>                Assert.True(result);</pre>
+
+  <pre class="alt"><span class="lnum">  19:  </span>            }</pre>
+
+  <pre><span class="lnum">  20:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">  21:  </span>&nbsp;</pre>
+
+  <pre><span class="lnum">  22:  </span>        [Test]</pre>
+
+  <pre class="alt"><span class="lnum">  23:  </span>        <span class="kwrd">public</span> <span class="kwrd">void</span> WhenUserDoesNotExist_DoesUserExistWithUsername_ReturnsFalse()</pre>
+
+  <pre><span class="lnum">  24:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">  25:  </span>            <span class="kwrd">using</span> (var session = Store.OpenSession())</pre>
+
+  <pre><span class="lnum">  26:  </span>            {</pre>
+
+  <pre class="alt"><span class="lnum">  27:  </span>                session.Store(<span class="kwrd">new</span> UserDocument()</pre>
+
+  <pre><span class="lnum">  28:  </span>                {</pre>
+
+  <pre class="alt"><span class="lnum">  29:  </span>                    PasswordHash = <span class="str">"pass"</span>,</pre>
+
+  <pre><span class="lnum">  30:  </span>                    Username = <span class="str">"testUser"</span></pre>
+
+  <pre class="alt"><span class="lnum">  31:  </span>                });</pre>
+
+  <pre><span class="lnum">  32:  </span>                session.SaveChanges();</pre>
+
+  <pre class="alt"><span class="lnum">  33:  </span>&nbsp;</pre>
+
+  <pre><span class="lnum">  34:  </span>                UserService service = <span class="kwrd">new</span> UserService(session);</pre>
+
+  <pre class="alt"><span class="lnum">  35:  </span>                <span class="kwrd">bool</span> result = service.DoesUserExistWithUsername(<span class="str">"testOtherUser"</span>);</pre>
+
+  <pre><span class="lnum">  36:  </span>                Assert.False(result);</pre>
+
+  <pre class="alt"><span class="lnum">  37:  </span>            }</pre>
+
+  <pre><span class="lnum">  38:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">  39:  </span>    }</pre>
+</div>
+
+<p></p><style type="text/css">![CDATA[
+
+
+
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>LocalRavenTest just creates a document store in the local directory and takes care of clearing it up again. As you can see, we have just come across the functionality of saving documents to RavenDB for the first time, and it couldn’t be any simpler. </p>
+
+<ul>
+  <li>Store.OpenSession opens an IDocumentSession as described earlier in the series </li>
+
+  <li>IDocumentSession.Store() takes an entirely arbitrary POCO and saves it to RavenDB </li>
+
+  <li>IDocumentSession.SaveChanges() flushes any changes (in this case, our saved POCO) to RavenDB </li>
+
+  <li>Unless SaveChanges is invoked, nothing happens </li>
+</ul>
+
+<p>We pass the IDocumentSession into the UserService and then test the functionality of UserService. Predictably our tests fail because we haven’t written the code yet!</p>
+
+<p>Oh wait, here we go</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">class</span> UserService : IUserService</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="kwrd">public</span> IDocumentSession documentSession;</pre>
+
+  <pre><span class="lnum">   4:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>        <span class="kwrd">public</span> UserService(IDocumentSession documentSession)</pre>
+
+  <pre><span class="lnum">   6:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>            <span class="kwrd">this</span>.documentSession = documentSession;</pre>
+
+  <pre><span class="lnum">   8:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>&nbsp;</pre>
+
+  <pre><span class="lnum">  10:  </span>        <span class="kwrd">public</span> <span class="kwrd">bool</span> DoesUserExistWithUsername(<span class="kwrd">string</span> username)</pre>
+
+  <pre class="alt"><span class="lnum">  11:  </span>        {</pre>
+
+  <pre><span class="lnum">  12:  </span>            <span class="kwrd">return</span> documentSession.DynamicQuery&lt;User&gt;()</pre>
+
+  <pre class="alt"><span class="lnum">  13:  </span>                .Where(x =&gt; x.Username == username)</pre>
+
+  <pre><span class="lnum">  14:  </span>                .Any();</pre>
+
+  <pre class="alt"><span class="lnum">  15:  </span>        }</pre>
+
+  <pre><span class="lnum">  16:  </span>    }</pre>
+</div>
+
+<p></p><style type="text/css">![CDATA[
+
+
+
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>And this is how we query the documents stored inside Raven, a simple LINQ query! This time when we run the tests they pass -&nbsp; which means we have a controller action complete with a validated model ready for processing. I’m still not happy with where that functionality has been placed, but until a better solution presents itself it’ll do as a way of letting us get on.
+
+<p><strong>Registration Command</strong></p>
+
+<p>So, with the above taken place, we have arrived inside the Register action and we know if the model state is valid or not so we send&nbsp; the appropriate command through our command invoker like so</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>        [AcceptVerbs(HttpVerbs.Post)]</pre>
+
+  <pre><span class="lnum">   2:  </span>        <span class="kwrd">public</span> ActionResult Register(UserRegisterViewModel model)</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        {</pre>
+
+  <pre><span class="lnum">   4:  </span>            <span class="kwrd">if</span> (ModelState.IsValid)</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>            {</pre>
+
+  <pre><span class="lnum">   6:  </span>                <span class="rem">// Send command</span></pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>                commandInvoker.Execute(<span class="kwrd">new</span> RegisterNewUserCommand(model.Username, model.Password));</pre>
+
+  <pre><span class="lnum">   8:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>                <span class="rem">// Go back to home</span></pre>
+
+  <pre><span class="lnum">  10:  </span>                <span class="kwrd">return</span> RedirectToAction(<span class="str">"Index"</span>, <span class="str">"Home"</span>);</pre>
+
+  <pre class="alt"><span class="lnum">  11:  </span>            }</pre>
+
+  <pre><span class="lnum">  12:  </span>            <span class="kwrd">else</span></pre>
+
+  <pre class="alt"><span class="lnum">  13:  </span>            {</pre>
+
+  <pre><span class="lnum">  14:  </span>                <span class="rem">// Return back to the page</span></pre>
+
+  <pre class="alt"><span class="lnum">  15:  </span>                <span class="kwrd">return</span> View();</pre>
+
+  <pre><span class="lnum">  16:  </span>            }            </pre>
+
+  <pre class="alt"><span class="lnum">  17:  </span>        }</pre>
+</div>
+
+<p>And receive it through our command handler like so:</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">class</span> RegisterNewUserCommandHandler : ICommandHandler&lt;RegisterNewUserCommand&gt;</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="kwrd">private</span> IUserRepository userRepository;</pre>
+
+  <pre><span class="lnum">   4:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>        <span class="kwrd">public</span> RegisterNewUserCommandHandler(IUserRepository userRepository)</pre>
+
+  <pre><span class="lnum">   6:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>            <span class="kwrd">this</span>.userRepository = userRepository;</pre>
+
+  <pre><span class="lnum">   8:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>&nbsp;</pre>
+
+  <pre><span class="lnum">  10:  </span>        <span class="kwrd">public</span> <span class="kwrd">void</span> Handle(RegisterNewUserCommand command)</pre>
+
+  <pre class="alt"><span class="lnum">  11:  </span>        {</pre>
+
+  <pre><span class="lnum">  12:  </span>            User newUser = <span class="kwrd">new</span> User(command.Username, command.Password);</pre>
+
+  <pre class="alt"><span class="lnum">  13:  </span>            userRepository.Save(newUser);</pre>
+
+  <pre><span class="lnum">  14:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">  15:  </span>    }</pre>
+</div>
+
+<p>That’s it, job done – we have an entire piece of functionality written with barely any fuss at all. </p>
+
+<p>Tests for the above are all present in the github repository, left out of this post with the exception of the RavenDB interaction</p>
+
+<p>In the next install, we’ll add the sign-in/sign-out functionality to our system.</p>
+	

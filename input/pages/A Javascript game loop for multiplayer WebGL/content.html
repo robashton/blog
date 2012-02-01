@@ -1,0 +1,47 @@
+
+		<p>In an aim to build that simple multi-player game (Pong), one of the first things to do to drive the application, is to build a game loop that will drive the rendering and logic.</p>
+<p>We <i>were</i> building this at a hack day, so getting this set up was integral so we could split up the work in the team between building a basic renderer, and building the engine for doing all the pong logic (ping, pong, collision, etc ;-))</p>
+
+<h2>First up, a Naive game loop</h2>
+
+<script src="https://gist.github.com/874177.js?file=gistfile1.js"></script>
+
+<p>There is something immediately wrong with this, and if you have ever gone remotely near Javascript you'll see it straight away.
+
+</p><p>Chiefly, this is that you can't have never-ending loops in JS and expect the rest of the page to carry on functioning correctly.</p>
+
+<p>As far as I understand it, Javascript effectively executes on a single UI thread, long-running calls to web services are done asynchronously (with callbacks executing on that single UI thread), and in order to get a loop running we have to fall back to getting a callback executed every time we want the loop to execute.</p>
+
+<h2>Second up, another naive game loop</h2>
+
+<script src="https://gist.github.com/874187.js?file=gistfile1.js"></script>
+
+<p>In this attempt, we are saying "Run this logic 30 times a second", which is much better - as it means we render the scene 30 times a second and effectively execute the logic 30 times a second.</p>
+
+<p>We might choose to stop here, except this is also problematic - as what happens if for _some_ reason on one client renderScene takes longer than a 30th of a second, but on another client it does not?</p>
+
+<p>Poorly performing clients will quickly get out of sync with other clients who haven't got any problems - and in fact if you have any other timers, they might cause these ones to be queued... and well you get the picture. You can't trust that the logic is actually going to be called every 30th of a second.</p>
+
+<p>One solution is to work out how much time has elapsed since the last frame, and use that as a multiplier in the executing logic (distanceTraveled = speed * timeElapsed) - but we can easily see that this would get out of hand in any but the simplest of rendering demos.</p>
+
+<p>Nay, I present to you the loop we actually used in our pong game, this is based pretty much entirely from a post found on the excellent <a href="http://altdevblogaday.org/2011/02/23/ginkgos-game-loop/">AltDevBlogADay site</a></p>
+
+<p>Don't worry if you can't read it easily, as I have a nice simple version of what it sets out to achieve below, in my less naive game loop</p>
+
+<h2>A less naive approach</h2>
+
+<script src="https://gist.github.com/874223.js?file=gistfile1.js"></script>
+
+<p>It's a little bit more complicated, but what's we're essentially doing is de-coupling the execution of our logic from the underlying timer mechanism, by calculating how much time has elapsed since we last tried to run the logic, and then optionally run the logic more than once (or even not at all) if necessary.</p>
+
+<p>We also keep the left over time around, to add to the next tick, so rounding errors don't bother us at all.</p>
+
+<p>What's cool about this, is that we can store how many ticks has elapsed in the entire game, and use this as a universal value for coordinating synchronisation between two player's game states (more about this in the coming entries).</p>
+
+<h2>Game programming 101</h2>
+<p>Okay, so what the hell eh? I'm a software developer, not a game programmer, what am I doing writing posts about the most basic of games development topics? </p>
+
+<p>Truth be told, I don't really know yet - but documenting what I've learned as I go along seems natural these days, and it's more interesting than Active Directory, which is what I'm currently learning about in my work hours...</p>
+
+<p>Disclaimer: I'm not a games developer, and the loop above may not be optimal (although it does work!) - use it at your own peril.</p>
+	

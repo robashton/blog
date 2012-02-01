@@ -1,0 +1,73 @@
+
+		<p><font face="Arial">** Update: <a href="http://blog.codeofrob.com/archive/2010/04/08/autopoco-0.2-released.aspx">Version 0.2 Now Released</a>**</font></p>
+<p><font face="Arial">The product of one weekend and a bank holiday's code, I wanted to simplify the way we were generating test data for our tests, and writing a class called &lt;ObjectName&gt;Builder with lots of permutations for overriding various properties for every single object I wanted to generate was getting tedious.</font></p>
+<p><font face="Arial">I also wanted to have a go at writing something that exposed a fluent interface that could be extended using extension methods, and combined convention with configuration to do its job in an easily configurable fashion.</font></p>
+<p><font face="Arial">Combining these two into a project was a fun thing to do, whether the project is of any use to anybody else is irrelevant, but you don't know unless you push these things out...</font></p>
+<p><font face="Arial"><a href="http://autopoco.codeplex.com">http://autopoco.codeplex.com</a> </font></p>
+<p><font face="Arial">Using it should be self explanatory, but here is a quick overview of what AutoPoco attempts to achieve.</font></p>
+<p><font face="Arial"><strong>Configuring a factory</strong><br>
+A factory can be created once and then re-used by tests (if you so wish), a factory is just a configured instance of AutoPoco and has therefore performed some of the more expensive reflection operations ahead of use.</font></p>
+<p><font face="Arial">Using the default conventions, any recognised properties on an object will automatically be populated with an instance of that property type, and this will obviously recurse down the object graph.</font></p>
+<font face="Arial">
+<pre class="brush: csharp;" title="code">var factory = AutoPocoContainer.Configure(x =&gt;
+            {
+                x.Conventions(c =&gt;
+                {
+                    // Map all public properties + fields
+                    // Ensure  we don't end up with nulls
+                    c.UseDefaultConventions();
+                });
+
+                // Include the simple user type
+                x.Include&lt;SimpleUser&gt;()
+                    // Expicitly set data sources for its properties
+                    .Setup(c =&gt; c.EmailAddress).Use&lt;EmailAddressSource&gt;()
+                    .Setup(c =&gt; c.FirstName).Use&lt;FirstNameSource&gt;()
+                    .Setup(c =&gt; c.LastName).Use&lt;LastNameSource&gt;();
+
+                // Include the user role type (used by User.Role)
+                // Set the name as a string with a length between 5 and 10
+                // Note: Random is an extension method and only gets provided if the property/field is a string
+                x.Include&lt;SimpleUserRole&gt;()
+                    .Setup(c =&gt; c.Name).Random(5, 10);
+
+                // Include these types, but use the default conventions to auto-set properties/fields
+                x.Include&lt;SimpleFieldClass&gt;();
+                x.Include&lt;SimplePropertyClass&gt;();
+                x.Include&lt;DefaultPropertyClass&gt;();
+                x.Include&lt;DefaultFieldClass&gt;();
+            });</pre>
+</font>
+<p><font face="Arial"><strong>Creating a session</strong><br>
+A session should be created once per test (or more), and will use data sources scoped to that session to populate requested objects. An example of this would be a source configured to create unique ids for "database" objects - each id would be unique across that session, but creating another session would mean that session had its own data source back at the original state. <br>
+Don't worry, you don't need to understand this, it's just there for those that want it.</font></p>
+<font face="Arial">
+<pre class="brush: csharp;" title="code">var session = factory.CreateSession();</pre>
+</font>
+<p><font face="Arial"><strong>Creating Objects</strong><br>
+This is the important bit - any number of objects should capable of being be created from the session, with the ability to easily override any of the properties on those objects</font></p>
+<font face="Arial">
+<pre class="brush: csharp;" title="code">            // Get a single default user
+            // User.Role will be set automatically by AutoPoco
+            // User.EmailAddress will be a valid e-mail address
+            SimpleUser singleDefaultUser = mSession.With&lt;SimpleUser&gt;().Get();
+            
+            // Get 100 users
+            // They all have different e-mail address
+            // They all have different first names
+            // They all have different last names
+            SimpleUser[] users = mSession.With&lt;SimpleUser&gt;().Get(100);
+            
+            // Create a role
+            SimpleUserRole sharedRole = mSession.With&lt;SimpleUserRole&gt;().Get();
+            
+            // Impose that role on 100 users
+            // Those 100 users still have different e-mail addresses etc etc
+            SimpleUser[] usersSharingRole = mSession.With&lt;SimpleUser&gt;()
+                .Impose(x =&gt; x.Role, sharedRole)
+                .Get(100);</pre>
+</font>
+<p><font face="Arial">I think this is quite neat and tidy,&nbsp; although there are lots of features missing (ability to populate collections, a convention to deal with enums, a convention to deal with inheritance - and lots of extension methods to allow the easy manual configuration of all of those things.</font></p>
+<p><font face="Arial">I'll add them as I need them or as they are requested. This is my framework for my use, but you're all welcome to use and contribute to it too.<br>
+</font></p>
+	

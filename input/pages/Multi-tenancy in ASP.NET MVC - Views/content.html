@@ -1,0 +1,191 @@
+
+		<p><strong>Previous entries in the series</strong></p>
+<ul>
+    <li><a href="http://codeofrob.com/archive/2010/02/01/multi-tenancy-in-asp.net-mvc-why-do-we-want-to.aspx">Why we want it</a> </li>
+    <li><a href="http://codeofrob.com/archive/2010/02/04/multi-tenancy-in-asp.net-mvc-breaking-it-down.aspx">Breaking it down + Themes</a> </li>
+</ul>
+<p><font face="Arial">One of the requirements of our multi-tenant application, is having the ability to replace or add new pages (or parts of pages) in the system for each of our modules.</font></p>
+<p><font face="Arial">While a customer may ask for an entirely new 'area' on the site (MVC2 covers this), the chances are they just want the addition of a single page or replacement of what is already provided in the stock product.</font></p>
+<p><font face="Arial">The obvious port of call for change of this kind are the views and partial views situated within the web application, and finding a way to add or override these on a per-module basis.</font></p>
+<p><font face="Arial"><font face="Arial">Throughout the following entry I'll assume we have access to a configuration provider that looks something like this:</font></font></p>
+<font face="Arial">
+<pre class="brush: csharp;" title="code">public interface IConfigurationProvider
+{
+    Configuration GetActiveConfiguration();
+}</pre>
+<p><font face="Arial">Where Configuration has the following simplistic structure (for demo purposes)</font></p>
+<pre class="brush: csharp;" title="code">    public class Configuration
+    {
+        public string Theme
+        {
+            get;
+            set;
+        }
+
+        public Module[] Modules
+        {
+            get;
+            set;
+        }
+    }
+
+    public class Module
+    {
+        public string Id
+        {
+            get;
+            set;
+        }
+    }</pre>
+<p><font face="Arial">In other words, we have a way of querying for the 'currently active configuration' (remember, our active configuration is per-request because we're attempting true multi-tenancy), and our configuration consists of a single theme and a list of loaded modules.</font></p>
+<p><font face="Arial">Each module has an Id and we'll use this to infer a number of things by convention. (Again, this is just a demo, and you can do this<em> however you like</em>.)</font></p>
+<p><font face="Arial"><br>
+<font face="Arial">I assume each module will provide a collection of views and partial views, and if a module is loaded *after* another module, and provides another view or partial view with the same name and path, it will replace the previously loaded view or partial view.<br>
+</font></font>
+</p><p><font face="Arial">I was asked in a comment on a previous entry what my folder structure looked like,&nbsp; and this is where the folder structure starts to become important.<br>
+</font></p>
+<p><img alt="Collapsed views" src="http://fear.the.codeofrob.com/mt_views/views_collapsed.png"></p>
+<p><font face="Arial">Every module's views come packaged in a single directory,&nbsp; with another directory called Views inside of it.</font></p>
+<p><font face="Arial">Underneath each of these Views directories, is the same folder structure you'd expect from a traditional ASP.NET MVC Website, with a directory per controller and a collection of views and partial views.</font></p>
+<p><font face="Arial">This means that both Core and ModuleOne can contribute or replace views for the&nbsp; actions from the "Home" Controller.</font></p>
+<p><font face="Arial">A thing of note, is that the web.config file that would ordinarily live in the Views directory in a traditional ASP.NET MVC application has been moved out into the Site directory above all the module directories - as this does things like give you Intellisense in your views (if I recall correctly) as well as actually facilitating the functionality in the ASP.NET MVC Framework.</font></p>
+<p><font face="Arial">Expanded, our project looks like this:<br>
+</font></p>
+<p><img alt="Expanded folder selection" src="http://fear.the.codeofrob.com/mt_views/views_expanded.png"><br>
+&nbsp;</p>
+<p><font face="Arial">Assuming the partial view "Widget" is exposed somewhere on the Index page, the following desired scenarios present themselves:</font></p>
+<p><font face="Arial"><strong>Core Module loaded:</strong></font></p>
+<p><font face="Arial">/Home/Index requested =&gt; Index served from CoreModule, with Widget from CoreModule<br>
+/Home/Extra requested =&gt; Page not found</font></p>
+<p><font face="Arial"><strong>Core + ModuleOne Loaded (in that order)</strong></font></p>
+<p><font face="Arial">/Home/Index requested =&gt; Index served from CoreModule with Widget from ModuleOne<br>
+/Home/Extra requested =&gt; Extra served from ModuleOne</font></p>
+<p><font face="Arial"><strong>ModuleOne + Core Loaded (in that order)</strong></font></p>
+<p><font face="Arial">/Home/Index requested =&gt; Index served from CoreModule with Widget from CoreModule<br>
+/Home/Extra requested =&gt; Extra served from ModuleOne</font></p>
+<font face="Arial"><font face="Arial">
+<h3><font face="Arial">Enter the View Engine</font></h3>
+</font>
+<p><font face="Arial">This is all very well and good as our requirements are quite clear, but the next step is making the above happen!</font></p>
+<p><font face="Arial">ASP.NET MVC provides the facility to override the View Engine, which is the component that determines how views are rendered.</font></p>
+<p><font face="Arial">This can be used to simply load views in from a different location, or even to allow completely bespoke mark-up to be transformed into HTML (Ala the <a href="http://sparkviewengine.com">Spark View Engine</a>).</font></p>
+<p><font face="Arial">By default, the framework will use System.Web.Mvc.WebFormViewEngine, which is what loads the views from the View directory using the default convention and returns a ViewEngineResult containing a WebFormView which eventually ends up being used to render out the view.</font></p>
+<p><font face="Arial">The WebFormViewEngine class itself is extendable, and by inheriting from it we can change the search paths it uses to locate the views and partial views.</font></p>
+<p><font face="Arial">Naturally this is the first place we look to solve our problem, as writing less code is always preferable if we can get away with it.</font></p>
+<p><font face="Arial">The set-up of WebFormViewEngine is that in the constructor we&nbsp; can give it a selection of search paths - which means for the life-time of WebFormViewEngine those search paths are set.</font></p>
+<p><font face="Arial">They can be modified per-request, but WebFormViewEngine inherits from VirtualPathProviderViewEngine which caches paths under which it has found files (or at least, reading the source it looks like it does!).</font></p>
+<p><font face="Arial">For performance purposes (per-configuration path caching), it would probably therefore be best implementing a ViewEngine from scratch, but as the main body of work is achieved through the return result of the&nbsp; view engine methods, this is not as daunting an experience as we might think.</font></p>
+<p><font face="Arial">This is what IViewEngine looks like when we first create it:<br>
+</font></p>
+<pre class="brush: csharp;" title="code">    public class ModuleViewEngine : IViewEngine
+    {
+        public ViewEngineResult FindPartialView(ControllerContext controllerContext, string partialViewName, bool useCache)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ViewEngineResult FindView(ControllerContext controllerContext, string viewName, string masterName, bool useCache)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void ReleaseView(ControllerContext controllerContext, IView view)
+        {
+            throw new NotImplementedException();
+        }
+    }</pre>
+<p><font face="Arial">First things first, ReleaseView doesn't need to do anything unless the views you return implement IDisposable, and for that the following code can be used.<br>
+</font><font face="Arial"></font></p>
+<pre class="brush: csharp;" title="code">        public void ReleaseView(ControllerContext controllerContext, IView view)
+        {
+            IDisposable disposable = view as IDisposable;
+            if (disposable != null)
+            {
+                disposable.Dispose();
+            }
+        }</pre>
+<p><font face="Arial">The next thing of note is that the searching logic for locating the files is the same regardless of whether the engine is looking for a view or partial view, so we can create the following method and forget about it for now:</font></p>
+<pre class="brush: csharp;" title="code">        private string ResolvePath(String requestedFile, ControllerContext controllerContext)
+        {
+            throw new NotImplementedException();
+        }</pre>
+<p><font face="Arial">FindPartialView and FindView both return the same type, and with similar values - I won't go into detail because the procedure is well documented elsewhere, but my methods in this example look like this:<br>
+</font><font face="Arial"></font></p>
+<pre class="brush: csharp;" title="code">        public ViewEngineResult FindPartialView(ControllerContext controllerContext, string partialViewName, bool useCache)
+        {
+            String foundFile = ResolvePath(string.Format("{0}.ascx", partialViewName), controllerContext);
+
+            return new ViewEngineResult(
+                new WebFormView(foundFile),
+                this
+            );       
+        }
+
+        public ViewEngineResult FindView(ControllerContext controllerContext, string viewName, string masterName, bool useCache)
+        {
+            String foundFile = ResolvePath(string.Format("{0}.aspx", viewName), controllerContext);
+
+            return new ViewEngineResult(
+                 new WebFormView(
+                     foundFile,
+                     masterName),
+                 this);
+        }</pre>
+<p class="brush: csharp;" title="code">&nbsp;</p>
+<p><font face="Arial"><strong>Note:</strong> This example will not deal with absolute paths being specified, it will also not deal gracefully with the file not being found at all - this simply involves returning a list of the searched locations on failure and isn't worth discussing further here.</font></p>
+<p><font face="Arial">ResolvePath is entirely dependent on the logic you want to follow when searching for your per configuration module provided views, but a reference implementation might look like the following:</font></p>
+<font face="Arial">
+<pre class="brush: csharp;" title="code">        private string ResolvePath(String requestedFile, ControllerContext controllerContext)
+        {
+            String result = string.Empty;
+
+            // Reverse the module order so we search from most recently ordered first
+            var searchModules = mConfigurationProvider
+                .GetActiveConfiguration()
+                .Modules
+                .Reverse()
+                .Select(m =&gt; m.Id);
+
+            // Search through each module in turn
+            foreach (String module in searchModules)
+            {
+                // Try the controller specific view folder first
+                String controllerName = controllerContext.RouteData.Values["controller"] as string;
+                result = GetFilename(requestedFile, controllerContext, module, controllerName);
+                if (string.IsNullOrEmpty(result))
+                {
+                    result = GetFilename(requestedFile, controllerContext, module, "Shared");
+                }
+                if (!String.IsNullOrEmpty(result)) { return result; }
+            }
+
+            // Error!
+            return null;
+        }
+
+        private string GetFilename(String requestedFile, ControllerContext controllerContext, String module, String controllerName)
+        {
+            String path = string.Format("~/Views/{0}/{1}/{2}/", module, controllerName, requestedFile);
+            String filename = controllerContext.HttpContext.Server.MapPath(path);
+            if (File.Exists(filename)) { return path; }
+            return null;
+        }</pre>
+<p><font face="Arial">Where mConfurationProvider is the IConfigurationProvider mentioned earlier.</font></p>
+<p><font face="Arial">In this implementation, we reverse the order of the loaded modules to get the most recently loaded first, and then select just the module id.</font></p>
+<p><font face="Arial">That gives us a list of folders names to search through in order to find the view, first attempting to find the file within the folder for the current action, and then the shared directory (just like the default WebFormViewEngine).</font></p>
+<p><font face="Arial">If it's not found, we return null and cross our fingers and hope for the best.</font></p>
+<p><font face="Arial">Just to re-iterate, in the real world you need to add error handling for when a view is not located, and code to deal with absolute paths (although maybe you don't support them and don't need to write that code!).</font></p>
+<p><font face="Arial">Because we have the current configuration, we can perform the caching of file locations on a per-configuration basis - just remember to disable caching during testing and debugging!<br>
+</font><font face="Arial"></font></p>
+<font face="Arial">
+<h3><font face="Arial">Summary</font></h3>
+</font><font face="Arial">
+<p><font face="Arial">I haven't gone into a lot of detail about the implementation of the view engine because it's beyond the scope of this blog entry - a lot of information about writing custom view engines can be found with a "Bing" (or Google search *cough*) and it was not my intention of repeating them.</font></p>
+<p><font face="Arial">What we have covered is how we might utilise the power of view engines and a set of folder conventions to allow modules to create/override views and partial views. </font></p>
+<p><font face="Arial">As with all of these entries, the actual implementation is up to you and your particular product needs and the code examples should not be taken as gospel.</font></p>
+<p><font face="Arial">Next entry we'll be getting even more technical and covering how we can allow the modules to provide actions for these added views - and even how to override controller actions that have already been defined in other modules.<br>
+</font><font face="Arial"><font face="Arial"></font></font></p>
+<p><font face="Arial"><font face="Arial">Examples of this code can be found in the DDD8 code samples <a href="http://codeofrob.com/archive/2010/01/31/ddd8-post-event.aspx ">here</a>.</font></font></p>
+</font></font></font>
+</font>
+	

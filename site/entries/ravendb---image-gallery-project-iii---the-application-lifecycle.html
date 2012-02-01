@@ -1,0 +1,277 @@
+<html>
+  <title id="title">RavenDB - Image Gallery Project (III) - The Application Lifecycle</title>
+  <link rel="stylesheet" type="text/css" href="/style.css"></link>
+  <body>
+    <div id="blog-entry">
+      <h1 id="post-title">RavenDB - Image Gallery Project (III) - The Application Lifecycle</h1>
+      <div id="post">
+		<p>The code for this and all other entries can be found here: <a href="http://github.com/robashton/RavenGallery/">http://github.com/robashton/RavenGallery/</a>&nbsp;</p>  <p>As discussed in the previous entry, I have decided to host RavenDB within the application itself, this is a decision that lends itself very easily to the early stages of a development project against RavenDB, as there is no need to remember to run RavenDB before running the application, and it is a decision that providing you write your code properly can be changed later on in development when it becomes useful to have RavenDB running on another server or just as a separate process. </p>  <p>Before writing any code, we have to understand the basic components at play when communicating with RavenDB.</p>  <ul>   <li>IDocumentStore      <ul>       <li>This is the main port of call for communicating with a RavenDB server </li>        <li>This is also the main port of call for starting up a RavenDB server if running locally (DocumentStore) </li>        <li>One of these should exist <em>per application – </em>IE, create on start-up and persist </li>     </ul>   </li>    <li>IDocumentSession      <ul>       <li>This is created via IDocumentStore and provides interfaces for querying the document store </li>        <li>This controls the unit of work, tracks loaded documents, keeps a cache etc </li>        <li>This should be created <em>per-unit-of-work</em> (Typically one per HTTP request, or one per transaction) </li>        <li>NB: Whilst RavenDB supports transactions across requests, typically we avoid this and try to commit all changes once per unit of work </li>     </ul>   </li> </ul>  <p><strong>On start-up</strong></p>  <p>So, on start-up we need to create a document store and make that available for creating document sessions when necessary (and maybe other purposes).</p>  <p>This is what I’ve come up with:</p>  <p>Bootstrapper.cs</p>  <p>&nbsp;</p>  <div class="csharpcode">   <pre class="alt"><span class="lnum">   1:  </span> <span class="kwrd">public</span> <span class="kwrd">static</span> <span class="kwrd">class</span> Bootstrapper</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="kwrd">public</span> <span class="kwrd">static</span> <span class="kwrd">void</span> Startup()</pre>
+
+  <pre><span class="lnum">   4:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>            var documentStore = <span class="kwrd">new</span> EmbeddableDocumentStore</pre>
+
+  <pre><span class="lnum">   6:  </span>            {</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>                Configuration = <span class="kwrd">new</span> RavenConfiguration</pre>
+
+  <pre><span class="lnum">   8:  </span>                {</pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>                    DataDirectory = <span class="str">"App_Data\\RavenDB"</span>,</pre>
+
+  <pre><span class="lnum">  10:  </span>                }</pre>
+
+  <pre class="alt"><span class="lnum">  11:  </span>            };</pre>
+
+  <pre><span class="lnum">  12:  </span>            documentStore.Initialize();</pre>
+
+  <pre class="alt"><span class="lnum">  13:  </span>&nbsp;</pre>
+
+  <pre><span class="lnum">  14:  </span>            ObjectFactory.Initialize(config =&gt;</pre>
+
+  <pre class="alt"><span class="lnum">  15:  </span>            {</pre>
+
+  <pre><span class="lnum">  16:  </span>                config.AddRegistry(<span class="kwrd">new</span> CoreRegistry(documentStore));</pre>
+
+  <pre class="alt"><span class="lnum">  17:  </span>            });</pre>
+
+  <pre><span class="lnum">  18:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">  19:  </span>    }</pre>
+</div>
+
+<div class="csharpcode">&nbsp;</div>
+
+<div class="csharpcode"><style type="text/css">![CDATA[
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style></div>
+
+<p>This is invoked from Global.asax.cs via Application_Start – we create the DocumentStore and pass it into a StructureMap registry which then sets up the container. If I wanted to switch to a different mechanism for dealing with RavenDB I could change it here and the rest of my application wouldn’t be any the wiser. I could even load the settings from a file here, but I’m not going to – so there.</p>
+
+<p>Inside CoreRegistry.cs we have</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">class</span> CoreRegistry : Registry</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="kwrd">public</span> CoreRegistry(IDocumentStore documentStore)</pre>
+
+  <pre><span class="lnum">   4:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>            For&lt;IDocumentStore&gt;().Use(documentStore);</pre>
+
+  <pre><span class="lnum">   6:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>    }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>There we go, anything that requests IDocumentStore will be given documentStore 
+
+<p><strong>Per request 
+    <br></strong>Until we find a reason not to, we will create RavenDB sessions per request and secretly store them in the HttpContext.Items collection so they can be used through-out the rest of the request, of course we’ll use StructureMap to manage that for us. 
+
+  <br>CoreRegistry.cs now looks like this:</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span><span class="kwrd">public</span> CoreRegistry(IDocumentStore documentStore)</pre>
+
+  <pre><span class="lnum">   2:  </span> {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>&nbsp; For&lt;IDocumentStore&gt;().Use(documentStore);</pre>
+
+  <pre><span class="lnum">   4:  </span>  For&lt;IDocumentSession&gt;()</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>     .HttpContextScoped()</pre>
+
+  <pre><span class="lnum">   6:  </span>      .Use(x =&gt;</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>          {</pre>
+
+  <pre><span class="lnum">   8:  </span>              var store = x.GetInstance&lt;IDocumentStore&gt;();</pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>              <span class="kwrd">return</span> store.OpenSession();</pre>
+
+  <pre><span class="lnum">  10:  </span>          });</pre>
+
+  <pre class="alt"><span class="lnum">  11:  </span>}</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>Of course this is leaking sessions because StructureMap won’t dispose of any of our created sessions unless we tell it to, so into Global.asax.cs I go once more and add the following line: </p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>        <span class="kwrd">protected</span> <span class="kwrd">void</span> Application_EndRequest()</pre>
+
+  <pre><span class="lnum">   2:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>            ObjectFactory.ReleaseAndDisposeAllHttpScopedObjects();</pre>
+
+  <pre><span class="lnum">   4:  </span>        }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>This will do for now, I could have done this using a HttpModule or whatever I preferred, but that gets the concepts across. 
+  <br>In the next entry I’ll give a refresh on how documents are created/modified/queried in order to lay the groundwork for the structure of the rest of the application.</p>
+	</div>
+      <div id="links">
+        <a href="/">Go back to the index</a>
+      </div>
+      <div id="post-comments">
+      
+      </div>
+    </div>
+  </body>
+</html>

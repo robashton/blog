@@ -1,0 +1,216 @@
+
+		<p>The code for this and all other entries in this series can be found here: <a href="http://github.com/robashton/RavenGallery/">http://github.com/robashton/RavenGallery/</a></p>  <p>So far our image browser view just retrieves *all* of the documents from the document store, and allows paging through them. In other previous entries we have also written simple LINQ queries to check the existence of users and authenticate via username and password.</p>  <p>RavenDB makes it very easy for us to query our documents and not think about what is going on under the hood, and that can get us very far indeed before we have to do any manual work ourselves, but that can make the leap to advanced functionality quite a big one.</p>  <p>So, before we get that far it would be best to explain what is going on when you perform these basic queries against the document store. </p>  <p><strong>A basic query against a single property</strong></p>  <p>In RavenDB we can query a property on our document like so:</p>  <div class="csharpcode">   <pre class="alt">var query = documentSession.Query&lt;ImageDocument&gt;() </pre>
+
+  <pre>        .Where(x=&gt;x.Title == <span class="str">"Something"</span>) </pre>
+
+  <pre class="alt">        .ToArray(); </pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>In order for RavenDB to process this query, it must first create an Lucene index, which contains only the relevant properties copied from the document in question.</p>
+
+<p>This takes place as another LINQ expression, which simply <strong><em>maps</em></strong> the properties from the document into a projection from that document. </p>
+
+<div class="csharpcode">
+  <pre class="alt">from doc <span class="kwrd">in</span> docs </pre>
+
+  <pre>                              select <span class="kwrd">new</span> </pre>
+
+  <pre class="alt">                              { </pre>
+
+  <pre>                                  doc.Title </pre>
+
+  <pre class="alt">                              }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>As new documents are added to the document store, or removed from the document store, these entries in the index are added and removed as the expression is invoked on those documents. This happens as a background process so there can be a small delay in documents being added to the store and being indexed, but it means that writes are really fast all the time, and that queries are incredibly cheap (as they are coming from a pre-computed index).</p>
+
+<p>When performing an ad-hoc query against the document store, RavenDB is clever enough to extrapolate what this index should look like, and create it <em>if it does not already exist</em>.&nbsp; This temporary index will persist and the next call will re-use it and after the index has been re-used enough within a configured amount of time, it will be promoted into a permanent index and will therefore be available across server restarts.</p>
+
+<p><strong>Pre-defining those indexes</strong></p>
+
+<p>For the vast majority of queries, it is simply not necessary to pre-define those indexes, and it is best to just leave RavenDB to do what it wants to do – however it is beneficial to understand how to pre-define those indexes and understand how they work.</p>
+
+<p>The .NET API allows us to pre-define an index in the following manner</p>
+
+<div class="csharpcode">
+  <pre class="alt">    <span class="kwrd">public</span> <span class="kwrd">class</span> Images_ByTitle : AbstractIndexCreationTask&lt;ImageDocument&gt;</pre>
+
+  <pre>    {</pre>
+
+  <pre class="alt">        <span class="kwrd">public</span> Images_ByTitle()</pre>
+
+  <pre>        {</pre>
+
+  <pre class="alt">            Map = docs =&gt; from doc <span class="kwrd">in</span> docs</pre>
+
+  <pre>                          select <span class="kwrd">new</span></pre>
+
+  <pre class="alt">                          {</pre>
+
+  <pre>                              doc.Title</pre>
+
+  <pre class="alt">                          };</pre>
+
+  <pre>        }</pre>
+
+  <pre class="alt">    }</pre>
+</div>
+<style type="text/css">![CDATA[
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style><style type="text/css">![CDATA[
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>On start-up, we can register this (and any other indexes in the same assembly) by making a call to CreateIndexes against the document store:</p>
+
+<p>IndexCreation.CreateIndexes(typeof(Images_ByTitle).Assembly, documentStore);</p>
+
+<p>When querying, we can specify that we wish to use this index by including it as a parameter in the Query method like so</p>
+
+<div class="csharpcode">
+  <pre class="alt">documentSession.Query&lt;ImageDocument, Images_ByTitle&gt;() </pre>
+
+  <pre>                    .Where(x=&gt;x.Title == <span class="str">"Something"</span>) </pre>
+
+  <pre class="alt">                    .ToArray();</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>Of course, now we are specifying which index to use, RavenDB can only query any properties that have been mapped into that index, so these pre-computed indexes are largely inappropriate for general use.</p>
+
+<p>As many or as few properties can be mapped into an index as is desired, and as many or as few of these properties can be used in a query against that index, but you cannot query any properties that don’t exist in that index.</p>
+
+<p>In order for LINQ to be used to query that index, there is a convention that the properties in the anonymous object created by the map expression should have the same name as the properties in the original document, but this is not entirely necessary – later in the series we might discuss some use cases for this and we can query without using the LINQ provider.</p>
+
+<p>For the next few entries, any ad-hoc queries will also be accompanied with an explanation of the underlying index that will be created, so that when we reach the point where we <em>need</em> to create an index it should be easily understandable.</p>
+	

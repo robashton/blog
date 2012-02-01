@@ -1,0 +1,732 @@
+
+		<p>In the last entry we set up a basic search as you type search, but the user experience was still left rather wanting – what we could do with is the ability to get a list of tags starting with the current text, and for an added degree of complexity it would be nice if the tags were sorted by how many times they were used as well, so the most common ones appeared first.</p>  <p><strong>This calls for a Map/Reduce Index</strong></p>  <p>The great thing about indexes is that they don’t necessarily have to just map data into indexes, they can also pick a field or a collection of fields to group the mapped data by, and optionally perform some calculations at the same time. You don’t have to understand how this works in order to use it and I therefore won’t get into too much detail on that front.</p>  <p>What we need:</p>  <ul>   <li>All of the unique tags in the system </li>    <li>A count of how many times that tag appears in the system </li> </ul>  <p>It is quite clear that the ‘tag’ is the field we’ll group by, and every time we come across a tag we need to add ‘1’ to a total.</p>  <p><strong>Solving this with an ordinary LINQ query</strong></p>  <p>Assuming we had a collection of ImageDocuments in a list called images like so:</p>  <div class="csharpcode">   <pre class="alt">List&lt;ImageDocument&gt; images = GetAllTheImagesFromSomewhere();</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>And we wanted to query this collection to ask it “What are the unique tags in this collection, and how many times do they appear?” – a simple LINQ query might look like this:</p>
+
+<div class="csharpcode">
+  <pre class="alt">        List&lt;ImageDocument&gt; images = GetAllTheImagesFromSomewhere();</pre>
+
+  <pre>&nbsp;</pre>
+
+  <pre class="alt">        var allTags = from image <span class="kwrd">in</span> images</pre>
+
+  <pre>                        from tag <span class="kwrd">in</span> image.Tags</pre>
+
+  <pre class="alt">                        group tag by tag.Name into g</pre>
+
+  <pre>                        select <span class="kwrd">new</span></pre>
+
+  <pre class="alt">                        {</pre>
+
+  <pre>                            Name = g.Key,</pre>
+
+  <pre class="alt">                            Count = g.Count()</pre>
+
+  <pre>                        };</pre>
+</div>
+
+<p></p><style type="text/css">![CDATA[
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>Now imagine instead of a collection we were querying against a DataContext in Linq2Sql or Entity Framework or whatever data wrapper you use, performing this kind of query against an actual database every-time the user changes the content of the text box would leave most DBAs in tears. </p>
+
+<p>But the knowledge of how we build this query maps almost directly across into RavenDB.</p>
+
+<p><strong>Our View</strong></p>
+
+<p>We’ll build a generic view that we can use for purposes like this, and it will be very basic like so:</p>
+
+<div class="csharpcode">
+  <pre class="alt">    <span class="kwrd">public</span> <span class="kwrd">class</span> ImageTagCollectionView</pre>
+
+  <pre>    {</pre>
+
+  <pre class="alt">        <span class="kwrd">public</span> IEnumerable&lt;ImageTagCollectionItem&gt; Items { get; <span class="kwrd">private</span> set; }</pre>
+
+  <pre>&nbsp;</pre>
+
+  <pre class="alt">        <span class="kwrd">public</span> ImageTagCollectionView(IEnumerable&lt;ImageTagCollectionItem&gt; items)</pre>
+
+  <pre>        {</pre>
+
+  <pre class="alt">            <span class="kwrd">this</span>.Items = items;</pre>
+
+  <pre>        }</pre>
+
+  <pre class="alt">    }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<div class="csharpcode">
+  <pre class="alt">    <span class="kwrd">public</span> <span class="kwrd">class</span> ImageTagCollectionItem</pre>
+
+  <pre>    {</pre>
+
+  <pre class="alt">        <span class="kwrd">public</span> <span class="kwrd">string</span> Name { get; <span class="kwrd">private</span> set; }</pre>
+
+  <pre>        <span class="kwrd">public</span> <span class="kwrd">int</span> Count { get; set; }</pre>
+
+  <pre class="alt">&nbsp;</pre>
+
+  <pre>        <span class="kwrd">public</span> ImageTagCollectionItem(<span class="kwrd">string</span> name, <span class="kwrd">int</span> count)</pre>
+
+  <pre class="alt">        {</pre>
+
+  <pre>            <span class="kwrd">this</span>.Name = name;</pre>
+
+  <pre class="alt">            <span class="kwrd">this</span>.Count = count;</pre>
+
+  <pre>        }</pre>
+
+  <pre class="alt">    }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>Our map can therefore look something like this:</p>
+
+<div class="csharpcode">
+  <pre class="alt">                Map = docs =&gt; from doc <span class="kwrd">in</span> docs</pre>
+
+  <pre>                              from tag <span class="kwrd">in</span> doc.Tags</pre>
+
+  <pre class="alt">                              select <span class="kwrd">new</span></pre>
+
+  <pre>                              {</pre>
+
+  <pre class="alt">                                  tag.Name,</pre>
+
+  <pre>                                  Count = 1</pre>
+
+  <pre class="alt">                              },</pre>
+</div>
+<style type="text/css">![CDATA[
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style><style type="text/css">![CDATA[
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>We’re just doing a select many to get all of the tags in the system, just like we did in the original LINQ query</p>
+
+<p>The reduce is *<strong>exactly</strong>* the same as in the original LINQ query:</p>
+
+<div class="csharpcode">
+  <pre class="alt">                Reduce = results =&gt; from result <span class="kwrd">in</span> results</pre>
+
+  <pre>                                    group result by result.Name into g</pre>
+
+  <pre class="alt">                                 select <span class="kwrd">new</span></pre>
+
+  <pre>                                 {</pre>
+
+  <pre class="alt">                                     Name = g.Key,</pre>
+
+  <pre>                                     Count = g.Sum(x=&gt;x.Count)</pre>
+
+  <pre class="alt">                                 }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>&nbsp;</p>
+
+<p><strong>Note</strong>: The shape of the map component must be identical to the shape of the reduce component.</p>
+
+<p>Putting&nbsp; all of this together into an AbstractIndexCreationTask, we get:</p>
+
+<div class="csharpcode">
+  <pre class="alt">    <span class="kwrd">public</span> <span class="kwrd">class</span> ImageTags_GroupByTagName : AbstractIndexCreationTask&lt;ImageDocument, ImageTagCollectionItem&gt;</pre>
+
+  <pre>    {</pre>
+
+  <pre class="alt">        <span class="kwrd">public</span> ImageTags_GroupByTagName()</pre>
+
+  <pre>        {</pre>
+
+  <pre class="alt">            Map = docs =&gt; from doc <span class="kwrd">in</span> docs</pre>
+
+  <pre>                          from tag <span class="kwrd">in</span> doc.Tags</pre>
+
+  <pre class="alt">                          select <span class="kwrd">new</span></pre>
+
+  <pre>                          {</pre>
+
+  <pre class="alt">                              tag.Name,</pre>
+
+  <pre>                              Count = 1</pre>
+
+  <pre class="alt">                          };</pre>
+
+  <pre>            Reduce = results =&gt; from result <span class="kwrd">in</span> results</pre>
+
+  <pre class="alt">                                group result by result.Name into g</pre>
+
+  <pre>                                select <span class="kwrd">new</span></pre>
+
+  <pre class="alt">                                {</pre>
+
+  <pre>                                    Name = g.Key,</pre>
+
+  <pre class="alt">                                    Count = g.Sum(x =&gt; x.Count)</pre>
+
+  <pre>                                };</pre>
+
+  <pre class="alt">            SortOptions.Add(</pre>
+
+  <pre>                x =&gt; x.Count, Raven.Database.Indexing.SortOptions.Int);</pre>
+
+  <pre class="alt">        }</pre>
+
+  <pre>    }</pre>
+</div>
+<style type="text/css">![CDATA[
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style><style type="text/css">![CDATA[
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style><style type="text/css">![CDATA[
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style><style type="text/css">![CDATA[
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>That simple – we use the View we created before as the second generic argument to our&nbsp; IndexDefinition and use that to perform our reduce/grouping statement, the essence of this is exactly the same query as we would use in an ordinary LINQ job.</p>
+
+<p>As an extra, we also specify to RavenDB that when ordering by Count that we want it treated as an integer – this is required if sorting is to be done on any of the indexed fields.</p>
+
+<p><strong>The View Factory</strong></p>
+
+<p>The input for my view factory is going to consist of just the text we’re looking for matching tags for, to keep things simple</p>
+
+<div class="csharpcode">
+  <pre class="alt">    <span class="kwrd">public</span> <span class="kwrd">class</span> ImageTagCollectionInputModel</pre>
+
+  <pre>    {</pre>
+
+  <pre class="alt">        <span class="kwrd">public</span> <span class="kwrd">string</span> SearchText { get; set; }</pre>
+
+  <pre>    }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>I’ll write some tests for this in the usual manner, again this is a bit too wordy to just paste in the blog post, so can be found on Github, the tests themselves look like this though:</p>
+
+<div class="csharpcode">
+  <pre class="alt">        [Test]</pre>
+
+  <pre>        [TestCase(<span class="str">"So"</span>, 4)]</pre>
+
+  <pre class="alt">        [TestCase(<span class="str">"SomeTag3"</span>, 1)]</pre>
+
+  <pre>        [TestCase(<span class="str">"SomeO"</span>, 2)]</pre>
+
+  <pre class="alt">        [TestCase(<span class="str">"Ano"</span>, 1)]</pre>
+
+  <pre>        <span class="kwrd">public</span> <span class="kwrd">void</span> WhenLoadIsInvokedWithSearchText_ExpectedNumberOfResultsAreReturned(<span class="kwrd">string</span> searchTerm, <span class="kwrd">int</span> expectedCount)</pre>
+
+  <pre class="alt">        {</pre>
+
+  <pre>            PopulateData();</pre>
+
+  <pre class="alt">            var results = ViewFactory.Load(<span class="kwrd">new</span> ImageTagCollectionInputModel() { SearchText = searchTerm });</pre>
+
+  <pre>            Assert.AreEqual(expectedCount, results.Items.Count());</pre>
+
+  <pre class="alt">        }</pre>
+
+  <pre>&nbsp;</pre>
+
+  <pre class="alt">        [Test]</pre>
+
+  <pre>        [TestCase(<span class="str">"SomeTag1"</span>, 1)]</pre>
+
+  <pre class="alt">        [TestCase(<span class="str">"SomeTag3"</span>, 1)]</pre>
+
+  <pre>        [TestCase(<span class="str">"SomeOtherTag1"</span>, 2)]</pre>
+
+  <pre class="alt">        [TestCase(<span class="str">"SomeOtherTag2"</span>, 2)]</pre>
+
+  <pre>        [TestCase(<span class="str">"AnotherTagEntirely"</span>, 1)]</pre>
+
+  <pre class="alt">        <span class="kwrd">public</span> <span class="kwrd">void</span> WhenLoadIsInvokedWithNoSearchText_ModelContainsItemsWithCorrectInstanceCounts(<span class="kwrd">string</span> searchTerm, <span class="kwrd">int</span> expectedCount)</pre>
+
+  <pre>        {</pre>
+
+  <pre class="alt">            var results = ViewFactory.Load(<span class="kwrd">new</span> ImageTagCollectionInputModel());</pre>
+
+  <pre>            var specificResult = results.Items.Where(x =&gt; x.Name == searchTerm).FirstOrDefault();</pre>
+
+  <pre class="alt">            Assert.AreEqual(expectedCount, specificResult.Count);</pre>
+
+  <pre>        }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>Not the most efficient tests, and I might revisit that later in the series as a topic in its own right</p>
+
+<p>The implementation of the view factory looks like the following:</p>
+
+<div class="csharpcode">
+  <pre class="alt">&nbsp;</pre>
+
+  <pre>        <span class="kwrd">public</span> ImageTagCollectionView Load(ImageTagCollectionInputModel input)</pre>
+
+  <pre class="alt">        {</pre>
+
+  <pre>            var query = <span class="kwrd">this</span>.documentSession.Query&lt;ImageTagCollectionItem, ImageTags_GroupByTagName&gt;()</pre>
+
+  <pre class="alt">                .OrderByDescending(x=&gt;x.Count)</pre>
+
+  <pre>                .Take(25);</pre>
+
+  <pre class="alt">&nbsp;</pre>
+
+  <pre>            <span class="kwrd">if</span> (!<span class="kwrd">string</span>.IsNullOrEmpty(input.SearchText))</pre>
+
+  <pre class="alt">            {</pre>
+
+  <pre>                query = query.Where(x =&gt; x.Name.StartsWith(input.SearchText));</pre>
+
+  <pre class="alt">            }</pre>
+
+  <pre>&nbsp;</pre>
+
+  <pre class="alt">            var results = query.ToArray();</pre>
+
+  <pre>            <span class="kwrd">return</span> <span class="kwrd">new</span> ImageTagCollectionView(results);                </pre>
+
+  <pre class="alt">        }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p><strong>Note: </strong>We’re not querying ImageDocument, as although it was used to create the map/reduce index, it isn’t what we are looking at – instead we use the ImageTagCollectionItem which we used to create the Reduce function in the first place, as it contains the same fields and will therefore result in the correct query.</p>
+
+<p><strong>Implementing this in Web</strong></p>
+
+<p>As before, I’m just going to expose this via a JSON service directly like so:</p>
+
+<div class="csharpcode">
+  <pre class="alt">        <span class="kwrd">public</span> ActionResult _GetTags(ImageTagCollectionInputModel input)</pre>
+
+  <pre>        {</pre>
+
+  <pre class="alt">            var model = viewRepository.Load&lt;ImageTagCollectionInputModel, ImageTagCollectionItem&gt;(input);</pre>
+
+  <pre>            <span class="kwrd">return</span> Json(model, JsonRequestBehavior.AllowGet);</pre>
+
+  <pre class="alt">        }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>Setting this up in my already created textbox using jQuery Autocomplete, I get a awesome user experience like this:</p>
+
+<p><a href="http://codeofrob.com/images/codeofrob_com/WindowsLiveWriter/RavenDBTheImageGalleryProjectXVIImprovin_122DC/image_2.png"><img style="background-image: none; border-right-width: 0px; margin: ;padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px;" title="image" border="0" alt="image" src="http://codeofrob.com/images/codeofrob_com/WindowsLiveWriter/RavenDBTheImageGalleryProjectXVIImprovin_122DC/image_thumb.png" width="391" height="285"></a></p>
+
+<p><strong>The great thing about doing this is…</strong></p>
+
+<p>We can run this query over and over again, it’s looking up a pre-computed index and that’s a cheap operation – we’re getting really good performance out of RavenDB and not really having to learn anything&nbsp; too different from what we’ve learned from doing LINQ in the past.</p>
+	

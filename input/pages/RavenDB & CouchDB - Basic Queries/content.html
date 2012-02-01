@@ -1,0 +1,144 @@
+
+		<p><strong>Previous entries in the series</strong></p>
+<ul>
+    <li><a href="http://codeofrob.com/archive/2010/05/31/ravendb-whats-the-difference.aspx">RavenDB – What’s the difference</a></li>
+</ul>
+<p>Once you have a number of documents in the database, you soon want to do more complex operations than simply retrieving a list of them.</p>
+<p>Consider therefore the following and rather over-used example document:</p>
+<div class="csharpcode">
+<pre class="alt"><span class="lnum">   1:  </span>{</pre>
+<pre><span class="lnum">   2:  </span>    title: <span class="str">"Another blog entry"</span>,</pre>
+<pre class="alt"><span class="lnum">   3:  </span>    content: <span class="str">'blah blah blah'</span>,</pre>
+<pre><span class="lnum">   4:  </span>    category: <span class="str">'code'</span>,</pre>
+<pre class="alt"><span class="lnum">   5:  </span>    author: <span class="str">'robashton'</span></pre>
+<pre><span class="lnum">   6:  </span>}</pre>
+</div>
+<style type="text/css">![CDATA[
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+<p>Our example query would be to get all of the documents from the database that were written by a particular author AND in a certain category.</p>
+<p>Obviously querying all the blogs written by a single author, or all the blogs in a certain category would be fairly expected queries too.</p>
+<p><strong>Indexes in RavenDB</strong></p>
+<p>In order to perform any queries whatsoever in RavenDB, we first need to create an index.</p>
+<div class="csharpcode">
+<pre class="alt"><span class="lnum">   1:  </span>from doc <span class="kwrd">in</span> docs</pre>
+<pre><span class="lnum">   2:  </span>select <span class="kwrd">new</span> {</pre>
+<pre class="alt"><span class="lnum">   3:  </span>     doc.author,</pre>
+<pre><span class="lnum">   4:  </span>     doc.category</pre>
+<pre class="alt"><span class="lnum">   5:  </span>};</pre>
+</div>
+<style type="text/css">![CDATA[
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+<p>This is effectively a map function written as a LINQ query which returns a single value, an object that is a map of the values to be indexed.</p>
+<p><em>Get all the documents by author and category</em></p>
+<p>indexes/entriesByAuthorAndCategory?query=category:tech AND author:robashton</p>
+<p><em>Get all the documents by category</em></p>
+<p>indexes/entriesByAuthorAndCategory?query=category:tech</p>
+<p><em>Get all the documents by author</em></p>
+<p>indexes/entriesByAuthorAndCategory?query=author:robashton</p>
+<p>Those queries will return a list of whole documents which match the queries passed in.</p>
+<p><strong>Indexes in CouchDB</strong></p>
+<p>
+The same goes for CouchDB, only map functions in CouchDB have two outputs, and are written in JavaScript.</p>
+<div class="csharpcode">
+<pre class="alt"><span class="lnum">   1:  </span><span class="kwrd">function</span>(doc) {</pre>
+<pre><span class="lnum">   2:  </span>  emit([doc.category, doc.author], doc);</pre>
+<pre class="alt"><span class="lnum">   3:  </span>}</pre>
+</div>
+<style type="text/css">![CDATA[
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+<p>  </p>
+<p>Return values are specified by calling emit, and emit can be called more than once for each document, thus multiple keys can be created for each document with a single map function. The first parameter in Emit is the “key” to be searched on, and the second parameter is the data associated with that key (in this case, the document).</p>
+<p><em>Get all the documents by author and category</em></p>
+<p>blogs/_view/byAuthorAndCategory?startkey=["tech","robashton"]</p>
+<p><em>Get all the documents by category</em></p>
+<p>blogs/_view/byAuthorAndCategory?startkey=["tech"]</p>
+<p><em>Get all the documents by author</em></p>
+<p>Ah. This suddenly a bit more complicated. I’ve not actually managed to come to a convenient solution, as far as I can understand from the <a href="http://wiki.apache.org/couchdb/HTTP_view_API?action=show&amp;redirect=HttpViewApi">docs</a>, if you want to query <em>specific</em> fields within the key, you have to submit a POST request containing a JSON document with the fields you wish to search.</p>
+<p>So it’s either that or create specific indexes for the queries you wish to perform. Performance-wise this is probably optimal but I don’t actually know for sure.</p>
+<p><strong>Paging in RavenDB</strong></p>
+<p>Paging in RavenDB is as simple as appending a start + pageSize to the query string</p>
+<p>indexes/entriesByAuthorAndCategory?query=category:tech&amp;start=10&amp;pageSize=10</p>
+<p>This will perform the query across the entire index and only retrieve the documents requested, this is an operation with trivial expense.</p>
+<p><strong>Paging in CouchDB</strong></p>
+<p>In CouchDb, a similar query string can be used, using “skip” and “count parameters, but these are considered expensive and instead to perform paging you should:</p>
+<ul>
+    <li>Get the first collection of documents, limiting by count(+1) </li>
+    <li>Get the next collection of documents, starting at the last document in the first collection, limiting by count (+1) </li>
+    <li>Etc </li>
+</ul>
+<p><strong>Summary</strong></p>
+<p>This really is just a whistle-stop of some basic functionality in these two systems, although it does highlight some fairly major differences in basic functionality between them.</p>
+<p>Next up some more advanced functionality will be covered, going over the differences between writing reduce functions in the two</p>
+	

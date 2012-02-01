@@ -1,0 +1,422 @@
+
+		<p>The code for this and all other entries can be found here: <a href="http://github.com/robashton/RavenGallery/">http://github.com/robashton/RavenGallery/</a>&nbsp;</p>  <p>Let’s think of a few pieces of (basic) functionality our image gallery will <strong><em>need</em></strong> at least in order to be classified as a functional image gallery</p>  <ul>   <li>Ability to upload a new image      <ul>       <li>Must be associated with user who uploaded it </li>        <li>Must keep the date + time it was uploaded </li>        <li>Must have a&nbsp; title </li>        <li>Must contain a reference to the data that was uploaded for this image          <ul>           <li>Haven’t decided where the data gets stored yet </li>         </ul>       </li>        <li>Must be able to add tags to the image </li>     </ul>   </li>    <li>Ability to browse/page through a list of uploaded images      <ul>       <li>Filterable by user </li>        <li>Order by datetime </li>        <li>Orderable by user </li>        <li>Order by datetime </li>        <li>Search by tags </li>     </ul>   </li>    <li>Ability to modify any mutable properties on the image </li>    <li>Ability to view an individual uploaded image alongside information about who uploaded </li> </ul>  <p>Starting with this simplicity, it’s fairly obvious that Image is going to be a first class citizen in our application we can safely create the document and entity in the standard manner</p>  <div class="csharpcode">   <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">class</span> ImageDocument</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="kwrd">public</span> <span class="kwrd">string</span> Id</pre>
+
+  <pre><span class="lnum">   4:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>            get;</pre>
+
+  <pre><span class="lnum">   6:  </span>            set;</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>        }</pre>
+
+  <pre><span class="lnum">   8:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>        <span class="kwrd">public</span> <span class="kwrd">string</span> OwnerUserId</pre>
+
+  <pre><span class="lnum">  10:  </span>        { </pre>
+
+  <pre class="alt"><span class="lnum">  11:  </span>            get; </pre>
+
+  <pre><span class="lnum">  12:  </span>            set; </pre>
+
+  <pre class="alt"><span class="lnum">  13:  </span>        }</pre>
+
+  <pre><span class="lnum">  14:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">  15:  </span>        <span class="kwrd">public</span> DateTime DateUploaded</pre>
+
+  <pre><span class="lnum">  16:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">  17:  </span>            get;</pre>
+
+  <pre><span class="lnum">  18:  </span>            set;</pre>
+
+  <pre class="alt"><span class="lnum">  19:  </span>        }</pre>
+
+  <pre><span class="lnum">  20:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">  21:  </span>        <span class="kwrd">public</span> <span class="kwrd">string</span> Title</pre>
+
+  <pre><span class="lnum">  22:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">  23:  </span>            get;</pre>
+
+  <pre><span class="lnum">  24:  </span>            set;</pre>
+
+  <pre class="alt"><span class="lnum">  25:  </span>        }</pre>
+
+  <pre><span class="lnum">  26:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">  27:  </span>        <span class="kwrd">public</span> <span class="kwrd">string</span> Filename</pre>
+
+  <pre><span class="lnum">  28:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">  29:  </span>            get;</pre>
+
+  <pre><span class="lnum">  30:  </span>            set;</pre>
+
+  <pre class="alt"><span class="lnum">  31:  </span>        }</pre>
+
+  <pre><span class="lnum">  32:  </span>        </pre>
+
+  <pre class="alt"><span class="lnum">  33:  </span>        <span class="kwrd">public</span> List&lt;ImageTagDocument&gt; Tags</pre>
+
+  <pre><span class="lnum">  34:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">  35:  </span>            get;</pre>
+
+  <pre><span class="lnum">  36:  </span>            set;</pre>
+
+  <pre class="alt"><span class="lnum">  37:  </span>        }</pre>
+
+  <pre><span class="lnum">  38:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">  39:  </span>        <span class="kwrd">public</span> ImageDocument() { Tags = <span class="kwrd">new</span> List&lt;ImageTagDocument&gt;(); }</pre>
+
+  <pre><span class="lnum">  40:  </span>    }</pre>
+
+  <pre>&nbsp;</pre>
+</div>
+
+<div class="csharpcode">
+  <div class="csharpcode">
+    <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">class</span> ImageTagDocument</pre>
+
+    <pre><span class="lnum">   2:  </span>    {</pre>
+
+    <pre class="alt"><span class="lnum">   3:  </span>        <span class="kwrd">public</span> <span class="kwrd">string</span> Name</pre>
+
+    <pre><span class="lnum">   4:  </span>        {</pre>
+
+    <pre class="alt"><span class="lnum">   5:  </span>            get;</pre>
+
+    <pre><span class="lnum">   6:  </span>            set;</pre>
+
+    <pre class="alt"><span class="lnum">   7:  </span>        }</pre>
+
+    <pre><span class="lnum">   8:  </span>    }</pre>
+  </div>
+  <style type="text/css">![CDATA[
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style><style type="text/css">![CDATA[
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style></div>
+
+<p></p><style type="text/css">![CDATA[
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style><style type="text/css">![CDATA[
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>I’ve included the id of the user as the owner on the ImageDocument, and created an entity and repository to go along with it in the same fashion as the User entity/document/repository. 
+
+<p><strong>Note</strong>: I’ve included a list of tags on my document, and I haven’t had to do anything special, they will get saved along with the entire ImageDocument automatically</p>
+
+<p><strong>The interaction</strong></p>
+
+<p>Ignoring the process of how we upload the image within our actual MVC2 project (this series is about RavenDB!), assume a command has been sent containing the user id, title, tags and actual bytes for the file upload. </p>
+
+<p>I’ve defined a service called&nbsp; ImageUploaderService who takes in the relevant information to be able to do something about this file upload problem.</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">interface</span> IImageUploaderService</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="kwrd">void</span> UploadUserImage(User user, <span class="kwrd">string</span> title, <span class="kwrd">string</span>[] tags, Byte[] data);</pre>
+
+  <pre><span class="lnum">   4:  </span>    }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>When I come to implement that in the default implementation (called ImageUploaderService), it is obvious that two things need to happen; it will need to process the image data appropriately and put it somewhere for storage, and it will need to create the actual entity containing the information about this image.</p>
+
+<p>I’m going to delegate the problem of “where to put files” to yet another service that I place in a new area of my project called “infrastructure”, and I christen it “IFileStorageService” </p>
+
+<div class="csharpcode">&nbsp;</div>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">interface</span> IFileStorageService</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="kwrd">void</span> StoreFile(<span class="kwrd">string</span> filename, Byte[] bytes);</pre>
+
+  <pre><span class="lnum">   4:  </span>    }</pre>
+</div>
+
+<p>With that done, we can safely ignore this problem and focus on creating the new Image entity and persisting that, so let’s start with the constructor:</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span> <span class="kwrd">public</span> Image(User owner, <span class="kwrd">string</span> title, <span class="kwrd">string</span> filename)</pre>
+
+  <pre><span class="lnum">   2:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>            innerDocument = <span class="kwrd">new</span> ImageDocument()</pre>
+
+  <pre><span class="lnum">   4:  </span>            {</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>                DateUploaded = DateTime.Now,</pre>
+
+  <pre><span class="lnum">   6:  </span>                OwnerUserId = owner.UserId,</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>                Title = title,</pre>
+
+  <pre><span class="lnum">   8:  </span>                Filename = filename</pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>            };</pre>
+
+  <pre><span class="lnum">  10:  </span>        }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>This is borderline ‘move it to a factory’ material, but nothing is majorly different here to how we constructed the User entity, other than we take <em>in</em> a User entity and copy its id across to our document so we know who created it. </p>
+
+<p>As shown here, I’m not against adding properties to my entities to expose data so long as they’re read only and actually needed – I don’t consider this to be a waste of time as we’ll see when we reach the ‘Views’ in our application we hardly ever need data from the entities themselves. What I don’t do is go through and create properties to mirror what I’m storing in the document itself, that would be time consuming and pointless.</p>
+
+<p>My ImageUploaderService in the meantime has been left with no implementation, so after writing the tests (which I have done), with our existing infrastructure it looks something like this</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">class</span> ImageUploaderService : IImageUploaderService</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="kwrd">private</span> IFileStorageService fileStorageService;</pre>
+
+  <pre><span class="lnum">   4:  </span>        <span class="kwrd">private</span> IImageRepository imageRepository;</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>&nbsp;</pre>
+
+  <pre><span class="lnum">   6:  </span>        <span class="kwrd">public</span> ImageUploaderService(IFileStorageService fileStorageService, IImageRepository imageRepository)</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>        {</pre>
+
+  <pre><span class="lnum">   8:  </span>            <span class="kwrd">this</span>.fileStorageService = fileStorageService;</pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>            <span class="kwrd">this</span>.imageRepository = imageRepository;</pre>
+
+  <pre><span class="lnum">  10:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">  11:  </span>&nbsp;</pre>
+
+  <pre><span class="lnum">  12:  </span>        <span class="kwrd">public</span> <span class="kwrd">void</span> UploadUserImage(User user, <span class="kwrd">string</span> title, <span class="kwrd">string</span>[] tags, <span class="kwrd">byte</span>[] data)</pre>
+
+  <pre class="alt"><span class="lnum">  13:  </span>        {</pre>
+
+  <pre><span class="lnum">  14:  </span>            <span class="kwrd">string</span> filename = String.Format(<span class="str">"Images/{0}"</span>, Guid.NewGuid().ToString());</pre>
+
+  <pre class="alt"><span class="lnum">  15:  </span>            fileStorageService.StoreFile(filename, data);</pre>
+
+  <pre><span class="lnum">  16:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">  17:  </span>            Image newImage = <span class="kwrd">new</span> Image(user, filename, title);</pre>
+
+  <pre><span class="lnum">  18:  </span>            <span class="kwrd">foreach</span> (var tag <span class="kwrd">in</span> tags)</pre>
+
+  <pre class="alt"><span class="lnum">  19:  </span>            {</pre>
+
+  <pre><span class="lnum">  20:  </span>                newImage.AddTag(tag);</pre>
+
+  <pre class="alt"><span class="lnum">  21:  </span>            }</pre>
+
+  <pre><span class="lnum">  22:  </span>            imageRepository.Add(newImage);</pre>
+
+  <pre class="alt"><span class="lnum">  23:  </span>        }</pre>
+
+  <pre><span class="lnum">  24:  </span>    }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>This is a good thing, we’ve got all the required behaviour nicely wrapped up and we’re still not worrying about persistence (I like not worrying about persistence) and although it’s simplistic, the entities are responsible for enacting change and therefore guarding the state of the underlying documents.</p>
+
+<p>In the next entry we’ll look at how we actually store that file using the RavenDB attachments API.</p>
+	

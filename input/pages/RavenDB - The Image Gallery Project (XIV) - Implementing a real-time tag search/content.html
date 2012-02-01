@@ -1,0 +1,436 @@
+
+		<p>The code for this and all other entries in this series can be found here: <a href="http://github.com/robashton/RavenGallery/">http://github.com/robashton/RavenGallery/</a></p>  <p>We don’t currently have any search functionality in the image browser which means the browser is all but useless, so let’s look at adding that with some RavenDB magic.</p>  <p>In a RDBMS project, performing loose searches on tags and other fields of our documents would be a non-trivial operation both in implementation and execution – in RavenDB we can just execute a LINQ query and know an index will be created in the background to make this operation ludicrously fast.</p>  <p><strong>Some background: The Web bit</strong></p>  <p>In order to demo the kind of functionality we can get from RavenDB, I’m going to implement a search as you type system which constantly asks RavenDB for the search results for a given term.</p>  <p>Because I’m trying to do this as a more real-world example, I’m not going to cheat by doing partial page updates and passing XHTML all over the show with JavaScript, I’m going to rip apart my original controller action and make it return just the view.</p>  <p>Instead, I am going to use some client-side templating with jquery-tmpl, and a call to a service to get the relevant view as a blob of JSON will be used, any changes to the textbox will just mean this initial call will get made again and the view re-populated.</p>  <div class="csharpcode">   <pre class="alt">        <span class="kwrd">public</span> ActionResult Browse()</pre>
+
+  <pre>        {</pre>
+
+  <pre class="alt">            <span class="kwrd">return</span> View();</pre>
+
+  <pre>        }</pre>
+
+  <pre class="alt">&nbsp;</pre>
+
+  <pre>        <span class="kwrd">public</span> ActionResult _GetBrowseData(ImageBrowseInputModel input)</pre>
+
+  <pre class="alt">        {</pre>
+
+  <pre>            var model = viewRepository.Load&lt;ImageBrowseInputModel, ImageBrowseView&gt;(input);</pre>
+
+  <pre class="alt">            <span class="kwrd">return</span> Json(model, JsonRequestBehavior.AllowGet);</pre>
+
+  <pre>        }</pre>
+</div>
+
+<p><font size="1">(*Microsoft in their infinite wisdom don’t allow GET requests for JSON by default, to protect us from our own stupidity, AGH!!!)<style type="text/css">![CDATA[
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style></font></p>
+
+<p>Along with:</p>
+
+<div class="csharpcode">
+  <pre class="alt">    &lt;script id=<span class="str">"browsing-image-template"</span> type=<span class="str">"text/x-jquery-tmpl"</span> &gt;</pre>
+
+  <pre>        &lt;div <span class="kwrd">class</span>=<span class="str">"browsing-image"</span>&gt;</pre>
+
+  <pre class="alt">             &lt;h4&gt;${Title}&lt;/h4&gt;</pre>
+
+  <pre>             &lt;img src=<span class="str">"/Resources/Image/${Filename}"</span> alt={Title}<span class="str">" /&gt;</span></pre>
+
+  <pre class="alt">        &lt;/div&gt;    </pre>
+
+  <pre>    &lt;/script&gt;    </pre>
+
+  <pre class="alt">    &lt;div id="image-browser"&gt;</pre>
+
+  <pre>        </pre>
+
+  <pre class="alt">    &lt;/div&gt;</pre>
+</div>
+
+<p></p><style type="text/css">![CDATA[
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>and
+
+<div class="csharpcode">
+  <pre class="alt">    populateImageBrowser: function (page, pageSize, searchText) {</pre>
+
+  <pre>        var query = <span class="str">'?page='</span> + page</pre>
+
+  <pre class="alt">                + <span class="str">'&amp;pageSize='</span> + pageSize</pre>
+
+  <pre>                + <span class="str">'&amp;searchText='</span> + searchText;</pre>
+
+  <pre class="alt">&nbsp;</pre>
+
+  <pre>        $.ajax({</pre>
+
+  <pre class="alt">            dataType: <span class="str">"json"</span>,</pre>
+
+  <pre>            url: <span class="str">'/Image/_GetBrowseData'</span> + query,</pre>
+
+  <pre class="alt">            error:function (xhr, ajaxOptions){</pre>
+
+  <pre>                alert(xhr.status + <span class="str">':'</span> + xhr.responseText);</pre>
+
+  <pre class="alt">                },</pre>
+
+  <pre>            success: function (data) {</pre>
+
+  <pre class="alt">                $(<span class="str">'#browsing-image-template'</span>)</pre>
+
+  <pre>                    .tmpl(data.Items)</pre>
+
+  <pre class="alt">                    .appendTo(<span class="str">'#image-browser'</span>);</pre>
+
+  <pre>&nbsp;</pre>
+
+  <pre class="alt">            }</pre>
+
+  <pre>        });</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>I’m going to have a textbox on the page which I listen for changes from every time the keyboard is pressed, and I’ll just call that method again to do the search every time the request is made – I’ll not bother covering that though, it’s common enough functionality – I just wanted to show what I’m doing with my view now I’ve moved to JSON instead of server-side HTML.</p>
+
+<p><strong>Querying a document with collections in RavenDB using LINQ</strong></p>
+
+<p>I’ve added SearchText to my InputModel so that gets bound automatically via the query string, so all we need to do now is create an index that actually allows SearchText to be used.</p>
+
+<p>I’ve added a test for this new SearchText property in the view factory integration test which looks something like this</p>
+
+<div class="csharpcode">
+  <pre class="alt">        [Test]</pre>
+
+  <pre>        <span class="kwrd">public</span> <span class="kwrd">void</span> WhenLoadIsInvokedWithTagSearch_ExpectedResultsAreReturned()</pre>
+
+  <pre class="alt">        {</pre>
+
+  <pre>            PopulateStore();</pre>
+
+  <pre class="alt">            var result = <span class="kwrd">this</span>.ViewFactory.Load(<span class="kwrd">new</span> ImageBrowseInputModel()</pre>
+
+  <pre>            {</pre>
+
+  <pre class="alt">                Page = 0,</pre>
+
+  <pre>                PageSize = 100,</pre>
+
+  <pre class="alt">                SearchText = <span class="str">"tag5"</span></pre>
+
+  <pre>            }).Items.FirstOrDefault();</pre>
+
+  <pre class="alt">            WaitForIndexing();</pre>
+
+  <pre>&nbsp;</pre>
+
+  <pre class="alt">            Assert.AreEqual(<span class="str">"Title5"</span>, result.Title);</pre>
+
+  <pre>        }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>PopulateStore just throws a hundred documents in with various tags, and I know that one of the documents has a tag with name ‘tag5’ and a title of ‘Title5’. If I run this, it fails because I haven’t updated the code to fit our new requirements.</p>
+
+<p>Here is the code that implements the desired functionality</p>
+
+<div class="csharpcode">
+  <pre class="alt">        <span class="kwrd">public</span> ImageBrowseView Load(ImageBrowseInputModel input)</pre>
+
+  <pre>        {</pre>
+
+  <pre class="alt">            <span class="rem">// Adjust the model appropriately</span></pre>
+
+  <pre>            input.PageSize = input.PageSize == 0 || input.PageSize &gt; 20 ? 20 : input.PageSize;</pre>
+
+  <pre class="alt">&nbsp;</pre>
+
+  <pre>            <span class="rem">// Perform the paged query</span></pre>
+
+  <pre class="alt">            var query = documentSession.Query&lt;ImageDocument&gt;()</pre>
+
+  <pre>                    .Skip(input.Page * input.PageSize)</pre>
+
+  <pre class="alt">                    .Take(input.PageSize);</pre>
+
+  <pre>&nbsp;</pre>
+
+  <pre class="alt">            <span class="rem">// Add a clause for search text if necessary</span></pre>
+
+  <pre>            <span class="kwrd">if</span>(!<span class="kwrd">string</span>.IsNullOrEmpty(input.SearchText)){</pre>
+
+  <pre class="alt">                query = query.Where(x=&gt;x.Tags.Any(tag=&gt;tag.Name.StartsWith(input.SearchText)));</pre>
+
+  <pre>            }</pre>
+
+  <pre class="alt">&nbsp;</pre>
+
+  <pre>            <span class="rem">// And enact this query</span></pre>
+
+  <pre class="alt">            var items = query              </pre>
+
+  <pre>                .ToArray()</pre>
+
+  <pre class="alt">                .Select(x =&gt; <span class="kwrd">new</span> ImageBrowseItem(x.Title, x.Filename));</pre>
+
+  <pre>               </pre>
+
+  <pre class="alt">            <span class="kwrd">return</span> <span class="kwrd">new</span> ImageBrowseView(</pre>
+
+  <pre>                input.Page,</pre>
+
+  <pre class="alt">                input.PageSize,</pre>
+
+  <pre>                items);</pre>
+
+  <pre class="alt">        }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>&nbsp;</p>
+
+<p>The important bit to take away here, is that we add a Where clause where Any Tag has a name that starts with the search text passed in – this <em>just works</em>. We don’t add that clause if we haven’t got any search text, because asking for any documents with an empty tag would most likely yield in no results. (Yeah, I have tests for that too)</p>
+
+<p><strong>The index that was created for us</strong></p>
+
+<p>As mentioned in the previous entry, when performing ad-hoc queries against RavenDB, indexes are created for us in the background, so here is what the above index would look like if we had created it ourselves.</p>
+
+<div class="csharpcode">
+  <pre class="alt">    <span class="kwrd">public</span> <span class="kwrd">class</span> Images_ByTag : AbstractIndexCreationTask&lt;ImageDocument&gt;</pre>
+
+  <pre>    {</pre>
+
+  <pre class="alt">        <span class="kwrd">public</span> Images_ByTag()</pre>
+
+  <pre>        {</pre>
+
+  <pre class="alt">            Map = docs =&gt; from doc <span class="kwrd">in</span> docs</pre>
+
+  <pre>                          from tag <span class="kwrd">in</span> doc.Tags</pre>
+
+  <pre class="alt">                          select <span class="kwrd">new</span></pre>
+
+  <pre>                          {</pre>
+
+  <pre class="alt">                              tag.Name</pre>
+
+  <pre>                          };</pre>
+
+  <pre class="alt">        }</pre>
+
+  <pre>    }</pre>
+</div>
+<style type="text/css">![CDATA[
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style><style type="text/css">![CDATA[
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>When creating our mapping, we effectively say “Get all the documents, get all their tags, create an index entry for each of those tags”, a search for “Name” via this index will result in RavenDB searching the index and collating that into a document look up. This is a flattening of the document and is what happens whenever we look at specific properties within collections</p>
+
+<p><strong>What this has given us</strong></p>
+
+<p><em>As the user types,</em> images with tags that match the current search text are displayed within the search results area – Lucene indexes are seriously fast and this is a good demonstration of that</p>
+
+<p><a href="http://codeofrob.com/images/codeofrob_com/WindowsLiveWriter/RavenDBTheImageGalleryProjectXIII_C8ED/image_2.png"><img style="background-image: none; border-right-width: 0px; margin: ;padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px;" title="image" border="0" alt="image" src="http://codeofrob.com/images/codeofrob_com/WindowsLiveWriter/RavenDBTheImageGalleryProjectXIII_C8ED/image_thumb.png" width="533" height="518"></a></p>
+
+<p><strong>There are still some improvements that could be made at this time.</strong></p>
+
+<p>This could be made more user friendly by&nbsp; showing suggestions as the user types by listing tags in the system that start with the current text <em>(auto-complete)</em>, and we could also search the title and description (if there was a description).</p>
+
+<p>We are also still returning the entire document each time and then just plucking the relevant fields from it – this is rather heavy weight with all that data travelling across the wire and still needs changing so that we only transmit the fields from the document that we want in our end view model. <em>(Projections)</em></p>
+
+<p>That makes clear what we’ll be doing next…</p>
+	

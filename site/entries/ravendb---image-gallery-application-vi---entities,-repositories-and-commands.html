@@ -1,0 +1,313 @@
+<html>
+  <title id="title">RavenDB - Image Gallery Application (VI) - Entities, Repositories and Commands</title>
+  <link rel="stylesheet" type="text/css" href="/style.css"></link>
+  <body>
+    <div id="blog-entry">
+      <h1 id="post-title">RavenDB - Image Gallery Application (VI) - Entities, Repositories and Commands</h1>
+      <div id="post">
+		<p>The code for this and all other entries can be found here: <a href="http://github.com/robashton/RavenGallery/">http://github.com/robashton/RavenGallery/</a>&nbsp;</p>  <p>In order to add our first piece of functionality (registration), we’ll need the ability to store and retrieve User Entities, and that means creating an underlying document as well as the entity itself, along with a repository for dealing with the users and the IDocumentSession.</p>  <p><strong>The Document</strong></p>  <p>For now there is very little we need on the User document, we need to be able to identify the user and we need to be able to authenticate them, the following simple document model will be used for now therefore.</p>  <div class="csharpcode">   <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">class</span> UserDocument</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="kwrd">public</span> <span class="kwrd">string</span> Id { get; set; }</pre>
+
+  <pre><span class="lnum">   4:  </span>        <span class="kwrd">public</span> <span class="kwrd">string</span> Username { get; set; }</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>        <span class="kwrd">public</span> <span class="kwrd">string</span> PasswordHash { get; set; }</pre>
+
+  <pre><span class="lnum">   6:  </span>    }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p><strong>The Entity</strong></p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">class</span> User : IEntity&lt;UserDocument&gt;</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="kwrd">private</span> UserDocument innerUser;        </pre>
+
+  <pre><span class="lnum">   4:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>        <span class="kwrd">public</span> User(UserDocument innerUser)</pre>
+
+  <pre><span class="lnum">   6:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>            <span class="kwrd">this</span>.innerUser = innerUser;</pre>
+
+  <pre><span class="lnum">   8:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>&nbsp;</pre>
+
+  <pre><span class="lnum">  10:  </span>        UserDocument IEntity&lt;UserDocument&gt;.GetInnerDocument()</pre>
+
+  <pre class="alt"><span class="lnum">  11:  </span>        {</pre>
+
+  <pre><span class="lnum">  12:  </span>            <span class="kwrd">return</span> innerUser;</pre>
+
+  <pre class="alt"><span class="lnum">  13:  </span>        }</pre>
+
+  <pre><span class="lnum">  14:  </span>    }</pre>
+</div>
+
+<p>Further constructors can be added as needed (if the process of construction is simple then a command could invoke the constructor manually, and if it is complicated, it could resort to a factory), but the above pattern is how I’m going to be creating the rest of my entities and documents.</p>
+
+<p><strong>The Repository</strong></p>
+
+<p>The base functionality for the repository can actually be carried out via a handy base class that implements the interface for us, and that is what I have done:</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">abstract</span> <span class="kwrd">class</span> EntityRepository&lt;TEntity, TDoc&gt; : IEntityRepository&lt;TEntity, TDoc&gt; <span class="kwrd">where</span> TEntity : IEntity&lt;TDoc&gt;</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="kwrd">private</span> IDocumentSession documentSession;</pre>
+
+  <pre><span class="lnum">   4:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>        <span class="kwrd">public</span> EntityRepository(IDocumentSession documentSession)</pre>
+
+  <pre><span class="lnum">   6:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>            <span class="kwrd">this</span>.documentSession = documentSession;</pre>
+
+  <pre><span class="lnum">   8:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>&nbsp;</pre>
+
+  <pre><span class="lnum">  10:  </span>        <span class="kwrd">public</span> TEntity Load(<span class="kwrd">string</span> id)</pre>
+
+  <pre class="alt"><span class="lnum">  11:  </span>        {</pre>
+
+  <pre><span class="lnum">  12:  </span>            <span class="kwrd">return</span> Create(<span class="kwrd">this</span>.documentSession.Load&lt;TDoc&gt;(id));</pre>
+
+  <pre class="alt"><span class="lnum">  13:  </span>        }</pre>
+
+  <pre><span class="lnum">  14:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">  15:  </span>        <span class="kwrd">public</span> <span class="kwrd">void</span> Add(TEntity entity)</pre>
+
+  <pre><span class="lnum">  16:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">  17:  </span>            <span class="kwrd">this</span>.documentSession.Store(entity.GetInnerDocument());</pre>
+
+  <pre><span class="lnum">  18:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">  19:  </span>&nbsp;</pre>
+
+  <pre><span class="lnum">  20:  </span>        <span class="kwrd">public</span> <span class="kwrd">void</span> Remove(TEntity entity)</pre>
+
+  <pre class="alt"><span class="lnum">  21:  </span>        {</pre>
+
+  <pre><span class="lnum">  22:  </span>            <span class="kwrd">this</span>.documentSession.Delete(entity.GetInnerDocument());</pre>
+
+  <pre class="alt"><span class="lnum">  23:  </span>        }</pre>
+
+  <pre><span class="lnum">  24:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">  25:  </span>        <span class="kwrd">protected</span> <span class="kwrd">abstract</span> TEntity Create(TDoc doc);</pre>
+
+  <pre><span class="lnum">  26:  </span>    }</pre>
+</div>
+
+<p>The only piece of functionality we can’t easily keep common is the process of creating the entity from the document, so we leave that responsibility to the individual repositories for now.</p>
+
+<p>The user repository therefore looks like this:</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">interface</span> IUserRepository : IEntityRepository&lt;User, UserDocument&gt;</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>&nbsp;</pre>
+
+  <pre><span class="lnum">   4:  </span>    }</pre>
+</div>
+
+<p></p><style type="text/css">![CDATA[
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>with
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">class</span> UserRepository : EntityRepository&lt;User, UserDocument&gt;</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="kwrd">public</span> UserRepository(IDocumentSession documentSession) : <span class="kwrd">base</span>(documentSession) { }</pre>
+
+  <pre><span class="lnum">   4:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>        <span class="kwrd">protected</span> <span class="kwrd">override</span> User Create(UserDocument doc)</pre>
+
+  <pre><span class="lnum">   6:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>            <span class="kwrd">return</span> <span class="kwrd">new</span> User(doc);</pre>
+
+  <pre><span class="lnum">   8:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>    }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>Other methods could be added to IUserRepository to do user-specific request operations, and any consumer of the user repository need only ask for an IUserRepository via their constructor in order for StructureMap to provide it via its default conventions. 
+
+<p><strong>The Command Invoker</strong></p>
+
+<p>The implementation of this is very simple, here it is without any error handling</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">class</span> CommandInvoker : ICommandInvoker</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="kwrd">private</span> IContainer container;</pre>
+
+  <pre><span class="lnum">   4:  </span>        <span class="kwrd">private</span> IDocumentSession documentSession;</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>&nbsp;</pre>
+
+  <pre><span class="lnum">   6:  </span>        <span class="kwrd">public</span> CommandInvoker(IContainer container, IDocumentSession documentSession)</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>        {</pre>
+
+  <pre><span class="lnum">   8:  </span>            <span class="kwrd">this</span>.container = container;</pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>            <span class="kwrd">this</span>.documentSession = documentSession;</pre>
+
+  <pre><span class="lnum">  10:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">  11:  </span>&nbsp;</pre>
+
+  <pre><span class="lnum">  12:  </span>        <span class="kwrd">public</span> <span class="kwrd">void</span> Execute&lt;T&gt;(T command)</pre>
+
+  <pre class="alt"><span class="lnum">  13:  </span>        {</pre>
+
+  <pre><span class="lnum">  14:  </span>            var handler = container.GetInstance&lt;ICommandHandler&lt;T&gt;&gt;();</pre>
+
+  <pre class="alt"><span class="lnum">  15:  </span>            handler.Handle(command);</pre>
+
+  <pre><span class="lnum">  16:  </span>            documentSession.SaveChanges();</pre>
+
+  <pre class="alt"><span class="lnum">  17:  </span>        }</pre>
+
+  <pre><span class="lnum">  18:  </span>    }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>As we can see, if the application sends a command, an appropriate handler will be located and assuming nothing goes wrong, SaveChanges will be invoked and the transaction will be flushed. If something does go wrong, the transaction will go ignored. This should be adequate for now.</p>
+
+<p>The code covered here should give us the ability to save/retrieve/modify entities – and also the ability to send neatly packaged commands from the controller after validation has taken place, in the next entry we’ll use the above framework to add functionality to register a new user.</p>
+	</div>
+      <div id="links">
+        <a href="/">Go back to the index</a>
+      </div>
+      <div id="post-comments">
+      
+      </div>
+    </div>
+  </body>
+</html>

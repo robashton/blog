@@ -1,0 +1,251 @@
+
+		<p>The code for this and all other entries in this series can be found here: <a href="http://github.com/robashton/RavenGallery/">http://github.com/robashton/RavenGallery/</a></p>  <p>Before improving the view, we’ll first just make sure everything works as planned by displaying a list of images on a page, I’ll not bore with the tests (although I can assure you that they exist)</p>  <p>Here is my controller action</p>  <div class="csharpcode">   <pre class="alt">        <span class="kwrd">public</span> ActionResult Browse(ImageBrowseInputModel input)</pre>
+
+  <pre>        {</pre>
+
+  <pre class="alt">            var model = viewRepository.Load&lt;ImageBrowseInputModel, ImageBrowseView&gt;(input);</pre>
+
+  <pre>            <span class="kwrd">return</span> View(model);</pre>
+
+  <pre class="alt">        }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>The default model binder will take in parameters from the query string (in this case, pagesize and page), populate the model and pass it into the action. We could perform some validation on it in a validator and reject it, or we can do some sanity checking in the view factory and override any dodgy values (I plump for the latter, although there is no reason why we couldn’t combine the two).</p>
+
+<p>My design skills are non-existent, so my view is very simple</p>
+
+<div class="csharpcode">
+  <pre class="alt">    &lt;h2&gt;Browse Images&lt;/h2&gt;</pre>
+
+  <pre>    &lt;p&gt;Page &lt;%: Model.Page %&gt;, showing &lt;%: Model.PageSize %&gt; items per page&lt;/p&gt;</pre>
+
+  <pre class="alt">    </pre>
+
+  <pre>    &lt;div <span class="kwrd">class</span>=<span class="str">"image-browser"</span>&gt;</pre>
+
+  <pre class="alt">        &lt;%<span class="kwrd">foreach</span>(var item <span class="kwrd">in</span> Model.Items){ %&gt;</pre>
+
+  <pre>        &lt;div <span class="kwrd">class</span>=<span class="str">"browsing-image"</span>&gt;</pre>
+
+  <pre class="alt">                &lt;h4&gt;&lt;%: item.Title %&gt;&lt;/h4&gt;</pre>
+
+  <pre>                 &lt;img src=<span class="str">"&lt;%= this.ResolveUrl(String.Format("</span>/Resources/Image/{0}<span class="str">", Url.Encode(item.Filename))) %&gt;"</span> /&gt;</pre>
+
+  <pre class="alt">        &lt;/div&gt;</pre>
+
+  <pre>        &lt;%} %&gt;</pre>
+
+  <pre class="alt">    &lt;/div&gt;</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>I’m pointing all the image endpoints at an action which is going to fetch that image from storage for us and return with the appropriate mime-type.</p>
+
+<p><strong>Note: </strong><em>Pulling lots of attachments from RavenDB this way is probably not recommended if you want a site that scales and performs well, there will most likely be a refactor job as a later part in the series demoing how we might migrate from this system to another.</em></p>
+
+<p>This is the action, and as you can see I’ve added another method to the file storage service (because I now need it, I don’t write code until I need it)</p>
+
+<div class="csharpcode">
+  <pre class="alt">        <span class="kwrd">public</span> ActionResult Image(<span class="kwrd">string</span> filename)</pre>
+
+  <pre>        {</pre>
+
+  <pre class="alt">            Byte[] fileBytes = fileStorageService.RetrieveFile(filename);</pre>
+
+  <pre>            <span class="kwrd">return</span> File(fileBytes, <span class="str">"image/jpeg"</span>);           </pre>
+
+  <pre class="alt">        }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>Writing a test in the same vein as the previous file command code, we end up with</p>
+
+<div class="csharpcode">
+  <pre class="alt">        [Test]</pre>
+
+  <pre>        <span class="kwrd">public</span> <span class="kwrd">void</span> WhenRetrieveFileInvokedWithValidArguments_AttachmentIsReturnedFromRaven()</pre>
+
+  <pre class="alt">        {</pre>
+
+  <pre>            Byte[] fileBytes = <span class="kwrd">new</span> Byte[] { 3, 1, 4, 1, 5, 9 };</pre>
+
+  <pre class="alt">            String filename = <span class="str">"images/mySuperDuperFile"</span>;</pre>
+
+  <pre>&nbsp;</pre>
+
+  <pre class="alt">            <span class="kwrd">this</span>.Store.DatabaseCommands.PutAttachment(filename, <span class="kwrd">null</span>, fileBytes, <span class="kwrd">new</span> Newtonsoft.Json.Linq.JObject());</pre>
+
+  <pre>&nbsp;</pre>
+
+  <pre class="alt">            RavenFileStorageService storage = <span class="kwrd">new</span> RavenFileStorageService(<span class="kwrd">this</span>.Store);</pre>
+
+  <pre>            var retrievedAttachment = storage.RetrieveFile(filename);</pre>
+
+  <pre class="alt">            Assert.AreEqual(fileBytes, retrievedAttachment);</pre>
+
+  <pre>        }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>and</p>
+
+<div class="csharpcode">
+  <pre class="alt">        <span class="kwrd">public</span> <span class="kwrd">byte</span>[] RetrieveFile(<span class="kwrd">string</span> filename)</pre>
+
+  <pre>        {</pre>
+
+  <pre class="alt">            var file = documentStore.DatabaseCommands.GetAttachment(filename);</pre>
+
+  <pre>            <span class="kwrd">return</span> file != <span class="kwrd">null</span> ? file.Data : <span class="kwrd">null</span>;</pre>
+
+  <pre class="alt">        }</pre>
+</div>
+
+<p>&nbsp;</p>
+
+<p>The output of that gives us something that looks like this.</p>
+
+<p><a href="http://codeofrob.com/images/codeofrob_com/WindowsLiveWriter/RavenDBTheImageGalleryProjectXIIImprovin_14B6B/image_2.png"><img style="background-image: none; border-right-width: 0px; margin: ;padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px;" title="image" border="0" alt="image" src="http://codeofrob.com/images/codeofrob_com/WindowsLiveWriter/RavenDBTheImageGalleryProjectXIIImprovin_14B6B/image_thumb.png" width="536" height="532"></a></p><style type="text/css">![CDATA[
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>&nbsp;</p>
+
+<p>Note the query string parameters which are automatically being bound to the InputModel with very little code we’ve ended up with a <strong>very </strong>rudimentary image gallery where we can register/logon/upload images/browse images. From this point on we’ll be looking at ways to improve what we have in terms of performance, best practises and perhaps reversing some of our earlier design decisions if they prove to be untenable. (Always guided by tests though). </p>
+
+<p>Oh, and adding some functionality and showing off various features in RavenDB to make your life easy, that’s the purpose of this blog series after all.</p>
+	

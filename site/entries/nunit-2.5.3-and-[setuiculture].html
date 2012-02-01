@@ -1,0 +1,41 @@
+<html>
+  <title id="title">NUnit 2.5.3 and [SetUICulture]</title>
+  <link rel="stylesheet" type="text/css" href="/style.css"></link>
+  <body>
+    <div id="blog-entry">
+      <h1 id="post-title">NUnit 2.5.3 and [SetUICulture]</h1>
+      <div id="post">
+		<p>I can't for the life of me get this to work, and [SetCulture] appears to be working fine - so I can only assume it's a bug.</p>
+<p>I've posted to the mailing list and started off the process of working out whether it is a bug or not, but for now - I need to have my tests running&nbsp; in the right culture, without any side effects on the other tests once a test has been complete.</p>
+<p>Here is my hack to do that:</p>
+<pre class="brush: csharp;" title="code">   public class CultureContext : IDisposable
+    {
+        private CultureInfo mOldCulture;
+
+        public CultureContext(String cultureName)
+        {
+            mOldCulture = System.Threading.Thread.CurrentThread.CurrentUICulture;
+            System.Threading.Thread.CurrentThread.CurrentUICulture = new CultureInfo(cultureName);
+        }
+
+        public void Dispose()
+        {
+            System.Threading.Thread.CurrentThread.CurrentUICulture = mOldCulture;
+        }
+    }</pre>
+<p>The usage is as follows, within a test do:</p>
+<pre class="brush: csharp;" title="code">using (new CultureContext("fr-FR"))
+{
+	// Test code here
+}</pre>
+<p>This will ensure that your test runs with the ui culture of "fr-FR", before resetting it to whatever it was before the test began. Not pretty, but it'll do until I work out if it's user error or a bug preventing NUnit from doing what I want it to do!</p>
+	</div>
+      <div id="links">
+        <a href="/">Go back to the index</a>
+      </div>
+      <div id="post-comments">
+      
+      </div>
+    </div>
+  </body>
+</html>

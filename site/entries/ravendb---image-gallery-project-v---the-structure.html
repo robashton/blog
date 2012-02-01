@@ -1,0 +1,424 @@
+<html>
+  <title id="title">RavenDB - Image Gallery Project (V) - The Structure</title>
+  <link rel="stylesheet" type="text/css" href="/style.css"></link>
+  <body>
+    <div id="blog-entry">
+      <h1 id="post-title">RavenDB - Image Gallery Project (V) - The Structure</h1>
+      <div id="post">
+		<p>The code for this and all other entries can be found here: <a href="http://github.com/robashton/RavenGallery/">http://github.com/robashton/RavenGallery/</a>&nbsp;</p>  <p>Disclaimer: The structure of this application will be as simple as I can get it whilst still maintaining some semblance of maintainability going forward, any complaints can be directed at the comments field below if you think I’m committing some heinous crimes with the contents of this entry. The beauty of writing code with a high separation of concerns is that any of this can change without too much fuss if the initial code proves unworthy. This is all largely irrelevant anyway, but as the following entries will all utilise code using this structure, I thought it best to write an entry describing the basic principles of how the system works.</p>  <p><strong>Views vs Entities</strong></p>  <p>We have one data storage system, it stores documents and allows us to query those documents. Those documents are generally a lot flatter than those we have been used to in the past, and that allows us to store all the information required for a single entity in a single document (for the most part). A couple of assumptions therefore</p>  <ul>   <li>When dealing with behaviour or units of work, we’re dealing with entities and by therefore the underlying documents that represent those entities. </li>    <li>When dealing with pages of information, or views – we’re dealing with indexes across those documents, rather than complete documents themselves </li> </ul>  <p>It makes sense therefore to separate these two concerns into two different systems</p>  <p><strong>Views</strong></p>  <p>Without getting into the detail of how we get these views out yet, views are something we need. In our application here, a view is a single class containing all the information required to render a page of information. Generally, some information will be required to know what data is required for that view – that might just be an ID, or it might be the type of view and some information about how many items are to be displayed, some search terms to look for and a few other snippets beyond that.</p>  <p>We therefore have two types to be aware of, the input type containing information about the view we want, and the view itself.</p>  <p>I’m going to be brave and define an interface here, I can always change it later on it if proves unworthy of our love</p>  <div class="csharpcode">   <pre class="alt"><span class="lnum">   1:  </span><span class="kwrd">public</span> <span class="kwrd">interface</span> IViewRepository</pre>
+
+  <pre><span class="lnum">   2:  </span>{</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        TOutput Load&lt;TInput, TOutput&gt;(TInput input);</pre>
+
+  <pre><span class="lnum">   4:  </span>}</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>&nbsp;</p>
+And with that, an interface for our view factories to implement: 
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span><span class="kwrd">public</span> <span class="kwrd">interface</span> IViewFactory&lt;TInput, TOutput&gt;</pre>
+
+  <pre><span class="lnum">   2:  </span>{</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        TOutput Load(TInput input);</pre>
+
+  <pre><span class="lnum">   4:  </span>}</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>If a controller action takes in a TInput as a parameter, then it can go ahead, request the view and return that for delivery. We’ll talk more about how we’ll get hold of these views later, as there are numerous ways to go about it. They could be pre-computed manually, they could be composed by aggregating multiple documents together or they could come from somewhere else entirely; they are read only.</p>
+
+<p><strong>Entities</strong></p>
+
+<p>Here is where I might make a few enemies, I won’t count the documents themselves as my entities, documents are just how I talk to the data store, have getters/setters all over them and don’t contain any behaviour&nbsp; – I’ll be creating entities that wrap up the documents and provide behaviour around them. This will follow the pattern of</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">class</span> WrappingEntity : IEntity&lt;WrappedDocument&gt;</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="kwrd">private</span> WrappedDocument innerDocument;</pre>
+
+  <pre><span class="lnum">   4:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>        <span class="kwrd">public</span> WrappingEntity(<span class="kwrd">string</span> someProperty, <span class="kwrd">string</span> someOtherProperty)</pre>
+
+  <pre><span class="lnum">   6:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>            innerDocument = <span class="kwrd">new</span> WrappedDocument()</pre>
+
+  <pre><span class="lnum">   8:  </span>            {</pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>                SomeProperty = someProperty,</pre>
+
+  <pre><span class="lnum">  10:  </span>                SomeOtherProperty = someOtherProperty</pre>
+
+  <pre class="alt"><span class="lnum">  11:  </span>            };</pre>
+
+  <pre><span class="lnum">  12:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">  13:  </span>&nbsp;</pre>
+
+  <pre><span class="lnum">  14:  </span>        <span class="kwrd">public</span> WrappingEntity(WrappedDocument innerDocument)</pre>
+
+  <pre class="alt"><span class="lnum">  15:  </span>        {</pre>
+
+  <pre><span class="lnum">  16:  </span>            innerDocument = innerDocument;</pre>
+
+  <pre class="alt"><span class="lnum">  17:  </span>        }</pre>
+
+  <pre><span class="lnum">  18:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">  19:  </span>        <span class="kwrd">private</span> WrappedDocument IEntity&lt;WrappedDocument&gt;.GetInnerDocument()</pre>
+
+  <pre><span class="lnum">  20:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">  21:  </span>            <span class="kwrd">return</span> innerDocument;</pre>
+
+  <pre><span class="lnum">  22:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">  23:  </span>&nbsp;</pre>
+
+  <pre><span class="lnum">  24:  </span>        <span class="kwrd">public</span> <span class="kwrd">virtual</span> <span class="kwrd">void</span> PerformSomeAction()</pre>
+
+  <pre class="alt"><span class="lnum">  25:  </span>        {</pre>
+
+  <pre><span class="lnum">  26:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">  27:  </span>        }</pre>
+
+  <pre><span class="lnum">  28:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">  29:  </span>        <span class="kwrd">public</span> <span class="kwrd">virtual</span> <span class="kwrd">void</span> PerformSomeOtherAction()</pre>
+
+  <pre><span class="lnum">  30:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">  31:  </span>&nbsp;</pre>
+
+  <pre><span class="lnum">  32:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">  33:  </span>    }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>&nbsp;</p>
+
+<p>Because we shouldn’t ever need to query for entities, the interface for getting/saving/deleting entities will be very simple and look something like this:</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">interface</span> IEntityRepository&lt;TEntity, TDocument&gt; <span class="kwrd">where</span> TEntity : IEntity&lt;TDocument&gt;</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        TEntity Load(<span class="kwrd">string</span> id);</pre>
+
+  <pre><span class="lnum">   4:  </span>        <span class="kwrd">void</span> Add(TEntity entity);</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>        <span class="kwrd">void</span> Remove(TEntity entity);</pre>
+
+  <pre><span class="lnum">   6:  </span>    }</pre>
+</div>
+
+<ul>
+  <li></li><style type="text/css">![CDATA[
+
+
+
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>The repository will be responsible for loading a document by id and creating the appropriate entity type around that document, and saving/deleting entities by passing their inner documents to the IDocumentSession. The entities will be responsible for enacting change to those documents; they are <em>effectively</em> write-only.<style type="text/css">![CDATA[
+
+
+
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style> 
+
+  <li>Since our entities themselves aren’t about state and don’t contain state (they only enact change to the document themselves), subsequent calls to the repository for the same entity won’t result in any adverse side effects as they’ll be working on the same underlying document. </li>
+
+  <li>We already have the necessary data to enact commands on the entity from the views, so there is generally no need to expose state through these entities, and it means that if we have to store additional data on the underlying document that doesn’t belong to this entity, our entity doesn’t suffer from this. </li>
+
+  <li>We could have achieved the same by sticking our behaviour on the documents, but then we have to go through some hoop jumping to make sure the entity state remains valid, to create test data (if we make the state itself private) and to serialize/de-serialize the documents. </li>
+
+  <li>This is a case of my experience with teams of developers who if they “can” do something the easy way, they “will”, there is nothing to stop you and nothing wrong with just having public gets/sets on your documents AND having behaviour on them – this is probably more appropriate for this kind of project anyway</li>
+</ul>
+
+<p>Note, on a simple project like this, there would probably be no problem with just using the documents directly and enacting change on them via separate “scripts” within a transaction – I choose to do this because I want to show I’d use RavenDB to solve a more complicated problem/project.</p>
+
+<p><strong>Unit of work</strong></p>
+
+<p>I mentioned in the previous entry that I was going to leave committing changes to the application itself, I’m going to assume that in our application we’ll be able to represent all of the changes required by a HTTP post action with a single class structure, and for ease of understanding we’ll call that a Command. For now we’ll go ahead with the understanding that we can fire off a command to a magical interface and that interface will take care of the unit of work.</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">interface</span> ICommandInvoker</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="kwrd">void</span> Execute&lt;T&gt;(T command);</pre>
+
+  <pre><span class="lnum">   4:  </span>    }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>The command invoker will look for an appropriate handler (seen below) and pass the command to that for processing (most likely it will retrieve entities by ID and call methods on them)</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">interface</span> ICommandHandler&lt;T&gt;</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="kwrd">void</span> Handle(T command);</pre>
+
+  <pre><span class="lnum">   4:  </span>    }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p><span class="lnum"></span>The Command Invoker implementation will be responsible for finding the appropriate command handler to execute and calling SaveChanges at the end of this process, flushing any changes through to the underlying store.</p>
+
+<p><strong>Implementation of the above</strong></p>
+
+<p>The above all uses StructureMap magic to locate the appropriate handlers/view factories in much the same way we’ll be using StructureMap to find validators, model binders and other such niceties.</p>
+
+<p>In the next instalment of this series, we’ll create our user document, our user entity and the necessary infrastructure required to create/retrieve user entities from the repository, as well as demonstrating the functionality of the ICommandInvoker that we’ll be using throughout this series.</p>
+	</div>
+      <div id="links">
+        <a href="/">Go back to the index</a>
+      </div>
+      <div id="post-comments">
+      
+      </div>
+    </div>
+  </body>
+</html>

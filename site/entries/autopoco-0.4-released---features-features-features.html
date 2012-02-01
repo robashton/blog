@@ -1,0 +1,191 @@
+<html>
+  <title id="title">AutoPoco 0.4 released - features features features</title>
+  <link rel="stylesheet" type="text/css" href="/style.css"></link>
+  <body>
+    <div id="blog-entry">
+      <h1 id="post-title">AutoPoco 0.4 released - features features features</h1>
+      <div id="post">
+		<p>What's that? I skipped a number?&nbsp;Actually I didn't, but 0.3 wasn't particularly major so&nbsp;making a blog entry seemed a bit redundant :)</p>
+<p>What have I added? Glad you asked:</p>
+<p><strong>Method Invocation</strong></p>
+<p>During configuration, you can now set up data sources for parameters of methods,&nbsp;just pass in&nbsp;raw values or&nbsp;just call a method with no&nbsp;arguments.</p>
+<p>It's all been done in a strongly-typed manner to fit in with the rest of AutoPoco.</p>
+<pre class="brush: csharp;" title="code">                x.Include&lt;SimpleMethodClass&gt;()
+                    .Invoke(c =&gt; c.SetSomething(
+                        Use.Source&lt;String, RandomStringSource&gt;(5, 10),
+                        Use.Source&lt;String, LastNameSource&gt;()))
+                    .Invoke(c =&gt; c.DoSomething());</pre>
+<p>Obviously this needs a brother to&nbsp;override this configuration at the&nbsp;time of&nbsp;object creation, and that looks something like this:</p>
+<pre class="brush: csharp;" title="code">            IList&lt;SimpleMethodClass&gt; items = mSession.List&lt;SimpleMethodClass&gt;(100)
+                    .Invoke(x =&gt; x.SetSomething("Something"))   
+                .Get();</pre>
+<p>And this will call SetSomething on all the created objects with the argument "Something" - this set of functionality is for those who don't have accessible setters on public properties but still wish to invoke them. The alternative was to start proxying around the objects and demanding that properties be virtual - but unless somebody says otherwise, I think that's a bit heavyweight for this sort of library.</p>
+<p><strong>Improved Convention Support</strong></p>
+<p>Conventions have been baked into AutoPoco from the start, but weren't fleshed out until this iteration, they can be used to match types of property/field, or match the names of properties/fields (or both) and apply rules to them without any knowledge of the specific type being configured.</p>
+<p>This is useful for those with multiple projections of their domain, which follow naming conventions throughout the project.</p>
+<pre class="brush: csharp;" title="code">    public class EmailAddressPropertyConvention : ITypePropertyConvention
+    {
+        public void Apply(ITypePropertyConventionContext context)
+        {
+            context.SetSource&lt;EmailAddressSource&gt;();
+        }
+
+        public void SpecifyRequirements(ITypeMemberConventionRequirements requirements)
+        {
+            requirements.Name(x =&gt; String.Compare(x, "EmailAddress", true) == 0);
+            requirements.Type(x =&gt; x == typeof(String));
+        }
+    }</pre>
+<p>This convention will match any property of type string called EmailAddress and apply the EmailAddressSource to it.</p>
+<p><strong>Inheritance</strong></p>
+<p>This was more complicated to deal with, and I expect to be writing a couple of quick blog entries detailing some of the gotchas encountered when writing the code for this, as googling didn't really provide the answers I was looking for (My first port of call for all problems)</p>
+<p>The gist of it, is that if you have an interface with a property, and you define a rule for that property, then any class that implements that property will also inherit that rule (the same goes for base classes and their properties).</p>
+<p>If a rule is defined for that specific derived class, then it will override the rule provided by the interface or base class. The only thing I haven't expliclty included in this is open generics, because they're a bit more tricky to come up with an elegant solution for.</p>
+<p>Consider the following class structure:</p>
+<pre class="brush: csharp;" title="code">    public interface ISimpleInterface
+    {
+        string InterfaceValue
+        {
+            get;
+            set;
+        }
+
+        string OtherInterfaceValue
+        {
+            get;
+            set;
+        }
+    }
+
+    public class SimpleBaseClass : ISimpleInterface
+    {
+        public string BaseProperty
+        {
+            get;
+            set;
+        }
+
+        public virtual string BaseVirtualProperty
+        {
+            get;
+            set;
+        }
+    
+        public string InterfaceValue
+        {
+	      set;
+          get;
+        }
+        
+        public string OtherInterfaceValue
+        {
+            get;
+            set;
+        }
+    }
+
+    public class SimpleDerivedClass : SimpleBaseClass, ISimpleInterface
+    {
+        public string Name
+        {
+            get;
+            set;
+        }
+
+        public override string BaseVirtualProperty
+        {
+            get;
+            set;
+        }
+    }</pre>
+<p>With the following configuration</p>
+<pre class="brush: csharp;" title="code">                x.Include&lt;ISimpleInterface&gt;()
+                    .Setup(c =&gt; c.InterfaceValue).Value("InterfaceValue - ISimpleInterface")
+                    .Setup(c=&gt;c.OtherInterfaceValue).Value("OtherInterfaceValue - ISimpleInterface");
+                 x.Include&lt;SimpleBaseClass&gt;()
+                    .Setup(c =&gt; c.BaseProperty).Value("BaseProperty - SimpleBaseClass")
+                    .Setup(c =&gt; c.BaseVirtualProperty).Value("BaseVirtualProperty - SimpleBaseClass");
+                x.Include&lt;SimpleDerivedClass&gt;()
+                    .Setup(c =&gt; c.Name).Value("OtherTest")
+                    .Setup(c =&gt; c.BaseVirtualProperty).Value("BaseVirtualProperty - SimpleDerivedClass")
+                    .Setup(c =&gt; c.OtherInterfaceValue).Value("OtherInterfaceValue - SimpleDerivedClass");</pre>
+<p class="brush: csharp;" title="code">Requesting a SimpleBaseClass, we get</p>
+<ul>
+    <li>
+    <div class="brush: csharp;" title="code">BaseProperty: "BaseProperty - SimpleBaseClass"</div>
+    </li>
+    <li>
+    <div class="brush: csharp;" title="code">BaseVirtualProperty: "BaseVirtualProperty - SimpleBaseClass"</div>
+    </li>
+    <li>
+    <div class="brush: csharp;" title="code">InterfaceValue: "InterfaceValue - ISimpleInterface"</div>
+    </li>
+    <li>
+    <div class="brush: csharp;" title="code">OtherInterfaceValue: &nbsp;"OtherInterfaceValue - ISimpleInterface"</div>
+    </li>
+</ul>
+<p class="brush: csharp;" title="code">Requesting a SimpleDerivedClass, we get</p>
+<ul>
+    <li>
+    <div class="brush: csharp;" title="code">BaseProperty: "BaseProperty - SimpleBaseClass"</div>
+    </li>
+    <li>
+    <div class="brush: csharp;" title="code">BaseVirtualProperty: "BaseVirtualProperty - SimpleDerivedClass"</div>
+    </li>
+    <li>
+    <div class="brush: csharp;" title="code">InterfaceValue: "InterfaceValue - ISimpleInterface"</div>
+    </li>
+    <li>
+    <div class="brush: csharp;" title="code">OtherInterfaceValue: "OtherInterfaceValue - SimpleDerivedClass"</div>
+    </li>
+</ul>
+<p class="brush: csharp;" title="code">It looks a bit complicated up front, but it makes sense if you think about it and that's what matters (the functionality is there if you need it, if you don't need it then you don't need to worry about it).</p>
+<p class="brush: csharp;" title="code"><strong>More data sources</strong></p>
+<p class="brush: csharp;" title="code">I was expecting to have to do these myself, along with a load of standard property/field conventions - but I had an e-mail from <span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span"><a href="http://www.codeplex.com/site/users/view/Birdchest">Khalid Abuhakme</a>&nbsp;letting me know he'd created a fork with some standard data sources in them.</span></span></p>
+<p class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">I have pulled them through and now our list of data sources looks something like this:</span></span></p>
+<ul>
+    <li>
+    <div class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">ColorSource</span></span></div>
+    </li>
+    <li>
+    <div class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">CountrySource</span></span></div>
+    </li>
+    <li>
+    <div class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">CreditCardSource</span></span></div>
+    </li>
+    <li>
+    <div class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">DataOfBirthSource</span></span></div>
+    </li>
+    <li>
+    <div class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">EmailAddressSource</span></span></div>
+    </li>
+    <li>
+    <div class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">EnumerableSource&lt;T&gt; where T : IDataSource (Really cool addition Khalid!)</span></span></div>
+    </li>
+    <li>
+    <div class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">FirstNameSource</span></span></div>
+    </li>
+    <li>
+    <div class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">LastNameSource</span></span></div>
+    </li>
+    <li>
+    <div class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">LorumIpsumSource</span></span></div>
+    </li>
+    <li>
+    <div class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">RandomStringSource</span></span></div>
+    </li>
+    <li>
+    <div class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">UsStatesSource</span></span></div>
+    </li>
+</ul>
+<p class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">We'll end up with a lot more of these for sure, and still need a more customisable aspect to some of the default ones, but if anybody else wants to contribute then feel free, as adding conventions and data sources is what will make AutoPoco really useful.</span></span></p>
+	</div>
+      <div id="links">
+        <a href="/">Go back to the index</a>
+      </div>
+      <div id="post-comments">
+      
+      </div>
+    </div>
+  </body>
+</html>

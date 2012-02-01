@@ -1,0 +1,425 @@
+
+		<p>The code for this and all other entries can be found here: <a href="http://github.com/robashton/RavenGallery/">http://github.com/robashton/RavenGallery/</a>&nbsp;</p>  <p>Apologies for yesterday, something happened to my post and it got swallowed up into the ether, it might be worth going back and reading it if you wanted why it ended so abruptly: <a href="http://codeofrob.com/archive/2010/09/29/ravendb-image-gallery-project-iii-the-application-lifecycle.aspx">The Application Lifecycle</a></p>  <p>Before continuing on, I want to make it clear how RavenDB and basic interaction with RavenDB works, I’m not going to dwell on this as the focus of this series is how RavenDB works within the larger scale of an application, but knowing how to save/retrieve/modify documents is definitely important.</p>  <p>The following examples use this document model:</p>  <div class="csharpcode">   <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">class</span> Image</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="kwrd">public</span> <span class="kwrd">string</span> Id</pre>
+
+  <pre><span class="lnum">   4:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>            get;</pre>
+
+  <pre><span class="lnum">   6:  </span>            set;</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>        }</pre>
+
+  <pre><span class="lnum">   8:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>        <span class="kwrd">public</span> <span class="kwrd">string</span> Name</pre>
+
+  <pre><span class="lnum">  10:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">  11:  </span>            get;</pre>
+
+  <pre><span class="lnum">  12:  </span>            set;</pre>
+
+  <pre class="alt"><span class="lnum">  13:  </span>        }</pre>
+
+  <pre><span class="lnum">  14:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">  15:  </span>        <span class="kwrd">public</span> Tag[] Tags</pre>
+
+  <pre><span class="lnum">  16:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">  17:  </span>            get;</pre>
+
+  <pre><span class="lnum">  18:  </span>            set;</pre>
+
+  <pre class="alt"><span class="lnum">  19:  </span>        }</pre>
+
+  <pre><span class="lnum">  20:  </span>    }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style><style type="text/css">![CDATA[
+
+
+
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<div class="csharpcode">&nbsp;</div>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">class</span> Tag</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="kwrd">public</span> <span class="kwrd">string</span> Name</pre>
+
+  <pre><span class="lnum">   4:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>            get;</pre>
+
+  <pre><span class="lnum">   6:  </span>            set;</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>        }</pre>
+
+  <pre><span class="lnum">   8:  </span>    }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p><strong>Saving a new document</strong></p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">using</span> (var s = store.OpenSession())</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="rem">// Create the image</span></pre>
+
+  <pre><span class="lnum">   4:  </span>        var image = <span class="kwrd">new</span> Image()</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>        {</pre>
+
+  <pre><span class="lnum">   6:  </span>            Name = <span class="str">"SomeImage"</span>,</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>            Tags = <span class="kwrd">new</span> Tag[]{</pre>
+
+  <pre><span class="lnum">   8:  </span>                <span class="kwrd">new</span> Tag() { Name = <span class="str">"SomeTag"</span> },</pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>                <span class="kwrd">new</span> Tag() { Name = <span class="str">"SomeOtherTag"</span> }</pre>
+
+  <pre><span class="lnum">  10:  </span>            }</pre>
+
+  <pre class="alt"><span class="lnum">  11:  </span>        };</pre>
+
+  <pre><span class="lnum">  12:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">  13:  </span>        <span class="rem">// Store the image</span></pre>
+
+  <pre><span class="lnum">  14:  </span>        s.Store(image);</pre>
+
+  <pre class="alt"><span class="lnum">  15:  </span>                    </pre>
+
+  <pre><span class="lnum">  16:  </span>        <span class="rem">// The act of storing the image has given us an id to work with</span></pre>
+
+  <pre class="alt"><span class="lnum">  17:  </span>        <span class="kwrd">string</span> documentId = image.Id;</pre>
+
+  <pre><span class="lnum">  18:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">  19:  </span>        <span class="rem">// Only when this is called are the changes flushed to the server</span></pre>
+
+  <pre><span class="lnum">  20:  </span>        s.SaveChanges();                  </pre>
+
+  <pre class="alt"><span class="lnum">  21:  </span>    }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p><strong>Getting a document out by Id</strong></p>
+
+<p>Now we have an id, we can request a document by id in a completely different session:</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>   <span class="kwrd">using</span>(var s = store.OpenSession())</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="rem">// Load an image by id</span></pre>
+
+  <pre><span class="lnum">   4:  </span>        var image = s.Load&lt;Image&gt;(documentId);</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>&nbsp;</pre>
+
+  <pre><span class="lnum">   6:  </span>        <span class="rem">// Do stuff with that image</span></pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>    }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>&nbsp;</p>
+
+<p><strong>Querying for a document using standard queries</strong></p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>        <span class="kwrd">using</span>(var s = store.OpenSession())</pre>
+
+  <pre><span class="lnum">   2:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>            <span class="rem">// Find an image by name</span></pre>
+
+  <pre><span class="lnum">   4:  </span>            var image = s.Query&lt;Image&gt;()</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>                .Where(x=&gt;x.Name== <span class="str">"SomeImage"</span>)</pre>
+
+  <pre><span class="lnum">   6:  </span>                .SingleOrDefault();</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>        }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p><strong>Modifying a document and persisting those changes</strong></p>
+
+<p>Both the above examples of retrieving documents from the store have something in common, the RavenDB client will track those loaded documents and any changes to them automatically. Thus the following code will just work</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>        <span class="kwrd">using</span>(var s = store.OpenSession())</pre>
+
+  <pre><span class="lnum">   2:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>            <span class="rem">// Find an image by name</span></pre>
+
+  <pre><span class="lnum">   4:  </span>            var image = s.Query&lt;Image&gt;()</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>                .Where(x=&gt;x.Name== <span class="str">"SomeImage"</span>)</pre>
+
+  <pre><span class="lnum">   6:  </span>                .SingleOrDefault();</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>&nbsp;</pre>
+
+  <pre><span class="lnum">   8:  </span>            <span class="rem">// Change the name</span></pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>            image.Name = <span class="str">"NewName"</span>;</pre>
+
+  <pre><span class="lnum">  10:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">  11:  </span>            <span class="rem">// Commit any changes</span></pre>
+
+  <pre><span class="lnum">  12:  </span>            s.SaveChanges();</pre>
+
+  <pre class="alt"><span class="lnum">  13:  </span>        }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p><strong>How this fits into our structure</strong></p>
+
+<p>If a repository takes responsibility for saving new documents and retrieving those documents, responsibility for actually persisting those changes can be given to another part of our application, the rest of the application doesn’t have to care about IDocumentSession or RavenDB, it can just work on those documents and accept any changes that are made will get flushed at the end of the unit of work.</p>
+
+<p>In the following blog entries if anything is unclear, refer back to this page to try and understand what is going on.</p>
+	

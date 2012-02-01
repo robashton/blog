@@ -1,0 +1,115 @@
+
+		<p><font face="Arial">When developing a web application that's designed for re-deployment in a number of different environments (such as a blogging engine/forum system/etc), it's helpful to be able to re-skin and re-structure&nbsp; the application without modifying any application files.</font></p>
+<p><font face="Arial">To a very large extent, this can be achieved through the use of an alternative set of cascading style sheets and this works for a large number of people. However if you take a look on programming websites such as Stack Overflow the question of how to change the master page at runtime is still an oft-asked one.</font></p>
+<p><font face="Arial">In ASP.NET Forms the solution was to simply subclass Page, override PreInit and change the MasterPage property based on some application variable. The master page specified by the corresponding ASPX file could even be read out and used to determine which themed master page to use. (A useful function if you had multiple master pages used throughout the site).</font></p>
+<font face="Arial">
+<pre class="brush: csharp;" title="code">    public class ThemedPage : Page
+    {
+        protected override void OnPreInit(EventArgs e)
+        {
+            if (this.MasterPageFile.EndsWith("MasterOne.Master", StringComparison.InvariantCultureIgnoreCase))
+            {
+                // TODO: Some logic here to find the right master page based on theme!
+                this.MasterPageFile = "/Views/Shared/MasterThree.Master";
+            }
+
+            base.OnPreInit(e);
+        }
+    }</pre>
+<p><font face="Arial">In ASP.NET MVC the playing field has been altered somewhat, and there are a number of options to consider when creating an application with dynamic master pages.</font></p>
+<p><font face="Arial">The most championed solutions found on the afore-mentioned programming websites are to either pass the master page name into the View() method when returning a ViewResult , or to create a custom view engine which specifies the master page.</font></p>
+<h5>Passing the master page name into the View method</h5>
+<font face="Arial">
+<p><font face="Arial">When returning a ViewResult via any of the built in methods (Controller.View()) the option is provided to pass in the name of as master page - and the default view engine will look for a master page with that name in the ~/Views/Shared directory.</font></p>
+<p><font face="Arial">Alternatively you can modify the ViewResult&nbsp; before returning it from your action method - which is probably the preferred option in most cases&nbsp; as you probably don't want to be passing in the name of the view all the time too.</font></p>
+<font face="Arial">
+<pre class="brush: csharp;" title="code">        public ActionResult SomePage()
+        {
+            return View("SomePage", "MasterTwo");
+        }</pre>
+</font><font face="Arial">
+<pre class="brush: csharp;" title="code">        public ActionResult SomeOtherPage()
+        {
+            var view = View();
+            view.MasterName = "MasterTwo";
+            return view;
+        }</pre>
+<p>&nbsp;</p>
+<p><font face="Arial">It is obvious however from these two examples that this is&nbsp; an un-maintainable solution; having to specify the master page on every single action is going to get tedious and if you decide to change this solution for a different one later on you're going to have to go back and modify all of those method calls.</font></p>
+<p><font face="Arial">This leads us nicely on to the next possible solution, of having this work done for us globally by the controller.</font></p>
+</font><font face="Arial">It would be possible to pass in the name of a different master page by using a helper somewhere that knew the details of the current theme and therefore the names of the master pages it uses.</font></font>
+<h5>Overriding OnActionExecuted on the Controller class</h5>
+<p><font face="Arial"><font face="Arial">Rather than specify the master page name as the result of every single Action method, you could either create a base controller or override OnActionExecuted on a case-by-case basis.</font></font></p>
+<p><font face="Arial">OnActionExecuted gives you a chance to modify the result after an action has been invoked, which means you can take the ViewResult which was returned by an action and set the MasterName on it in this location.</font></p>
+<p><font face="Arial">You could even detect whether the MasterName property had been set, and not override it if an action has already explicitly set it.</font></p>
+<font face="Arial">
+<pre class="brush: csharp;" title="code">        protected override void OnActionExecuted(ActionExecutedContext filterContext)
+        {
+            var action = filterContext.Result as ViewResult;
+            if (action != null &amp;&amp; String.IsNullOrEmpty(action.MasterName))
+            {
+                action.MasterName = "MasterThree";
+            }
+            base.OnActionExecuted(filterContext);
+        }</pre>
+</font>
+<p><font face="Arial">This gives you the power of being able to specify a master page per controller and still have the flexibility of overriding it per action. </font></p>
+<p><font face="Arial">&nbsp;It's still not ideal though, there is a certain amount of manual work required in doing this that you wouldn't want if you were going to be developing a large system with a substantial number of controllers or actions.<br>
+</font></p>
+<h5>Custom View Engine</h5>
+<p><font face="Arial">Moving further up the processing chain, the Custom ViewEngine allows the application to specify the master file for any request.</font></p>
+<p><font face="Arial">For the purposes of this example I'll derive my custom view engine from the standard built-in WebFormViewEngine as it requires the least work to get up and running.</font></p>
+<font face="Arial">
+<pre class="brush: csharp;" title="code">    public class ThemedViewEngine : WebFormViewEngine
+    {
+        public override ViewEngineResult FindView(ControllerContext controllerContext, string viewName, string masterName, bool useCache)
+        {
+            if (string.IsNullOrEmpty(masterName))
+            {
+                masterName = "MasterOne";
+            }
+            return base.FindView(controllerContext, viewName, masterName, useCache);
+        }
+    }</pre>
+</font>
+<p><font face="Arial">This is registered in place of the built in view engine like so:</font></p>
+<font face="Arial">
+<pre class="brush: csharp;" title="code">            ViewEngines.Engines.Clear();
+            ViewEngines.Engines.Add(new ThemedViewEngine());</pre>
+</font>
+<p><font face="Arial">Now let's take a look at that code - passed in to the method we're overriding (FindView) is a string called masterName.&nbsp; This is where that string ends up if you use either of the two previous two methods to specify the master page.</font></p>
+<p><font face="Arial">It follows on therefore that just like the last example you can do a check here to see if a master page has already been specified by the previous two methods, and specify one if one has not been set already.</font></p>
+<h5>ViewPage - OnPreInit</h5>
+<p><font face="Arial">All of the above methods completely ignore the master page directive set in the view itself - which is in my opinion a little bit bonkers.</font></p>
+<p><font face="Arial">By specifying a master page in the ASPX view, you allow the compiler to verify that the right ContentPlaceHolders are overridden&nbsp; and therefore if you enable compilation of your views you get a check that your view are valid.</font></p>
+<p><font face="Arial">Consider for&nbsp; example the site that has a number of base master pages, one of my personal sites for example has three master pages which are used in different circumstances and each of them have different ContentPlaceHolders because they're for use in completely different functional situations.</font></p>
+<p><font face="Arial">The application is probably unaware of these directives (and indeed should be probably be de-coupled from such concerns as whether a page is using a particular master page or not) and therefore shouldn't be making the decision as to which master page to use!</font></p>
+<p><font face="Arial">ASP.NET MVC is built on top of ASP.NET Forms however, so it turns out that we can ignore the delightfully helpful methods given to us in ASP.NET MVC and skip right back to our original solution of overriding OnPreInit on the base Page class.</font></p>
+<p><font face="Arial">Knowing that ViewPage is inherited from the ASP.NET Forms&nbsp;Page, so we can create ThemableViewPage</font></p>
+<font face="Arial">
+<pre class="brush: csharp;" title="code">    public class ThemedViewPage&lt;T&gt; : ViewPage&lt;T&gt; where T : class
+    {
+        protected override void OnPreInit(EventArgs e)
+        {
+            if (this.MasterPageFile.EndsWith("MasterOne.Master", StringComparison.InvariantCultureIgnoreCase))
+            {
+                // TODO: Some logic here to find the right master page based on theme!
+                this.MasterPageFile = "/Views/Shared/MasterThree.Master";
+            }
+
+            base.OnPreInit(e);
+        }
+    }
+
+    public class ThemedViewPage : ThemedViewPage&lt;Object&gt; { }</pre>
+</font>
+<p><font face="Arial">Note: I create a generic version and a non generic version so we can use it on non strong-typed pages (Some people use these, I don't know why!)</font></p>
+<p><font face="Arial">We can use the same theme code we used in the original example to solve the problem - and best of all, it is still compatible with the previous three methods - so if a different master page is specified by either an Action, a Controller or the ViewEngine this logic will still work.</font></p>
+<p><font face="Arial">The only caveats that I can see are that this method is quite dependent on the default WebFormView implementation, and that every view needs to be set up to inherit from this custom ViewPage .</font></p>
+<h5>Summary</h5>
+<p><font face="Arial"><font face="Arial">Switching between master pages is still a bit of a fuzzy topic, and the options given to us in ASP.NET MVC are a bit inadequate. There is still the question as to whether we should be attempting to do this at all given how powerful CSS is - but if you really need to, this blog entry should give you a helpful pointer in the right direction.</font></font></p>
+<p>In the projects&nbsp;I own technically where this sort of functionality is going to be requested, I'll be sticking to the OnPreInit method until something better comes up.</p>
+<p><font face="Arial"><font face="Arial"><hr>
+Technorati tags: <a rel="tag" href="http://technorati.com/tags/ASP.NET">ASP.NET</a>, <a rel="tag" href="http://technorati.com/tags/ASP.NET+MVC">ASP.NET MVC</a>, <a rel="tag" href="http://technorati.com/tags/Master+Pages">Master Pages</a>, <a rel="tag" href="http://technorati.com/tags/Themes">Themes</a></font></font></p>
+</font>
+	

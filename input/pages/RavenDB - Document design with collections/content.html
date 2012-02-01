@@ -1,0 +1,112 @@
+
+		<p>In my previous entry about a <a href="http://codeofrob.com/archive/2010/12/16/ravendb-stackoverflow-style-voting-with-live-projections.aspx">StackOverflow type system</a> we saw that I split out some of my large collections into their own documents, rather than persist them as part of the whole question document.</p>  <p>I have been asked since then what my rationale was when creating that example? In what situations might I take a collection from a document and persist each item in its own document? In what situations might I just store the collection inside the document that owns that collection?</p>  <p>There are disadvantages and advantages to either of these approaches, and&nbsp; these will impact you differently based on the ways in which you are likely to be using this data. </p>  <p><strong>Storing the collection inside the master document</strong></p>  <pre>
+public class MasterDocument 
+{ 
+    // various Master properties + unique Id
+
+    public ChildDocument[] Children{ get; set; }    
+}
+
+public class ChildDocument 
+{ 
+    // Child Document properties, no unique Id 
+}</pre>
+
+<ul>
+  <li>Loading the master document and all the child documents is a single call to .Load in the client API (a single HTTP GET request). </li>
+
+  <li>If the entire document is self contained, our write operations are on that entire document – you load the master along with all the children, and make the changes desired to that entire document </li>
+
+  <li>If we have more than one user potentially changing this document (IE, one adding items to the collection, and another editing the properties on the master), then we have to resort to PATCH operations </li>
+
+  <li>Deleting the master document means deleting all the children too, with a single operation </li>
+</ul>
+
+<p><strong>Storing the collection as separate documents that reference the master document</strong></p>
+
+<pre>
+public class MasterDocument 
+{ 
+    // various master properties + unique Id 
+    //  Children are not stored or referenced here    
+}
+
+public class ChildDocument 
+{ 
+    // Unique id 
+    // Child Document properties
+
+    // Reference to the master document from here 
+    public string ParentId { get; set; } 
+}</pre>
+
+<ul>
+  <li>Loading the master document AND all the children is at least two operations, one call to .Load for the master document, and one call to Query (against an index looking at ParentId) – this does however mean we can easily page through the children in large collections </li>
+
+  <li>The parents and children can easily be separately loaded and separately edited </li>
+
+  <li>Adding new children can be done at the same time as editing the master document, without resorting to the PATCH operations </li>
+
+  <li>Deleting the master document and all children does mean doing a set based operation (which is possible in RavenDB – even atomically) </li>
+</ul>
+
+<ul></ul>
+
+<ul></ul>
+
+<ul></ul>
+
+<ul></ul>
+
+<ul></ul>
+
+<ul></ul>
+
+<ul></ul>
+
+<p>&nbsp;</p>
+
+<p><strong>So which one do I use then?</strong></p>
+
+<p>At first glance, the second option seems the most flexible but it would be a mistake to make the decision to use this all the time.</p>
+
+<p>Think about your transaction boundaries, who is going to be editing this document? It’s not <em>just</em> about the size of the collection – we can happily store a thousand items on a single document if they actually belong to that document and you’re likely to be editing them as <em>part</em> of that document (This is an unlikely scenario).</p>
+
+<p>Let’s look at some examples and clarify further:</p>
+
+<p><strong><em>Stackoverflow – the question and its answers (or the votes for a question, or the votes for an answer)</em></strong></p>
+
+<p>In my StackOverflow example, we had many users potentially adding votes to a single question or answer, and we had many users potentially adding answers to a question – this is alongside the original user potentially editing the question or answer.</p>
+
+<p>Without resorting to patch operations we have a concurrency problem here, you don’t want to lock the master document just because children are being added, and in fact you’d probably never edit the master document at the same time as adding a child and want to do that in the same transaction. It makes sense therefore to store these documents separately&nbsp; and allow all these operations to just take place.</p>
+
+<p><strong><em>The shopping basket and its items</em></strong></p>
+
+<p>You’re doing your shopping on Amazon, you are adding references to products to your shopping basket perhaps de-normalizing data while you do this (the price at the time of adding it perhaps, “The price of this object has changed since you added it to the basket”).</p>
+
+<p>Each of those shopping cart items are part of that shopping cart – you aren’t going to edit those items separately as their own concerns, they <em>are</em> the shopping cart so to speak and thus they belong as part of the document.</p>
+
+<p><strong><em>The blog and its comments</em></strong></p>
+
+<p>Again, you are going to have people add comments independently of editing the blog, it doesn’t matter if you are expecting thousands of comments or just 1-2, they are separate concerns for the most part so store them as separate documents.</p>
+
+<p><strong><em>A recipe and its ingredients</em></strong></p>
+
+<p>This is similar to the shopping basket in that we <em>might</em> have references to actual ingredients in the collection, but store things like the amounts and other extra meta data on the collection item. We’ll most likely be editing these ingredients as part of the recipe, they belong on the document itself.</p>
+
+<p><strong>Where does this leave us then?</strong></p>
+
+<p>It is fairly clear that this is not a question of “one to many” vs “one to few”, no where here have I ended up talking about the quantity of items in the collection (although it is true that if you do have thousands of items you might wish to store them separately for performance reasons in either scenario).</p>
+
+<p>It is more a matter of thinking about the operations you are likely to perform on those documents and how you’d like those operations to be enacted on your data. </p>
+
+<p>Find the transaction boundaries and you find your documents.</p>
+
+<p><strong>What happened to my root aggregates?</strong></p>
+
+<p>So most people these days like to say they’re practising some form of DDD, so let’s talk in that language briefly – while it is true that for the most part you can map one to one a document with its root aggregate, this isn’t always going to be the case.</p>
+
+<p>You’re nearly <em>always</em> going to have this problem when you are trying to tie a conceptual entity and its <em>behaviour</em> directly to the manner in which it is persisted as <em>data</em>. Using a document database reduces this mismatch quite a lot – but in the complex models with interesting behaviour where DDD actually becomes useful, you most likely aren’t going to be talking about data, and if you use a document database to do any form of persistence this will most likely be done separately to the entities themselves.</p>
+
+<p>My advice? Don’t worry too much about this – persist your data, stick behaviour on your documents where it makes sense to and get on with life. The language is still useful as a way of communicating intent, but you’re not going to see me using it too much if I am working with data in this way.</p>
+	

@@ -1,0 +1,71 @@
+<html>
+  <title id="title">A gotcha for those Fluent interfaces</title>
+  <link rel="stylesheet" type="text/css" href="/style.css"></link>
+  <body>
+    <div id="blog-entry">
+      <h1 id="post-title">A gotcha for those Fluent interfaces</h1>
+      <div id="post">
+		<p><font face="Arial">Here is an interesting one that I posted up on Pastebin a few days ago, but has come as a surprise to anybody I've pointed it out to.</font></p>
+<p><font face="Arial">When building strongly typed fluent interfaces for any purpose, it has become increasingly common to abuse expressions in order to retrieve members with a utility like so:</font></p>
+<pre class="brush: csharp;" title="code">myFunkyInterface.GetProperty(x=&gt;x.SomeProperty);</pre>
+<p><font face="Arial">This can then be used in place of magic strings and name changes can then be caught by compile time errors instead of test-time exceptions.</font></p>
+<p><font face="Arial">The lambda based GetProperty method will typically look something like this:</font></p>
+<pre class="brush: csharp;" title="code">MemberInfo GetProperty&lt;Tpoco, TReturn&gt;(Expression&lt;Func&lt;TPoco, TReturn&gt;&gt; expression)
+{
+         MemberExpression memberExpression = (MemberExpression)expression.Body;
+         return memberExpression.Member;
+}</pre>
+<p><font face="Arial">The expression passed in is a member expression, and we can therefore retrieve the member from that member expression and use it as is.</font></p>
+<p><font face="Arial">This is a replacement of the traditional non-lambda method which would look something like this:</font></p>
+<font face="Arial">
+<pre class="brush: csharp;" title="code">MemberInfo member = typeof(SomeClass).GetProperty("SomeProperty");
+</pre>
+<p><font face="Arial">Consider the following class structure:</font></p>
+<pre class="brush: csharp;" title="code">public class SomeBaseClass
+{
+      public  virtual string SomeProperty { get;set; }
+}
+
+public class SomeClass : SomeBaseClass
+{
+      public override string SomeProperty { get; set;} 
+}
+&nbsp; </pre>
+<font face="Arial">Calling:</font><font face="Arial">
+<pre class="brush: csharp;" title="code">MemberInfo genericMember = ReflectionHelper.GetMember&lt;SomeClass&gt;(x=&gt;x.SomeProperty);
+MemberInfo traditionalMember = typeof(SomeClass).GetProperty("SomeProperty");</pre>
+</font>
+<p><font face="Arial">Will result in two completely different objects.</font></p>
+<p><font face="Arial">Checking the DeclaringType property on the returned members yields in an answer:<br>
+</font></p>
+<ul>
+    <li><font face="Arial"><font face="Arial"><strong>genericMember.DeclaringType</strong>:&nbsp; SomeBaseClass</font></font> </li>
+    <li><font face="Arial"><font face="Arial"><strong>traditionalMember.DeclaringType:</strong> SomeClass</font></font> </li>
+</ul>
+<font face="Arial">
+<p><font face="Arial">Seems like a small thing, but as any framework developer will tell you, when writing any set of generic interfaces, you always need a set of non-generic interfaces for dynamic invocation of your framework.</font></p>
+<p><font face="Arial">It's helpful if they do the same thing.</font></p>
+<font face="Arial">
+<p><br>
+The solution of course, is to make the generic method use the non-generic method under the hood and although you already have the member, not use it directly.</p>
+<pre class="brush: csharp;" title="code">MemberInfo GetProperty&lt;TPoco, TReturn&gt;(Expression&lt;Func&lt;TPoco, TReturn&gt;&gt; expression)
+{
+         MemberExpression memberExpression = (MemberExpression)expression.Body;
+        return typeof(Tpoco).GetProperty(memberExpression.Member.Name);
+}
+</pre>
+<p><font face="Arial"><font face="Arial"><font face="Arial">I assumed that the output of these two alternate methods would be the same, but it turns out that this assumption was going to introduce a bug into my project that was quite hard to track down!</font></font></font></p>
+<p><font face="Arial">Of course, if I'd written the code as I do now, I'd have written all the non-generic interfaces first, and then written the generic interfaces on top of that with their implementations just calling the non-generic&nbsp; interfaces and therefore not ran into the problem because they'd both be using the same underlying code.</font></p>
+<p><font face="Arial">Still, good to know I guess,&nbsp; thankfully my tests caught this one before I released any code that would have caused problems.<br>
+</font></p>
+</font></font></font>
+	</div>
+      <div id="links">
+        <a href="/">Go back to the index</a>
+      </div>
+      <div id="post-comments">
+      
+      </div>
+    </div>
+  </body>
+</html>

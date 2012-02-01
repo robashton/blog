@@ -5,7 +5,7 @@ var EventEmitter = require( "events" ).EventEmitter;
 
 var InitialDataPass = function() {
   EventEmitter.call(this);
-  this.maximumCategories = 5;
+  this.maximumCategories = 13;
   this.posts = [];
   this.pendingPosts = 0;
   this.pendingCategories = 0;
@@ -36,7 +36,9 @@ InitialDataPass.prototype = {
     this.pendingPosts++;
     var post = {
       link: element.find('div.title a').attr('href'),
-      title: element.find('div.title a').text().replace('&amp;', '&').replace('&rsquo;', '\''),
+      title: element.find('div.title a').text()
+                    .replace('&amp;', '&')
+                    .replace('&rsquo;', '\''),
       date: new Date(element.find('div.info a').eq(0).text())
     }
     this.fetchPostContent(post);

@@ -1,0 +1,383 @@
+<html>
+  <title id="title">RavenDB - The Image Gallery Project (XVI) - Adding Edit Functionality (I)</title>
+  <link rel="stylesheet" type="text/css" href="/style.css"></link>
+  <body>
+    <div id="blog-entry">
+      <h1 id="post-title">RavenDB - The Image Gallery Project (XVI) - Adding Edit Functionality (I)</h1>
+      <div id="post">
+		<p>We have thus far covered the creation of new documents, and the querying of those documents to create views for specific pages in our system. We haven’t actually demonstrated the editing of existing documents and how that actually fits into the application lifecycle covered at the beginning of this series.</p>  <p>This series has been written with the intention of it being a full vertical slice through a modern web application using RavenDB, instead of just being a thin technical demo of RavenDB and we are going to look at how we might write an interface</p>  <p><strong>Moving away from CRUD</strong></p>  <p>A typical CRUD data screen might display all the fields for a document, and have a single save button at the end for dumping all of this data back into the store.</p>  <p>I’m not a big fan of this, we now live in the 21st century and have rich client functionality everywhere – not to mention that this in no way really captures the intent of the user and what it is they actually want to achieve.</p>  <p>We are therefore going to have a screen that displays all the data for a particular image, and allows the user to edit the fields in place. In doing this,&nbsp; our interface can send one-way commands via JSON and not have to rely on data being returned from the server – this is not only a great experience for the user, but allows us to keep our commands as one-way enactors of change.</p>  <p>For a further bit of fun, we will actually use the same screen to display the image to users who don’t own the image, but not allow changes to it if they aren’t meant to. We could then display “related” images to one side and allow further browsing from this point.</p>  <p>Okay, I admit we’re at risk of copying Flickr here, but I did say we were doing this as a largely real world project, and imitation is the finest form of flattery.</p>  <p><strong>The web bit</strong></p>  <p>Just like with our home-page image browser, we won’t be pre-populating a view model in the controller and will instead expose more JSON endpoints to retrieve data about a specific image and do more client-side template magic. The great thing about this is that it also gives us an API to expose to third parties with no extra effort. (Did I mention we were living in the 21st century?)</p>  <p>Here is the template used on my view page (Images/View.Spark)</p>  <div class="csharpcode">   <pre class="alt"><span class="kwrd">&lt;</span><span class="html">script</span> <span class="attr">id</span><span class="kwrd">="focused-image-template"</span> <span class="attr">type</span><span class="kwrd">="text/x-jquery-tmpl"</span><span class="kwrd">&gt;</span> </pre>
+
+  <pre>  &lt;div <span class="kwrd">class</span>=<span class="str">"focused-image"</span>&gt; </pre>
+
+  <pre class="alt">    &lt;h4 id=<span class="str">"title"</span>&gt;{{= Title}}&lt;/h4&gt; </pre>
+
+  <pre>    &lt;img src=<span class="str">"/Resources/Image/{{= Filename}}"</span> alt=<span class="str">"{{= Title}}"</span> /&gt; </pre>
+
+  <pre class="alt">    &lt;span id=<span class="str">"tags"</span>&gt;{{= Tags }}&lt;/span&gt; </pre>
+
+  <pre>  &lt;/div&gt; </pre>
+
+  <pre class="alt"><span class="kwrd">&lt;/</span><span class="html">script</span><span class="kwrd">&gt;</span></pre>
+
+  <pre>&nbsp;</pre>
+
+  <pre class="alt"><span class="kwrd">&lt;</span><span class="html">div</span> <span class="attr">id</span><span class="kwrd">="image-placeholder"</span><span class="kwrd">&gt;</span> </pre>
+
+  <pre>    </pre>
+
+  <pre class="alt"><span class="kwrd">&lt;/</span><span class="html">div</span><span class="kwrd">&gt;</span></pre>
+
+  <pre>&nbsp;</pre>
+</div>
+<style type="text/css">![CDATA[
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>We can populate this on start-up in the same way we populated the image browser, by making a call to the server via JavaScript and asking for a ‘view’ based on the parameter in the query string.</p>
+
+<p class="csharpcode">
+  </p><pre class="alt">updateView: <span class="kwrd">function</span> (imageId) { </pre>
+
+  <pre>        $.ajax({ </pre>
+
+  <pre class="alt">        dataType: <span class="str">"json"</span>, </pre>
+
+  <pre>        url: <span class="str">'/Image/_GetImage?imageId='</span> + imageId, </pre>
+
+  <pre class="alt">        error: <span class="kwrd">function</span> (xhr, ajaxOptions) { </pre>
+
+  <pre>            alert(xhr.status + <span class="str">':'</span> + xhr.responseText); </pre>
+
+  <pre class="alt">        }, </pre>
+
+  <pre>        success: <span class="kwrd">function</span> (data) { </pre>
+
+  <pre class="alt">            $(<span class="str">'#image-placeholder'</span>).html(<span class="str">''</span>); </pre>
+
+  <pre>            $(<span class="str">'#focused-image-template'</span>) </pre>
+
+  <pre class="alt">                .tmpl(data) </pre>
+
+  <pre>                .appendTo(<span class="str">'#image-placeholder'</span>);</pre>
+
+  <pre class="alt">&nbsp;</pre>
+
+  <pre>        } </pre>
+
+  <pre class="alt">    }); </pre>
+
+  <pre>}, </pre>
+
+  <pre class="alt">&nbsp;</pre>
+
+
+<p></p><style type="text/css">![CDATA[
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>Following this through, we have</p>
+
+<p>&nbsp;</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="kwrd">public</span> ActionResult _GetImage(ImageViewInputModel input) </pre>
+
+  <pre>{ </pre>
+
+  <pre class="alt">    var model = viewRepository.Load&lt;ImageViewInputModel, ImageView&gt;(input); </pre>
+
+  <pre>    <span class="kwrd">return</span> Json(model, JsonRequestBehavior.AllowGet); </pre>
+
+  <pre class="alt">} </pre>
+</div>
+<style type="text/css">![CDATA[
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>with</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="kwrd">public</span> <span class="kwrd">class</span> ImageViewInputModel </pre>
+
+  <pre>{ </pre>
+
+  <pre class="alt">    <span class="kwrd">public</span> <span class="kwrd">string</span> ImageId { get; set; } </pre>
+
+  <pre>} </pre>
+</div>
+<style type="text/css">![CDATA[
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>and</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="kwrd">public</span> <span class="kwrd">class</span> ImageView </pre>
+
+  <pre>{ </pre>
+
+  <pre class="alt">    <span class="kwrd">public</span> <span class="kwrd">string</span> Filename { get; set; } </pre>
+
+  <pre>    <span class="kwrd">public</span> <span class="kwrd">string</span>[] Tags { get; set; } </pre>
+
+  <pre class="alt">    <span class="kwrd">public</span> <span class="kwrd">string</span> Title { get; set; } </pre>
+
+  <pre>} </pre>
+</div>
+<style type="text/css">![CDATA[
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>All that is left for us to do is create the view, and the ‘view’ functionality of this page will be complete.</p>
+
+<p><strong>The RavenDB Bit</strong></p>
+
+<p>Because we have the id of the document already, we don’t need to do any sort of query and can just request the document directly from the session, flattening it into the view we want.</p>
+
+<p>The test (assuming I’ve saved a document with these properties)</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="kwrd">using</span> (var s = Store.OpenSession()) </pre>
+
+  <pre>{ </pre>
+
+  <pre class="alt">    ImageViewFactory factory = <span class="kwrd">new</span> ImageViewFactory(s); </pre>
+
+  <pre>    var results = factory.Load(<span class="kwrd">new</span> ImageViewInputModel() </pre>
+
+  <pre class="alt">    { </pre>
+
+  <pre>         ImageId = <span class="str">"knownId"</span> </pre>
+
+  <pre class="alt">    });</pre>
+
+  <pre>&nbsp;</pre>
+
+  <pre class="alt">    Assert.AreEqual(<span class="str">"title"</span>, results.Title); </pre>
+
+  <pre>    Assert.AreEqual(<span class="str">"filename"</span>, results.Filename); </pre>
+
+  <pre class="alt">    Assert.AreEqual(<span class="kwrd">new</span>[] { <span class="str">"tagOne"</span>, <span class="str">"tagTwo"</span> }, results.Tags); </pre>
+
+  <pre>} </pre>
+
+  <pre class="alt">&nbsp;</pre>
+</div>
+<style type="text/css">![CDATA[
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p><font size="1">*Yes yes, I know, more than one assert in a single test, may the keepers of good code have mercy on my compiler)</font></p>
+
+<p>The code</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="kwrd">public</span> <span class="kwrd">class</span> ImageViewFactory : IViewFactory&lt;ImageViewInputModel, ImageView&gt; </pre>
+
+  <pre>{ </pre>
+
+  <pre class="alt">    <span class="kwrd">private</span> IDocumentSession documentSession;</pre>
+
+  <pre>&nbsp;</pre>
+
+  <pre class="alt">    <span class="kwrd">public</span> ImageViewFactory(IDocumentSession documentSession) </pre>
+
+  <pre>    { </pre>
+
+  <pre class="alt">        <span class="kwrd">this</span>.documentSession = documentSession; </pre>
+
+  <pre>    } </pre>
+
+  <pre class="alt">    <span class="kwrd">public</span> ImageView Load(ImageViewInputModel input) </pre>
+
+  <pre>    { </pre>
+
+  <pre class="alt">        var doc = documentSession.Load&lt;ImageDocument&gt;(input.ImageId); </pre>
+
+  <pre>        <span class="kwrd">return</span> <span class="kwrd">new</span> ImageView( </pre>
+
+  <pre class="alt">            doc.Filename, </pre>
+
+  <pre>            doc.Tags.Select(tag =&gt; tag.Name).ToArray(), </pre>
+
+  <pre class="alt">            doc.Title); </pre>
+
+  <pre>    } </pre>
+
+  <pre class="alt">} </pre>
+
+  <pre>&nbsp;</pre>
+</div>
+<style type="text/css">![CDATA[
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>There we go, a fully functional ‘view’ element to our website (okay, we’re lacking a great deal of functionality, but we will get there in the end, covering some more RavenDB features as we go.</p>
+
+<p>In other news, I’m beginning to think that with all the simplicity I’m displaying at the moment that I should have gone for the simple option of having my entities as the documents and not wrapping them up, I might do a u-turn on that very shortly with a post on re-factoring. </p>
+
+<p>PS: I’m aware that the rest of the entries aren’t navigable to, I’ll fix the template right after publishing this…</p>
+	</div>
+      <div id="links">
+        <a href="/">Go back to the index</a>
+      </div>
+      <div id="post-comments">
+      
+      </div>
+    </div>
+  </body>
+</html>

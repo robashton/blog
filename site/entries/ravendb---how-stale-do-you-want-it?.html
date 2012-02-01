@@ -1,0 +1,93 @@
+<html>
+  <title id="title">RavenDB - How stale do you want it?</title>
+  <link rel="stylesheet" type="text/css" href="/style.css"></link>
+  <body>
+    <div id="blog-entry">
+      <h1 id="post-title">RavenDB - How stale do you want it?</h1>
+      <div id="post">
+		<p><strong>The problem</strong></p>  <p>When a query is executed against an index in RavenDB, one of the key aspects of that query is checking the task queue to see if any tasks are currently pending against that index. It is this call that dictates whether IsStale is set as a flag on the return result from that query.</p>  <p>When a call to WaitForNonStaleResults is made in the .NET client, the client simply makes multiple requests against the query until IsStale is found to be false, or until the WaitForNonStaleResults call times out. Thus, the client can wait until there are no more tasks waiting to be executed against the index.</p>  <p>But wait, I hear you cry, what if new tasks are added against those indexes in the meantime? Surely this means that the the results will always be stale on busy servers?</p>  <p><strong>The solution</strong></p>  <p>Thankfully, support is baked into RavenDB to allow for this scenario, so a request can be made to retrieve up to date results as of a specified time called the “cut off”.</p>  <p>This is exposed in the .NET Client as alternatives to the WaitForNoneStaleResults call.</p>  <div class="csharpcode">   <pre class="alt"><span class="lnum">   1:  </span>BlogEntry[] entries = documentSession.Query&lt;BlogEntry&gt;(<span class="str">"BlogEntryByCategory"</span>)</pre>
+
+  <pre><span class="lnum">   2:  </span>                        .WaitForNonStaleResultsAsOfNow(TimeSpan.FromSeconds(30))</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>                        .Where(<span class="str">"Category:RavenDb"</span>)</pre>
+
+  <pre><span class="lnum">   4:  </span>                        .ToArray();</pre>
+</div>
+<style type="text/css">![CDATA[
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>This particular version of the call will wait at the very most 30 seconds for non-stale data to be available as of the time the method was invoked. Thus, any data added after the method is invoked will not count towards whether the results count as being stale or not.</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>BlogEntry[] entries = documentSession.Query&lt;BlogEntry&gt;(<span class="str">"BlogEntryByCategory"</span>)</pre>
+
+  <pre><span class="lnum">   2:  </span>                        .WaitForNonStaleResultsAsOf(DateTime.Now.Subtract(TimeSpan.FromMinutes(10)), TimeSpan.FromSeconds(30))</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>                        .Where(<span class="str">"Category:RavenDb"</span>)</pre>
+
+  <pre><span class="lnum">   4:  </span>                        .ToArray();</pre>
+</div>
+<style type="text/css">![CDATA[
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>A similar strategy has been used here, only we don’t care about anything added after about 10 minutes ago. </p>
+
+<p><strong>Summary</strong></p>
+
+<p>You probably still wouldn’t use this when requesting views of your data for displaying on the front page of a website, but this can be used for processes which do care about non-stale data and are willing to wait for it.</p>
+	</div>
+      <div id="links">
+        <a href="/">Go back to the index</a>
+      </div>
+      <div id="post-comments">
+      
+      </div>
+    </div>
+  </body>
+</html>

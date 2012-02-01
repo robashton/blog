@@ -1,0 +1,199 @@
+
+		<p><strong>Previous entries in the series</strong></p>
+<ul>
+    <li><a href="http://codeofrob.com/archive/2010/02/01/multi-tenancy-in-asp.net-mvc-why-do-we-want-to.aspx">Why we want it</a> </li>
+    <li><a href="http://codeofrob.com/archive/2010/02/04/multi-tenancy-in-asp.net-mvc-breaking-it-down.aspx">Breaking it down + Themes</a> </li>
+    <li><a href="http://codeofrob.com/archive/2010/02/08/multi-tenancy-in-asp.net-mvc-views.aspx">Views</a> </li>
+</ul>
+<p>&nbsp;<font face="Arial">In the last entry, we covered how and why we might want to replace existing views and partial views from the core application with our own from modules. We also covered that with this ability it was possible to add entirely new views and partial views.</font></p>
+<p><font face="Arial">However, views need actions and actions come from controllers. If we add a new view to the application and the core application does not support that path with an action, that view cannot be loaded.</font></p>
+<p><font face="Arial">It stands to reason therefore that our modules need the ability to add new controller actions (and indeed replace existing actions) at run-time on a per-request basis - again assuming we're going for full on multi-tenancy.</font></p>
+<p><font face="Arial">Actions come from controllers, and by default controllers come from the main web assembly. Now obviously our modules should be as self contained as possible and therefore probably each have their own assemblies so they can be developed separately and added to the project ad-hoc.</font></p>
+<p><font face="Arial">Once again, the ASP.NET MVC team have given us an extensibility point with which to override this default behaviour with the ability to implement our own controller factories.</font></p>
+<p><font face="Arial"><font face="Arial"><strong>Resolving actions</strong><br>
+As with the last topic, I will assume the presence of a configuration provider that can tell us which modules are loaded.<br>
+For purposes of simplicity, the Module class now contains a reference to an Assembly that we'll assume was loaded in when the configuration was last scanned.<br>
+</font></font></p>
+<font face="Arial">
+<pre class="brush: csharp;" title="code">    public class Module
+    {
+        public string Id
+        {
+            get;
+            set;
+        }
+
+        public Assembly Assembly
+        {
+            get;
+            set;
+        }
+    }
+</pre>
+<p><font face="Arial">The job of the ControllerFactory is another well documented concept; when a controller is required, the factory is invoked with the name of the controller being requested and the current request data. It is expected to return an instance of the controller (which is used for that single request), and then just like the ViewEngine is given that controller to dispose of at the end of the request.</font></p>
+<p><font face="Arial">The simplest solution is clearly going to be that we look at the context we have access to and then work out which controller to return based on that context.<br>
+The context in this case being the name of the controller, the action being requested and the collection of modules which are currently active for this request.</font></p>
+<p><font face="Arial">Each module can therefore hold their own controllers with their own actions, and the controller factory can select which controller to return when a specific action is being invoked.</font></p>
+<p><font face="Arial">I implement my controller factory from the base interface, which is System.Web.Mvc.IControllerFactory:</font>&nbsp;</p>
+<pre class="brush: csharp;" title="code">    public class ModuleControllerFactory : IControllerFactory
+    {
+        public IController CreateController(System.Web.Routing.RequestContext requestContext, string controllerName)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void ReleaseController(IController controller)
+        {
+            throw new NotImplementedException();
+        }
+    }
+</pre>
+<p>ReleaseController can just check for IDisposable and dispose if necessary, so we'll take that as read and focus on what we need to do in order to create the controller.</p>
+</font><font face="Arial"><font face="Arial"><strong>
+<h3><font face="Arial"><strong>The Goal</strong></font></h3>
+</strong></font>
+<p><font face="Arial">These are the modules exposed by the application, the controllers they provide and the actions those controllers have on them.</font></p>
+<ul>
+    <li><font face="Arial">CoreModule</font>
+    <ul>
+        <li><font face="Arial">HomeController</font> </li>
+        <li><font face="Arial">ActionResult Index();</font> </li>
+    </ul>
+    </li>
+    <li><font face="Arial">ModuleOne</font>
+    <ul>
+        <li><font face="Arial">HomeController</font>
+        <ul>
+            <li><font face="Arial">ActionResult Extra();</font> </li>
+        </ul>
+        </li>
+    </ul>
+    </li>
+    <li><font face="Arial">ModuleTwo</font>
+    <ul>
+        <li><font face="Arial">HomeController</font>
+        <ul>
+            <li><font face="Arial">ActionResult Index();</font> </li>
+            <li><font face="Arial">ActionResult Extra();</font> </li>
+        </ul>
+        </li>
+        <li><font face="Arial">OtherController</font>
+        <ul>
+            <li><font face="Arial">ActionResult Index(); </font></li>
+        </ul>
+        </li>
+    </ul>
+    </li>
+</ul>
+<p>&nbsp;WIth the set-up, the following behaviour is desired:</p>
+<p><font face="Arial"><strong>Core Module loaded:</strong></font></p>
+<p><font face="Arial">/Home/Index requested =&gt; CoreModule Index Invoked<br>
+/Home/Extra requested =&gt;&nbsp; Action Not found</font></p>
+<p><font face="Arial"><strong>Core + ModuleOne Loaded</strong></font></p>
+<p><font face="Arial">/Home/Index requested =&gt; CoreModule Index Invoked<br>
+/Home/Extra requested =&gt;&nbsp; ModuleOne Extra Invoked</font></p>
+<p><font face="Arial"><strong>Core + ModuleOne + ModuleTwo Loaded (in that order)</strong></font></p>
+<p><font face="Arial">/Home/Index requested =&gt; ModuleTwo Index Invoked<br>
+/Home/Extra requested =&gt; ModuleTwo Extra Invoked<br>
+/Other/Index requested =&gt; ModuleTwo Index Invoked<br>
+</font></p>
+<font face="Arial">
+<h3><font face="Arial">A Solution</font></h3>
+<p>This is actually quite tricky, as the solution is going to involve not only scanning for the controllers, but scanning for methods on those controllers that match the actions being requested.</p>
+<p><font face="Arial">There are a lot of rules involved already in MVC selecting the right method to call from a controller, and we don't want to go down the route of duplicating this, so this is where we set a convention and say that if *any* action is found with the name being requested, that we'll use that controller and assume that all the necessary permutations of that action will be provided too. (A post action vs Get action for example).</font></p>
+<p><font face="Arial">There are two parts to solving this problem, finding the type we want to create, and creating the controller from that type.</font></p>
+<p><font face="Arial">The process will be similar to that of the ViewEngine example:</font></p>
+<p><font face="Arial">1) Reverse the module list order so we have the most recently loaded first<br>
+2) Scan all the types in the assembly for that module<br>
+3) Find a type with the name we're looking for ( &lt;Name&gt;Controller )<br>
+4) Scan the methods on that type to find the action we're looking for<br>
+5) If found, return this type<br>
+6) Else Continue</font></p>
+<font face="Arial">
+<p><font face="Arial">Obviously reflecting on all these types is a slow process, and we should cache the type once found by configuration id, controller name and action name. </font></p>
+<p><font face="Arial">Here is some code which loosely achieves the above:</font></p>
+<font face="Arial">
+<pre class="brush: csharp;" title="code">private Type FindControllerType(String controllerName, RequestContext requestContext, Configuration currentConfiguration)
+        {
+            // Generate the type name we're looking for
+            String controllerTypeName = string.Format("{0}Controller", controllerName);
+
+            // Get the action and therefore method name we're looking for
+            String actionName = (string)requestContext.RouteData.Values["action"];
+
+            // TODO: Check Cache here
+
+            // Get modules in reverse order
+            var searchModules = currentConfiguration
+                .Modules
+                .Reverse();
+
+            foreach (var module in searchModules)
+            {
+                // Get all the types in the assembly
+                Type[] controllerTypes = module.Assembly.GetTypes()
+                    .Where(
+                        t =&gt;
+                            // Where the type name is the one we're looking for
+                            t.Name == controllerTypeName &amp;&amp;
+
+                            // Where it can be cast to a controller
+                            typeof(IController).IsAssignableFrom(t) &amp;&amp;
+
+                            // And there is a public instance method with the name we're looking for on that type
+                            t.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+                            .Where(m =&gt; m.Name == actionName).Count() &gt; 0
+
+                        ).ToArray();
+
+                // Skip to the next module if no types found
+                if (controllerTypes.Length == 0) { continue; }
+
+                // Else, simply return the first one found
+                return controllerTypes[0];
+            }
+
+            // Fail
+            return null;
+        }
+</pre>
+<font face="Arial">
+<p><br>
+A very rudimentary controller factory implementation would therefore look something like this:<br>
+</p>
+<pre class="brush: csharp;" title="code"> public class ModuleControllerFactory : IControllerFactory
+    {
+        private IConfigurationProvider mConfigurationProvider;
+
+        public ModuleControllerFactory(IConfigurationProvider configurationProvider)
+        {
+            mConfigurationProvider = configurationProvider;
+        }
+
+        public IController CreateController(System.Web.Routing.RequestContext requestContext, string controllerName)
+        {
+            Type t = FindControllerType(controllerName, requestContext, mConfigurationProvider.GetActiveConfiguration());
+            return (IController)Activator.CreateInstance(t);
+        }
+
+        public void ReleaseController(IController controller)
+        {
+            IDisposable disposable = controller as IDisposable;
+            if (disposable != null)
+            {
+                disposable.Dispose();
+            }
+        }
+// Etc
+</pre>
+<p><font face="Arial">It is of course probably desirable to instantiate the controller using your favourite IOC container&nbsp; - so for StructureMap for example instead of using Activator.CreateInstance you would call ObjectFactory.GetInstance(t);</font></p>
+<p><font face="Arial">(Actually, you'd probably inject the container as well rather than calling ObjectFactory directly but you get the gist).</font></p>
+<font face="Arial"><font face="Arial">
+<h3><font face="Arial">Summary</font></h3>
+<p>Essentially, we can completely re-wire this part of the ASP.NET MVC framework to do what we want it to do. We can load our controllers from wherever based on whatever context we like - and this gives us a powerful mechanism for pluggability and therefore multi-tenancy.</p>
+<p><font face="Arial">I did contemplate trying to achieve this through routing - custom routing constraints and handlers - but it's not a tidy solution, it generally means having different names for your controllers, or playing havok with namespaces and configuration and because a lot of that configuration is static it often involves re-compilation.</font></p>
+<p><font face="Arial">Re-compilation is something to be avoided, as we ideally want to be able to add new customers by just modifying configuration.</font></p>
+<p><font face="Arial">Anyway, there are a number of options and this is just one of them,&nbsp; I'll be hoping to cover a crazy solution using Reflection.Emit and hopefully delve into MEF before I'm done with this particular part of the multi-tenancy story.</font><br>
+</p>
+</font></font></font></font></font></font></font>
+	

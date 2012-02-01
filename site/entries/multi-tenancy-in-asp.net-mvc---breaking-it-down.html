@@ -1,0 +1,85 @@
+<html>
+  <title id="title">Multi-tenancy in ASP.NET MVC - Breaking it down</title>
+  <link rel="stylesheet" type="text/css" href="/style.css"></link>
+  <body>
+    <div id="blog-entry">
+      <h1 id="post-title">Multi-tenancy in ASP.NET MVC - Breaking it down</h1>
+      <div id="post">
+		<p><font face="Arial"><strong>Previous entries in the series</strong></font></p>
+<ul>
+    <li><a href="http://codeofrob.com/archive/2010/02/01/multi-tenancy-in-asp.net-mvc-why-do-we-want-to.aspx">Why do we want multi-tenancy</a></li>
+</ul>
+<p><font face="Arial">In the last entry, we covered the basics of what I consider multi-tenancy to be, and why we might perhaps want to write our ASP.NET MVC web application with multi-tenancy in mind.</font></p>
+<p><font face="Arial">The "ASP.NET MVC" component&nbsp;(or front-end) of your multi-tenant application probably only covers a small fraction of your entire codebase but is also the first and often only contact your customer has with your application, so ends up being their first point of call when asking for changes to your system. </font></p>
+<p><font face="Arial">It also ends up being the most awkward part of to change because that's the nature of using a framework like ASP.NET MVC which is designed primarily to be used in single-tenant scenarios.</font></p>
+<p><font face="Arial">Before getting into the technical details of how I implement a multi-tenant app in this environment, it's worth covering the components of our chosen framework and establishing where to start.</font></p>
+<p><font face="Arial"><strong>Disclaimer</strong>: This will not be an overly technical post,&nbsp; and I apologise to those that want me to just jump right in and start talking code.&nbsp; This will be the last introductory post in the series - promise :)</font></p>
+<p><font face="Arial">Getting to the point,&nbsp; this is how I personally split up the MVC application concepts into themes and modules.</font></p>
+<p>
+</p><table border="1" cellspacing="1" summary="" cellpadding="1" width="400">
+    <tbody>
+        <tr>
+            <td><strong>Themes</strong></td>
+            <td><strong>Modules</strong></td>
+        </tr>
+        <tr>
+            <td>CSS</td>
+            <td>Views</td>
+        </tr>
+        <tr>
+            <td>Theme-specific images</td>
+            <td>Partial Views</td>
+        </tr>
+        <tr>
+            <td>Theme-specific JavaScript</td>
+            <td>Controller actions</td>
+        </tr>
+        <tr>
+            <td>Master pages</td>
+            <td>Module-specific JavaScript</td>
+        </tr>
+    </tbody>
+</table>
+
+<p><font face="Arial"><strong>JavaScript</strong></font></p>
+<p><font face="Arial">Whether we like it or not, designers like to deploy JavaScript alongside their designs these days, most notably with libraries such as <a href="http://www.emblematiq.com/lab/niceforms/ ">Niceforms</a> and its associated brethren. <br>
+It therefore pays to&nbsp; make the distinction between functional and theme-specific JavaScript and allow both modules and themes to provide their own collections of scripts.</font></p>
+<p><font face="Arial">For shared libraries like jQuery etc, they can be made available as part of the core application, and modules and themes can take it for granted that it will be available for their use.<br>
+</font></p>
+<p><font face="Arial"><strong>CSS</strong></font><font face="Arial">
+<p><font face="Arial">Most theming can be achieved by switching style sheets if the mark-up has been designed properly and this is an obvious candidate for theming support. Switching between style sheets is a trivial and well documented operation and can easily be achieved through the use of a HtmlHelper extension method.</font></p>
+<p><font face="Arial">I'll assume I don't need to write an entry on achieving the switching between either the CSS or JavaScript, although as with anything if prompted I'll cover the subject.</font></p>
+<p><font face="Arial"><strong>Master Pages</strong><br>
+</font></p>
+<p><font face="Arial">Sometimes the client wishes for major structural changes to the web application, and CSS changes may not be enough. For this we have master pages although because of the increased cost of having to maintain the extra mark-up&nbsp; they should probably only be used as a last resort.</font></p>
+<p><font face="Arial">I wrote a blog entry about the various methods of <a href="http://codeofrob.com/archive/2009/11/01/dynamically-switching-between-master-pages-in-asp.net-mvc.aspx">switching between the master pages at runtime</a> a while ago so I won't be covering that again.</font></p>
+<p><font face="Arial">For my purposes over the coming posts, I assume that the structure of the master page IS a part of theming, and that we are using sub-master pages and separate child master pages across the site for different interfaces. I therefore use the OnPreInit method mentioned in the above entry for the greatest amount of flexibility.</font></p>
+<p><font face="Arial"><strong>Views + Partial Views</strong></font></p>
+<font face="Arial"><font face="Arial">
+<p><font face="Arial">New modules will require&nbsp; either new views or the ability to override existing views, and thus I consider views to be a functional aspect of the application.</font></p>
+<p><font face="Arial">I have seen views and partial views used for theming in frameworks or products where actual functional module support was highly limited. I assume a multi-tenant system *does* have decent functional module support and thus they are part of modules and not theming.</font></p>
+<p><font face="Arial">Mark-up in the views should simply be kept as theme-agnostic as possible, as themes won't be able to change it.</font></p>
+<p><font face="Arial">I'll be covering this in this series, utilising&nbsp; the power of a custom view engine to find and replace views based on the currently active modules.</font></p>
+<p><strong>Controller Actions</strong></p>
+<p><font face="Arial">These are obviously an important part of adding functionality to the application through the use of modules.</font></p>
+<p><font face="Arial">Because we have the ability to not only add new&nbsp; views, but to modify them - we also need the ability to add new actions and indeed replace existing actions (as modified views may accept modified view models!)</font></p>
+<p><font face="Arial">This is probably the hardest problem to solve and there are a few ways of solving it,&nbsp; this too will be coming in this series - using custom controller factories to compose or locate controllers dynamically based on the currently active modules.<br>
+</font></p>
+<p><font face="Arial"><strong>In Summary</strong></font></p>
+<p><font face="Arial">We have covered the components of an MVC web application and established where the boundaries lie between modules and theming support.</font></p>
+<p><font face="Arial">In the next entry I'll be covering how to utilise view engines to achieve the per-module views and partial views.<br>
+</font></p>
+<p><br>
+&nbsp;</p>
+</font><font face="Arial"><br>
+</font></font></font></p>
+	</div>
+      <div id="links">
+        <a href="/">Go back to the index</a>
+      </div>
+      <div id="post-comments">
+      
+      </div>
+    </div>
+  </body>
+</html>
