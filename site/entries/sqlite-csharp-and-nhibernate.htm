@@ -1,0 +1,254 @@
+<html>
+  <title>Codeofrob.com</title>
+  <body>
+    <div id="post">
+		<p>Taking a brief&nbsp; interlude from my RavenDB series, I was doing some work on an internal project tonight with the build scripts and test-runner and I finally got bored of having to deal with un-managed SQLite dependencies with a project which other than that was platform agnostic.</p>  <p>The problem with having un-managed dependencies in a managed project is that Visual Studio quite frankly sucks at it, you can set up certain projects (in this case the tests) to be x86 only, and remove their Any CPU configuration – but as soon as you add a new project to the solution it decides to re-add the old configuration and potentially break things again. </p>  <p>This doesn't really rear any problems until you write a build script and things start falling over as your test runner tries to run as an x64 process and tries to load in the x86 dependency, or any number of combinations where this kind of thing can blow up. If it can happen, it will happen and it’s just something I’d rather not deal with.</p>  <p>So I had a look at <a href="http://code.google.com/p/csharp-sqlite/">Sqlite-Csharp</a>, the code is atrocious as far as natively written C# libraries go (that’s not the point though, it’s a *port*), but it looks to be a superb direct-port of a C project (Sqlite) and passes most of the tests that it needs to in order for it to be viable for use in at least our in-memory tests.</p>  <p>Anyway, you can’t download binaries, so you have to build it – but no changes are required so just do it.</p>  <p>I’m not going to cover the process of setting up in-memory databases for testing with SQLite as that’s an easily Google-able topic, but there are a few differences between doing it with the unmanaged libraries and with the pure managed libraries.</p>  <p>This is what my FluentNHibernate configuration looks like:</p>  <div class="csharpcode">   <pre class="alt"><span class="lnum">   1:  </span>Fluently.Configure()</pre>
+
+  <pre><span class="lnum">   2:  </span>            .Database(</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>                 SQLiteConfiguration.Standard.ConnectionString(</pre>
+
+  <pre><span class="lnum">   4:  </span>                      x =&gt; x.Is(mConnectionString)).Driver&lt;SqliteDriver&gt;());</pre>
+</div>
+<style type="text/css">![CDATA[
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p></p>
+
+<p>I’ve had to create a driver to make this work properly as there isn’t one provided as stock in NHibernate, the code for this is as simple as this:</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span><span class="kwrd">public</span> <span class="kwrd">class</span> SqliteDriver : ReflectionBasedDriver</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="rem">/// &lt;summary&gt;</span></pre>
+
+  <pre><span class="lnum">   4:  </span>        <span class="rem">/// Initializes a new instance of &lt;see cref="SQLiteDriver"/&gt;.</span></pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>        <span class="rem">/// &lt;/summary&gt;</span></pre>
+
+  <pre><span class="lnum">   6:  </span>        <span class="rem">/// &lt;exception cref="HibernateException"&gt;</span></pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>        <span class="rem">/// Thrown when the &lt;c&gt;Community.CsharpSqlite.SQLiteClient&lt;/c&gt; assembly can not be loaded.</span></pre>
+
+  <pre><span class="lnum">   8:  </span>        <span class="rem">/// &lt;/exception&gt;</span></pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>        <span class="kwrd">public</span> SqliteDriver()</pre>
+
+  <pre><span class="lnum">  10:  </span>            : <span class="kwrd">base</span>(</pre>
+
+  <pre class="alt"><span class="lnum">  11:  </span>                <span class="str">"Community.CsharpSqlite.SQLiteClient"</span>,</pre>
+
+  <pre><span class="lnum">  12:  </span>                <span class="str">"Community.CsharpSqlite.SQLiteClient.SqliteConnection"</span>,</pre>
+
+  <pre class="alt"><span class="lnum">  13:  </span>                <span class="str">"Community.CsharpSqlite.SQLiteClient.SqliteCommand"</span>)</pre>
+
+  <pre><span class="lnum">  14:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">  15:  </span>        }</pre>
+
+  <pre><span class="lnum">  16:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">  17:  </span>        <span class="kwrd">public</span> <span class="kwrd">override</span> <span class="kwrd">bool</span> UseNamedPrefixInSql</pre>
+
+  <pre><span class="lnum">  18:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">  19:  </span>            get { <span class="kwrd">return</span> <span class="kwrd">true</span>; }</pre>
+
+  <pre><span class="lnum">  20:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">  21:  </span>&nbsp;</pre>
+
+  <pre><span class="lnum">  22:  </span>        <span class="kwrd">public</span> <span class="kwrd">override</span> <span class="kwrd">bool</span> UseNamedPrefixInParameter</pre>
+
+  <pre class="alt"><span class="lnum">  23:  </span>        {</pre>
+
+  <pre><span class="lnum">  24:  </span>            get { <span class="kwrd">return</span> <span class="kwrd">true</span>; }</pre>
+
+  <pre class="alt"><span class="lnum">  25:  </span>        }</pre>
+
+  <pre><span class="lnum">  26:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">  27:  </span>        <span class="kwrd">public</span> <span class="kwrd">override</span> <span class="kwrd">string</span> NamedPrefix</pre>
+
+  <pre><span class="lnum">  28:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">  29:  </span>            get { <span class="kwrd">return</span> <span class="str">"@"</span>; }</pre>
+
+  <pre><span class="lnum">  30:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">  31:  </span>&nbsp;</pre>
+
+  <pre><span class="lnum">  32:  </span>        <span class="kwrd">public</span> <span class="kwrd">override</span> <span class="kwrd">bool</span> SupportsMultipleOpenReaders</pre>
+
+  <pre class="alt"><span class="lnum">  33:  </span>        {</pre>
+
+  <pre><span class="lnum">  34:  </span>            get { <span class="kwrd">return</span> <span class="kwrd">false</span>; }</pre>
+
+  <pre class="alt"><span class="lnum">  35:  </span>        }</pre>
+
+  <pre><span class="lnum">  36:  </span>&nbsp;</pre>
+
+  <pre class="alt"><span class="lnum">  37:  </span>        <span class="kwrd">public</span> <span class="kwrd">override</span> <span class="kwrd">bool</span> SupportsMultipleQueries</pre>
+
+  <pre><span class="lnum">  38:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">  39:  </span>            get { <span class="kwrd">return</span> <span class="kwrd">true</span>; }</pre>
+
+  <pre><span class="lnum">  40:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">  41:  </span>    }</pre>
+</div>
+<style type="text/css">![CDATA[
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p></p>
+
+<p>Yeah, not terribly exciting – just add a reference to Community.CsharpSqlite.SQLiteClient and this will work.</p>
+
+<p>The other major difference is the delimiter between connection string components is a comma and the method of selecting an in-memory database looks different. This is my connection string:</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span><span class="str">"uri=file://:memory:,Version=3"</span>;</pre>
+</div>
+<style type="text/css">![CDATA[
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>And this is the code I use to create the connection:</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span><span class="kwrd">private</span> SqliteConnection GetConnection()</pre>
+
+  <pre><span class="lnum">   2:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>            <span class="kwrd">if</span> (mConnection == <span class="kwrd">null</span>) {</pre>
+
+  <pre><span class="lnum">   4:  </span>                mConnection = <span class="kwrd">new</span> SqliteConnection(mConnectionString);</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>                mConnection.Open();</pre>
+
+  <pre><span class="lnum">   6:  </span>            }</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>            <span class="kwrd">return</span> mConnection;</pre>
+
+  <pre><span class="lnum">   8:  </span>        }</pre>
+</div>
+
+<p></p><style type="text/css">![CDATA[
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>And this is therefore the code I use to create a session factory:</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>mFactory.OpenSession(GetConnection());</pre>
+</div>
+
+<div class="csharpcode">&nbsp;</div>
+
+<p><strong>A word of warning</strong></p>
+
+<p>Mileage may vary, I had 11 tests from about 300 fail, mostly due to unrecognised types/null values and exceptions that were different in this version of Sqlite, I’m submitting some code fixes for the unrecognised types and null values and modifying my tests to take into account the new exception types.</p>
+
+<p>Also, I can’t guarantee I’ve done it right, so let me know if I’ve done something stupid.</p>
+
+<p>All of my tests are now Any CPU and my build process is suddenly a lot simpler, I’ll take the hit of having to submit and change a bit of code in order to get that.</p>
+	</div>
+  </body>
+</html>

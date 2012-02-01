@@ -1,0 +1,303 @@
+<html>
+  <title>Codeofrob.com</title>
+  <body>
+    <div id="post">
+		<p><font face="Arial"><strong><em>Note: This entry is out of date, RavenDB has changed a lot since these early days and you’d be best off checking the following resources:</em></strong></font></p>  <ul>   <li><strong><em><font face="Arial"><a href="http://github.com/robashton/ravengallery">http://github.com/robashton/ravengallery</a> A sample application built on top of the latest RavenDB binaries</font></em></strong></li>    <li><a href="http://codeofrob.com/archive/2010/09/28/ravendb-image-gallery-project-i.aspx">http://codeofrob.com/archive/2010/09/28/ravendb-image-gallery-project-i.aspx</a>&nbsp;<em><strong><font face="Arial">The first entry in a series on building an application on top of RavenDB</font></strong></em></li> </ul>  <p><em><strong><font face="Arial">You can of course carry on reading this entry, but be aware&nbsp; that it’ll be largely incorrect.</font></strong></em></p>  <p><font face="Arial">As I mentioned in a brief entry a couple of days ago, I've been playing with RavenDB for about a week now, and mapping across an old project of mine which never got off the ground due to work and time constraints.</font></p>  <p><font face="Arial">I spent a lot of time trying to get that project to play ball inside a relational database, and while I reached some satisfactory conclusions, it rather felt like I was trying to play ball with an anchor.</font></p>  <p><font face="Arial">I had always resolved to come back to the project when I had more time, and perhaps to write some of the more complicated reporting aspects of the project against something more appropriate (think Solr or Lucene), and with the announcement of RavenDB I was motivated to at least play around with it again.</font></p>  <p><font face="Arial">I have a few posts lined up on some of the more complicated usages of RavenDB I've encountered thus far, but first I want to go over the basic structure of 'how to use RavenDB' from the perspective of somebody using the .NET Client API (Ignoring the underlying HTTP requests for now)</font></p>  <p><font face="Arial"><strong>Getting Started</strong></font></p>  <p><font face="Arial">The first thing you need to do is grab the source and build the binaries, as as far as I can see you can't get hold of any yet. This is probably a good thing because if you're writing code against RavenDB at this stage you'll want to be updating constantly.</font></p>  <p><strong>Edit:</strong> Builds are now available from the build server found <a href="http://builds.hibernatingrhinos.com/builds/RavenDB">here</a></p>  <p><font face="Arial">Anyway, get over to Github and pull from there using your preferred tool (or just download as a zip!)</font></p>  <p><font face="Arial"><a href="http://github.com/ravendb/ravendb">http://github.com/ravendb/ravendb</a></font></p>  <p><font face="Arial">RavenDB is a VS2010 project, which means unless you have VS2010 you're not going to be able to just open it up and build it in Visual Studio - happily there are some build scripts but I'm not going to go into detail on how to build RavenDB, there are plenty of instructions out there for such things elsewhere.</font></p>  <p><font face="Arial">Once you've built RavenDB, the important binaries to look at are:</font></p>  <p><font face="Arial">* Raven.Client: This is what your application will be referencing to talk to RavenDB      <br>* Raven.Server: This is what you can run to create a standalone RavenDB server</font></p>  <p><font face="Arial">For now, grab the contents of the built Raven.Client bin directory, create a console application and reference the lot of them.</font></p>  <p><font face="Arial">Now you have a choice, you can launch the Server and get a nice web interface for managing your indices and viewing your data, or you can just run it embedded in your application. Choosing between the two is the difference between the following two lines of code:</font></p> <font face="Arial">   <pre class="brush: csharp;" title="code">using(var documentStore = new DocumentStore() { Url = "http://localhost:8080"}) {</pre>
+</font>
+
+<p><font face="Arial">or</font></p>
+<font face="Arial">
+  <pre class="brush: csharp;" title="code">using (var documentStore = new DocumentStore() { DataDirectory = "Data" }) {</pre>
+</font>
+
+<p><font face="Arial">If you opt for running the server, then you need to go to Raven.Server and run it (you might need to run it elevated, as for me it falls over if I don't).</font></p>
+
+<p><font face="Arial">Now, my basic program looks something like this:</font></p>
+
+<p><font face="Arial"></font><font face="Arial"></font>
+
+  </p><pre class="brush: csharp;" title="code">    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var documentStore = new DocumentStore() { Url = "http://localhost:8080" })
+            {
+                documentStore.Initialise();
+                using (var documentSession = documentStore.OpenSession())
+                {
+
+                }
+            }
+        }
+    }</pre>
+
+
+<p><font face="Arial">Just to add some context to this, in a web application you'd create the document store on application start up, and then per request/unit of work you'd request a document session and keep that around for the lifetime of that request/unit of work.</font></p>
+
+<p><font face="Arial">The session controls unit of work, and controls some important tasks such as</font></p>
+
+<p><font face="Arial">1) Tracking loaded entities + Changes to those entities 
+    <br>2) Exposing methods to query/load/save to the document store</font></p>
+
+<p><font face="Arial"><strong>Saving Documents to the Store</strong> 
+
+    <br></font><font face="Arial">No set up is required to store anything to RavenDB (it *is* a document database), by default the conventions will look for an "Id" property on any object you try to store however so this is worth bearing in mind.</font></p>
+
+<p><font face="Arial">Here is a basic entity:</font></p>
+<font face="Arial">
+  <pre class="brush: csharp;" title="code">   public class BasicEntity
+    {
+        public string Id
+        {
+            get;
+            set;
+        }
+
+        public string SomeData
+        {
+            get;
+            set;
+        }
+
+ public string SomeOtherData
+ {
+            get;
+            set;
+ }
+    }</pre>
+</font>
+
+<p><font face="Arial">This can be dumped to the store with a simple call to documentSession.Store</font></p>
+<font face="Arial">
+  <pre class="brush: csharp;" title="code">BasicEntity entity = new BasicEntity()
+{
+    SomeData = "Hello World",
+    SomeOtherData = "This is just another property",
+};
+documentSession.Store(entity);</pre>
+</font>
+
+<p><font face="Arial">However, a few things of note are</font></p>
+
+<p><font face="Arial">1) This has not actually gone to the server yet 
+    <br>2) The document still hasn't got an Id, don't try to do anything with that property yet</font></p>
+
+<p><font face="Arial">RavenDb will batch up changes to the store until SaveChanges is called, and only then will documents be given ids and be saved to the server. A call to SaveChanges is atomic and this is one of the ways RavenDb gives us some basic transaction support.</font></p>
+<font face="Arial">
+  <pre class="brush: csharp;" title="code">documentSession.SaveChanges();</pre>
+</font>
+
+<p><font face="Arial"><strong>Retrieving + Modifying an Document</strong> 
+
+    <br></font><font face="Arial">I mentioned that the document session was transactional and could keep track of loaded documents and changes to those documents. This is a feature that makes the .NET client library a pleasure to work with because you can do the following:</font></p>
+
+<p><font face="Arial"></font><font face="Arial"></font>
+
+  </p><pre class="brush: csharp;" title="code">// Load the entity by id
+BasicEntity loadedEntity = documentSession.Load&lt;BasicEntity&gt;("SomeId");
+
+// Modify the entity
+loadedEntity.SomeData = "Greetings from Ohio";
+
+// Flush any changes made to any entities to the store
+documentSession.SaveChanges();</pre>
+
+
+<p><font face="Arial">What this means in essence, is that if you've got a nice structured application, your documents can be modified by the application without having to worry about how they are persisted. This is something we're used to with NHibernate and it's good to see some of these concepts appearing in a document database client.</font></p>
+<font face="Arial">
+  <p>
+    <br><strong>Querying for Documents</strong> 
+
+    <br>An important feature of anything we store data in, is the ability to query the store for 'views' or indeed the actual entities themselves.</p>
+
+  <p>We've gotten used to in NHibernate and other ORMs simply executing ad-hoc queries against the database, and while you can do that with some document databases, that's not really what RavenDb is designed for.</p>
+
+  <p>In order to query documents in RavenDB it is necessary to create an index across the properties of the documents you wish to query. This is done up front and exists in the database. A few things of note:</p>
+
+  <p>1) Documents are processed against those indexes when they are added (eventually) 
+    <br>2) Queries taking place against those indexes are therefore cheap (relative to say, doing an ad-hoc query)</p>
+
+  <p>In my application, I create all of my indexes up front as part of my 'database creation script' (actually, they're the only part of my database creation script, because there is so little setup involved. There is nothing to stop you doing it at any point when the application is running though.</p>
+
+  <p>Indexes exist as Linq queries against the documents in the store, and are either be defined as the strings that will be sent up to the server and stored as they are written, or defined as linq queries that will be converted *into* strings and stored on the server.</p>
+
+  <p>The downside to using the actual linq queries, is that the indexes on the server won't look exactly as you wrote them, but the upside is you get type safety and intellisense. I'm currently choosing to use the strongly typed linq queries because I don't mind how they look on the server, just so long as they work. I write tests for all of my indexes and queries so I know they're cool.</p>
+
+  <p>The recommended practise is still currently to define your indexes separately to the application, as strings in the Web UI.</p>
+
+  <p>There are two major components of each index, the "Map" query and the "Reduce" query. I'll not go into detail on what this means, because once again you can get this information across the internet, and Oren has written a very good visual explanation of what Map/Reduce looks like in Raven <a href="http://ayende.com/Blog/archive/2010/03/14/map-reduce-ndash-a-visual-explanation.aspx">here</a>:</p>
+
+  <p>In order to do a query, we need at the very least to create a Map telling Raven which fields we want indexing for our queries. This means we only index the fields that are relevant to our query and keep things small and (hopefully) more efficient.</p>
+
+  <p>Indexes are created against the document store (not the session), and the syntax for that looks something like this:</p>
+
+  <pre class="brush: csharp;" title="code">documentStore.DatabaseCommands.PutIndex(
+    "BasicEntityBySomeData",
+    new IndexDefinition&lt;BasicEntity, BasicEntity&gt;()
+    {
+        Map = docs =&gt; from doc in docs
+                        where doc.SomeData != null
+                        select new
+                        {
+                            SomeData = doc.SomeData
+                        },
+           });</pre>
+
+  <p>* "BasicEntityBySomeData" is the unique identifier of the index we have created 
+    <br>* The linq query is ran against "docs" which is (effectively) a collection of all the documents in the database (not just BasicEntities). 
+
+    <br>* SomeData is now a field that is being indexed with the name SomeData</p>
+
+  <p>There is nothing to stop you from indexing every field of the document in a single index and just using that index across all of your queries, but that would probably be unwise. The whole point of creating a map is you are limiting the data you are indexing to just the data you want to search on.</p>
+
+  <p>You can write *almost* any code you want in the linq statement, as on the server it will be converted into a proper linq query and executed as a function across the documents. </p>
+
+  <p>To use this Index, we invoke the Query method on the DocumentSession specifying the name of the index we wish to use and a Where clause (which is effectively a Lucene query) against that index.</p>
+
+  <pre class="brush: csharp;" title="code">BasicEntity[] documents = documentSession.LuceneQuery&lt;BasicEntity&gt;("BasicEntityBySomeData")
+    .Where("SomeData:Hello~")
+    .WaitForNonStaleResults()
+    .ToArray();</pre>
+
+  <p>This will return a collection of documents where "SomeData" contains some text that looks like "Hello". Clearly there is some scope here for yet more strongly typed usefulness, but once again I have tests for all of my queries so it's not presenting a problem in this area.</p>
+
+  <p>The WaitForNonStaleResults call means that the call will wait a (default) amount of time for the documents to finish indexing before returning data (or timeout). The use of kind of call should be thought about carefully, as the whole point of the document database is that it's "eventually consistent", and you don't always *need* the most up to date result possible. (For example: Displaying a list of documents on the front page of your website)</p>
+
+  <p><strong>Retrieving only the data you need 
+      <br></strong>This is all very well and good, but because you're storing entire documents and sometimes you only want small portions of those documents, and this is of course possible too.</p>
+
+  <p>I've defined a simple projection of the BasicEntity containing a single property like so:</p>
+
+  <pre class="brush: csharp;" title="code">    public class SomeDataProjection
+    {
+        public string SomeData
+        {
+            get;
+            set;
+        }
+    }</pre>
+
+  <p>In order to get the value from the index rather than fetching the entire document from the store, we need to modify the index slightly:</p>
+
+  <pre class="brush: csharp;" title="code">documentStore.DatabaseCommands.PutIndex(
+    "BasicEntityBySomeData",
+    new IndexDefinition&lt;BasicEntity, BasicEntity&gt;()
+    {
+        Map = docs =&gt; from doc in docs
+                        where doc.SomeData != null
+                        select new
+                        {
+                            SomeData = doc.SomeData
+                        },
+        Stores = { { x =&gt; x.SomeData, FieldStorage.Yes } }
+    });</pre>
+
+  <p>We are then telling RavenDb to store the value in the index so it can be easily retrieved using the following query.</p>
+
+  <pre class="brush: csharp;" title="code">SomeDataProjection[] projections = documentSession.LuceneQuery&lt;BasicEntity&gt;("BasicEntityBySomeData")
+    .WaitForNonStaleResults()
+    .SelectFields&lt;SomeDataProjection&gt;("SomeData")
+    .ToArray();</pre>
+
+  <p>This will mean only the data you want is transmitted across the wire and make the query much more performant. <strong>Note</strong>: You can only pull back fields that have been stored using the Store facility on the index.</p>
+
+  <p><strong>Reporting on your data</strong> 
+
+    <br>So that's round tripping&nbsp; to and from the data store, but in the real world you soon need to be able to perform more complex queries across your data.</p>
+
+  <p>This is a contrived example, but how about summing up the total lengths of all the strings stored in all the SomeData properties across the document store?</p>
+
+  <p>Let's add a new property to the Entity called "Category" so we can get all the lengths by category:</p>
+
+  <pre class="brush: csharp;" title="code">  public class BasicEntity
+    {
+        public string Id
+        {
+            get;
+            set;
+        }
+
+        public string Category
+        {
+            get;
+            set;
+        }
+
+        public string SomeData
+        {
+            get;
+            set;
+        }
+    }</pre>
+
+  <p>And let's add a load of entities to the document store like thus:</p>
+
+  <pre class="brush: csharp;" title="code">documentSession.Store(new BasicEntity()
+{
+    Id = "Document1",
+    Category = "One",
+    SomeData = "Text"
+});
+documentSession.Store(new BasicEntity()
+{
+    Id = "Document2",
+    Category = "Two",
+    SomeData = "More text"
+});
+documentSession.Store(new BasicEntity()
+{
+    Id = "Document3",
+    Category = "One",
+    SomeData = "And more"
+});
+documentSession.SaveChanges();</pre>
+
+  <p>What we want to do, is index the *length* of the strings stored in the document, and index the category, before reducing the query across category to get the total lengths. If you don't understand what I mean by that, then go and read about Map/Reduce on Oren's blog linked above!</p>
+
+  <pre class="brush: csharp;" title="code">documentStore.DatabaseCommands.PutIndex(
+"BasicEntityCountSomeDataLengthByCategory",
+new IndexDefinition&lt;BasicEntity, CategoryDataCountResult&gt;()
+{
+    Map = docs =&gt; from doc in docs where doc.SomeData != null
+                            select new
+                            {
+                                Category = doc.Category,
+                                SomeDataLength = doc.SomeData.Length
+                            },
+    
+    Reduce =  results =&gt; from result in results 
+                group result by result.Category into g
+                select new
+                {
+                    Category = g.Key,
+                    SomeDataLength = g.Sum(x =&gt; x.SomeDataLength)
+                }
+});</pre>
+
+  <p>It's as simple as that, this now means I can execute the query:</p>
+
+  <pre class="brush: csharp;" title="code">CategoryDataCountResult[] counts = documentSession.LuceneQuery&lt;BasicEntity&gt;("BasicEntityCountSomeDataLengthByCategory")
+    .WaitForNonStaleResults()
+    .SelectFields&lt;CategoryDataCountResult&gt;("SomeDataLength", "Category")
+    .ToArray();</pre>
+
+  <p>And that will give me the results as expected:</p>
+
+  <p>One: 12 
+    <br>Two: 9</p>
+
+  <p>The beautiful thing about this, is that was pretty much calculated when the documents were added, reading the data out was a really cheap operation - think about the cost of doing this in T-SQL :)</p>
+
+  <p><strong>Summary</strong> 
+
+    <br>This was quite a lengthy blog post to cover some of the simple features of RavenDB, I'll start getting into more detail in my next post where I'll cover some more complicated reporting queries/indexes and talk about the excellent Web interface that Oren has created part of this project.</p>
+
+  <p>
+    <br><strong>My two cents 
+      <br></strong>My experiences with the project so far have been mostly positive, I've found a few issues but Oren has been *very* fast to fix them and publish fixes to Github (and these have as he says, been "edge cases") which most people won't come into contact with when playing with RavenDB.</p>
+
+  <p>It's definitely worth a gander, I see this project taking off in the .NET space as it matures.</p>
+</font>
+	</div>
+  </body>
+</html>

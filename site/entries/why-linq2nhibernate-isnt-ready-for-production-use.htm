@@ -1,0 +1,118 @@
+<html>
+  <title>Codeofrob.com</title>
+  <body>
+    <div id="post">
+		I was quite excited when Ayende announced that he had written a Linq provider for NHibernate which was of <a href="http://ayende.com/Blog/archive/2009/07/26/nhibernate-linq-1.0-released.aspx">production quality</a>.<br>
+<br>
+It came with a few caveats, it could only do what criteria currently supported and they hadn't implemented any sort of join support. I considered these to be perfectly reasonable items on the todo list, given that they are actively working on creating a more complete linq provider that does everything people would want it to do.<br>
+<br>
+I do the vast bulk of my queries using the criteria API, written as specifications against thin repositories, and adding a LinqSpecification was a simple task. I decided that given the limitations described above to follow a few simple rules for when I could use a Linq query such as "only use Linq when querying the properties of a single type of object".<br>
+<br>
+Having Linq in my specifications gave some real benefits, such as strong typing and compile time support for checking the properties being queried against. Normally if you change the name of a property on any domain object and forget to update the text in a criteria or hql query you'd only catch this when you ran your unit tests. (Or worse, during product testing/use!)<br>
+<br>
+I was using it quite happily for a week or so until I stopped to review the sql it was generating under the hood for even the simplest of queries.
+<p>Consider the following objects:</p>
+<pre class="brush: csharp;" title="code">    public class Blog
+    {
+        public virtual int Id
+        {
+            get;
+            protected set;
+        }
+
+        public virtual String Name
+        {
+            get;
+            set;
+        }
+    }
+
+    public class BlogEntry
+    {
+        public virtual int Id
+        {
+            get;
+            set;
+        }
+
+        public virtual Blog Blog
+        {
+            get;
+            set;
+        }
+
+        public virtual String Content
+        {
+            get;
+            set;
+        }
+    }</pre>
+<p>With the following mappings:&nbsp;</p>
+<pre class="brush: csharp;" title="code">    public class BlogMap : ClassMap&lt;Blog&gt;
+    {
+        public BlogMap()
+        {
+            Id(x =&gt; x.Id);
+            Map(x =&gt; x.Name).Not.Nullable();
+        }
+    }
+
+    public class BlogEntryMap : ClassMap&lt;BlogEntry&gt;
+    {
+        public BlogEntryMap()
+        {
+            Id(x =&gt; x.Id);
+            Map(x =&gt; x.Content).Not.Nullable();
+            References(x =&gt; x.Blog).Not.Nullable();
+        }
+    }</pre>
+<p>Fairly straight forward stuff. Now imagine I have a blog object in hand and I wish to query for all the entries that belong to that blog (We could easily imagine asking this being a query where we ask for the entries from that blog between a certain date range).<br>
+<br>
+The query looks something like this:&nbsp;</p>
+<pre class="brush: csharp;" title="code">            var linqResults = (
+                        from entry in session.Linq&lt;BlogEntry&gt;()
+                        where entry.Blog  == blog
+                        select entry
+                      ).ToList();</pre>
+<br>
+Again, very straight forward - and you'd expect the query to be so as well - so have a look! <br>
+<pre class="brush: sql;" title="code">SELECT this_.Id as Id1_1_, this_.Content as Content1_1_, this_.Blog_id as Blog3_1_1_, blog1_.Id as Id0_0_, blog1_.Name as Name0_0_ FROM "BlogEntry" this_ left outer join "Blog" blog1_ on t his_.Blog_id=blog1_.Id WHERE this_.Blog_id = @p0;@p0 = 1</pre>
+What WHAAT?!<br>
+<br>
+If you can't see the problem here then go and ask your DBA if you have one, because I can guarantee they'll not be happy if you start littering your specifications with this kind of query. <br>
+<br>
+<ol>
+    <li>Why are we doing a join to the Blog table? We don't need to do a join to the Blog table, we should be comparing the id situated in the BlogEntry table. </li>
+    <li>Why are we bringing back al the information from the blog table as well as the blog entry? Imagine you're bringing back 50 such blog entries - you'd be bringing back 50 identical blog objects too. </li>
+    <li>It's a left outer join too, your DBA is going to hit the roof! (Mine definitely would - you should only be using these where it makes sense to be using them. </li>
+</ol>
+Check out the equivalent Criteria based query:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<pre class="brush: csharp;" title="code">            var criteria = session.CreateCriteria&lt;BlogEntry&gt;()
+                                .Add(Restrictions.Eq("Blog", blog)).List&lt;BlogEntry&gt;();</pre>
+<br>
+<br>
+Generating the following SQL:<br>
+<br>
+<pre class="brush: sql;" title="code">SELECT this_.Id as Id1_0_, this_.Content as Content1_0_, this_.Blog_id as Blog3_1_0_ FROM "BlogEntry" this_ WHERE this_.Blog_id = @p0;@p0 = 1</pre>
+<p><br>
+Much more sensible.<br>
+<br>
+You might be of the persuasion that you don't really care, and that's acceptable in some cases I guess- but I'm of the opinion that if all of your queries look like the above then you've got some real issues. Our product has to service the needs of some fairly large customers with some fairly heavy load and the system chugging at <span style="FONT-WEIGHT: bold;">all </span>is going to get us in a lot of trouble. </p>
+<p>Take for example the following (perfectly reasonable) query if our objects were a little more complex.</p>
+<pre class="brush: csharp;" title="code">            var complexResult = (
+                    from entry in session.Linq&lt;BlogEntry&gt;()
+                    where entry.Category == category &amp;&amp;  entry.Blog.User == user
+                    select entry
+                ).ToList();</pre>
+<p>This will generate the following SQL:</p>
+<pre class="brush: sql;" title="code">SELECT this_.Id as Id1_3_, this_.Content as Content1_3_, this_.Blog_id as Blog3_1_3_, this_.Category_id as Category4_1_3_, blog2_.Id as Id0_0_, blog2_.Name as Name0_0_, blog2_.User_id as User3_0_0_, user3_.Id as Id3_1_, user3_.Name as Name3_1_, category1_.Id as Id2_2_, category1_.Name as Name2_2_ FROM "BlogEntry" this_ left outer join "Blog" blog2_ on this_.Blog_id=blog2_.Id left outer join "User" user3_ on blog2_.User_id=user3_.Id left outer join "Category" category1_ on this_.Category_id=category1_.Id WHERE (this_.Category_id = @p0 and blog2_.User_id = @p1);@p0 = 1, @p1 = 1</pre>
+<p>Every single property of every single referenced object being brought back even though I've only asked for BlogEntry.</p>
+<p>Without trying to sound like a complete arse, this is not the definition of production quality I am familar with! <br>
+<br>
+&nbsp;I really do look forward to the proper release of Linq2NHibernate, but until then I'm sticking to Hql And Criteria because I can trust them to keep my DBA happy.</p>
+<p></p><hr>
+Technorati tags: <a rel="tag" href="http://technorati.com/tags/NHibernate">NHibernate</a>, <a rel="tag" href="http://technorati.com/tags/Linq2NHibernate">Linq2NHibernate</a>, <a rel="tag" href="http://technorati.com/tags/Linq">Linq</a>, <a rel="tag" href="http://technorati.com/tags/.NET">.NET</a>
+	</div>
+  </body>
+</html>
