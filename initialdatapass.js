@@ -22,7 +22,7 @@ InitialDataPass.prototype = {
   retrieveCategory: function(i) {
     this.pendingCategories++;
     var self = this;
-    jsdom.env('http://codeofrob.com/category/' + i + '.aspx',
+    jsdom.env('http://internal.codeofrob.com/category/' + i + '.aspx',
     [ 'http://code.jquery.com/jquery-1.5.min.js' ],
     function(errors, window) {
       var $ = window.$;
@@ -45,7 +45,7 @@ InitialDataPass.prototype = {
   },
   fetchPostContent: function(post) {
     var self = this;
-    jsdom.env('http://codeofrob.com/' + post.link,
+    jsdom.env('http://internal.codeofrob.com/' + post.link,
     [ 'http://code.jquery.com/jquery-1.5.min.js' ],
     function(errors, window) {
       var $ = window.$;
