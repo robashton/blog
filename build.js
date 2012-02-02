@@ -12,7 +12,23 @@ var compilePosts = function(posts) {
     var post = posts[i];
     var outputFilename = 'site/entries/' + common.titleToPage(post.title);
     var inputHtml = fs.readFileSync('input/pages/' + common.titleToFolder(post.title) + '/content.html', 'utf8');
-    var pageHtml = plates.bind(pageTemplate, { post: inputHtml, title: post.title, "post-title": post.title });
+    var commentHtml = '';
+    var inputComments = JSON.parse(fs.readFileSync('input/pages/' + common.titleToFolder(post.title) + '/comments.json', 'utf8'));
+    
+    for(var j = 0; j < inputComments.length; j++) {
+      var comment = inputComments[j];
+      commentHtml += '<div class="comment">\n';
+      commentHtml += '<div class="comment-author">\n';
+      commentHtml += '<img src="' + comment.author.avatar + '"/>\n';
+      commentHtml += '<p>' + comment.author.name + '</p>';
+      commentHtml += '</div>\n';
+      commentHtml += '<div class="comment-body">\n';
+      commentHtml += common.textToHtml(comment.text);
+      commentHtml += '</div>';
+      commentHtml += '</div>\n';
+    }
+    
+    var pageHtml = plates.bind(pageTemplate, { post: inputHtml, title: post.title, "post-title": post.title, "post-comments": commentHtml });
     fs.writeFileSync(outputFilename, pageHtml, 'utf8');
   }
 };

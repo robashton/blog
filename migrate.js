@@ -1,7 +1,7 @@
 var InitialDataPass = require('./initialdatapass').InitialDataPass;
 var fs = require('fs');
 var wrench = require('wrench');
-var common = require('common');
+var common = require('./common');
 
 performPassOne = function(callback) {
   wrench.rmdirSyncRecursive('./input/pages/', true);
@@ -19,9 +19,10 @@ performPassOne = function(callback) {
       fs.writeFileSync(directory + '/meta.json', JSON.stringify({
         title: post.title,
         date: post.date,
-        redirect: post.link        
+        redirect: post.link
       }));
       fs.writeFileSync(directory + '/content.html', post.content);
+      fs.writeFileSync(directory + '/comments.json', JSON.stringify(post.comments));
     }
     callback(allPosts);   
   });

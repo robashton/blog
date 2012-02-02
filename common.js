@@ -23,5 +23,8 @@ module.exports = {
           callback(metaCollection);
       });
     }
+  },
+  textToHtml: function(text) {
+    return text.replace('\t', ' ').replace('<', '&lt;').replace('>', '&rt;').replace('\n', '<br/>');
   }
 };

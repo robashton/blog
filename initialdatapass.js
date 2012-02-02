@@ -50,6 +50,23 @@ InitialDataPass.prototype = {
     function(errors, window) {
       var $ = window.$;
       post.content = $('div.post div.body').html();
+      post.comments = [];
+            
+      $('.comment').each(function() {
+        var comment = {};
+        var element = $(this);
+        
+        comment.author = {
+          name: element.find('.author a').text(),
+          avatar: element.find('.avatar').attr('src')     
+        };
+        comment.date = element.find('.postedDate').text();
+        comment.text = element.find('.content').text();
+        post.comments.push(comment);
+       
+      });
+      
+            
       self.addPost(post);   
     });
   },
