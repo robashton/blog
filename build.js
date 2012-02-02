@@ -4,20 +4,6 @@ var _ = require('underscore');
 var plates = require('plates');
 var common = require('./common');
 
-var getAllPostsInfo = function(callback) {
-  var folders = fs.readdirSync('./input/pages/');
-  var metaCollection = [];
-  for(var i in folders) {
-    var folder = './input/pages/' + folders[i];
-    fs.readFile(folder + '/meta.json', function(err, data) {
-      var meta = JSON.parse(data);
-      metaCollection.push(meta);
-      if(metaCollection.length === folders.length)
-        callback(metaCollection);
-    });
-  }
-};
-
 var compilePosts = function(posts) {
   wrench.rmdirSyncRecursive('site/entries/');
   fs.mkdirSync('site/entries', '777');
@@ -31,7 +17,7 @@ var compilePosts = function(posts) {
   }
 };
 
-getAllPostsInfo(function(posts) {
+common.getAllPostsInfo(function(posts) {
   posts = _(posts)
       .sortBy(function(item) { return - (new Date(item.date)); })
   
