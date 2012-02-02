@@ -3,7 +3,7 @@ var
   http = require('http'),
   paperboy = require('paperboy'),
 
-  PORT = process.env.port || 8000,
+  PORT = process.env.PORT || 8000,
   WEBROOT = path.join(path.dirname(__filename), 'site');
 
 http.createServer(function(req, res) {
