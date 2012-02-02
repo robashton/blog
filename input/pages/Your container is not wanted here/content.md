@@ -1,6 +1,3 @@
-Your IOC Containers are not wanted here
-----------------------------------
-
 Finding myself embroiled in yet another debate about IOC containers on Twitter I've decided to place my current thoughts here for posterity.
 
 *I don't really like using IOC containers*
