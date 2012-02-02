@@ -5,7 +5,7 @@ var EventEmitter = require( "events" ).EventEmitter;
 
 var InitialDataPass = function() {
   EventEmitter.call(this);
-  this.maximumCategories = 13;
+  this.maximumCategories = 14;
   this.posts = [];
   this.pendingPosts = 0;
   this.pendingCategories = 0;
