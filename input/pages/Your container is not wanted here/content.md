@@ -27,7 +27,7 @@ Allowing your junior developers to "not worry about these things", because the a
 > *need to re-implement (badly) what the language (compiler and VM)*
 > *already provide.*
 
-> Nat Friedman
+> Nat Pryce
 
 And this, is what I believe that it all boils down to.
 
