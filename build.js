@@ -26,13 +26,14 @@ var compilePosts = function(posts) {
     var commentHtml = '';
     var inputComments = JSON.parse(fs.readFileSync('input/pages/' + common.titleToFolder(post.title) + '/comments.json', 'utf8'));
     
-    feed.item({
-        title:  post.title,
-        description: inputHtml.replace(/\<!\[CDATA\[/gm, '').replace(/\]\]\>/gm, ''), // replace(/<(?:.|\n)*?>/gm, '').substr(0, 512) + '...',
-        url: 'http://codeofrob.com/entries/' + common.titleToPage(post.title),
-        date: post.date
-    });
-    
+    if( i < 10 ) {
+      feed.item({
+          title:  post.title,
+          url: 'http://codeofrob.com/entries/' + common.titleToPage(post.title),
+          description: inputHtml.replace(/\<!\[CDATA\[/gm, '').replace(/\]\]\>/gm, ''), // replace(/<(?:.|\n)*?>/gm, '').substr(0, 512) + '...',
+          date: post.date
+      });
+    }
     for(var j = 0; j < inputComments.length; j++) {
       var comment = inputComments[j];
       commentHtml += '<div class="comment">\n';
