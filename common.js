@@ -6,6 +6,7 @@ module.exports = {
             .replace(/ /g, '-')
             .replace(/[\'#\(\)]/g, '')
             .replace('/', '-')
+            .replace('?', '')
             + '.html';
   },
   titleToFolder: function(title) {
