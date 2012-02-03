@@ -3,8 +3,19 @@ var wrench = require('wrench');
 var _ = require('underscore');
 var plates = require('plates');
 var common = require('./common');
+var RSS = require('rss');
 
 var compilePosts = function(posts) {
+
+  var feed = new RSS({
+    title: 'Rob Ashton\'s blog',
+    description: 'Software development dumping ground',
+    feed_url: 'http://feeds.feedburner.com/robashton',
+    site_url: 'http://codeofrob.com',
+    image_url: 'http://codeofrob.com/img/cover.jpg',
+    author: 'Rob Ashton'
+  });
+
   wrench.rmdirSyncRecursive('site/entries/');
   fs.mkdirSync('site/entries', '777');
   var pageTemplate = fs.readFileSync('input/source/pagetemplate.html', 'utf8');
@@ -14,6 +25,13 @@ var compilePosts = function(posts) {
     var inputHtml = fs.readFileSync('input/pages/' + common.titleToFolder(post.title) + '/content.html', 'utf8');
     var commentHtml = '';
     var inputComments = JSON.parse(fs.readFileSync('input/pages/' + common.titleToFolder(post.title) + '/comments.json', 'utf8'));
+    
+    feed.item({
+        title:  post.title,
+        description: inputHtml,
+        url: 'http://codeofrob.com/entries/' + common.titleToPage(post.title),
+        date: post.date
+    });
     
     for(var j = 0; j < inputComments.length; j++) {
       var comment = inputComments[j];
@@ -31,6 +49,9 @@ var compilePosts = function(posts) {
     var pageHtml = plates.bind(pageTemplate, { post: inputHtml, title: post.title, "post-title": post.title, "post-comments": commentHtml });
     fs.writeFileSync(outputFilename, pageHtml, 'utf8');
   }
+  
+  var rssFeed = feed.xml();
+  fs.writeFileSync('site/rss.xml', rssFeed, 'utf8');
 };
 
 common.getAllPostsInfo(function(posts) {
