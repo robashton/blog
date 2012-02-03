@@ -28,7 +28,7 @@ var compilePosts = function(posts) {
     
     feed.item({
         title:  post.title,
-        description: inputHtml,
+        description: inputHtml.replace(/\<!\[CDATA\[/gm, '').replace(/\]\]\>/gm, ''), // replace(/<(?:.|\n)*?>/gm, '').substr(0, 512) + '...',
         url: 'http://codeofrob.com/entries/' + common.titleToPage(post.title),
         date: post.date
     });
