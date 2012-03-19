@@ -2,7 +2,7 @@
 
 <p><a href="http://hoverbattles.com">http://hoverbattles.com</a></p>
 
-<p>I've wanted to share a few of the mistakes/lessons learned writing and deploying a multiplayer game built entirely with JavaScript on top of NodeJS and WebGL for a while and this represents an opportune moment to do so. </p>
+<p>I've wanted to share a few of the mistakes/lessons learned writing and deploying a multiplayer game built entirely with JavaScript on top of <a href="http://nodejs.org/">NodeJS</a> and <a href="http://learningwebgl.com/blog/">WebGL</a> for a while and this represents an opportune moment to do so. </p>
 
 <p>I've gone with a brain-dump of various related learnings, as well as a couple of periphery items - first off, we'll go with the reason I couldn't keep Hoverbattles up on the old server.</p>
 
@@ -15,19 +15,19 @@
 <li>A really low budget VPS</li>
 </ul>
 
-<p>This might be plain old obvious to most people, but apparently not to me - I first deployed to my own VPS, and found that after it has been running for an hour or so it quickly consumed all the memory on the server and fell over.</p>
+<p>This might be plain old obvious to most people, but apparently not to me - I first deployed to my own VPS, and found that after it had been running for an hour or so it consumed all the memory on the server and fell over in a steaming heap.</p>
 
-<p>I tried to find a memory leak in Hoverbattles itself, I changed to various versions of node and nothing seemed to work - I couldn't reproduce on my meaty laptop and I gave up for a while, as I was working on a new project.</p>
+<p>I tried to find a memory leak in Hoverbattles itself, I changed to various versions of node, I re-built various components of the OS and nothing seemed to work. I wasn't able to reproduce the issue on my meaty laptop and I gave up for a while, as I was working on a new project.</p>
 
-<p>Turns out, by running long running processes on a virtualised OS on top of oversubscribed hardware, the OS is lied to, or it lies to you and things don't work quite well. Some of the more knowledgeable types could probably tell us why - but the bottom line is don't do it.</p>
+<p>Turns out that by running long running processes on a virtualised OS on oversubscribed hardware, the OS is lied to, or it lies to you and things don't work quite well. Some of the more knowledgeable types could probably tell us why - but the bottom line is you shouldn't be doing it.</p>
 
-<p>Note: This probably doesn't go for simple websites built on top of node in express or whatever, I'm talking about long running applications that are doing processing almost constantly, like the server-side component to a 'realtime' multiplayer game.</p>
+<p><strong>Note:</strong> This probably doesn't go for simple websites built on top of node in express or whatever, I'm talking about long running applications that are doing processing almost constantly, like the server-side component to a 'realtime' multiplayer game.</p>
 
-<p><strong>If you're really going to share code between client + server, plan ahead accordingly</strong></p>
+<p><strong>If you're really going to share code between client + server, plan this accordingly</strong></p>
 
 <p>With Hoverbattles, it started off as a purely client-based game, with JavaScript files being included in the main HTML file and this worked great while I was experimenting with the WebGL and working out how everything was going to work.</p>
 
-<p>I soon moved to having a server implementation running the logic, and ported everything across to CommonJS, using Stitch to package up all of the files so I could use them on the client.</p>
+<p>I soon moved to having a server implementation running the logic, and ported everything across to <a href="http://wiki.commonjs.org/wiki/Modules/1.1.1">CommonJS</a>, using <a href="https://github.com/sstephenson/stitch">Stitch</a> to package up all of the files so I could use them on the client.</p>
 
 <p>This is actually problematic, as you don't want <em>all</em> the code on the server, and you don't want <em>all</em> the code on the server - with CommonJS you'll only get the code loaded on the server that is used there, but if you're stitching your entire /src folder, you're potentially also sending down code for your persistence, communication, 'secret sauce' stuff etc.</p>
 
@@ -38,7 +38,7 @@
  /client
 </code></pre>
 
-<p>This is a bit hideous and arbitrary - and doesn't allow me to organise my codebase naturally along its logical borders, and it's for that reason in my latest projects I've switched across to using RequireJS.</p>
+<p>This is a bit hideous and arbitrary - and doesn't allow me to organise my codebase naturally along its logical borders, and it's for that reason in my latest projects I've switched across to using <a href="http://requirejs.org/">RequireJS</a>.</p>
 
 <p>By writing different entry points to the same code, and simply boot-strapping in various sub-systems and behaviours from those call-sites, you can naturally end up with a dependency chain that only includes code relevant to the platform for which it is targetted. </p>
 
@@ -51,7 +51,7 @@
 <pre><code>vec3.create();
 </code></pre>
 
-<p>Vec3 is an object literal from glMatrix containing useful functions for manipulating and creating vectors on top of the typed arrays available in WebGL compatible browsers - these are cool for a number of reasons (performance oriented reasons mostly) and I didn't really think twice about my usage here.</p>
+<p>Vec3 is an object literal from <a href="https://github.com/toji/gl-matrix">glMatrix</a> containing useful functions for manipulating and creating vectors on top of the typed arrays available in WebGL compatible browsers - these are cool for a number of reasons (performance oriented reasons mostly) and I didn't really think twice about my usage here.</p>
 
 <p>Consider the following imaginary method called once a frame for each missile currently active in the scene.</p>
 
@@ -259,7 +259,7 @@ ParticleEngine.prototype = {
 
 <p>If you can push processing from the CPU on the browser, to the GPU using shaders, then you should, JavaScript is slow and not a suitable place to be playing with large loops of data.</p>
 
-<p>Besides, GLSL is quite a pretty language to do it in:</p>
+<p>Besides, <a href="http://en.wikipedia.org/wiki/GLSL">GLSL</a> is quite a pretty language to do it in:</p>
 
 <pre><code>void main(void){
 
@@ -281,4 +281,6 @@ ParticleEngine.prototype = {
 
 <p><strong>Relax</strong></p>
 
-<p>Finally - something I covered previously - relax, there is no problem you cannot solve with a bit of patience, re-factoring, profiling, and debugging. :-)</p>
+<p>Finally - <a href="http://codeofrob.com/entries/a-relaxed-attitude-towards-the-pragmatic-delivery-of-okay-software.html">something I covered previously</a> - relax, there is no problem you cannot solve with a bit of patience, re-factoring, profiling, and debugging. :-)</p>
+
+
