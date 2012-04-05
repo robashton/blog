@@ -38,11 +38,99 @@
   <li>Tests should describe what they're testing, not necessarily how they're doing it</li>
 </ul>
 
-<h4>Automated Validation</h4>
+<h4>Set-up</h4>
 
 <p>Most of the above goals are common between JavaScript and the other languages I work with on a daily basis, but basic code validation is interesting - as it isn't an immediately obvious part of your automated test suite. JavaScript is notoriously easy to make mistakes in (although as you write more of it, you stop doing this) - and it's useful to be running validation tools over codebase as a partial replacement for the compilation stage in those languages which support it</p>
 
-<p><strong>JSLint</strong>: I don't personally use JSLint for a few reasons, but a lot of people do so it's worth pointing out its existence if you decide it's the right tool for you. The basic goal behind JSLint is that Douglas Crockford of the Good Bits has encoded the helpful rules against common gotchas into a code scanner which also validates basic syntax. Declaring vars elsewhere than the top of the local function scope? <strong>Boom</strong>. Accidently creating global variables? <strong>Boom</strong>. 
+<p><strong>JSLint</strong>: I don't personally use JSLint for a few reasons, but a lot of people do so it's worth pointing out its existence if you decide it's the right tool for you. The basic goal behind JSLint is that Douglas Crockford of the Good Bits has encoded the helpful rules against common gotchas into a code scanner which also validates basic syntax. Declaring vars elsewhere than the top of the local function scope? *kaboom*. Accidently creating global variables? *kaboom*. All of this is useful to both novice and experienced JavaScript developers. </p>
+
+<p>JSLint can be ran from the command line in NodeJS, or executed inline from code - I tend to find the latter more useful, as I want to run validation inline as part of my build and not deal with child processes and the like</p>
+
+<p><strong>JSHint</strong>I personally use this, as it fits more with my philosophy of development - it's a bit more relaxed than JSLint by default and serves a similar function, as well as being runnable from the command-line as well as inline as part of the code (like its brother).</p>
+
+<p>This is a good time to talk about how I continously run my tests. My current project is a web-based multiplayer game (like my last one), and I effectively have two command line scripts I can run in order to execute the server for my game. That is, "development-server.js" and "server.js". </p>
+
+<p>Server.js is boring, it just contains the entry point to my application and looks a bit like this:</p>
+
+<pre>
+  bootstrap()
+    .port(1337)
+    .world('./main/world.json')
+    .run();
+</pre>
+
+<p>I said it was boring, this is just the file that gets executed when I upload to a real server - development-server.js is a bit more interesting:</p>
+
+<pre>
+
+  build()
+    .runTests('./src/tests')
+    .lint('./src')
+    .buildEntryPoint('./src/client/app.js', './web/app.js')
+    .buildEntryPoint('./src/client/editor.js', './web/editor.js')
+    .go(function() {
+      bootstrap()
+        .port(8000)
+        .world('./main/world.json')
+        .run();  
+    });
+</pre>
+
+<p>A couple of things here of note:</p>
+
+<ul>
+  <li>I like to chain methods around the outside of my messy code</li>
+  <li>I pre-build my client-code somehow (I'll get to that)</li>
+  <li>I lint the entire src directory to see what happens</li>
+  <li>I don't care about failures, I'm going to try and run the server anyway</li>
+</ul>
+
+<p>So yeah, I pre-build my client-code. Because most of my code is shared between the server and the browser (multiplayer game, most logic is shared), I need a dependency system that is going to work in both places. I can't package up the entire src directory because I want to avoid leaking secret sauce everywhere, and I only want to send down the code that is going to be needed for a specific function</p>
+
+<p>I use AMD (asynchronous module definition), which I won't go into because you can go and read about it, but the implementation I use is RequireJS and this comes with its own benefits - chiefly that when I'm running tests against server code, or running the server, that it's nice to get some validation on whether my client-side 'require' calls are going to work and that my client-only code is syntactically valid.</p>
+
+<p>RequireJS uses uglify.js under the hood, which when combined gives great error messages with the require-trace that caused it, and the exact line and file on which the inevitable missing/extra brace has been left. So as well as giving me a means to write JS without worrying about where it is being run, I get an additional level of verification as part of my build process.</p>
+
+<p>
+
+<p>The code I'm using to do things like the above looks something like this by the way: </p>
+
+<pre>
+  var BuildProcess = function() {
+    this.actions = [];
+  };
+  
+  BuildProcess.prototype = {  
+      runTests: function(path) {
+        this.actions.push(runTestsAction(path)); 
+        return this;
+      },
+      lint: function() {
+        this.actions.push(lintAction(path));
+        return this;
+      },
+      buildEntryPoint: function() {
+        this.actions.push(buildEntryPointAction(path));
+        return this;
+      },
+      go: function() {
+        Queue.DoAll(this.actions);
+      }    
+  };
+  
+  return function() {
+    return new BuildProcess();
+    }
+  };
+</pre>
+
+<p>Yeah, so it's pretty far out there. Setting up a basic build process like this requires a small amount of effort that returns on the investment almost immediately </p>
+
+<p>How do I run all this everytime I change a file? I'm a big fan of <strong>nodemon</strong>, which I generally keep running with the command:</p>
+
+<pre>nodemon development-server.js</pre>
+
+
 </div>
       <div id="links">
         <a href="/">Go back to the index</a><br />
