@@ -1,0 +1,182 @@
+<p>I don't really like templating languages or view engines (especially in JavaScript) - it's something I've been vocal on in person for a while now but never got around to writing about.</p>
+
+<p>Things like this have been <a href="http://www.workingsoftware.com.au/page/Your_templating_engine_sucks_and_everything_you_have_ever_written_is_spaghetti_code_yes_you">ranted on</a> before by other people, but I want to share my particular dislike of the frameworks and technologies here, as well as present up the way I'm currently working.</p>
+
+<p><strong>Logic in your views</strong></p>
+
+<p>Now, we all know this isn't a good idea, but what do we really mean by this? What are the problems we're facing?</p>
+
+<p><strong>EJS</strong></p>
+
+<p>EJS is a view engine similar in nature to WebForms in ASP.NET, which means for .NET devs it's often reached at for its comfortable familiarity and lack of learning requirements.</p>
+
+<p>Let's look at the default example on the EJS website to understand this</p>
+
+<pre><code>&lt;ul&gt;
+&lt;% for(var i=0; i &lt; supplies.length; i++) {%&gt;
+   &lt;li&gt;&lt;%= supplies[i] %&gt;&lt;/li&gt;
+&lt;% } %&gt;
+&lt;/ul&gt;
+</code></pre>
+
+<p>EJS promises to "<em>Clean the HTML out of your JavaScript</em>", and the very first demo shows us an example of HTML which has been dirtied with JavaScript.</p>
+
+<p>This is just moving the problem around, this is very much a case of "logic in the view" and it makes it difficult to maintain because it's difficult to read and it's hard to tell where the HTML begins and where the HTML ends.</p>
+
+<p>Standard practise might be to do something like this:</p>
+
+<pre><code>&lt;ul&gt;
+    &lt;%= Helpers.RenderList(supplies) %&gt;
+&lt;/ul&gt;
+</code></pre>
+
+<p>But this just means I've moved the HTML back into my JavaScript again. I guess what we're saying here, is that trying to arbitrarily separate 'view' from 'logic' in this manner is a fools errand, doomed to fail because all we're doing is moving the problem around.</p>
+
+<p><strong>Mustache</strong></p>
+
+<p>Mustache is a "logic-less" templating language (they say so on their site), there are other "logic-less" templating languages around too and they're all much of a muchness.</p>
+
+<p>I quote:</p>
+
+<blockquote>
+  <p>We call it "logic-less" because there are no if statements, else clauses, or for loops. Instead there are only tags.</p>
+</blockquote>
+
+<p><em>for-loop-replacement:</em></p>
+<pre><code>
+    &lt;ul&gt;
+    {{#supplies}}
+      &lt;li&gt;{{text}}&lt;/li&gt;
+    {{/supplies}}
+    &lt;/ul&gt;
+</code></pre>
+
+<p><em>if-else-statement-replacement</em></p>
+
+<pre><code>
+{{#shipped}}
+    &lt;li&gt;This product shipped on {{shipdate}}&lt;/li&gt;
+{{/shipped}}
+{{^shipped}}
+    &lt;li&gt;This product has not yet shipped&lt;/li&gt;
+{{/shipped}
+</code></pre>
+
+<p>This is just a for loop and an if-else statement but with different syntax, pretending they're otherwise is doing a disservice to everybody who is going to be reading and writing this code.</p>
+
+<p>Adding onto this, we of course also have the ability to seamlessly call methods from Mustache because we're always going to need to write code somewhere (Well, it's one way to keep logic out of the view by.. err calling logic from the view) <i>(see above re: arbitrary separation)</i>.</p>
+
+<pre><code>{{#wrapped}}
+  {{name}} is awesome.
+{{/wrapped}}
+
+{
+  "name": "Rob",
+  "wrapped": function() {
+    return function(text) {
+      return "&lt;b&gt;" + render(text) + "&lt;/b&gt;"
+    }
+  }
+}
+</code></pre>
+
+<p>This serves to just confuse though, as the fact a method is being called is hidden from us and means we're reduced to jumping between template and code to work out what is going on.</p>
+
+<p><strong>A shared concern</strong></p>
+
+<p>I have a problem that's shared across all of these solutions though, and that's the one of dealing with external designers.</p>
+
+<p>I have only once worked in a situation where I was privileged enough to work with a designer who knew her HTML and Webforms syntax and could be taught more if needed because she was a permanent member of our team. <em>(And that was only because I spent months campaigning to get somebody who knew what they were doing when it came to making things look pretty!)</em></p>
+
+<ul>
+<li>I want to be delivered clean HTML which I can use in my application</li>
+<li>I want to be able to integrate updates to that HTML if need be</li>
+<li>Teaching a contractor how to use 'template language X' is a waste of my money</li>
+<li>Finding a contractor who knows 'template langauge X' is a waste of my time</li>
+</ul>
+
+<p>Here in lies a problem - the moment we go to any templating language/system that isn't <em>just</em> HTML, we have to transform what the designer has given us into that templating language - and then translate it back when patching in any amendments that might come as we continue developing.</p>
+
+<p><strong>Performance</strong></p>
+
+<p>Not only those points, but if we're truly going to have a logic-less templating language and we're using third party APIs in any way (whether they be third-third party, or just plain old third party) then in order to get the data into a shape fit for binding directly to your template, transforms must be done which means writing mapping code one way or another.</p>
+
+<p>It's not healthy I tell you - if you're going to transform one set of data into other data that is an exact match of your view requirements, and then transform from that data into another set of data (your view) then you're paying a cost for this. (Throw in your favourite MVC/MVVM framework for JS and even more so, but that's another blog entry entirely).</p>
+
+<p><strong>So what do I like then?</strong></p>
+
+<ul>
+<li>Accept that a for loop is a for loop</li>
+<li>Accept that an if statement is an if statement</li>
+<li>Accept that you're always going to need some of these things in your applications</li>
+<li>Accept that the above is best suited to being in a programming language of some sort</li>
+</ul>
+
+<p>We have a great opportunity in JS, where we have a language that has been built almost for the primary purpose of interacting with the output that the user sees and where we have libraries whose sole purpose is the interaction <em>with</em> that output.</p>
+
+<p><em>Use the force</em></p>
+
+<p>Enter the anti-templating system "<a href="https://github.com/flatiron/plates">Plates</a>" (there are others that are similar, but this is what I'm using at the moment, as it's isomorphic, fast with no-frills and hopefully will remain so - despite the "issue" reports asking for "nesting" or "collections" etc - as they're missing the point).</p>
+
+<p>Rather than being a templating language, Plates merely binds data to HTML. </p>
+
+<p>HTML!! You know - the stuff that you're going to give to the browser, the  stuff which your designer gives you - the stuff that everybody on the internet and their pet animals know how to use.</p>
+
+<p>Given some HTML:</p>
+
+<pre><code>&lt;div id="test"&gt;&lt;/div&gt;
+</code></pre>
+
+<p>And some model:</p>
+
+<pre><code>{ 
+    "test": "hello"
+}
+</code></pre>
+
+<p>Then </p>
+
+<pre><code>Plates.bind(html, model);
+</code></pre>
+
+<p>Combined with a bit of JavaScript this gives us enough power to do everything we'd want to do when it comes to taking some data and displaying it on a page. <em>(Yes, it supports matching by class, yes it supports putting data into attributes on those elements, this is all trivial).</em></p>
+
+<p><em>How does it all fit together?</em></p>
+
+<p>Well, I tend to either keep the HTML snippets which I'm going to hydrate on the page itself in a hidden div, or if they're shared templates, as files which I can pull down with a HTTP GET (not rocket science really).</p>
+
+<p>How do I deal with collections? Easy - I write a for loop. How do I deal with different paths? I want an 'if' statement.</p>
+
+<p><em>But don't you end up with spaghetti code?</em></p>
+
+<p>Well no - just because I'm not following an enforced and arbitrary separation of 'view' and 'logic' doesn't mean I'm throwing away sensible software practises.</p>
+
+<p>It's just, that separation comes naturally on a case-by-case basis.</p>
+
+<p>Sometimes I'll end up with some code that matches the model purely on convention and I can write</p>
+
+<pre><code>hydrateTemplate('source', 'target', data);
+</code></pre>
+
+<p>Sometimes I'll end up with builders that look like this</p>
+
+<pre><code> startTemplateWithId('targetId')
+    .withText('title', data.title)
+    .withText('name', data.name)
+    .withCollection('itemList', data.items, getItemHtml)
+    into('placeholder');
+</code></pre>
+
+<p>Or similar (although in most simple cases this kind of over-blown code isn't needed).</p>
+
+<p>My mark-up remains clean, my model remains clean, and the code that lies between is kept clean, tidy and to the point - not to mention re-usable where appropriate because it's <em>just code</em>.</p>
+
+<p>When asked where this style fits in, I'd say it's essentially just MVP, with the line between V and P moving around to fit the situation.</p>
+
+<p><strong>Summary</strong></p>
+
+<p>Separation of view and logic isn't going to happen along any sort of neat line without silly amounts of abstraction; use something that allows you to have clean HTML and clean JavaScript with as little bullshit in-between as possible. </p>
+
+<p>You'll be happier, your code will be happier and you'll find it is a lot easier to deliver a product when you stop arguing about whether you have enough separation in your abstractions.</p>
+
+
