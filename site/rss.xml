@@ -1,5 +1,266 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><generator>NodeJS RSS Module</generator><lastBuildDate>Wed, 28 Mar 2012 15:07:47 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Anti-templating languages]]></title><description><![CDATA[<p>I don't really like templating languages or view engines (especially in JavaScript) - it's something I've been vocal on in person for a while now but never got around to writing about.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><generator>NodeJS RSS Module</generator><lastBuildDate>Mon, 23 Apr 2012 15:44:17 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Anatomy of a 48 hour HTML5-JS Game]]></title><description><![CDATA[<p>I participated in my second <a href="http://www.ludumdare.com/compo/">Ludum Dare</a> 48 hour game-building compo this weekend, and this was my fourth attempt at <a href="http://www.ludumdare.com/compo/ludum-dare-23/?action=preview&amp;uid=7112">building a game from scratch</a> in 48 hours in HTML5/JS.</p>
+
+<p>Each time I have approached the problem in a slightly different way, but I'm beginning to get the process sussed (with a few caveats) so let's break down my latest attempt (Web | Source) and see how it is put together.</p>
+
+<h2>Libraries + Frameworks</h2>
+
+<p>I've tried a couple of approaches for this so far, one is to start with a set of 'base code' (written in advance either extracted from another project, or written especially for the 48 hour compo).</p>
+
+<p>I've ended up settling for a halfway house, I have some libraries that I <em>really</em> like from JS/HTML development in general, and some libraries/components that I keep around for convenience.</p>
+
+<p><strong>Third party</strong></p>
+
+<p><em><a href="http://documentcloud.github.com/underscore/">Underscore</a></em> - this is a library containing a load of polyfills for doing common operations in JS (iteration, binding, etc) - my favourite method is probably _.extend, which I'll cover in a bit.</p>
+
+<p><em><a href="http://jquery.org/">jQuery</a></em> - we all know what this is - to be honest, I use it for DOM selection and the most basic of manipulation only - as such it's a bit heavy-weight for what I need. Still - it's familiar to me and allows me to get started - can't say wrong with that.</p>
+
+<p><strong>Hand-rolled components</strong></p>
+
+<p><strong><a href="https://github.com/robashton/swallow">Swallow</a></strong> - Packaging up a directory as a JSON file and downloading it all-as-one might not be the most elegant/modern way of dealing with multiple assets but it at least allows an easy deterministic way of dealing with dependencies, and means that I forego a lot of the issues with playing Audio in browsers (creating a new audio file with a URL means the browser re-downloading the asset!). </p>
+
+<p>Base64 encoding all the binary assets and getting on with life means not faffing around with them during the compo - which is a good thing.</p>
+
+<pre><code>// Build script
+swallow.build({
+    in: 'assets',
+    out: 'site/assets.json'
+});
+
+// Client code
+GlobalResources.loadPackage('assets.json', function() {
+    game.start();
+});
+
+GlobalResources.getImage('image.png');
+GlobalResources.playSound('explosion');
+</code></pre>
+
+<p><strong><a href="https://github.com/robashton/camera">Camera</a></strong> - Separation of in-game coordinates from the pixels being displayed on screen is pretty important because otherwise we limit ourselves to a specific resolution and aspect ratio, and prevent our application from being run at different resolutions on different screens.</p>
+
+<p>The principle of this tiny piece of code is that rather than drawing using 'screen coordinates', we draw using 'world coordinates' and haven't got to any of the transformations ourselves in expensive JS.</p>
+
+<p>For example,</p>
+
+<pre><code>context.fillRect(0, 0, 100, 100);
+</code></pre>
+
+<p>Would ordinarily fill a rectangle 100 pixels by 100 pixels at the top-left of the screen, but if we apply transforms to the underlying canvas as if we had a camera moving over it, using the following code</p>
+
+<pre><code>camera.lookAt(50, 50);
+camera.zoomTo(100);
+camera.fieldOfView(Math.PI / 4);
+</code></pre>
+
+<p>Then the same fillRect code will be drawing the same rectangle  (roughly) in the middle of the screen. </p>
+
+<p>The advantage of this code is that the same picture can be drawn whether the canvas is sized at 320x240, 640x480, 800x600 (and can even handle strange aspect ratios). In case of bad performance, the canvas size can be set to half the size of the actual display and upscaled automatically!</p>
+
+<p><strong>Eventable</strong> - I've found that messaging is the best way to keep the ability to crank out features without littering the codebase with conditionals and irrelevant code, I have a basic set of behaviours in an object called "Eventable" that looks like</p>
+
+<pre><code>on(event, callback, context)
+onAny(callback, context)
+off(event, callback, context)
+offAny(callback, context)
+</code></pre>
+
+<p>I also have a basic <strong>Scene</strong> object, through which all entity events bubble up through for caretaker objects to deal with, consider the following scenario from my #LD23 game</p>
+
+<ul>
+<li>EnemyFactory decides to spawn an Asteroid</li>
+<li><p>EnemyFactory hooks '<em>Destroyed</em>' event on Asteroid</p>
+
+<pre><code>   asteroid.on('Destroyed', this.onAsteroidDestroyed, this);
+</code></pre></li>
+<li><p>Asteroid goes off and does its thing</p></li>
+<li>Player blasts away Asteroid</li>
+<li><p>Asteroid raises event like so:</p>
+
+<pre><code>this.raise('Destroyed');
+</code></pre></li>
+<li><p>EnemyFactory removes the Asteroid from the scene</p></li>
+<li>Also listening to events from the scene are
+<ul>
+<li>ExplosionCreation</li>
+<li>ScoreKeeper</li>
+<li>SoundCreation</li>
+</ul></li>
+</ul>
+
+<p>They hooked the events from the scene when they were added to it like so</p>
+
+<pre><code>scene.on('Destroyed', this.onEntityDestroyed, this);
+</code></pre>
+
+<p>And in their respective methods they get to do</p>
+
+<pre><code>onEntityDestroyed: function(data, sender) {
+    this.createExplosion(sender.x, sender.y);
+}
+
+onEntityDestroyed: function(data, sender) {
+    this.increaseScore(sender.getPoints() * this.currentLevel);
+}
+
+onEntityDestroyed: function(data, sender) {
+    this.playSound('explosion', sender.x, sender.y);
+}
+</code></pre>
+
+<p>Having the ability to slap on extra functionality without creating masses of extension code meant that throwing in power-ups was a simple matter of creating something to listen to destruction events and add new entities to the scene to represent as power-ups.</p>
+
+<p>Keeping the UI updated looks something like this:</p>
+
+<pre><code>var Hud = function(scene) {
+    scene.autoHook(this);
+    this.score = $('#score');
+    this.health = $('#health');
+    this.energy = $('#energy');
+};
+Hud.prototype = {
+    onScoreChanged: function(score) {
+        this.score.text(score);
+    },
+    onHealthChanged: function(health, sender) {
+        if(sender.id !== 'player') return;
+        this.health.css('width', sender.percentageHealth() + '%');
+    },
+    onEnergyChanged: function(energy, sender) {
+        if(sender.id !== 'player') return;
+        this.energy.css('width', sender.percentageEnergy() + '%');
+    }
+}
+</code></pre>
+
+<p>Hmmm, tidy.</p>
+
+<p>I choose not to publish this as a library, because this is something specific to the way I like to work and everybody is either using one that already exists or are capable of writing on themselves.</p>
+
+<h2>Patterns and Practises</h2>
+
+<p><strong>Working in a single file</strong></p>
+
+<p>When working on my more long-term projects, I often use a dependency/module system like RequireJS to break up the project across multiple files (one-per-class type of thing)</p>
+
+<p>When working on a 48 hour game jam, I find that just coding everything in a single file like a madman is really helpful providing I'm using a good text editor with the ability to search and jump around the document built in.</p>
+
+<p><strong>Working with "Classes"</strong></p>
+
+<p>I admit it, I'm a sucker for encapsulating state and behaviour into discrete little objects that I can create and throw around the place,</p>
+
+<p>The thing is, because JS allows for duck-typing, this object flinging makes throwing things into a scene and performing operations on them pretty convenient.</p>
+
+<p>For example, I have a scene object, which exposes the following methods, and at its most simplistic looks something like this:</p>
+
+<pre><code>add: function(entity) {
+    this.entities[entity.id] = entity;
+},
+remove: function(entity) {
+    delete this.entities[entity.id];
+}
+tick: function() {
+    this.eachEntity(this.entityTick);
+},
+entityTick: function(entity) {
+    if(entity.tick) entity.tick();
+},
+draw: function(context) {
+    this.eachEntity(this.entityDraw, context);
+},
+entityDraw: function(entity, context) {
+    if(entity.draw) entity.draw();
+}
+</code></pre>
+
+<p>Now, in my long-term projects, drawing/logic/etc are just components that are attached to the entities, and the scene is certainly not responsible for this stuff - but for this kind of rapid-work project having something really simplistic really aids in the development process.</p>
+
+<p>The important things of note, is above - we only care that an entity has a field called 'id', we don't care where it got it from - and if that entity has a draw method, we'll use it and if the entity has a tick method, we'll use that too.</p>
+
+<p>I don't bother trying to emulate classic inheritance, even in something as simplistic as this it's not desirable (and leads to more complexity). I do however make judicious use of underscore's 'extend' method.</p>
+
+<pre><code>// Basic rendering functionality for a textured quad
+var Quad = function() {
+    // stuff
+};
+
+Quad.prototype = {
+    draw: function(context) {}; // stuff
+}
+
+// A basic powerup which floats towards the player
+var Powerup = function(image, x, y) {
+    Quad.call(this, image, x, y);
+    Eventable.call(this);
+    this.id = IdGenerator.Next("powerup");
+};
+Powerup.prototype = {
+    tick: function() {
+        this.moveTowardsPlayer();
+    },
+    notifyCollision: function(other) {
+        if(other.isPlayer())
+            this.bestow();
+    }
+};
+_.extend(Powerup.prototype, Quad.prototype, Eventable.prototype);
+
+// An actual powerup
+var DestructionFieldPickup = function(x, y) {
+    Powerup.call(this, "destructionfield.png", x, y );
+
+};
+DestructionFieldPickup.prototype = {
+    bestow: function() {
+        this.scene.addEntity(new DestructionField(this.x, this.y));
+    }
+}
+_.extend(DestructionFieldPickup.prototype, Powerup.prototype);
+</code></pre>
+
+<p>I'd usually shy away from such hierarchies, but in a 48 hour jam they're a really easy way of throwing functionality in with gay abandon (remember, I don't need to maintain this code, I don't need to remember that the Pickup somehow magically has an 'x' value 2 months later, I don't need to remember what fields have already been declared so not to overwrite them etc).</p>
+
+<p>Working with such lightweight base components and with such explicit objects means that providing my codebase remains below 2000 lines of code (about the maximum deliverable for a solo 48 hour jam if I'm honest), I can keep it all in my head and not fuss around too much.</p>
+
+<p>At least they're relatively small and (mostly) hide their data, and hold onto the functionality they expose in neat, readable blobs.</p>
+
+<h2>Assets</h2>
+
+<p>I'm not an artist, and I'm not a sound engineer either, I have found however that with Inkscape it is possible to create relatively non-sucky art with the combination of geometric shapes.</p>
+
+<p><img src="https://github.com/robashton/ld4823tw/blob/master/assets/ship.png?raw=true" alt="" /></p>
+
+<p>Including these is simple, as they're bundled up with Swallow - however, sounds are more tricky.</p>
+
+<p>Sound on the internet SUCKS.</p>
+
+<p><strong>SUCKS. SUCKS SUCKS.</strong></p>
+
+<p><em>breath</em>, basically you'll be fine if you use a combination of <strong>ogg vorbis</strong> and <strong>MP3</strong>, and don't worry about the older browsers.</p>
+
+<p>In a little game like this, I don't worry about the cost and simply download both files all of the time (in swallow), I guess I could package them up individually and do a check on start-up, and perhaps a little library is warranted (either one on the internet or hand-rolled)</p>
+
+<p>The code for playing a sound goes as follows therefore:</p>
+
+<pre><code>playSound: function(path) {
+  var player = new Audio();
+  if(player.canPlayType("audio/mpeg")) {
+    player.src = "data:audio/mpeg;base64," + this.findData(path + '.mp3');
+  } else {
+    player.src = "data:audio/ogg;base64," + this.findData(path + '.ogg');
+  }
+  player.volume = 0.5;
+  player.play();
+}
+</code></pre>
+
+<p>This will work okay, as the data is cached (so no faffing with re-load pauses).</p>
+
+<h2>In Summary</h2>
+
+<p>In a 48 hour game jam, I've found that productivity is <em>much</em> more important than the long-term maintainability of the code, but this does not mean abandoning some sensible software practises, as short term maintainability is still important (keeping 2000 lines of procedural spaghetti code in your head isn't quite as easy...).</p>
+
+<p>Any questions? The code is over <a href="https://github.com/robashton/ld4823tw/blob/master/site/game.js">here</a>, and the above should help with the navigation a bit...</p>
+]]></description><link>http://codeofrob.com/entries/anatomy-of-a-48-hour-html5-js-game.html</link><guid isPermaLink="true">http://codeofrob.com/entries/anatomy-of-a-48-hour-html5-js-game.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 23 Apr 2012 12:34:00 GMT</pubDate></item><item><title><![CDATA[Anti-templating languages]]></title><description><![CDATA[<p>I don't really like templating languages or view engines (especially in JavaScript) - it's something I've been vocal on in person for a while now but never got around to writing about.</p>
 
 <p>Things like this have been <a href="http://www.workingsoftware.com.au/page/Your_templating_engine_sucks_and_everything_you_have_ever_written_is_spaghetti_code_yes_you">ranted on</a> before by other people, but I want to share my particular dislike of the frameworks and technologies here, as well as present up the way I'm currently working.</p>
 
@@ -666,85 +927,4 @@ ParticleEngine.prototype = {
 <p>The last one is important actually, if y'all tell me you find this interesting then I'll carry on working on it, if nobody gives a crap then when I get bored I'll stop :-)</p>
 
 <p>But yeah, just joining the <a href="http://groups.google.com/group/sljs">Google Group</a> and helping me build a road-map would be a good start</p>
-	]]></description><link>http://codeofrob.com/entries/sljs.org---a-silverlight---html-js-converter.html</link><guid isPermaLink="true">http://codeofrob.com/entries/sljs.org---a-silverlight---html-js-converter.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 30 Jun 2011 08:29:00 GMT</pubDate></item><item><title><![CDATA[5 reasons to give node.js some love]]></title><description><![CDATA[
-		<p>In response to a question from a friend on Twitter (Private account so no linky), but with the text: </p>
-
-<p>"Been reading up a little bit on node.js @robashton @domgreen. What makes it stand out from alternatives or is it just a JS 'me too' play?"</p>
-
-<p>My initial response was, hey - you know what? I can't think of any (popular) alternatives that provide the unique combination that node.js does, and then started writing a torrent of tweets describing why I personally am so excited about node.</p>
-
-<p>Then I decided that rather than spam Twitter, I should write a blog post to link to when asked the same question in the future.</p>
-
-<p>Every bugger has already done one of these, but I want to answer the question in my own personal way</p>
-
-<b>1) You get to write Javascript on the server and the client</b>
-
-<p>Think about this for a second - it's really not just a gimmick (although some people seem to think it is). Even in a simple web application you're going to have validation logic that you're going to want to execute on the client AND on the server, and usually this can't be shared without going through some sort of rules engine or crazy framework to spit out some rough client-side equivalents. </p>
-
-<p>No need with node, you can write your model (complete with business rules, etc), and write a nice task-based user interface around that model, running it all locally in the browser, and then dispatching and validating the commands on the server - because hey, everything is just JSON at the end of the day, and everything you're writing works against that.</p>
-
-<p>Take this a step further, and consider that we have some pretty awesome document databases on the scene at the moment whose primary communication and storage mechanism is - guess what? JSON (well BSON) - at no point during any of this do you need to sit there dealing with mapping frameworks or hand-written mapping code, because you're just flinging JSON around.</p>
-
-<p>With efforts on <a href="http://www.commonjs.org/">CommonJS</a> and <a href="https://github.com/sstephenson/stitch">Stitch</a> ongoing, there is really no excuse for not writing all your JavaScript in a state where it can be executed on both the client and the server.</p>
-
-<b>2) Event-based asynchronous stuff is just How Things Work in JavaScript </b>
-
-<p>Yeah okay, I have no idea what I'm talking about here, but what I do understand and what most people who have been writing JavaScript for the past decade understand is that <i>your</i> JavaScript tends to execute on a single thread and long-running processes get dealt with by the host, using callbacks to notify you (back on that single thread) as and when those things are done.</p>
-
-<p>Now, in the browser these long-running requests are limited to... well HTTP calls to the server to get/post data, but on the server we do nearly <i>everything</i> like this; requests to other machines, requests to the file system etc.</p>
-
-<p>We don't need any crazy language keywords (looking at you C#), we don't need any crazy Task of X/Y and Z objects (Looking at you C#), we just need: </p>
-
-<script src="https://gist.github.com/949550.js?file=gistfile1.js"></script>
-
-<p>This gives us some brilliant performance benefits, dealing with potentially gazillions of connected clients an <a href="http://www.theregister.co.uk/2011/03/01/the_rise_and_rise_of_node_dot_js/">easy possibility</a> <i>Sorry for a "the register" link this early in the morning, it's a bit indecent of me.</i></p>
-
-<p>This also makes dealing with concurrency (at least within a single process) really easy too, all your variables are safe to be accessed at any time as you haven't got any potential race conditions, you can mutate state all you want and not worry that somebody else is going to come along and take away your cheese.</p>
-
-<p>Hell, even the plans for future-node seem to be keeping this philosophy intact, with multiple node processes being given a way to communicate safely (or at least as far as I understand the slides that I've read from conferences I wasn't at).</p>
-
-<b>3) Awesome package management!</b>
-
-<p>Just like Ruby, and just like Linux-land in general, if you want to do something there is probably a library/package waiting for you to pull down and consume, and you can do this via the wonderful magic of <a href="http://npmjs.org/">NPM</a></p>
-
-<p>npm install socket.io</p>
-
-<p>It's that easy to get the libraries you need, and there are libraries available for most of the things you can think of, the primary ones I am using myself are: </p>
-
-<ul>
-     <li><a href="https://github.com/felixge/node-paperboy">Paperboy</a> - for simply serving static files from a directory (index.html, style.css, etc</li>
-     <li><a href="https://github.com/donnerjack13589/node.gzip">gzip</a> - for um, gzipping content that I send down to the client</li>
-     <li><a href="http://socket.io/">socket.io</a> - for magically doing websockets, or at the very least emulating websockets</li>
-     <li><a href="https://github.com/tmpvar/jsdom">jsdom</a> + jquery - manipulating the DOM server-side? Oh say it ain't so?</li>
-     <li><a href="https://github.com/sstephenson/stitch">Stitch</a> for allowing me to write code in CommonJS format and still use it in the browser.</li>
-</ul>
-
-<p>This isn't anything particularly unique to node, but in this day and age it's a bit hard to be taken seriously without a good package manager in your ecosystem and it's good to see something of quality here.</p>
-
-<b>4) Community community community</b>
-
-<p>The community around node.js is brilliantly active, passionate and y'know - generally quite bright - and willing to try new things out (Kinda goes with the territory really)</p>
-
-<p>This, just like Ruby, is a really big draw for those of us from ecosystems which... lack anything of this scale</p>
-
-<p>This enthusiasm does make it a bit difficult to separate actual innovation occurring from the old "Look at JavaScript doing what everything else has been able to do forever", but I'll take raw enthusiasm over rigid nay-say mentality any day - enthusiasm is contagious and gives me the ability to Get Things Done</p>
-
-<b>5) It's easy, really easy, like super easy, We can all do it!</b>
-
-<p>JavaScript aside (And if you don't like JavaScript you can always use CoffeeScript), the process of writing code that does exciting stuff is ludicrously simple.</p>
-
-<p>Having direct access to the HTTP pipeline, and not hiding it behind crazy levels of abstracted framework cruft is a big, big win - and once you start writing code like this you start to wonder where this kind of thing has been all your life.</p>
-
-<p>"I want to do this: " has not once resulted in me banging my head against the constraints and limitations that somebody else has put in my way (supposedly to help me).</p>
-
-<p>My personal website currently runs on pixie dust and grated unicorn horns - I'm pulling in content from my old subtext blog and spitting it out on the front page (with plans to pull in content from <a href="http://codebetter.com/robashton/">CodeBetter</a> and <a href="http://altdevblogaday.org/author/rob-ashton/">Altdevblogaday</a> too), whilst acting as a reverse proxy for the old site (in very few lines of code). </p> 
-
-<p>That's utterly crazy, and I drafted it up in just a few hours of hackity hack hack hacking, with those goals in mind.</p>
-
-<b>Anyway...</b>
-
-<p>The beauty of node comes in the combination of these attributes, not just one thing (because none of those things bar point #1 are by themselves particularly new or ground breaking</p>
-
-<p>If you've previously dismissed node as something pointless because you think it brings nothing new to the table compared to your X, Y or Z then I urge you to have another look at it, as The Creators prepare to bring it natively to Windows it's only going to get more popular and you'll want to be involved.</p>
-
-	]]></description><link>http://codeofrob.com/entries/5-reasons-to-give-node.js-some-love.html</link><guid isPermaLink="true">http://codeofrob.com/entries/5-reasons-to-give-node.js-some-love.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Sat, 30 Apr 2011 07:39:00 GMT</pubDate></item></channel></rss>
+	]]></description><link>http://codeofrob.com/entries/sljs.org---a-silverlight---html-js-converter.html</link><guid isPermaLink="true">http://codeofrob.com/entries/sljs.org---a-silverlight---html-js-converter.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 30 Jun 2011 08:29:00 GMT</pubDate></item></channel></rss>
