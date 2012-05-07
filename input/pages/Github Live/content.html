@@ -1,0 +1,49 @@
+<h5>Visualize git 'pushes' live as they happen across Github.</h5>
+
+<p>I visited an old friend in England this weekend, and he suggested we hack something together around the Github APIs in response to the <a href="https://github.com/blog/1118-the-github-data-challenge">Github data challenge </a>.</p>
+
+<p>Looking at the Event stream, I thought it would be interesting to visualise what was going on in live, in a web browser, and given all the toys I've written over the past year or so in NodeJS, it was fairly clear that a simple web server processing the events and broadcasting them to clients wouldn't take a lot of work to complete.</p>
+
+<p>So, we ended up with Github Live, which looks something like this once you've left it running for five minutes (during the morning, so it's a bit quiet)</p>
+
+<p><strong>The server side</strong></p>
+
+<p>The server is using Node, which is operating as a basic static file server, and as a point of call for incoming sockets with socket.io.</p>
+
+<p>It starts off every 10 seconds polling the Events API, storing the most recent timestamp so to avoid publishing duplicates (the events API doesn't have a "last retrieved id").</p>
+
+<p>It attempts to throttle requests to the events API to avoid the amount of duplicate events being retrieved from the API (if it finds an overlap, it increases the time until next request by a second, and if it doesn't, it decreases by a second).</p>
+
+<p>In hindsight, the hideous inline callbacks would be best replaced with a stream that did all this work, and just published events transparently to the consuming code.</p>
+
+<p>The next job, once this has taken place is that a request is made to Github for each pull, asking for information about the repository (for the language), so the events being streamed to the clients can be augmented with this information.</p>
+
+<p>This is another thing that should be dealt with by a stream rather than inline callback soup.</p>
+
+<p>Oh well, it's only 200 lines of throwaway code, perhaps something to tidy up on a rainy day.</p>
+
+<p><strong>The client side</strong></p>
+
+<p>Because it's quick and easy, we're using HTML and CSS3 to do display and transformations.</p>
+
+<p>As the events stream in from the server, some HTML is created for the event and it is put in an appropriate bucket (for the language being used).</p>
+
+<p>The outside container has a CSS transition applied to it, and the transform 'scale' is set to fit all buckets into the same window periodically.</p>
+
+<p>From this I have ascertained that</p>
+
+<ul>
+<li>I dislike vendor prefixes</li>
+<li>these are not as fast as I'd like</li>
+<li>Webkit has some unusual glitches if you're not careful</li>
+</ul>
+
+<p>I guess with some more work, these things could be worked around, there are some definite performance improvements that could be made client side here.</p>
+
+<p>I'd quite like to give an SVG implementation a go, and see about the performance of that. Another project for a rainy weekend.</p>
+
+<p><strong>The code</strong></p>
+
+<p>The code in all its (raw) form can be found at<a href="https://github.com/robashton/githubfall"> https://github.com/robashton/githubfall</a></p>
+
+<p>I'd be interested to see any obvious improvements made and pull requested in.</p>

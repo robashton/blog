@@ -1,5 +1,54 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><generator>NodeJS RSS Module</generator><lastBuildDate>Mon, 23 Apr 2012 16:06:54 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Anatomy of a 48 hour HTML5-JS Game]]></title><description><![CDATA[<p>I participated in my second <a href="http://www.ludumdare.com/compo/">Ludum Dare</a> 48 hour game-building compo this weekend, and this was my fourth attempt at <a href="http://www.ludumdare.com/compo/ludum-dare-23/?action=preview&amp;uid=7112">building a game from scratch</a> in 48 hours in HTML5/JS.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><generator>NodeJS RSS Module</generator><lastBuildDate>Mon, 07 May 2012 11:04:15 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Github Live]]></title><description><![CDATA[<h5>Visualize git 'pushes' live as they happen across Github.</h5>
+
+<p>I visited an old friend in England this weekend, and he suggested we hack something together around the Github APIs in response to the <a href="https://github.com/blog/1118-the-github-data-challenge">Github data challenge </a>.</p>
+
+<p>Looking at the Event stream, I thought it would be interesting to visualise what was going on in live, in a web browser, and given all the toys I've written over the past year or so in NodeJS, it was fairly clear that a simple web server processing the events and broadcasting them to clients wouldn't take a lot of work to complete.</p>
+
+<p>So, we ended up with Github Live, which looks something like this once you've left it running for five minutes (during the morning, so it's a bit quiet)</p>
+
+<p><strong>The server side</strong></p>
+
+<p>The server is using Node, which is operating as a basic static file server, and as a point of call for incoming sockets with socket.io.</p>
+
+<p>It starts off every 10 seconds polling the Events API, storing the most recent timestamp so to avoid publishing duplicates (the events API doesn't have a "last retrieved id").</p>
+
+<p>It attempts to throttle requests to the events API to avoid the amount of duplicate events being retrieved from the API (if it finds an overlap, it increases the time until next request by a second, and if it doesn't, it decreases by a second).</p>
+
+<p>In hindsight, the hideous inline callbacks would be best replaced with a stream that did all this work, and just published events transparently to the consuming code.</p>
+
+<p>The next job, once this has taken place is that a request is made to Github for each pull, asking for information about the repository (for the language), so the events being streamed to the clients can be augmented with this information.</p>
+
+<p>This is another thing that should be dealt with by a stream rather than inline callback soup.</p>
+
+<p>Oh well, it's only 200 lines of throwaway code, perhaps something to tidy up on a rainy day.</p>
+
+<p><strong>The client side</strong></p>
+
+<p>Because it's quick and easy, we're using HTML and CSS3 to do display and transformations.</p>
+
+<p>As the events stream in from the server, some HTML is created for the event and it is put in an appropriate bucket (for the language being used).</p>
+
+<p>The outside container has a CSS transition applied to it, and the transform 'scale' is set to fit all buckets into the same window periodically.</p>
+
+<p>From this I have ascertained that</p>
+
+<ul>
+<li>I dislike vendor prefixes</li>
+<li>these are not as fast as I'd like</li>
+<li>Webkit has some unusual glitches if you're not careful</li>
+</ul>
+
+<p>I guess with some more work, these things could be worked around, there are some definite performance improvements that could be made client side here.</p>
+
+<p>I'd quite like to give an SVG implementation a go, and see about the performance of that. Another project for a rainy weekend.</p>
+
+<p><strong>The code</strong></p>
+
+<p>The code in all its (raw) form can be found at<a href="https://github.com/robashton/githubfall"> https://github.com/robashton/githubfall</a></p>
+
+<p>I'd be interested to see any obvious improvements made and pull requested in.</p>
+]]></description><link>http://codeofrob.com/entries/github-live.html</link><guid isPermaLink="true">http://codeofrob.com/entries/github-live.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 07 May 2012 12:28:00 GMT</pubDate></item><item><title><![CDATA[Anatomy of a 48 hour HTML5-JS Game]]></title><description><![CDATA[<p>I participated in my second <a href="http://www.ludumdare.com/compo/">Ludum Dare</a> 48 hour game-building compo this weekend, and this was my fourth attempt at <a href="http://www.ludumdare.com/compo/ludum-dare-23/?action=preview&amp;uid=7112">building a game from scratch</a> in 48 hours in HTML5/JS.</p>
 
 <p>Each time I have approached the problem in a slightly different way, but I'm beginning to get the process sussed (with a few caveats) so let's break down my latest attempt (<a href="http://www.ludumdare.com/compo/ludum-dare-23/?action=preview&amp;uid=7112">Web</a> | <a href="https://github.com/robashton/ld4823tw">Source</a>) and see how it is put together.</p>
 
@@ -880,12 +929,4 @@ ParticleEngine.prototype = {
 <p>You can see that clearly there is a natural progression from the very basics to having the need to go for a full blown event sourcing system with publishers/subscribers/servers/eventual consistency once the complexity of trying to manage a more "simple" solution starts to overwhelm.</p>
 <p>Unless you have that complexity and&nbsp;that need&nbsp;then of course trying to thrust an ivory tower designed architecture onto a system that doesn't need it is going to seem complicated. Hint: If your technical solution is more complicated than your original problem you're probably doing it wrong.</p>
 <p><a href="http://cre8ivethought.com/blog/index"><img alt="" width="500" height="405" src="/images/internal_codeofrob_com/DDDOverview_big.jpg"></a></p>
-	]]></description><link>http://codeofrob.com/entries/cqrs-is-too-complicated.html</link><guid isPermaLink="true">http://codeofrob.com/entries/cqrs-is-too-complicated.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 28 Sep 2011 19:45:00 GMT</pubDate></item><item><title><![CDATA[RavenDB Consultancy]]></title><description><![CDATA[
-		<p>I've been contacted quite a bit this past month with requests for workshops and short term consultancy on RavenDB - I'm thrilled to bits that the database seems to be taking off in this way and I'm all about helping this happen.</p>
-
-<p>The short answer is yes, I am happy to come and do private workshops tailored around your company's needs with RavenDB, I am also happy to offer remote or on-site consultancy where appropriate/desired.</p>
-
-<p>If you've too been wondering about this but not known where to look, just e-mail me at <a href="mailto:robashton@codeofrob.com">robashton@codeofrob.com</a>, I don't bite.</p>
-
-<p>That's about it really, I'll use this space to say that I'm now nearly settled in Belgium on a long term project for a client and I'm ready to commence blogging again, I've a few things I want to cover with RavenDB in particular but I'll most likely be doing that over at <a href="http://codebetter.com">codebetter.com</a></p>
-	]]></description><link>http://codeofrob.com/entries/ravendb-consultancy.html</link><guid isPermaLink="true">http://codeofrob.com/entries/ravendb-consultancy.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 05 Aug 2011 11:48:00 GMT</pubDate></item></channel></rss>
+	]]></description><link>http://codeofrob.com/entries/cqrs-is-too-complicated.html</link><guid isPermaLink="true">http://codeofrob.com/entries/cqrs-is-too-complicated.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 28 Sep 2011 19:45:00 GMT</pubDate></item></channel></rss>
