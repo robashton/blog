@@ -24,9 +24,8 @@ var compilePosts = function(posts) {
     var mdstat = path.existsSync(mdfilename);
     if(mdstat) {
       var mdcontent = fs.readFileSync(mdfilename, 'utf8'); 
-      console.log(mdcontent);
       var html = markdown.toHTML(mdcontent);
-      fs.writeFileSync(html,htmlfilename , 'utf8');
+      fs.writeFileSync(htmlfilename, html , 'utf8');
     }
     var inputHtml = fs.readFileSync(htmlfilename, 'utf8');
     return inputHtml;
