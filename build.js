@@ -1,9 +1,11 @@
 var fs = require('fs');
+var path = require('path');
 var wrench = require('wrench');
 var _ = require('underscore');
 var plates = require('plates');
 var common = require('./common');
 var RSS = require('rss');
+var markdown = require('markdown').markdown;
 
 var compilePosts = function(posts) {
 
@@ -16,13 +18,27 @@ var compilePosts = function(posts) {
     author: 'Rob Ashton'
   });
 
+  var readPageHtmlSync = function(folder) {
+    var mdfilename = 'input/pages/' + folder + '/content.md';
+    var htmlfilename = 'input/pages/' + folder + '/content.html';
+    var mdstat = path.existsSync(mdfilename);
+    if(mdstat) {
+      var mdcontent = fs.readFileSync(mdfilename, 'utf8'); 
+      console.log(mdcontent);
+      var html = markdown.toHTML(mdcontent);
+      fs.writeFileSync(html,htmlfilename , 'utf8');
+    }
+    var inputHtml = fs.readFileSync(htmlfilename, 'utf8');
+    return inputHtml;
+  };
+
   wrench.rmdirSyncRecursive('site/entries/');
   fs.mkdirSync('site/entries', '777');
   var pageTemplate = fs.readFileSync('input/source/pagetemplate.html', 'utf8');
   for(var i = 0 ; i < posts.length; i++) {
     var post = posts[i];
     var outputFilename = 'site/entries/' + common.titleToPage(post.title);
-    var inputHtml = fs.readFileSync('input/pages/' + common.titleToFolder(post.title) + '/content.html', 'utf8');
+    var inputHtml = readPageHtmlSync(common.titleToFolder(post.title));
     var commentHtml = '';
     var inputComments = JSON.parse(fs.readFileSync('input/pages/' + common.titleToFolder(post.title) + '/comments.json', 'utf8'));
     
