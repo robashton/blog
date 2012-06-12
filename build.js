@@ -19,7 +19,7 @@ var compilePosts = function(posts) {
   });
 
   var readPageHtmlSync = function(folder) {
-    var mdfilename = 'input/pages/' + folder + '/content.md';
+    var mdfilename = 'input/pages/' + folder + '/content.markdown';
     var htmlfilename = 'input/pages/' + folder + '/content.html';
     var mdstat = path.existsSync(mdfilename);
     if(mdstat) {

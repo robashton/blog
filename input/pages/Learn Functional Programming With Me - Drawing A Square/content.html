@@ -1,0 +1,104 @@
+<p>So.. setting up in ClojureScript isn&#39;t the most exciting thing I&#39;ve ever done - however, following the instructions at the <a href="https://github.com/clojure/clojurescript/wiki/Quick-Start">project wiki</a> got me set up with a basic build pipeline which allows me to include ClojureSript into the browser.</p>
+
+<p>You can find what I&#39;ve done and all the work so far here: <a href="http://github.com/robashton/clojure-spaceinvaders">github.com/robashton/clojure-spaceinvaders</a>.</p>
+
+<h2>Intro</h2>
+
+<p>My mission today will be to draw a square on a canvas object, nothing more than that - as there will be quite a few concepts to learn just to get this far.</p>
+
+<p>Moving on then, I&#39;m going to start off by doing most of my work in &#39;game.js&#39; and I don&#39;t think I need to export any variables to the outside world, so that keeps things tidy.</p>
+
+<p>About that - as far as I see it, what I want to build is a simulation of Space Invaders, which is as stateless and as side effect free in nature (or as far as is practical - whatever that means). This simulation will be the core of everything - and the side effects will exist on the periphery, in so far as updating the canvas and interacting with the user goes.</p>
+
+<h2>Some basic syntax</h2>
+
+<p>So, how do I begin? Well, I guess I&#39;d better get the rest of you caught up with me in understanding Clojure Syntax.</p>
+
+<p><em>this is a traditional function call</em></p>
+
+<pre><code>foo(x, y)</code></pre>
+
+<p><em>this is a Clojure function call</em></p>
+
+<pre><code>(foo x y)</code></pre>
+
+<p><em>this is a traditional function definition</em></p>
+
+<pre><code>function foo(x, y) {
+   console.log(x, y)
+}</code></pre>
+
+<p><em>this is a Clojure function definition</em></p>
+
+<pre><code>(defn foo [x, y]
+  (log x y)
+)</code></pre>
+
+<p>This should be enough to get us started at least. Apparently some of these things we put after the first paren are not only functions, but special forms or macros - but as I haven&#39;t learned anything about them yet, I&#39;m happy in my world of pretending they&#39;re all just functions.</p>
+
+<p>So, how am I going to start off in my happy world of Clojurescript? I need to create an HTML5 Canvas Context so I can do  things with it, and in order to do that I need to need to wait for the DOM ready event and oh oh oh - oh dear, <em>all of this looks like it might be hard because these are all external systems to my happy ClojureScript world and will involve some initial pain - oh well I wanted to learn how to do something practical and nearly all things practical are going to involve talking to external systems so I&#39;d better get the pain over with <strong>OH IT HURTS IT HURTS.</strong></em></p>
+
+<p>Ahem.</p>
+
+<h2>Getting a function called on start-up</h2>
+
+<p>Ever the pragmatist, rather than re-implement the standard fuzz around this stuff in Clojure, or pull in jQuery or anything I&#39;d do in JS, we&#39;ll just go with the body onload event, and rely on it calling a global function that I export from my game.js.</p>
+
+<pre><code>(ns game) 
+(defn ^:export init [] 
+
+) </code></pre>
+
+<p>Given a body declaration of something like</p>
+
+<pre><code>&lt;body onload=&quot;game.init();&quot;&gt;</code></pre>
+
+<p>That funky export thing just tells the Google Closure compiler not to mangle the name of the function (the ClojureScript compiler runs output through Closure - yes, that is confusing when you read it out loud).</p>
+
+<p>How do I test it works? Well inside my init function, let&#39;s access our first native object and see what the syntax is for that.</p>
+
+<pre><code>(.log js/console &quot;Hello World&quot;)</code></pre>
+
+<p>Actually not too bad, &quot;Please call .log - which exists on the object js/console, and pass in &quot;Hello World&quot; as parameters.</p>
+
+<p>Great - so I&#39;m now printing hello world, how are we going to draw a square to our canvas? Well first we&#39;ll need a context object, and in order to get that context object, we&#39;ll have to get a canvas object and call a method on it - this will mean having a variable of some sort from which we can gain other functionality.</p>
+
+<h2>Introducing some more syntax.</h2>
+
+<p><em>Traditional variable declaration</em></p>
+
+<pre><code>var x = 0;</code></pre>
+
+<p><em>Clojurescript variable declaration</em></p>
+
+<pre><code>(let [x 0] 
+  (doStuff x)
+)</code></pre>
+
+<p>So, two things here - we have this &#39;let&#39; thing, into which you pass in a vector of key-value pairs (x and 0 in this case, so x = 0), and then a body of code doing things with those values.</p>
+
+<p>Ah yes, Clojure has vectors, which are square brackets which contain a bunch of things. (parens are just lists of things, hence &#39;LISP&#39; apparently). The difference between the two? Well, for my purposes right now, one has square brackets and the other has parentheses - I&#39;m sure it will become clearer in the future.</p>
+
+<h2>Drawing my square</h2>
+
+<p>Anyway, expanding all of this we can get the following in order to do draw a square on our canvas</p>
+
+<pre><code>  (ns game)
+
+
+  (defn drawSquare []
+    (let [target (.getElementById js/document &quot;target&quot;)
+          context (.getContext target &quot;2d&quot;)]
+       (.fillRect context 0 0 100 100)
+    )
+  )
+
+  (defn ^:export init []
+     (drawSquare)
+  )</code></pre>
+
+<ul><li>Create a function called drawSquare, taking in no parameters</li><li>Let target = the result of calling getElementById on the document with a parameter of &#39;target&#39;</li><li>Let context = the result of calling getContext on target with a parameter of &#39;2d&#39;</li><li>Call fillRect on context, with parameters of 0,0,100,00</li><li>When init is called, call drawSquare with no parameters</li></ul>
+
+<p>I guess we learn something else here, which is you can make a nice little chain of lets that all feed into each other, as you&#39;d kinda hope.</p>
+
+<p>Next, we&#39;ll see about drawing a basic representation of our &#39;defender&#39; and move it around using the keyboard (probably)</p>
