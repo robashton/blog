@@ -1,4 +1,4 @@
-So.. setting up in ClojureScript isn't the most exciting thing I've ever done - however, following the instructions at the [project wiki](https://github.com/clojure/clojurescript/wiki/Quick-Start) got me set up with a basic build pipeline which allows me to include ClojureSript into the browser.
+So.. setting up in ClojureScript isn't the most exciting thing I've ever done - however, following the instructions at the [project wiki](https://github.com/clojure/clojurescript/wiki/Quick-Start) got me set up with a basic build pipeline which allows me to include ClojureScript into the browser.
 
 You can find what I've done and all the work so far here: [github.com/robashton/clojure-spaceinvaders](http://github.com/robashton/clojure-spaceinvaders).
 
