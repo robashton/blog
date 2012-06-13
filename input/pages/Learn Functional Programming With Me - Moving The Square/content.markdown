@@ -1,6 +1,6 @@
 So, last session I managed to get a square being drawn, as if I haven't done that a thousand times in JS - now to do something a bit more dangerous (because it involves state), and more likely to get me in trouble - let's move the square around using the keyboard.
 
-**Reminder**: The source for all of this can be found at [github.com/robashton/clojurescript-spaceinvaders](https://github.com/robashton/clojurescript-spaceinvaders)
+**Reminder**: The source for all of this can be found at [github.com/robashton/clojure-spaceinvaders](https://github.com/robashton/clojure-spaceinvaders)
 
 Parameterising the function
 ------------
