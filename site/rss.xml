@@ -1,5 +1,160 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><generator>NodeJS RSS Module</generator><lastBuildDate>Wed, 13 Jun 2012 22:14:35 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Learn Functional Programming With Me - Moving The Square]]></title><description><![CDATA[<p>So, last session I managed to get a square being drawn, as if I haven&#39;t done that a thousand times in JS - now to do something a bit more dangerous (because it involves state), and more likely to get me in trouble - let&#39;s move the square around using the keyboard.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><generator>NodeJS RSS Module</generator><lastBuildDate>Fri, 15 Jun 2012 18:55:42 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Learn Functional Programming With Me - Attributes And Vectors]]></title><description><![CDATA[<p>So last time I left the program, I had a black square which moved across the page but left a delightful black smear across the window, it looked something like this:</p>
+
+<p><img alt="Black smear" src="/img/blackline.png"/></p>
+
+<p>I promised I&#39;d add keyboard input this time around, and I don&#39;t like to lie - so while I sit here at my client&#39;s rather amazing karting day I&#39;ve decided to give adding this a go as I don&#39;t really like karting that much ;-).</p>
+
+<p>First things first, I need to clear my screen in between frames or I&#39;m going to keep on having an ugly black smear instead of a moving black square, in JS this would look like.</p>
+
+<pre><code>context.clearRect(0, 0, width, height);</code></pre>
+
+<p>Not rocket science, right?</p>
+
+<p>Well, right now, I have the function for drawing a square, which gets the context and draws a square, this looks like</p>
+
+<pre><code>(defn drawSquare [x y w h]
+  (let [target (.getElementById js/document &quot;target&quot;)
+        context (.getContext target &quot;2d&quot;)]
+    (.fillRect context x y w h)
+  )
+)</code></pre>
+
+<p>Great, but in order to have the moving square, I&#39;m going need that context more than once, and making multiple requests to get the context is a bad idea because it means lots of calls to the DOM (slow).</p>
+
+<p>Clearly this means I&#39;m going to need three functions for my purposes:</p>
+
+<pre><code>(defn clearScreen [ctx]
+  (.clearRect ctx 0 0 WIDTH HEIGHT)
+)
+
+(defn drawRect [ctx x y w h]
+  (.fillRect ctx x y w h)
+)
+
+(defn context []
+  (let [target (.getElementById js/document &quot;target&quot;)]
+  (.getContext target &quot;2d&quot;))
+)</code></pre>
+
+<p>Meaning I can do</p>
+
+<pre><code>(defn drawScene [x]
+  (let [ctx (context)]
+    (clearScreen ctx)
+    (drawRect x 0 100 100)
+  )
+)</code></pre>
+
+<p>Now, you&#39;ll have noticed (if you&#39;re actually paying attention), that I have a &#39;Width&#39; and &#39;Height&#39; parameter for clearScreen that I haven&#39;t bothered trying to filter - that&#39;s because they&#39;re attributes of the Canvas Element and I need to get the darned things from that element and I haven&#39;t worked out a clean way of passing these things around (or retrieving them all from a function so I have the values present at that time. (Remember that I am trying to avoid global state, and as far as I know I haven&#39;t got &quot;Types&quot; for storing collections of data in.</p>
+
+<p>Okay - so first things first, how do I get attributes from an HTML element? HTML elements? Attributes? These aren&#39;t Clojure concepts - I can do a quick Google and see that this is possible:</p>
+
+<pre><code>(. target -width)</code></pre>
+
+<p>According to the Wiki on Clojurescript, this is just part of the &quot;host interop&quot; featureset - I&#39;m not entirely sure how this maps to typical Clojure.</p>
+
+<p>Now - this still means I have the problem of how to get these out of a function, in JS I&#39;d probably have something like</p>
+
+<pre><code>var Rendering = function(element) {
+  this.context = element.getContext(&#39;2d&#39;);
+  this.width = element.width;
+  this.height = element.height;
+}</code></pre>
+
+<p>Or something trite like that (see my other canvas codes in Github for what this actually looks like).</p>
+
+<p>Can&#39;t do this here as far as I know, turns out I can return a vector, or a list or a set or something from a function (duh), so I can do something like</p>
+
+<pre><code>(defn context []
+  (let [target (.getElementById js/document &quot;target&quot;)
+    [
+      (.getContext target &quot;2d&quot;)
+      (. target -width)
+      (. target -height)
+    ]
+  )
+)</code></pre>
+
+<p>Which will return a vector containing</p>
+
+<pre><code>[context width height]</code></pre>
+
+<p>I can pass this into my clearRect function for example with</p>
+
+<pre><code>(defn drawScene [x]
+  (let [ctx (context)]
+    (clearScreen ctx)
+    (drawRect x 0 100 100)
+  )
+)</code></pre>
+
+<p>So nothing different here, but I&#39;ll need to unpack that vector in order to use it</p>
+
+<pre><code>(defn clearScreen [ctx]
+  (let [[context width height] ctx
+    (.clearRect context 0 0 width height)
+  )
+)</code></pre>
+
+<p>Which is a bit verbose, or doing a bit of research it appears I can automatically unpack that vector when I call the function ala</p>
+
+<pre><code>(defn clearScreen [[context width height]]
+  (.clearRect context 0 0 width height)
+)</code></pre>
+
+<p>I&#39;m not entirely sure how I feel about this, I&#39;m just passing blobs of data around and assuming their structure in my functions - does Clojure have any inference over this stuff for verifiability (I&#39;m not sure) - seems I&#39;m losing a lot of the safety I&#39;d have with OO constructs (regardless of type safety or whatever).</p>
+
+<p>Either way, my complete program currently looks like this:</p>
+
+<pre><code>(ns game)
+
+(defn context []
+  (let [target (.getElementById js/document &quot;target&quot;)]
+    [
+      (.getContext target &quot;2d&quot;) 
+      (. target -width)
+      (. target -height)
+    ]
+  )
+)
+
+(defn clearScreen [[ctx width height]]
+  (set! (. ctx -fillStyle) &quot;#FFF&quot;)
+  (.clearRect ctx 0 0 width height) 
+)
+
+(defn drawSquare [[ctx width height] x y w h]
+  (set! (. ctx -fillStyle) &quot;#000&quot;)
+  (.fillRect ctx x y w h) 
+)
+
+
+(defn tick [x]
+  (let [ctx (context)] 
+    (clearScreen ctx) 
+    (drawSquare ctx x 0 100 100)  
+    (if (&lt;= x 1000) 
+      (js/setTimeout (fn []
+        (tick (inc x)) 
+      ) 33  )
+    )
+  )
+)
+
+(defn ^:export init []
+  (tick 0) 
+)</code></pre>
+
+<p>This has the effect of drawing a square, clearing the rect and drawing the square again, which means my square floats across the screen.</p>
+
+<p>Seems I&#39;ve once again run out of room to talk about input to this program from the keyboard, hopefully I&#39;ll reach that next entry!</p>
+
+<p>I still have some pending questions from these two entries:</p>
+
+<ul><li>The recursive setTimeout with the anonymous closure?</li><li>Passing that vector around - is this a good idea?</li></ul>
+
+<p>Anybody feel free to chip in at any time.</p>]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---attributes-and-vectors.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---attributes-and-vectors.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 15 Jun 2012 12:34:00 GMT</pubDate></item><item><title><![CDATA[Learn Functional Programming With Me - Moving The Square]]></title><description><![CDATA[<p>So, last session I managed to get a square being drawn, as if I haven&#39;t done that a thousand times in JS - now to do something a bit more dangerous (because it involves state), and more likely to get me in trouble - let&#39;s move the square around using the keyboard.</p>
 
 <p><strong>Reminder</strong>: The source for all of this can be found at <a href="https://github.com/robashton/clojure-spaceinvaders">github.com/robashton/clojure-spaceinvaders</a></p>
 
@@ -1053,14 +1208,4 @@ ParticleEngine.prototype = {
 <p>It's just software, and we should be spending more time learning how to deliver software and less time learning how to manipulate favourite container X.</p>
 
 
-]]></description><link>http://codeofrob.com/entries/your-container-is-not-wanted-here.html</link><guid isPermaLink="true">http://codeofrob.com/entries/your-container-is-not-wanted-here.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 02 Feb 2012 12:34:00 GMT</pubDate></item><item><title><![CDATA[What does it look like when I code?]]></title><description><![CDATA[
-		<p>Something like this</p>
-
-<object width="1280" height="720"><param name="movie" value="http://www.youtube.com/v/mp_nxjhx6yY?version=3&amp;hl=en_US&amp;rel=0&amp;hd=1"><param name="allowFullScreen" value="true"><param name="allowscriptaccess" value="always"><embed src="http://www.youtube.com/v/mp_nxjhx6yY?version=3&amp;hl=en_US&amp;rel=0&amp;hd=1" type="application/x-shockwave-flash" width="1280" height="720" allowscriptaccess="always" allowfullscreen="true"></object>
-
-<p>This is a time-lapse of me creating a game over 48 hours (a weekend), overall there is about 30 hours of screen-time packed into 3 minutes of video - it's cool to see how the game and code progress over those 30 hours.</p>
-
-<p>What is interesting is how I always have the social elements open in a browser window on my left hand side, I'd never noticed it before - I don't think it slowed me down any - the pauses where I wasn't coding I was up making coffee or thinking about a problem</p>
-
-<p>Still, it would be interesting to see how I'd get on without it if I was doing another of these - the next rendition of the competition is next March and I think I'll be doubling my efforts to create something cool - I might even go as far as to do a 3D effort in WebGL</p>
-	]]></description><link>http://codeofrob.com/entries/what-does-it-look-like-when-i-code.html</link><guid isPermaLink="true">http://codeofrob.com/entries/what-does-it-look-like-when-i-code.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 20 Dec 2011 17:47:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/your-container-is-not-wanted-here.html</link><guid isPermaLink="true">http://codeofrob.com/entries/your-container-is-not-wanted-here.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 02 Feb 2012 12:34:00 GMT</pubDate></item></channel></rss>
