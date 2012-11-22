@@ -1,41 +1,464 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Thu, 22 Nov 2012 16:27:26 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Learn Functional Programming With Me - A Mission Statement]]></title><description><![CDATA[<p>I was at NDC2012 last week and ended up hanging around the tongue-in-cheek &quot;Hipster stand&quot; along with a fine bunch of people who sat around coding and chatting most of the week on various interesting projects.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Thu, 22 Nov 2012 16:43:33 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Learn Functional Programming With Me - Attributes And Vectors]]></title><description><![CDATA[<p>So last time I left the program, I had a black square which moved across the page but left a delightful black smear across the window, it looked something like this:</p>
 
-<p>One of those fine people was <a href="https://twitter.com/bodiltv">@bodiltv</a> who proclaimed their love for Lisp, Emacs and various other things that I thought (like most people) I&#39;d left behind after university never to touch again.</p>
+<p><img alt="Black smear" src="/img/blackline.png"/></p>
 
-<p>However, functional programming is something that is seeing somewhat of a re-emergence in the crowds of people who I tend to lump into a bucket of &quot;Smarter than Rob&quot;, and I was looking for an excuse to give it a go - having to build something with somebody sat next to me to show me the ropes was an excellent motivator.</p>
+<p>I promised I&#39;d add keyboard input this time around, and I don&#39;t like to lie - so while I sit here at my client&#39;s rather amazing karting day I&#39;ve decided to give adding this a go as I don&#39;t really like karting that much ;-).</p>
 
-<p>Over the course of a couple of hours on Thursday, <a href="https://twitter.com/bodiltv">@bodiltv</a> and I sat down and wrote a simple little script that looks something like this:</p>
+<p>First things first, I need to clear my screen in between frames or I&#39;m going to keep on having an ugly black smear instead of a moving black square, in JS this would look like.</p>
 
-<pre><code>(ns foo.core 
-(:use [net.cgrand.enlive-html :as html])  
-)
+<pre><code>context.clearRect(0, 0, width, height);</code></pre>
 
-(def BASEURL &quot;https://en.wikipedia.org/wiki/&quot;)
+<p></p>
 
-(defn fetch-url [url]
-  (html/html-resource (java.net.URL. url)))
+<p>Not rocket science, right?</p>
 
-(defn define
-  &quot;Fetches a page from wikipedia and prints the first paragraph&quot;
-    [q]
-      (let [url (str BASEURL q)
-           content (fetch-url url)]
-           ((comp html/text
-                  first
-                  html/select) content [:#mw-content-text :p])
+<p>Well, right now, I have the function for drawing a square, which gets the context and draws a square, this looks like</p>
+
+<pre><code>(defn drawSquare [x y w h]</code></pre>
+
+<p>
+      (let [target (.getElementById js/document &quot;target&quot;)
+            context (.getContext target &quot;2d&quot;)]
+        (.fillRect context x y w h)
       )
-)</code></pre>
+    )</p>
 
-<p>We also then looked at futures and how such things like that could help us, and with the knowledge of state being immutable know that we were safe when doing so. I then asked the question that most people ask when encountering this stuff for the (first/second) time, &quot;How on earth do you build something <em>real</em> with this stuff&quot;.</p>
+<p>Great, but in order to have the moving square, I&#39;m going need that context more than once, and making multiple requests to get the context is a bad idea because it means lots of calls to the DOM (slow).</p>
 
-<p>So here goes, a mission statement - <em>I am going to build space invaders on top of HTML5 Canvas with Clojurescript</em>.</p>
+<p>Clearly this means I&#39;m going to need three functions for my purposes:</p>
 
-<p>Yes, I am breaking out the blog again and relying on YOU, the reader who knows more about these things than I do to guide me on my way as I inevitably make lots of mistakes.</p>
+<pre><code>(defn clearScreen [ctx]</code></pre>
 
-<p>It&#39;s hard to do this, because on the surface of things it seems so far away from the style of development I am used to, but by learning out in the open I am hoping we&#39;ll accelerate the process of getting to the point where I can be productive in a functional environment.</p>
+<p>
+      (.clearRect ctx 0 0 WIDTH HEIGHT)
+    )</p>
 
-<p>Next entry: Let&#39;s see what my environment is going to look like, how I am going to interact with the Canvas and structure myself during this experiment.</p>]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---a-mission-statement.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---a-mission-statement.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 11 Jun 2012 12:34:00 GMT</pubDate></item><item><title><![CDATA[Github Live]]></title><description><![CDATA[<h5>Visualize git 'pushes' live as they happen across Github.</h5>
+<pre><code>(defn drawRect [ctx x y w h]</code></pre>
+
+<p>
+      (.fillRect ctx x y w h)
+    )</p>
+
+<pre><code>(defn context []</code></pre>
+
+<p>
+      (let [target (.getElementById js/document &quot;target&quot;)]
+      (.getContext target &quot;2d&quot;))
+    )</p>
+
+<p>Meaning I can do</p>
+
+<pre><code>(defn drawScene [x]</code></pre>
+
+<p>
+      (let [ctx (context)]
+        (clearScreen ctx)
+        (drawRect x 0 100 100)
+      )
+    )</p>
+
+<p>Now, you&#39;ll have noticed (if you&#39;re actually paying attention), that I have a &#39;Width&#39; and &#39;Height&#39; parameter for clearScreen that I haven&#39;t bothered trying to filter - that&#39;s because they&#39;re attributes of the Canvas Element and I need to get the darned things from that element and I haven&#39;t worked out a clean way of passing these things around (or retrieving them all from a function so I have the values present at that time. (Remember that I am trying to avoid global state, and as far as I know I haven&#39;t got &quot;Types&quot; for storing collections of data in.</p>
+
+<p>Okay - so first things first, how do I get attributes from an HTML element? HTML elements? Attributes? These aren&#39;t Clojure concepts - I can do a quick Google and see that this is possible:</p>
+
+<pre><code>(. target -width)</code></pre>
+
+<p></p>
+
+<p>According to the Wiki on Clojurescript, this is just part of the &quot;host interop&quot; featureset - I&#39;m not entirely sure how this maps to typical Clojure.</p>
+
+<p>Now - this still means I have the problem of how to get these out of a function, in JS I&#39;d probably have something like</p>
+
+<pre><code>var Rendering = function(element) {</code></pre>
+
+<p>
+      this.context = element.getContext(&#39;2d&#39;);
+      this.width = element.width;
+      this.height = element.height;
+    }</p>
+
+<p>Or something trite like that (see my other canvas codes in Github for what this actually looks like).</p>
+
+<p>Can&#39;t do this here as far as I know, turns out I can return a vector, or a list or a set or something from a function (duh), so I can do something like</p>
+
+<pre><code>(defn context []</code></pre>
+
+<p>
+      (let [target (.getElementById js/document &quot;target&quot;)
+        [
+          (.getContext target &quot;2d&quot;)
+          (. target -width)
+          (. target -height)
+        ]
+      )
+    )</p>
+
+<p>Which will return a vector containing</p>
+
+<pre><code>[context width height]</code></pre>
+
+<p></p>
+
+<p>I can pass this into my clearRect function for example with</p>
+
+<pre><code>(defn drawScene [x]</code></pre>
+
+<p>
+      (let [ctx (context)]
+        (clearScreen ctx)
+        (drawRect x 0 100 100)
+      )
+    )</p>
+
+<p>So nothing different here, but I&#39;ll need to unpack that vector in order to use it</p>
+
+<pre><code>(defn clearScreen [ctx]</code></pre>
+
+<p>
+      (let [[context width height] ctx
+        (.clearRect context 0 0 width height)
+      )
+    )</p>
+
+<p>Which is a bit verbose, or doing a bit of research it appears I can automatically unpack that vector when I call the function ala</p>
+
+<pre><code>(defn clearScreen [[context width height]]</code></pre>
+
+<p>
+      (.clearRect context 0 0 width height)
+    )</p>
+
+<p>I&#39;m not entirely sure how I feel about this, I&#39;m just passing blobs of data around and assuming their structure in my functions - does Clojure have any inference over this stuff for verifiability (I&#39;m not sure) - seems I&#39;m losing a lot of the safety I&#39;d have with OO constructs (regardless of type safety or whatever).</p>
+
+<p>Either way, my complete program currently looks like this:</p>
+
+<pre><code>(ns game)</code></pre>
+
+<p></p>
+
+<pre><code>(defn context []</code></pre>
+
+<p>
+      (let [target (.getElementById js/document &quot;target&quot;)]
+        [
+          (.getContext target &quot;2d&quot;) 
+          (. target -width)
+          (. target -height)
+        ]
+      )
+    )</p>
+
+<pre><code>(defn clearScreen [[ctx width height]]</code></pre>
+
+<p>
+      (set! (. ctx -fillStyle) &quot;#FFF&quot;)
+      (.clearRect ctx 0 0 width height) 
+    )</p>
+
+<pre><code>(defn drawSquare [[ctx width height] x y w h]</code></pre>
+
+<p>
+      (set! (. ctx -fillStyle) &quot;#000&quot;)
+      (.fillRect ctx x y w h) 
+    )</p>
+
+<pre><code>(defn tick [x]</code></pre>
+
+<p>
+      (let [ctx (context)] 
+        (clearScreen ctx) 
+        (drawSquare ctx x 0 100 100)  
+        (if (&lt;= x 1000) 
+          (js/setTimeout (fn []
+            (tick (inc x)) 
+          ) 33  )
+        )
+      )
+    )</p>
+
+<pre><code>(defn ^:export init []</code></pre>
+
+<p>
+      (tick 0) 
+    )</p>
+
+<p>This has the effect of drawing a square, clearing the rect and drawing the square again, which means my square floats across the screen.</p>
+
+<p>Seems I&#39;ve once again run out of room to talk about input to this program from the keyboard, hopefully I&#39;ll reach that next entry!</p>
+
+<p>I still have some pending questions from these two entries:</p>
+
+<ul><li>The recursive setTimeout with the anonymous closure?</li><li>Passing that vector around - is this a good idea?</li></ul>
+
+<p>Anybody feel free to chip in at any time.</p>]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---attributes-and-vectors.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---attributes-and-vectors.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 15 Jun 2012 12:34:00 GMT</pubDate></item><item><title><![CDATA[Learn Functional Programming With Me - Moving The Square]]></title><description><![CDATA[<p>So, last session I managed to get a square being drawn, as if I haven&#39;t done that a thousand times in JS - now to do something a bit more dangerous (because it involves state), and more likely to get me in trouble - let&#39;s move the square around using the keyboard.</p>
+
+<p><strong>Reminder</strong>: The source for all of this can be found at <a href="https://github.com/robashton/clojure-spaceinvaders">github.com/robashton/clojure-spaceinvaders</a></p>
+
+<p>Parameterising the function
+------------</p>
+
+<p>This is a no-brainer, I&#39;m going to need to know where to draw this thing, I start off by passing in the state required to draw a rect to my function.</p>
+
+<pre><code>(defn drawRect [x y w h]</code></pre>
+
+<p>
+      (let [target (.getElementById js/document &quot;target&quot;)
+            context (.getContext target &quot;2d&quot;)]
+         (.fillRect context x y w h)           
+      )
+    )</p>
+
+<p>So far so good - but now I&#39;m going to need to not only pass in those variables, but - well they&#39;re going to have to be variable (somehow) because they&#39;re going to have to change each frame and it&#39;s stuff like this that makes me break out in a cold sweat because I haven&#39;t discovered the patterns to solve this type of problem yet.</p>
+
+<p>Let&#39;s explain - you see that &#39;let&#39; statement, the values I&#39;ve defined there, those key value pairs are <em>immutable</em>, this means I cannot change them - for example, if I want to make this square move of its own voilition, the literal equivalent of</p>
+
+<pre><code>for(var x = 0; x &lt; 1000; x++)</code></pre>
+
+<p>
+      drawRect(x, 0, 100, 100);</p>
+
+<p>Doesn&#39;t exist.</p>
+
+<p>Now, if I were to make my best guess at how to solve this, I&#39;d say that we need a function that takes in x, and then calls itself with x+1, for example at a conceptual level:</p>
+
+<pre><code>function drawAndMove(x) {</code></pre>
+
+<p>
+      drawRect(x, 0, 100, 100)
+      if(x &lt;= 1000)
+        drawAndMove(x+1)
+    }
+    drawAndMove(0);</p>
+
+<p>This actually maps across to a construct in our chosen world that looks something like the following:</p>
+
+<pre><code>(loop [x 0]</code></pre>
+
+<p>
+      (drawRect x 0 100 100)     
+      (if (&lt;= x 1000)
+        (recur (inc x))
+      )
+    )</p>
+
+<ul><li>I want to loop, I want the following values available in this loop (x = 0)</li><li>Please draw the rect at x,0,100,100</li><li>If x &lt;= 1000, recurse and increment x</li></ul>
+
+<p>Okay, this is a bit crazy and verbose - perhaps there is a better more shorthand way of doing this (anybody care to chip in around now?), but Imma press ahead and say that actually, that is not the greatest loop of all time.</p>
+
+<p>We actually have to yield to the UI thread each &#39;frame&#39; which blows this whole thing out of the water - that&#39;s not to say that this code isn&#39;t functional - because I love having a row of black drawn over my canvas on the UI thread with no user interaction whatsoever - but we actually need something like the following</p>
+
+<pre><code>function tick() {</code></pre>
+
+<p>
+      logic();
+      render();
+      setTimeout(tick, 33);
+    }</p>
+
+<p>Again, cutting a corner here because I don&#39;t want to write a full on game loop in clojure just yet.</p>
+
+<p>Figuring it out, I&#39;ve ended up with something like this</p>
+
+<pre><code>(defn tick [x]</code></pre>
+
+<p>
+      (drawRect x 0 100 100)
+      (if (&lt;= x 1000)
+        (js/setTimeout (fn []
+           (tick (inc x))
+        ) 33  )
+      )
+    )</p>
+
+<pre><code>(defn ^:export init []</code></pre>
+
+<p>
+       (tick 0)
+    )</p>
+
+<ul><li>Define a function called tick, which takes in the current position of our object</li><li>Draw a rect at that location</li><li>If x is still less than 1000, then</li><li>In 33 milliseconds, call tick again but with x+1</li></ul>
+
+<p>I&#39;ve actually gone far enough for a single blog entry at this point so I&#39;ll leave keyboard input till another day - I have some thoughts about this work so far however:</p>
+
+<ul><li>That setTimeout doo-hick is taking in an anonymous function, am I creating this function every frame? I wouldn&#39;t do that in most of my JS, it&#39;s effectively the same as creating a closure in a loop - not good?</li><li>I saw something like this that used global state and an atom, and then tick could be called with no parameters - is this a better solution? It seems somewhat against what functional programming is about</li><li>Thoughts?</li></ul>]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---moving-the-square.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---moving-the-square.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 13 Jun 2012 12:34:00 GMT</pubDate></item><item><title><![CDATA[Learn Functional Programming With Me - Drawing A Square]]></title><description><![CDATA[<p>So.. setting up in ClojureScript isn&#39;t the most exciting thing I&#39;ve ever done - however, following the instructions at the <a href="https://github.com/clojure/clojurescript/wiki/Quick-Start">project wiki</a> got me set up with a basic build pipeline which allows me to include ClojureScript into the browser.</p>
+
+<p>You can find what I&#39;ve done and all the work so far here: <a href="http://github.com/robashton/clojure-spaceinvaders">github.com/robashton/clojure-spaceinvaders</a>.</p>
+
+<p>Intro
+----------</p>
+
+<p>My mission today will be to draw a square on a canvas object, nothing more than that - as there will be quite a few concepts to learn just to get this far.</p>
+
+<p>Moving on then, I&#39;m going to start off by doing most of my work in &#39;game.js&#39; and I don&#39;t think I need to export any variables to the outside world, so that keeps things tidy.</p>
+
+<p>About that - as far as I see it, what I want to build is a simulation of Space Invaders, which is as stateless and as side effect free in nature (or as far as is practical - whatever that means). This simulation will be the core of everything - and the side effects will exist on the periphery, in so far as updating the canvas and interacting with the user goes.</p>
+
+<p>Some basic syntax
+---------------</p>
+
+<p>So, how do I begin? Well, I guess I&#39;d better get the rest of you caught up with me in understanding Clojure Syntax.</p>
+
+<p><em>this is a traditional function call</em></p>
+
+<pre><code>foo(x, y)</code></pre>
+
+<p></p>
+
+<p><em>this is a Clojure function call</em></p>
+
+<pre><code>(foo x y)</code></pre>
+
+<p></p>
+
+<p><em>this is a traditional function definition</em></p>
+
+<pre><code>function foo(x, y) {</code></pre>
+
+<p>
+       console.log(x, y)
+    }</p>
+
+<p><em>this is a Clojure function definition</em></p>
+
+<pre><code>(defn foo [x, y]</code></pre>
+
+<p>
+      (log x y)
+    )</p>
+
+<p>This should be enough to get us started at least. Apparently some of these things we put after the first paren are not only functions, but special forms or macros - but as I haven&#39;t learned anything about them yet, I&#39;m happy in my world of pretending they&#39;re all just functions.</p>
+
+<p>So, how am I going to start off in my happy world of Clojurescript? I need to create an HTML5 Canvas Context so I can do  things with it, and in order to do that I need to need to wait for the DOM ready event and oh oh oh - oh dear, <em>all of this looks like it might be hard because these are all external systems to my happy ClojureScript world and will involve some initial pain - oh well I wanted to learn how to do something practical and nearly all things practical are going to involve talking to external systems so I&#39;d better get the pain over with <strong>OH IT HURTS IT HURTS.</strong></em></p>
+
+<p>Ahem.</p>
+
+<p>Getting a function called on start-up
+-----------------</p>
+
+<p>Ever the pragmatist, rather than re-implement the standard fuzz around this stuff in Clojure, or pull in jQuery or anything I&#39;d do in JS, we&#39;ll just go with the body onload event, and rely on it calling a global function that I export from my game.js.</p>
+
+<pre><code>(ns game) </code></pre>
+
+<p>
+    (defn ^:export init [] </p>
+
+<pre><code>) </code></pre>
+
+<p></p>
+
+<p>Given a body declaration of something like</p>
+
+<pre><code>&lt;body onload=&quot;game.init();&quot;&gt;</code></pre>
+
+<p></p>
+
+<p>That funky export thing just tells the Google Closure compiler not to mangle the name of the function (the ClojureScript compiler runs output through Closure - yes, that is confusing when you read it out loud).</p>
+
+<p>How do I test it works? Well inside my init function, let&#39;s access our first native object and see what the syntax is for that.</p>
+
+<pre><code>(.log js/console &quot;Hello World&quot;)</code></pre>
+
+<p></p>
+
+<p>Actually not too bad, &quot;Please call .log - which exists on the object js/console, and pass in &quot;Hello World&quot; as parameters.</p>
+
+<p>Great - so I&#39;m now printing hello world, how are we going to draw a square to our canvas? Well first we&#39;ll need a context object, and in order to get that context object, we&#39;ll have to get a canvas object and call a method on it - this will mean having a variable of some sort from which we can gain other functionality.</p>
+
+<p>Introducing some more syntax.
+----------------</p>
+
+<p><em>Traditional variable declaration</em></p>
+
+<pre><code>var x = 0;</code></pre>
+
+<p></p>
+
+<p><em>Clojurescript variable declaration</em></p>
+
+<pre><code>(let [x 0] </code></pre>
+
+<p>
+      (doStuff x)
+    )</p>
+
+<p>So, two things here - we have this &#39;let&#39; thing, into which you pass in a vector of key-value pairs (x and 0 in this case, so x = 0), and then a body of code doing things with those values.</p>
+
+<p>Ah yes, Clojure has vectors, which are square brackets which contain a bunch of things. (parens are just lists of things, hence &#39;LISP&#39; apparently). The difference between the two? Well, for my purposes right now, one has square brackets and the other has parentheses - I&#39;m sure it will become clearer in the future.</p>
+
+<p>Drawing my square
+--------------------</p>
+
+<p>Anyway, expanding all of this we can get the following in order to do draw a square on our canvas</p>
+
+<pre><code>  (ns game)</code></pre>
+
+<p></p>
+
+<pre><code>  (defn drawSquare []</code></pre>
+
+<p>
+        (let [target (.getElementById js/document &quot;target&quot;)
+              context (.getContext target &quot;2d&quot;)]
+           (.fillRect context 0 0 100 100)
+        )
+      )</p>
+
+<pre><code>  (defn ^:export init []</code></pre>
+
+<p>
+         (drawSquare)
+      )</p>
+
+<ul><li>Create a function called drawSquare, taking in no parameters</li><li>Let target = the result of calling getElementById on the document with a parameter of &#39;target&#39;</li><li>Let context = the result of calling getContext on target with a parameter of &#39;2d&#39;</li><li>Call fillRect on context, with parameters of 0,0,100,00</li><li>When init is called, call drawSquare with no parameters</li></ul>
+
+<p>I guess we learn something else here, which is you can make a nice little chain of lets that all feed into each other, as you&#39;d kinda hope.</p>
+
+<p>Next, we&#39;ll see about drawing a basic representation of our &#39;defender&#39; and move it around using the keyboard (probably)</p>]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---drawing-a-square.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---drawing-a-square.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 12 Jun 2012 12:34:00 GMT</pubDate></item><item><title><![CDATA[Learn Functional Programming With Me - A Mission Statement]]></title><description><![CDATA[<p>I was at NDC2012 last week and ended up hanging around the tongue-in-cheek &quot;Hipster stand&quot; along with a fine bunch of people who sat around coding and chatting most of the week on various interesting projects.</p>
+
+<p>One of those fine people was <a href="https://twitter.com/bodiltv">@bodiltv</a> who proclaimed their love for Lisp, Emacs and various other things that I thought (like most people) I&#39;d left behind after university never to touch again.</p>
+
+<p>However, functional programming is something that is seeing somewhat of a re-emergence in the crowds of people who I tend to lump into a bucket of &quot;Smarter than Rob&quot;, and I was looking for an excuse to give it a go - having to build something with somebody sat next to me to show me the ropes was an excellent motivator.</p>
+
+<p>Over the course of a couple of hours on Thursday, <a href="https://twitter.com/bodiltv">@bodiltv</a> and I sat down and wrote a simple little script that looks something like this:</p>
+
+<pre><code>(ns foo.core </code></pre>
+
+<p>
+    (:use [net.cgrand.enlive-html :as html])  
+    )</p>
+
+<pre><code>(def BASEURL &quot;https://en.wikipedia.org/wiki/&quot;)</code></pre>
+
+<p></p>
+
+<pre><code>(defn fetch-url [url]</code></pre>
+
+<p>
+      (html/html-resource (java.net.URL. url)))</p>
+
+<pre><code>(defn define</code></pre>
+
+<p>
+      &quot;Fetches a page from wikipedia and prints the first paragraph&quot;
+        [q]
+          (let [url (str BASEURL q)
+               content (fetch-url url)]
+               ((comp html/text
+                      first
+                      html/select) content [:#mw-content-text :p])
+          )
+    )</p>
+
+<p>We also then looked at futures and how such things like that could help us, and with the knowledge of state being immutable know that we were safe when doing so. I then asked the question that most people ask when encountering this stuff for the (first/second) time, &quot;How on earth do you build something <em>real</em> with this stuff&quot;.</p>
+
+<p>So here goes, a mission statement - <em>I am going to build space invaders on top of HTML5 Canvas with Clojurescript</em>.</p>
+
+<p>Yes, I am breaking out the blog again and relying on YOU, the reader who knows more about these things than I do to guide me on my way as I inevitably make lots of mistakes.</p>
+
+<p>It&#39;s hard to do this, because on the surface of things it seems so far away from the style of development I am used to, but by learning out in the open I am hoping we&#39;ll accelerate the process of getting to the point where I can be productive in a functional environment.</p>
+
+<p>Next entry: Let&#39;s see what my environment is going to look like, how I am going to interact with the Canvas and structure myself during this experiment.</p>]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---a-mission-statement.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---a-mission-statement.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 11 Jun 2012 12:34:00 GMT</pubDate></item><item><title><![CDATA[Github Live]]></title><description><![CDATA[<h5>Visualize git 'pushes' live as they happen across Github.</h5>
 
 <p>I visited <a href="https://twitter.com/#!/cranialstrain">@cranialstrain</a> in England this weekend, and he suggested we hack something together around the Github APIs in response to the <a href="https://github.com/blog/1118-the-github-data-challenge">Github data challenge </a>.</p>
 
@@ -874,68 +1297,4 @@ ParticleEngine.prototype = {
 <p>It's just software, and we should be spending more time learning how to deliver software and less time learning how to manipulate favourite container X.</p>
 
 
-]]></description><link>http://codeofrob.com/entries/your-container-is-not-wanted-here.html</link><guid isPermaLink="true">http://codeofrob.com/entries/your-container-is-not-wanted-here.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 02 Feb 2012 12:34:00 GMT</pubDate></item><item><title><![CDATA[What does it look like when I code]]></title><description><![CDATA[
-		<p>Something like this</p>
-
-<object width="1280" height="720"><param name="movie" value="http://www.youtube.com/v/mp_nxjhx6yY?version=3&amp;hl=en_US&amp;rel=0&amp;hd=1"><param name="allowFullScreen" value="true"><param name="allowscriptaccess" value="always"><embed src="http://www.youtube.com/v/mp_nxjhx6yY?version=3&amp;hl=en_US&amp;rel=0&amp;hd=1" type="application/x-shockwave-flash" width="1280" height="720" allowscriptaccess="always" allowfullscreen="true"></object>
-
-<p>This is a time-lapse of me creating a game over 48 hours (a weekend), overall there is about 30 hours of screen-time packed into 3 minutes of video - it's cool to see how the game and code progress over those 30 hours.</p>
-
-<p>What is interesting is how I always have the social elements open in a browser window on my left hand side, I'd never noticed it before - I don't think it slowed me down any - the pauses where I wasn't coding I was up making coffee or thinking about a problem</p>
-
-<p>Still, it would be interesting to see how I'd get on without it if I was doing another of these - the next rendition of the competition is next March and I think I'll be doubling my efforts to create something cool - I might even go as far as to do a 3D effort in WebGL</p>
-	]]></description><link>http://codeofrob.com/entries/what-does-it-look-like-when-i-code.html</link><guid isPermaLink="true">http://codeofrob.com/entries/what-does-it-look-like-when-i-code.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 20 Dec 2011 17:47:00 GMT</pubDate></item><item><title><![CDATA[Hoverbattles Released (and more)]]></title><description><![CDATA[
-		<p>I've gone off on a tangent recently and been playing around with games development as if I was 15 again</p>
-<p>I think I'm going to make a game that I actually want people to play next, but first up - three things I've released recently</p>
-<h4>Hoverbattles</h4>
-<p>My flagship 'game', something I've learned a <strong>lot</strong> from these past couple of months - written with a NodeJS back-end, with WebGL front-end, the code is awful in places and I think I have a few memory leaks (or third party libs do!) but I'm pretty much done with this now.</p>
-<p><span style="font-weight: bold;">Note: The server this is on is not brill, so there will be lag</span><br>
-</p>
-<p>This can be found at <a href="http://hoverbattles.com">http://hoverbattles.com</a> - fill your boots.</p>
-<p>Source can be found at <a href="https://github.com/robashton/HoverBattles">https://github.com/robashton/HoverBattles</a></p>
-<p> </p>
-<h4><img width="800" height="479" alt="" src="/images/codeofrob_com/hoverbattles.png"></h4>
-<h4>Plane Thinking</h4>
-<p>I coded this over a few days as warm-up for LD22, the 48 hour games development challenge, this is plain old Canvas (although I was playing with using WebGL to do progressive enhancement it turns out that copying buffers between the two gets expensive quickly and I didn't take it much further</p>
-<p>This should work in most browsers, I really should make the effort to get it working with touch controls as it would work well on iPad</p>
-<p>This can be played at <a href="http://planethinking.heroku.com/">http://planethinking.heroku.com/</a></p>
-<p>Source can be found at <a href="https://github.com/robashton/plane-thinking">https://github.com/robashton/plane-thinking</a></p>
-<p><a href="https://github.com/robashton/plane-thinking"><img width="800" height="650" alt="" src="/images/codeofrob_com/plane-thinking2.png"><br>
-</a>  </p>
-<h4>You don't have to be alone</h4>
-<p>This is my entry to the 48 hour game development competition Ludum Dare - I don't really think of this as competing with anybody else, trying to build a game from scratch over 48 hours is <strong>mega hard</strong> and I'm really proud that I was able to pull it off with plot, sound, music and alternative ending galore</p>
-<p>The code for this is ... suboptimal, if you play it on anything other than a really high end desktop computer in any other browser than Chrome then do so at your peril. I'll be learning from that in my next game and making an effort to keep those render calls down</p>
-<p>The game can be found at: <a href="http://ld22-ashton.heroku.com/">http://ld22-ashton.heroku.com/</a></p>
-<p>The source can be found at: <a href="https://github.com/robashton/ld48_22">https://github.com/robashton/ld48_22</a></p>
-<p><a href="https://github.com/robashton/ld48_22"><img width="1082" height="949" alt="" src="/images/codeofrob_com/update-10.png"><br>
-</a></p>
-<h4>The point of all this</h4>
-<p>Games development is complicated, the code in Hoverbattles is probably the most complex domain I've ever worked on, and finding ways to keep the accidental complexity low whilst keeping the technical complexity low at the same time was a big challenge</p>
-<p>I've learned a lot by stepping away from ordinary business app development, and I'll be taking that back to the workplace with me, as well as carrying on in this space - never before has there been a better time for aspiring games development to noodle on in their spare time.</p>
-<p>This site? Yeah I've messed this up a bit - I need to rip all these posts out and deploy them as static content and set up some re-directs, a project for a rainy weekend when I don't want to play with games :-)</p>
-<p>Merry Xmas</p>
-<p>Rob</p>
-	]]></description><link>http://codeofrob.com/entries/hoverbattles-released-and-more.html</link><guid isPermaLink="true">http://codeofrob.com/entries/hoverbattles-released-and-more.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 20 Dec 2011 15:28:00 GMT</pubDate></item><item><title><![CDATA[A relaxed attitude towards the pragmatic delivery of 'okay' software]]></title><description><![CDATA[
-		<strong>A brief middle-of-project retrospective</strong>
-<p>I've not been coding in my spare time much the past few months, being seriously busy for a client - but the past couple of weeks has seen me pick up a project of mine that I started a few months ago (HoverBattles) and start pushing to some level of completion.</p>
-<img width="800" height="451" alt="" src="/images/internal_codeofrob_com/currentproject.png">
-<p>This has been an interesting project for me, not least of all because it's written entirely in Javascript (WebGL + JS, NodeJS and CouchDB) but because this time I made a real effort to drop any up-front <em>'zomg my code must be perfect'</em> aspirations from the get go.</p>
-<p>What does this mean? Well I pretty much decided that technical debt should not be something to be overly avoided, overly organised code-bases stifle creativity and I really just wanted to <strong>deliver something.</strong></p>
-<p>I also knew that as I learned more about effective JavaScript that my opinions on the 'best way to achieve things' would be changing about 20x more rapidly than it does when working in an environment I'm heavily used to, and trying to constantly maintain code at some mythical standard would prevent me from actually delivering</p>
-<p>A couple of months later how does that leave me? Is the code-base a huge unmaintainable mess? I would say no - it is not. </p>
-<p>There are messy bits in there but they're largely on the periphery. An avoidance of up-front framework/empire building has allowed me to be morally flexible with regards to where I put new code to Get Cool Stuff Done, and a healthy concern when going over pre-existing code to add something new has led to some easy wins when re-factoring around the pain points that naturally emerge.</p>
-<p>I don't think that I've taken a cavalier approach to the project - at a macro level it's quite well structured, and for the most part there is a clean separation between the different sub-components that drive the system. In a code review there are bits I'd have to apologise for but even in projects with the greatest amount of technical debt avoidance this has been true.</p>
-<p>There are some problems with the messaging/multi-player side of things, complex work-flows have emerged as a consequence of the individual components receiving some input, doing something and raising some output in orders that I did not pre-plan.</p>
-<p>This has been made more complicated by the fact that some of these components only exist on the server, and yet the events they raise are still sent to the client because the client needs to react even if it is not the one doing the critical thinking.</p>
-<p>This is an example of what I have come to classify as a <em>real problem</em> - that is, it is a problem that is naturally occurring and isn't one I have constructed to satisfy the whims of my inner Powerpoint Architect.</p>
-<p>When I think of all the things that we work on in our line of business applications, the efforts we go to de-couple everything so it can be easily tested and maintained, the efforts we go to make sure we have the extensibility points and have our "what ifs" covered, I'm seeing a lot of that in a new light as this project goes on. </p>
-<p>I don't think a lot of our 'units' in our LOB world are really units at all, they're fractions of 'units', and it's only as part of a more complex interaction that things get interesting and worth spending time fussing over.</p>
-<p>Even those seeking to do more vertical testing of a unit within their system (across several internal components) aren't really testing anything meaningful, they're not really spending their time on anything really meaningful either - I wonder if we do a lot of this stuff just to make our jobs more interesting because LOB apps are at a micro-level... quite boring</p>
-<p>Anyway I digress, a response could be that some of that rigidity and forward thinking is needed because we have more than one soul working on these projects and if everybody took the cavalier 'get it done' attitude we'd end up with a big mess right?</p>
-<p>I'm not convinced - I think that if you have a team that can actually communicate and react to problems as they arise that a good momentum would still be possible, a lot of the technical solutions delivered in these LOB apps seem to exist as a way of avoiding the need for communication and I'm beginning to think of that as less okay than I did</p>
-
-<p>I'm also beginning to think that a concentration on these things causes bigger balls to be dropped. There is little point in arguing over patterns if you're going to forget to apply sanitisation to user-provided input for example - or suitable defensive mechanisms against things that might go wrong (as dirty as that might make some of your code).</p>
-
-<p>Going back to the whole CQRS thing as that was the topic of the last post, this ties in well - those things exist as solutions to complexity that already exists - not as ways of creating complexity that wasn't there before. Technical solutions should be avoided unless they're actually delivering the necessary value.</p>
-<p>Random blathering I know, I'll actually start talking about the tech in the game soon I think, it's getting interesting and I think there are some things to say about it</p>
-	]]></description><link>http://codeofrob.com/entries/a-relaxed-attitude-towards-the-pragmatic-delivery-of-okay-software.html</link><guid isPermaLink="true">http://codeofrob.com/entries/a-relaxed-attitude-towards-the-pragmatic-delivery-of-okay-software.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 01 Nov 2011 11:37:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/your-container-is-not-wanted-here.html</link><guid isPermaLink="true">http://codeofrob.com/entries/your-container-is-not-wanted-here.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 02 Feb 2012 12:34:00 GMT</pubDate></item></channel></rss>
