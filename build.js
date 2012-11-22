@@ -81,7 +81,8 @@ common.getAllPostsInfo(function(posts) {
     listHtml += '<li><a href="entries/' + common.titleToPage(post.title) + '">' + post.title + '</a></li>\n';
   }
   
-  var indexHtml = plates.bind(indexTemplate, { posts: listHtml });
+  // In essence doesn't do anything any more, but maybe in the future
+  var indexHtml = plates.bind(indexTemplate, {  });
   fs.writeFileSync('./site/index.html', indexHtml, 'utf8');
   compilePosts(posts);
 });
