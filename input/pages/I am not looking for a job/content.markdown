@@ -30,4 +30,4 @@ Coupled with the first offer, if you're the developer putting me up then I'll co
 
 Anyway, if either of these appeal to you, get in touch at [robashton@codeofrob.com](mailto:robashton@codeofrob.com) or twitter [@robashton](http://twitter.com/robashton)
 
-
+My availability can be seen publicly at [google calendars](https://www.google.com/calendar/embed?src=robashtondeveloper%40gmail.com&ctz=Europe/Brussels)
