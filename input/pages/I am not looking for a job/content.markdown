@@ -12,7 +12,7 @@ Many folk have already offered that I come and take a job with them, and while t
 - I want to build stuff
 - I want to help other people build stuff
 
-I actually have some semi-concrete plans next year that will make all of this happen, this will take a few months to put into place though and in the meanwhile I an offer for YOU, if you are interested and feeling brave.
+I actually have some semi-concrete plans next year that will make all of this happen, this will take a few months to put into place though and in the meanwhile I have an offer for YOU, if you are interested and feeling brave.
 
 I am offering the following two things
 
