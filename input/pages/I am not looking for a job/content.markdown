@@ -24,6 +24,8 @@ Of course you are perfectly welcome to toss me a few euros for my time as well, 
 
 I can help you with your Javascripts, your .NETs and your NoSqls, I am especially interested in helping teams who are *new* to JS get to grips with it quickly, I am very intersted in discussing difficult migration paths from legacy code (such as Silverlight for example).
 
+If you are building games, then I am *especially* interested in coming to say hello, even if you're in somewhere boring like Guildford ;-)
+
 **I will cook you a curry for a roof over my head**
 
 Coupled with the first offer, if you're the developer putting me up then I'll cook you a curry, I'm pretty practised at this and can tailor this to your tastes if asked - this is a serious offer, I love cooking and I love coding - what is better than combining the two.
