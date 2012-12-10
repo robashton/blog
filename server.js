@@ -24,9 +24,8 @@ http.createServer(function(req, res) {
             return;
           }
         }
-      } else {     
-        res.writeHead(404, {'Content-Type': 'text/plain'});
-        res.end("Error 404: File not found");
       }
+      res.writeHead(404, {'Content-Type': 'text/plain'});
+      res.end("Error 404: File not found");
     });
 }).listen(PORT);
