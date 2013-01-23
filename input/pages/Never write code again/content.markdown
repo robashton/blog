@@ -6,4 +6,6 @@ Well, I had a train journey today, and while I don't have Windows, and therefore
 
 [http://ctrl.codeofrob.com](http://ctrl.codeofrob.com)
 
-It works about as well as you'd expect, that is to say, leveraging the search functionality on Stackoverflow.com isn't as good as using Google, if anybody wants to change it so it does that, send me a pull request.
+Now it's even easier than ever to search for your answers on Google and paste code off the internet with *absolutely no context whatsoever*, satisfaction guaranteed 100%.
+
+It works about as well as you'd expect, that is to say, leveraging the search functionality on Stackoverflow.com isn't as good as using Google (sad face), if anybody wants to change it so it does that, send me a pull request.
