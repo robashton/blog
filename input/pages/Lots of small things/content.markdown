@@ -226,10 +226,11 @@ The most important part of all of this is creating the the modules to be standal
 Links
 ------
 
-- Browserify
-- NodeJS
-- NPM
-- PrimoJS (not "released" yet)
+- Browserify [http://github.com/substack/browserify](http://github.com/substack/browserify)
+- NodeJS [http://nodejs.org](http://nodejs.org)
+- NPM [http://npmjs.org](http://npmjs.org)
+- PrimoJS (not "released" yet) [http://github.com/robashton/primojs](http://github.com/robashton/primojs)
+- VoxelJS [http://github.com/magogden/voxel](http://github.com/maxogden/voxel)
 
 
 
