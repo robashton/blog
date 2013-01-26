@@ -210,11 +210,11 @@ I think this can be solved with documentation and tooling, maybe a command line 
     do you want a browserify build script? (y/n)
     > y
 
-**Documentation hell**
+**Module discovery + documentation**
 
-Again, lots of small modules - where does the documentation go? Where does the user go to find answers to his questions when he has them?
+Again, lots of small modules - where does the documentation go? Where does the user go to find answers to his questions when he has them? where does the user go to work out which module is for what?
 
-I think this varies across projects, are your modules all part of the same eco-system? Are they truly standalone and usable wherever? I think for each 'tree' of modules, a single *source* of documentation is useful - even if the sub-categories are just links to the documentation for the specific modules. Making the user go searching for the right module and the right documentation is just asking for trouble down the line. (So, in my case, it would be primojs.com/modulename)
+I think this varies across projects, are your modules all part of the same eco-system? Are they truly standalone and usable wherever? I think for each 'tree' of modules, a single *source* of information is useful - even if the sub-categories are just links to the documentation for the specific modules. Making the user go searching for the right module and the right documentation is just asking for trouble down the line. (So, in my case, it would be primojs.com and links to the available modules.
 
 Summary
 --------------------
