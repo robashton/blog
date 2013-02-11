@@ -1,4 +1,4 @@
-After a week off in the Western Isles, I've started a stint on my adventures working in Israel for [Hibernating Rhinos](http://hibernatingrhinos.com).
+After a week off in the Western Isles, I've started a stint on my [adventures](/entries/i-am-not-looking-for-a-job.html) working in Israel for [Hibernating Rhinos](http://hibernatingrhinos.com).
 
 Most of you are familiar with this company, but for those that aren't, it's [@ayende](http://twitter.com/ayende)'s company, and they make the profilers for various ORMS and that document database we all love, [RavenDB](http://ravendb.net).
 
