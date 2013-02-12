@@ -1,4 +1,4 @@
-As I mentioned [yesterday](/entries/working-at-hibernating-rhinos.html), I'm currently doing a week or so of work at Hibernating Rhinos (more specifically on RavenDB.
+As I mentioned [yesterday](/entries/working-at-hibernating-rhinos.html), I'm currently doing a week or so of work at Hibernating Rhinos (more specifically on RavenDB).
 
 One of the first things I was asked to look at was the indexing system in RavenDB, as there was a backlog of tasks and requests on these, which tie into each other in numerous ways.
 
