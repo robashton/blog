@@ -72,8 +72,9 @@ var compilePosts = function(posts) {
 
 common.getAllPostsInfo(function(posts) {
   posts = _(posts)
-      .sortBy(function(item) { return - (new Date(item.date)); })
-  
+      .sortBy(function(item) { return -(new Date(item.date)); })
+
+
   var indexTemplate = fs.readFileSync('./input/source/indextemplate.html', 'utf8');
   var listHtml = '';
   for(var i = 0 ; i < posts.length; i++) {
@@ -82,7 +83,7 @@ common.getAllPostsInfo(function(posts) {
   }
   
   // In essence doesn't do anything any more, but maybe in the future
-  var indexHtml = plates.bind(indexTemplate, {  });
+  var indexHtml = plates.bind(indexTemplate, { entrylist: listHtml });
   fs.writeFileSync('./site/index.html', indexHtml, 'utf8');
   compilePosts(posts);
 });
