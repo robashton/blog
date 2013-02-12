@@ -2,7 +2,7 @@ As I mentioned [yesterday](/entries/working-at-hibernating-rhinos.html), I'm cur
 
 One of the first things I was asked to look at was the indexing system in RavenDB, as there was a backlog of tasks and requests on these, which tie into each other in numerous ways.
 
-I don't like working on more than one thing at once when I'm Getting Things Done, and while it was tempting to jump right in and say *"We need to do the feature where dynamic indexes can be deleted and compacted over time"*, the task was broken up into a few discrete features - some which had been requested individually anyway.
+I don't like working on more than one thing at once when I'm Getting Things Done, and while it was tempting to jump right in and say *"We need to do the feature where dynamic indexes can be turned off, deleted and compacted over time"*, the task was broken up into a few discrete features - some which had been requested individually anyway.
 
 That brings me to the first feature we added in the first few hours of starting work at the office, I sat down with [@ayende](http://twitter.com/ayende) and added the capability for indexes to be idle.
 
