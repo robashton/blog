@@ -76,7 +76,7 @@ var compilePosts = function(posts) {
 };
 
 common.getAllPostsInfo(function(posts) {
-  var newposts = _.chain(posts)
+  var posts = _.chain(posts)
       .sortBy(function(item) { return -(new Date(item.date)); })
       .filter(function(item) { return new Date(item.date) < new Date()})
       .value()

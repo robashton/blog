@@ -1,721 +1,859 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Wed, 13 Feb 2013 19:41:24 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[5 reasons to give node.js some love]]></title><description><![CDATA[
-		<p>In response to a question from a friend on Twitter (Private account so no linky), but with the text: </p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Wed, 13 Feb 2013 19:45:18 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Auto idling auto indexes in RavenDB]]></title><description><![CDATA[<p><a href="/entries/adding-idle-indexes-to-ravendb.html">Last entry</a> I talked about the addition of a priority flag on indexes to save resources on un-important indexes.</p>
 
-<p>"Been reading up a little bit on node.js @robashton @domgreen. What makes it stand out from alternatives or is it just a JS 'me too' play?"</p>
+<p>This is great news for those indexes that are created and managed manually (once Raven Studio has the UI for it anyway), but a lot of customers are using auto indexes (a feature I'm proud to say I had a hand in <a href="http://ayende.com/blog/4667/ravens-dynamic-queries">All those years ago</a>).</p>
 
-<p>My initial response was, hey - you know what? I can't think of any (popular) alternatives that provide the unique combination that node.js does, and then started writing a torrent of tweets describing why I personally am so excited about node.</p>
+<p>What does this therefore mean for this type of index? Well, the way RavenDB currently works for those unfamiliar with it, is if you make a query for all the ponies with rainbow in their name like so:</p>
 
-<p>Then I decided that rather than spam Twitter, I should write a blog post to link to when asked the same question in the future.</p>
+<pre><code>session.Query&lt;Pony&gt;().Where(pony =&gt; pony.Name.Contains("Rainbow"))
+</code></pre>
 
-<p>Every bugger has already done one of these, but I want to answer the question in my own personal way</p>
+<p>There is a query optimiser which will try to find an appropriate index to use for this query, and if it fails it will create an index for you at the following URL:</p>
 
-<b>1) You get to write Javascript on the server and the client</b>
+<pre><code>/Index/Temp/PonyWithName
+</code></pre>
 
-<p>Think about this for a second - it's really not just a gimmick (although some people seem to think it is). Even in a simple web application you're going to have validation logic that you're going to want to execute on the client AND on the server, and usually this can't be shared without going through some sort of rules engine or crazy framework to spit out some rough client-side equivalents. </p>
+<p>Or something similar (I forget the exact conventions). After a period of time, the index will be deleted unless it is used within a certain threshold of activity.</p>
 
-<p>No need with node, you can write your model (complete with business rules, etc), and write a nice task-based user interface around that model, running it all locally in the browser, and then dispatching and validating the commands on the server - because hey, everything is just JSON at the end of the day, and everything you're writing works against that.</p>
+<p>On top of this, we now have idle indexes - so what does this mean? We can actually do a lot of this automatically now too, if we select the least-used indexes in the system <em>(for example, order all the auto-indexes by the last time they were queried, and if there is a big gap between the last index and the penultimate index, then demote the index automatically)</em></p>
 
-<p>Take this a step further, and consider that we have some pretty awesome document databases on the scene at the moment whose primary communication and storage mechanism is - guess what? JSON (well BSON) - at no point during any of this do you need to sit there dealing with mapping frameworks or hand-written mapping code, because you're just flinging JSON around.</p>
-
-<p>With efforts on <a href="http://www.commonjs.org/">CommonJS</a> and <a href="https://github.com/sstephenson/stitch">Stitch</a> ongoing, there is really no excuse for not writing all your JavaScript in a state where it can be executed on both the client and the server.</p>
-
-<b>2) Event-based asynchronous stuff is just How Things Work in JavaScript </b>
-
-<p>Yeah okay, I have no idea what I'm talking about here, but what I do understand and what most people who have been writing JavaScript for the past decade understand is that <i>your</i> JavaScript tends to execute on a single thread and long-running processes get dealt with by the host, using callbacks to notify you (back on that single thread) as and when those things are done.</p>
-
-<p>Now, in the browser these long-running requests are limited to... well HTTP calls to the server to get/post data, but on the server we do nearly <i>everything</i> like this; requests to other machines, requests to the file system etc.</p>
-
-<p>We don't need any crazy language keywords (looking at you C#), we don't need any crazy Task of X/Y and Z objects (Looking at you C#), we just need: </p>
-
-<script src="https://gist.github.com/949550.js?file=gistfile1.js"></script>
-
-<p>This gives us some brilliant performance benefits, dealing with potentially gazillions of connected clients an <a href="http://www.theregister.co.uk/2011/03/01/the_rise_and_rise_of_node_dot_js/">easy possibility</a> <i>Sorry for a "the register" link this early in the morning, it's a bit indecent of me.</i></p>
-
-<p>This also makes dealing with concurrency (at least within a single process) really easy too, all your variables are safe to be accessed at any time as you haven't got any potential race conditions, you can mutate state all you want and not worry that somebody else is going to come along and take away your cheese.</p>
-
-<p>Hell, even the plans for future-node seem to be keeping this philosophy intact, with multiple node processes being given a way to communicate safely (or at least as far as I understand the slides that I've read from conferences I wasn't at).</p>
-
-<b>3) Awesome package management!</b>
-
-<p>Just like Ruby, and just like Linux-land in general, if you want to do something there is probably a library/package waiting for you to pull down and consume, and you can do this via the wonderful magic of <a href="http://npmjs.org/">NPM</a></p>
-
-<p>npm install socket.io</p>
-
-<p>It's that easy to get the libraries you need, and there are libraries available for most of the things you can think of, the primary ones I am using myself are: </p>
+<p>If the index is queried against after this, we can promote it again - happy days, thus the following scenarios:</p>
 
 <ul>
-     <li><a href="https://github.com/felixge/node-paperboy">Paperboy</a> - for simply serving static files from a directory (index.html, style.css, etc</li>
-     <li><a href="https://github.com/donnerjack13589/node.gzip">gzip</a> - for um, gzipping content that I send down to the client</li>
-     <li><a href="http://socket.io/">socket.io</a> - for magically doing websockets, or at the very least emulating websockets</li>
-     <li><a href="https://github.com/tmpvar/jsdom">jsdom</a> + jquery - manipulating the DOM server-side? Oh say it ain't so?</li>
-     <li><a href="https://github.com/sstephenson/stitch">Stitch</a> for allowing me to write code in CommonJS format and still use it in the browser.</li>
+<li>Manual indexes get left alone unless managed in the studio</li>
+<li>Auto indexes get made idle if they're not queried very much</li>
+<li>Auto indexes get promoted if they're then queried</li>
 </ul>
 
-<p>This isn't anything particularly unique to node, but in this day and age it's a bit hard to be taken seriously without a good package manager in your ecosystem and it's good to see something of quality here.</p>
+<p>Having the database make these decisions for you keeps away any of the possible complexity of maintaining a well behaving RavenDB implementation.</p>
 
-<b>4) Community community community</b>
+<p>I left off yesterday by talking about the Forced flag, the idea behind this is you can force an index to keep its current state by using the Studio and not have any of this fancy magic stuff happen  for you. I expect most people won't use it, but it's always good to give customers the ability to assert control.</p>
 
-<p>The community around node.js is brilliantly active, passionate and y'know - generally quite bright - and willing to try new things out (Kinda goes with the territory really)</p>
+<p>Now, with this done - the next natural cause of action is obvious really, what would that be...? Stay tuned for my next entry to find out.</p>]]></description><link>http://codeofrob.com/entries/auto-idling-auto-indexes-in-ravendb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/auto-idling-auto-indexes-in-ravendb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 13 Feb 2013 12:34:00 GMT</pubDate></item><item><title><![CDATA[Adding idle indexes to RavenDB]]></title><description><![CDATA[<p>As I mentioned <a href="/entries/working-at-hibernating-rhinos.html">yesterday</a>, I'm currently doing a week or so of work at Hibernating Rhinos (more specifically on RavenDB).</p>
 
-<p>This, just like Ruby, is a really big draw for those of us from ecosystems which... lack anything of this scale</p>
+<p>One of the first things I was asked to look at was the indexing system in RavenDB, as there was a backlog of tasks and requests on these, which tie into each other in numerous ways.</p>
 
-<p>This enthusiasm does make it a bit difficult to separate actual innovation occurring from the old "Look at JavaScript doing what everything else has been able to do forever", but I'll take raw enthusiasm over rigid nay-say mentality any day - enthusiasm is contagious and gives me the ability to Get Things Done</p>
+<p>I don't like working on more than one thing at once when I'm Getting Things Done, and while it was tempting to jump right in and say <em>"We need to do the feature where dynamic indexes can be turned off, deleted and compacted over time"</em>, the task was broken up into a few discrete features - some which had been requested individually anyway.</p>
 
-<b>5) It's easy, really easy, like super easy, We can all do it!</b>
+<p>That brings me to the first feature we added in the first few hours of starting work at the office, I sat down with <a href="http://twitter.com/ayende">@ayende</a> and added the capability for indexes to be idle.</p>
 
-<p>JavaScript aside (And if you don't like JavaScript you can always use CoffeeScript), the process of writing code that does exciting stuff is ludicrously simple.</p>
+<h2>What does that mean? Why would we want to do it? </h2>
 
-<p>Having direct access to the HTTP pipeline, and not hiding it behind crazy levels of abstracted framework cruft is a big, big win - and once you start writing code like this you start to wonder where this kind of thing has been all your life.</p>
+<p>In RavenDB, querying is cheap because the answers have already been pretty much worked out by the indexing process. The indexing process has to crawl over every document as they're added and run user-logic over those documents, this is a process that tends to be IO bound as well as using up a few CPU cycles.</p>
 
-<p>"I want to do this: " has not once resulted in me banging my head against the constraints and limitations that somebody else has put in my way (supposedly to help me).</p>
+<p>Thus, the more indexes you have, the more work the database has to do during heavy write periods - and as some customers have many indexes and also undergo heavy write periods, it has been requested more than once that indexes be prioritisable - this feature is a big step in that direction. </p>
 
-<p>My personal website currently runs on pixie dust and grated unicorn horns - I'm pulling in content from my old subtext blog and spitting it out on the front page (with plans to pull in content from <a href="http://codebetter.com/robashton/">CodeBetter</a> and <a href="http://altdevblogaday.org/author/rob-ashton/">Altdevblogaday</a> too), whilst acting as a reverse proxy for the old site (in very few lines of code). </p> 
+<p><img src="/img/idlewis.png" alt="" title="" /></p>
 
-<p>That's utterly crazy, and I drafted it up in just a few hours of hackity hack hack hacking, with those goals in mind.</p>
+<p>Indexes on the server now have a new flag, "Priority", which can take the following values (Normal | Idle | Forced), the idea being that the user can use the administration console to set indexes that aren't as important to not be run during busy write periods, and instead only be processed during idle time.</p>
 
-<b>Anyway...</b>
+<p>The forced flag? Well, I'll write about that tomorrow when I cover how idle indexes have been used to make auto-indexing a bit cleverer.</p>]]></description><link>http://codeofrob.com/entries/adding-idle-indexes-to-ravendb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/adding-idle-indexes-to-ravendb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 12 Feb 2013 12:34:00 GMT</pubDate></item><item><title><![CDATA[Working at Hibernating Rhinos]]></title><description><![CDATA[<p>After a week off in the Western Isles, I've started a stint on my <a href="/entries/i-am-not-looking-for-a-job.html">adventures</a> working in Israel for <a href="http://hibernatingrhinos.com">Hibernating Rhinos</a>.</p>
 
-<p>The beauty of node comes in the combination of these attributes, not just one thing (because none of those things bar point #1 are by themselves particularly new or ground breaking</p>
+<p>Most of you are familiar with this company, but for those that aren't, it's <a href="http://twitter.com/ayende">@ayende</a>'s company, and they make the profilers for various ORMS and that document database we all love, <a href="http://ravendb.net">RavenDB</a>.</p>
 
-<p>If you've previously dismissed node as something pointless because you think it brings nothing new to the table compared to your X, Y or Z then I urge you to have another look at it, as The Creators prepare to bring it natively to Windows it's only going to get more popular and you'll want to be involved.</p>
+<p><img src="/img/ravendb.png" alt="" title="" /></p>
 
-	]]></description><link>http://codeofrob.com/entries/5-reasons-to-give-node.js-some-love.html</link><guid isPermaLink="true">http://codeofrob.com/entries/5-reasons-to-give-node.js-some-love.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Sat, 30 Apr 2011 07:39:00 GMT</pubDate></item><item><title><![CDATA[Asset packaging in browser based games]]></title><description><![CDATA[<script type="text/javascript">
- setTimeout(function() {
-   window.location = "http://altdevblogaday.com/2012/03/28/asset-packaging-in-browser-based-games/";
- }, 2000);
-</script>
+<p>This is a good one for me,  I've never been to Israel before so that's a big+1, I'm already pretty familiar with the product and code-base having spent a while talking about it and contributing over the years - and as I've just spent a holiday doing no code I'm pretty excited to be getting some work done.</p>
 
-  <p>I'm redirecting you to <a href="http://altdevblogaday.com/2012/03/28/asset-packaging-in-browser-based-games/">http://altdevblogaday.com/2012/03/28/asset-packaging-in-browser-based-games/</a> with JavaScript, feel free to skip the setTimeout call I've used</p>
-]]></description><link>http://codeofrob.com/entries/asset-packaging-in-browser-based-games.html</link><guid isPermaLink="true">http://codeofrob.com/entries/asset-packaging-in-browser-based-games.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 30 Mar 2012 07:54:00 GMT</pubDate></item><item><title><![CDATA[DDD8 - Post Event]]></title><description><![CDATA[
-		<p>Wow.</p>
-<p>That was a wonderful day, and the sessions I ended up going to were:</p>
-<ul>
-    <li>@ICooper's session on MVC Architecture (preaching the choir but good to be re-assured) </li>
-    <li>@robashton's session on Multi-tenant ASP.NET MVC (obviously) </li>
-    <li>@holytshirt's session on Mono (Good to see this project is advancing well) </li>
-    <li>@garyshort's session on JClosure (Lovely!) </li>
-    <li>@blowdart's session on the crystal maze </li>
-</ul>
-<p>The last session was interrupted constantly by the MVPs and associated crowd&nbsp;because Barry is leaving the UK and heading off to MS to learn how to spell :)</p>
-<p>There isn't much specifically to talk about really, it's been said by everybody. The event was well organised, the post-event meal was also surprisingly kept in control and the post-event drinks ... well I'd had no sleep the previous night so I left early. I believe fun was had by all however.</p>
-<p>My talk? I think it went okay - I was a bit nervous presenting on a subject that doesn't get talked about openly all that much, and worried the audience might throw a few massive spanners in the works (although I am open to change, I don't want to be told outright I'm wrong in the middle of a talk!)</p>
-<p>I spoke a bit fast, and had a minor emergency at the start when realising I needed an adapter for my laptop, but was saved by the team whose job it was to babysit me and massive thanks goes to them for saving my presentation :)</p>
-<p>My slides can be found <a href="http://fear.the.codeofrob.com/ddd8slides.zip">here</a>, and demo code can be found <a href="http://fear.the.codeofrob.com/ddd8code.zip">here</a>.</p>
-<p>The nerd dinner multi-tenant example can be found on the MvcEx codeplex site (<a href="http://mvcex.codeplex.com">http://mvcex.codeplex.com</a>) - but I'll be hoping to improve it beyond its "suitable for demo" stage and do some blog entries on the rationale behind some of the decisions/concepts found within over the coming weeks.</p>
-<p>&nbsp;It's not perfect, it's not anywhere near done and as I keep telling people, it's just for reference purposes (at present), feel free to make suggestions, contributions and etc and we'll get there in the end. Multi-tenancy is the future you know?</p>
-	]]></description><link>http://codeofrob.com/entries/ddd8---post-event.html</link><guid isPermaLink="true">http://codeofrob.com/entries/ddd8---post-event.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Sun, 31 Jan 2010 17:01:00 GMT</pubDate></item><item><title><![CDATA[RavenDB - Image Gallery Project (I)]]></title><description><![CDATA[
-		<p>With a work project slowly drawing to a close I’m beginning to get a bit of “free” time in my evenings, and I’ve had a few complaints that with the rapid advancement of RavenDB my previous blog entries are now dated and unhelpful as anything other than a rough guide as to how RavenDB actually functions.</p>  <p>Let us rectify this.</p>  <p>Found on Github at the following location: <a href="http://github.com/robashton/RavenGallery/">http://github.com/robashton/RavenGallery/</a> is a new project that is going to be written using ASP.NET MVC2 and RavenDB. Over the coming entries we’ll go through the features of RavenDB one by one, starting with the basics using the technology that has the lowest entry level, and then moving into more advanced topics whilst revisiting&nbsp; the older pieces of functionality to spruce them up with the knowledge that we’ve gained as we go through.</p>  <p><strong>What this will be</strong></p>  <p>This will be a project written for the sole purpose of demonstrating how to use RavenDB and how to write testable code against RavenDB – this will be demonstrated by utilising some basic TDD principles in order to drive the code surrounding the RavenDB infrastructure and usage.</p>  <p><strong>What this will not be (a disclaimer)</strong></p>  <p>Rather than clutter up the project with code wizardry I am not going to be practising TDD on peripheral code such as validators, controllers (<em>except where RavenDB is concerned</em>), model binders, file handling etc.&nbsp; I am not going to be talking about those things unless they directly or indirectly impact on the actual subject of RavenDB usage.</p>  <p>Anyway, the next entry in this series is about setting up the project and some gotchas that should be watched out for when doing so.</p>
-	]]></description><link>http://codeofrob.com/entries/ravendb---image-gallery-project-i.html</link><guid isPermaLink="true">http://codeofrob.com/entries/ravendb---image-gallery-project-i.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 27 Sep 2010 22:24:00 GMT</pubDate></item><item><title><![CDATA[AutoPoco 0.4 released - features features features]]></title><description><![CDATA[
-		<p>What's that? I skipped a number?&nbsp;Actually I didn't, but 0.3 wasn't particularly major so&nbsp;making a blog entry seemed a bit redundant :)</p>
-<p>What have I added? Glad you asked:</p>
-<p><strong>Method Invocation</strong></p>
-<p>During configuration, you can now set up data sources for parameters of methods,&nbsp;just pass in&nbsp;raw values or&nbsp;just call a method with no&nbsp;arguments.</p>
-<p>It's all been done in a strongly-typed manner to fit in with the rest of AutoPoco.</p>
-<pre class="brush: csharp;" title="code">                x.Include&lt;SimpleMethodClass&gt;()
-                    .Invoke(c =&gt; c.SetSomething(
-                        Use.Source&lt;String, RandomStringSource&gt;(5, 10),
-                        Use.Source&lt;String, LastNameSource&gt;()))
-                    .Invoke(c =&gt; c.DoSomething());</pre>
-<p>Obviously this needs a brother to&nbsp;override this configuration at the&nbsp;time of&nbsp;object creation, and that looks something like this:</p>
-<pre class="brush: csharp;" title="code">            IList&lt;SimpleMethodClass&gt; items = mSession.List&lt;SimpleMethodClass&gt;(100)
-                    .Invoke(x =&gt; x.SetSomething("Something"))   
-                .Get();</pre>
-<p>And this will call SetSomething on all the created objects with the argument "Something" - this set of functionality is for those who don't have accessible setters on public properties but still wish to invoke them. The alternative was to start proxying around the objects and demanding that properties be virtual - but unless somebody says otherwise, I think that's a bit heavyweight for this sort of library.</p>
-<p><strong>Improved Convention Support</strong></p>
-<p>Conventions have been baked into AutoPoco from the start, but weren't fleshed out until this iteration, they can be used to match types of property/field, or match the names of properties/fields (or both) and apply rules to them without any knowledge of the specific type being configured.</p>
-<p>This is useful for those with multiple projections of their domain, which follow naming conventions throughout the project.</p>
-<pre class="brush: csharp;" title="code">    public class EmailAddressPropertyConvention : ITypePropertyConvention
-    {
-        public void Apply(ITypePropertyConventionContext context)
-        {
-            context.SetSource&lt;EmailAddressSource&gt;();
-        }
+<p>I made it through security at about 1am after being asked too many times "what are you doing in Israel" and being unable to think of a truthful answer that didn't make people suspicious. "I'm on a working holiday" led to questions of payment and of course I'm currently free as in beer so that's something I need to work on if I'm going to any other countries with strict entry requirements.</p>
 
-        public void SpecifyRequirements(ITypeMemberConventionRequirements requirements)
-        {
-            requirements.Name(x =&gt; String.Compare(x, "EmailAddress", true) == 0);
-            requirements.Type(x =&gt; x == typeof(String));
-        }
-    }</pre>
-<p>This convention will match any property of type string called EmailAddress and apply the EmailAddressSource to it.</p>
-<p><strong>Inheritance</strong></p>
-<p>This was more complicated to deal with, and I expect to be writing a couple of quick blog entries detailing some of the gotchas encountered when writing the code for this, as googling didn't really provide the answers I was looking for (My first port of call for all problems)</p>
-<p>The gist of it, is that if you have an interface with a property, and you define a rule for that property, then any class that implements that property will also inherit that rule (the same goes for base classes and their properties).</p>
-<p>If a rule is defined for that specific derived class, then it will override the rule provided by the interface or base class. The only thing I haven't expliclty included in this is open generics, because they're a bit more tricky to come up with an elegant solution for.</p>
-<p>Consider the following class structure:</p>
-<pre class="brush: csharp;" title="code">    public interface ISimpleInterface
-    {
-        string InterfaceValue
-        {
-            get;
-            set;
-        }
+<p>Anyway, I've got a car while I'm here and an apartment for the next week and I'm doing work on RavenDB, what work you ask? Well, like any good employer, Ayende has created a to-do list and let me get on with it how I like.</p>
 
-        string OtherInterfaceValue
-        {
-            get;
-            set;
-        }
-    }
+<p>I quite like this way of working, "Here is a pile of stuff that needs doing, get to it and ask if you need any help", no long meeting to align on vision and share synergies with stakeholders, no complicated requirements document or architecture plans - just a list of bullet points and the expectation that I'll go and seek the information that I need to get the job done. (Managers take note!).</p>
 
-    public class SimpleBaseClass : ISimpleInterface
-    {
-        public string BaseProperty
-        {
-            get;
-            set;
-        }
+<p>This is also a very productive way of working, I'll talk more about the actual work I'm doing in the next post, but what I can say is that I've cleared most of what I was expected to do in the whole time I'm here in the first couple of days of arriving. That's what Getting Things Done is all about and it aligns well with my aims of working on travelling.</p>
 
-        public virtual string BaseVirtualProperty
-        {
-            get;
-            set;
-        }
-    
-        public string InterfaceValue
-        {
-	      set;
-          get;
-        }
-        
-        public string OtherInterfaceValue
-        {
-            get;
-            set;
-        }
-    }
+<p>How we are working is nice, as I said - there is a to-do list, that's publicly visible on <a href="http://issues.hibernatingrhinos.com">issues.hibernatingrhinos.com</a> under the tag "Rob's sprint", I'm working off a fork of the main project and keeping a pull request open as I go through - the current pull request can be found <a href="https://github.com/ravendb/ravendb/pull/502">here</a>, and here is a screenshot of that so far:</p>
 
-    public class SimpleDerivedClass : SimpleBaseClass, ISimpleInterface
-    {
-        public string Name
-        {
-            get;
-            set;
-        }
+<p><img src="/img/hrpr.png" alt="" title="" /></p>
 
-        public override string BaseVirtualProperty
-        {
-            get;
-            set;
-        }
-    }</pre>
-<p>With the following configuration</p>
-<pre class="brush: csharp;" title="code">                x.Include&lt;ISimpleInterface&gt;()
-                    .Setup(c =&gt; c.InterfaceValue).Value("InterfaceValue - ISimpleInterface")
-                    .Setup(c=&gt;c.OtherInterfaceValue).Value("OtherInterfaceValue - ISimpleInterface");
-                 x.Include&lt;SimpleBaseClass&gt;()
-                    .Setup(c =&gt; c.BaseProperty).Value("BaseProperty - SimpleBaseClass")
-                    .Setup(c =&gt; c.BaseVirtualProperty).Value("BaseVirtualProperty - SimpleBaseClass");
-                x.Include&lt;SimpleDerivedClass&gt;()
-                    .Setup(c =&gt; c.Name).Value("OtherTest")
-                    .Setup(c =&gt; c.BaseVirtualProperty).Value("BaseVirtualProperty - SimpleDerivedClass")
-                    .Setup(c =&gt; c.OtherInterfaceValue).Value("OtherInterfaceValue - SimpleDerivedClass");</pre>
-<p class="brush: csharp;" title="code">Requesting a SimpleBaseClass, we get</p>
-<ul>
-    <li>
-    <div class="brush: csharp;" title="code">BaseProperty: "BaseProperty - SimpleBaseClass"</div>
-    </li>
-    <li>
-    <div class="brush: csharp;" title="code">BaseVirtualProperty: "BaseVirtualProperty - SimpleBaseClass"</div>
-    </li>
-    <li>
-    <div class="brush: csharp;" title="code">InterfaceValue: "InterfaceValue - ISimpleInterface"</div>
-    </li>
-    <li>
-    <div class="brush: csharp;" title="code">OtherInterfaceValue: &nbsp;"OtherInterfaceValue - ISimpleInterface"</div>
-    </li>
-</ul>
-<p class="brush: csharp;" title="code">Requesting a SimpleDerivedClass, we get</p>
-<ul>
-    <li>
-    <div class="brush: csharp;" title="code">BaseProperty: "BaseProperty - SimpleBaseClass"</div>
-    </li>
-    <li>
-    <div class="brush: csharp;" title="code">BaseVirtualProperty: "BaseVirtualProperty - SimpleDerivedClass"</div>
-    </li>
-    <li>
-    <div class="brush: csharp;" title="code">InterfaceValue: "InterfaceValue - ISimpleInterface"</div>
-    </li>
-    <li>
-    <div class="brush: csharp;" title="code">OtherInterfaceValue: "OtherInterfaceValue - SimpleDerivedClass"</div>
-    </li>
-</ul>
-<p class="brush: csharp;" title="code">It looks a bit complicated up front, but it makes sense if you think about it and that's what matters (the functionality is there if you need it, if you don't need it then you don't need to worry about it).</p>
-<p class="brush: csharp;" title="code"><strong>More data sources</strong></p>
-<p class="brush: csharp;" title="code">I was expecting to have to do these myself, along with a load of standard property/field conventions - but I had an e-mail from <span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span"><a href="http://www.codeplex.com/site/users/view/Birdchest">Khalid Abuhakme</a>&nbsp;letting me know he'd created a fork with some standard data sources in them.</span></span></p>
-<p class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">I have pulled them through and now our list of data sources looks something like this:</span></span></p>
-<ul>
-    <li>
-    <div class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">ColorSource</span></span></div>
-    </li>
-    <li>
-    <div class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">CountrySource</span></span></div>
-    </li>
-    <li>
-    <div class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">CreditCardSource</span></span></div>
-    </li>
-    <li>
-    <div class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">DataOfBirthSource</span></span></div>
-    </li>
-    <li>
-    <div class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">EmailAddressSource</span></span></div>
-    </li>
-    <li>
-    <div class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">EnumerableSource&lt;T&gt; where T : IDataSource (Really cool addition Khalid!)</span></span></div>
-    </li>
-    <li>
-    <div class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">FirstNameSource</span></span></div>
-    </li>
-    <li>
-    <div class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">LastNameSource</span></span></div>
-    </li>
-    <li>
-    <div class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">LorumIpsumSource</span></span></div>
-    </li>
-    <li>
-    <div class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">RandomStringSource</span></span></div>
-    </li>
-    <li>
-    <div class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">UsStatesSource</span></span></div>
-    </li>
-</ul>
-<p class="brush: csharp;" title="code"><span style="WIDOWS: 2; TEXT-TRANSFORM: none; TEXT-INDENT: 0px; BORDER-COLLAPSE: separate; FONT: medium 'Times New Roman'; WHITE-SPACE: normal; ORPHANS: 2; LETTER-SPACING: normal; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-border-horizontal-spacing: 0px; -webkit-border-vertical-spacing: 0px; -webkit-text-decorations-in-effect: none; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px;" class="Apple-style-span"><span style="BORDER-COLLAPSE: collapse; FONT-FAMILY: arial, sans-serif; FONT-SIZE: 13px;" class="Apple-style-span">We'll end up with a lot more of these for sure, and still need a more customisable aspect to some of the default ones, but if anybody else wants to contribute then feel free, as adding conventions and data sources is what will make AutoPoco really useful.</span></span></p>
-	]]></description><link>http://codeofrob.com/entries/autopoco-0.4-released---features-features-features.html</link><guid isPermaLink="true">http://codeofrob.com/entries/autopoco-0.4-released---features-features-features.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 15 Apr 2010 07:19:00 GMT</pubDate></item><item><title><![CDATA[DDD9 Announced]]></title><description><![CDATA[
-		<p>Just a quick hello to point out that <a href="http://developerdeveloperdeveloper.com/ddd9/ProposedSessions.aspx">DDD9</a> has been announced for the 29th of January 2011 - and I've already submitted a couple of what I think are useful sessions for it.</p>
+<p>And this is the issues list so far (green means 'done')</p>
 
-<p>I'm also due to talk at <a href="http://nhday.eu/en.aspx">NHDay</a> in Bologna on the 9th of October on the subject of model-first development on top of NHibernate/FluentNHibernate, and at Cheltenham <a href="http://grou.ps/digitalks/talks/5059459">DigiTalks</a> on the 5th of October, covering RavenDB in 15 minutes (by request, it'll be very toned down though).</p>
+<p><img src="/img/hryt.png" alt="" title="" /></p>
 
-<p>Product at work is nearly done and I'll be returning to blog duties when that has come to a close</p>
-	]]></description><link>http://codeofrob.com/entries/ddd9-announced.html</link><guid isPermaLink="true">http://codeofrob.com/entries/ddd9-announced.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 20 Sep 2010 11:23:00 GMT</pubDate></item><item><title><![CDATA[NUnit 2.5.3 and [SetUICulture]]]></title><description><![CDATA[
-		<p>I can't for the life of me get this to work, and [SetCulture] appears to be working fine - so I can only assume it's a bug.</p>
-<p>I've posted to the mailing list and started off the process of working out whether it is a bug or not, but for now - I need to have my tests running&nbsp; in the right culture, without any side effects on the other tests once a test has been complete.</p>
-<p>Here is my hack to do that:</p>
-<pre class="brush: csharp;" title="code">   public class CultureContext : IDisposable
-    {
-        private CultureInfo mOldCulture;
+<p>I've got plans of tourism on Friday and Saturday (Sunday is a work day in Israel - that's something new I found out), maybe I'll put some photos online of me floating in the dead sea.</p>
 
-        public CultureContext(String cultureName)
-        {
-            mOldCulture = System.Threading.Thread.CurrentThread.CurrentUICulture;
-            System.Threading.Thread.CurrentThread.CurrentUICulture = new CultureInfo(cultureName);
-        }
-
-        public void Dispose()
-        {
-            System.Threading.Thread.CurrentThread.CurrentUICulture = mOldCulture;
-        }
-    }</pre>
-<p>The usage is as follows, within a test do:</p>
-<pre class="brush: csharp;" title="code">using (new CultureContext("fr-FR"))
-{
-	// Test code here
-}</pre>
-<p>This will ensure that your test runs with the ui culture of "fr-FR", before resetting it to whatever it was before the test began. Not pretty, but it'll do until I work out if it's user error or a bug preventing NUnit from doing what I want it to do!</p>
-	]]></description><link>http://codeofrob.com/entries/nunit-2.5.3-and-[setuiculture].html</link><guid isPermaLink="true">http://codeofrob.com/entries/nunit-2.5.3-and-[setuiculture].html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 18 Dec 2009 13:28:00 GMT</pubDate></item><item><title><![CDATA[RavenDB & CouchDB - Basic Queries]]></title><description><![CDATA[
-		<p><strong>Previous entries in the series</strong></p>
-<ul>
-    <li><a href="http://codeofrob.com/archive/2010/05/31/ravendb-whats-the-difference.aspx">RavenDB – What’s the difference</a></li>
-</ul>
-<p>Once you have a number of documents in the database, you soon want to do more complex operations than simply retrieving a list of them.</p>
-<p>Consider therefore the following and rather over-used example document:</p>
-<div class="csharpcode">
-<pre class="alt"><span class="lnum">   1:  </span>{</pre>
-<pre><span class="lnum">   2:  </span>    title: <span class="str">"Another blog entry"</span>,</pre>
-<pre class="alt"><span class="lnum">   3:  </span>    content: <span class="str">'blah blah blah'</span>,</pre>
-<pre><span class="lnum">   4:  </span>    category: <span class="str">'code'</span>,</pre>
-<pre class="alt"><span class="lnum">   5:  </span>    author: <span class="str">'robashton'</span></pre>
-<pre><span class="lnum">   6:  </span>}</pre>
-</div>
-<style type="text/css">![CDATA[
-
-.csharpcode, .csharpcode pre
-{
-	font-size: small;
-	color: black;
-	font-family: consolas, "Courier New", courier, monospace;
-	background-color: #ffffff;
-	/*white-space: pre;*/
-}
-.csharpcode pre { margin: 0em; }
-.csharpcode .rem { color: #008000; }
-.csharpcode .kwrd { color: #0000ff; }
-.csharpcode .str { color: #006080; }
-.csharpcode .op { color: #0000c0; }
-.csharpcode .preproc { color: #cc6633; }
-.csharpcode .asp { background-color: #ffff00; }
-.csharpcode .html { color: #800000; }
-.csharpcode .attr { color: #ff0000; }
-.csharpcode .alt 
-{
-	background-color: #f4f4f4;
-	width: 100%;
-	margin: 0em;
-}
-.csharpcode .lnum { color: #606060; }</style>
-<p>Our example query would be to get all of the documents from the database that were written by a particular author AND in a certain category.</p>
-<p>Obviously querying all the blogs written by a single author, or all the blogs in a certain category would be fairly expected queries too.</p>
-<p><strong>Indexes in RavenDB</strong></p>
-<p>In order to perform any queries whatsoever in RavenDB, we first need to create an index.</p>
-<div class="csharpcode">
-<pre class="alt"><span class="lnum">   1:  </span>from doc <span class="kwrd">in</span> docs</pre>
-<pre><span class="lnum">   2:  </span>select <span class="kwrd">new</span> {</pre>
-<pre class="alt"><span class="lnum">   3:  </span>     doc.author,</pre>
-<pre><span class="lnum">   4:  </span>     doc.category</pre>
-<pre class="alt"><span class="lnum">   5:  </span>};</pre>
-</div>
-<style type="text/css">![CDATA[
-
-.csharpcode, .csharpcode pre
-{
-	font-size: small;
-	color: black;
-	font-family: consolas, "Courier New", courier, monospace;
-	background-color: #ffffff;
-	/*white-space: pre;*/
-}
-.csharpcode pre { margin: 0em; }
-.csharpcode .rem { color: #008000; }
-.csharpcode .kwrd { color: #0000ff; }
-.csharpcode .str { color: #006080; }
-.csharpcode .op { color: #0000c0; }
-.csharpcode .preproc { color: #cc6633; }
-.csharpcode .asp { background-color: #ffff00; }
-.csharpcode .html { color: #800000; }
-.csharpcode .attr { color: #ff0000; }
-.csharpcode .alt 
-{
-	background-color: #f4f4f4;
-	width: 100%;
-	margin: 0em;
-}
-.csharpcode .lnum { color: #606060; }</style>
-<p>This is effectively a map function written as a LINQ query which returns a single value, an object that is a map of the values to be indexed.</p>
-<p><em>Get all the documents by author and category</em></p>
-<p>indexes/entriesByAuthorAndCategory?query=category:tech AND author:robashton</p>
-<p><em>Get all the documents by category</em></p>
-<p>indexes/entriesByAuthorAndCategory?query=category:tech</p>
-<p><em>Get all the documents by author</em></p>
-<p>indexes/entriesByAuthorAndCategory?query=author:robashton</p>
-<p>Those queries will return a list of whole documents which match the queries passed in.</p>
-<p><strong>Indexes in CouchDB</strong></p>
-<p>
-The same goes for CouchDB, only map functions in CouchDB have two outputs, and are written in JavaScript.</p>
-<div class="csharpcode">
-<pre class="alt"><span class="lnum">   1:  </span><span class="kwrd">function</span>(doc) {</pre>
-<pre><span class="lnum">   2:  </span>  emit([doc.category, doc.author], doc);</pre>
-<pre class="alt"><span class="lnum">   3:  </span>}</pre>
-</div>
-<style type="text/css">![CDATA[
-
-.csharpcode, .csharpcode pre
-{
-	font-size: small;
-	color: black;
-	font-family: consolas, "Courier New", courier, monospace;
-	background-color: #ffffff;
-	/*white-space: pre;*/
-}
-.csharpcode pre { margin: 0em; }
-.csharpcode .rem { color: #008000; }
-.csharpcode .kwrd { color: #0000ff; }
-.csharpcode .str { color: #006080; }
-.csharpcode .op { color: #0000c0; }
-.csharpcode .preproc { color: #cc6633; }
-.csharpcode .asp { background-color: #ffff00; }
-.csharpcode .html { color: #800000; }
-.csharpcode .attr { color: #ff0000; }
-.csharpcode .alt 
-{
-	background-color: #f4f4f4;
-	width: 100%;
-	margin: 0em;
-}
-.csharpcode .lnum { color: #606060; }</style>
-<p>  </p>
-<p>Return values are specified by calling emit, and emit can be called more than once for each document, thus multiple keys can be created for each document with a single map function. The first parameter in Emit is the “key” to be searched on, and the second parameter is the data associated with that key (in this case, the document).</p>
-<p><em>Get all the documents by author and category</em></p>
-<p>blogs/_view/byAuthorAndCategory?startkey=["tech","robashton"]</p>
-<p><em>Get all the documents by category</em></p>
-<p>blogs/_view/byAuthorAndCategory?startkey=["tech"]</p>
-<p><em>Get all the documents by author</em></p>
-<p>Ah. This suddenly a bit more complicated. I’ve not actually managed to come to a convenient solution, as far as I can understand from the <a href="http://wiki.apache.org/couchdb/HTTP_view_API?action=show&amp;redirect=HttpViewApi">docs</a>, if you want to query <em>specific</em> fields within the key, you have to submit a POST request containing a JSON document with the fields you wish to search.</p>
-<p>So it’s either that or create specific indexes for the queries you wish to perform. Performance-wise this is probably optimal but I don’t actually know for sure.</p>
-<p><strong>Paging in RavenDB</strong></p>
-<p>Paging in RavenDB is as simple as appending a start + pageSize to the query string</p>
-<p>indexes/entriesByAuthorAndCategory?query=category:tech&amp;start=10&amp;pageSize=10</p>
-<p>This will perform the query across the entire index and only retrieve the documents requested, this is an operation with trivial expense.</p>
-<p><strong>Paging in CouchDB</strong></p>
-<p>In CouchDb, a similar query string can be used, using “skip” and “count parameters, but these are considered expensive and instead to perform paging you should:</p>
-<ul>
-    <li>Get the first collection of documents, limiting by count(+1) </li>
-    <li>Get the next collection of documents, starting at the last document in the first collection, limiting by count (+1) </li>
-    <li>Etc </li>
-</ul>
-<p><strong>Summary</strong></p>
-<p>This really is just a whistle-stop of some basic functionality in these two systems, although it does highlight some fairly major differences in basic functionality between them.</p>
-<p>Next up some more advanced functionality will be covered, going over the differences between writing reduce functions in the two</p>
-	]]></description><link>http://codeofrob.com/entries/ravendb-&amp;-couchdb---basic-queries.html</link><guid isPermaLink="true">http://codeofrob.com/entries/ravendb-&amp;-couchdb---basic-queries.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 02 Jun 2010 06:00:00 GMT</pubDate></item><item><title><![CDATA[RavenDB-Image Gallery Project (II) - Setting Up]]></title><description><![CDATA[
-		<p>As with all entries in this series, the up to date code&nbsp; and history can be found in Github at <a href="http://github.com/robashton/RavenGallery/">http://github.com/robashton/RavenGallery/</a></p>  <p><strong>Where do I get RavenDB?</strong></p>  <p>RavenDB can be downloaded from a number of places, you can download the stable binaries, the unstable binaries or go direct to Github and use whatever fork you find there.</p>  <p>I personally run off my own fork which is updated very frequently from Ayende’s code – as it means I can rapidly add any missing features and push them back or fix bugs when I find them.</p>  <p>For this project I’ll be doing just that, and the binaries found in the Image Gallery project will be from my fork found at <a href="http://github.com/robashton/Ravendb">http://github.com/robashton/Ravendb</a></p>  <p>This is because I’ll be utilising functionality that is on the bleeding edge of RavenDB, of course by the time most of you read this they’ll be in the released binaries, so we’ll move to those now.</p>  <p><strong>Released builds (Unstable)</strong></p>  <p>Next up on the stability list are the recent builds, which can be found on the Hibernating Rhinos site <a href="http://builds.hibernatingrhinos.com/builds/RavenDB-Unstable">http://builds.hibernatingrhinos.com/builds/RavenDB-Unstable</a>, this is probably safer than constantly pulling from Ayende’s fork and represent the latest changes that have made it through code review. </p>  <p><strong>Released builds (Commercial)</strong></p>  <p>At time of writing, these are about 20 builds behind the Unstable branch, and as such miss out on some of the functionality that can be enjoyed in the Unstable and code versions of RavenDB. Unless you are planning on releasing software in the next week or two, I don’t really advocate using this branch for development.</p>  <p><strong>Why unstable?</strong></p>  <p>RavenDB is changing constantly, breaking changes still happen, API changes still happen, functionality is being added constantly – I have a suite of tests for all my projects that utilise RavenDB and I test all of my interaction with RavenDB. </p>  <p>By updating regularly I ensure that the amount of work needed to fix any breaking changes is kept to a minimum, as opposed to waiting 30 builds and finding out that half of my entire test suite fails. </p>  <p>That’s not to say that Raven isn’t ready for production because I believe that the stable branch is indeed stable, but because I’m in development and I haven’t got imminent release to look forward to I’m happy to put up with a few bugs in order to get the latest and greatest functionality.</p>  <p><strong>The Project itself</strong></p>  <ul>   <li>I’ve made an MVC2 project in VS2010 and removed all the default garbage that gets provided with it, apart from the JavaScript files, the CSS and the master page. I’m starting from a blank slate and removing all the code because I know how much that offends people. </li>    <li>I’ve downloaded the following libraries: Moq, NUnit, StructureMap and shoved them in a folder called _Libs along with the RavenDB binaries. </li>    <li>Oh yes, I’ve got a basic StructureMapControllerFactory that I’ll be using to create controllers with dependencies injected (in case anybody asks later on) </li>    <li>I’ve got two additional projects (class libraries) which are named RavenGallery.Core and RavenGallery.Core.Tests </li>    <li>I’ve gone through the project settings and ensured their .NET profile is set to .NET Framework 4 </li> </ul>  <p>Here is my solution</p>  <p><a href="http://codeofrob.com/images/codeofrob_com/WindowsLiveWriter/RavenDBImageGalleryProjectIISettingUp_1512C/solution_2.png"><img style="background-image: none; border-right-width: 0px; margin: ;padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px;" title="solution" border="0" alt="solution" src="http://codeofrob.com/images/codeofrob_com/WindowsLiveWriter/RavenDBImageGalleryProjectIISettingUp_1512C/solution_thumb.png" width="301" height="548"></a></p>  <p>And this is what I meant by setting the .NET profile</p>  <p><a href="http://codeofrob.com/images/codeofrob_com/WindowsLiveWriter/RavenDBImageGalleryProjectIISettingUp_1512C/targetframework_2.png"><img style="background-image: none; border-right-width: 0px; margin: ;padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px;" title="targetframework" border="0" alt="targetframework" src="http://codeofrob.com/images/codeofrob_com/WindowsLiveWriter/RavenDBImageGalleryProjectIISettingUp_1512C/targetframework_thumb.png" width="715" height="226"></a></p>  <p>&nbsp;</p>  <p><strong>Which RavenDB Binaries to use?</strong></p>  <p>Once you’ve selected which binary drop to use, you have to make a decision as to which Raven.Client to use, and this is where I tell you why I made sure my Target Framework was set to 4</p>  <ul>   <li>Raven.Client.Lightweight.dll      <ul>       <li>This is for when you are using .NET Framework 4 Client Profile </li>        <li>This doesn’t require any of the other binaries (Lucene/etc) </li>        <li>This doesn’t allow you to host RavenDB within your application </li>        <li>This is therefore a pure client </li>     </ul>   </li>    <li>Raven.Client.3.5.dll      <ul>       <li>As the name suggests, this is for when you are still on the .NET 2.0 runtime (using the .NET 3.5 framework) </li>        <li>This doesn’t require any of the other binaries (Lucene/etc) </li>        <li>This doesn’t allow you to host RavenDB within your application </li>        <li>This is therefore a pure client for older versions of the .NET framework </li>     </ul>   </li>    <li>Raven.Client.Embedded.dll      <ul>       <li>This is the full, heavyweight client for .NET 4.0 (<strong>not client profile!)</strong> </li>        <li>This requires all of the other binaries (Lucene.NET, Esent, etc)&nbsp; - these must <strong>all</strong> be referenced! </li>        <li>This allows you to host RavenDB within your application </li>        <li>This is a mixed client + server </li>     </ul>   </li> </ul>  <p>As my choice of target framework will tell you, I have chosen to host RavenDB internally as part of the web application, and I will take the responsibility for starting up and shutting it down as part of the application lifecycle.</p>  <p>The .NET Framework 4 profile is important, as it is a common gotcha for people to link the wrong binaries and wonder why they are still getting reference errors.</p>  <p>That’s set-up covered, in the next entry I shall cover how we’ll be hosting RavenDB in the application and managing our sessions with it.</p>
-	]]></description><link>http://codeofrob.com/entries/ravendb-image-gallery-project-ii---setting-up.html</link><guid isPermaLink="true">http://codeofrob.com/entries/ravendb-image-gallery-project-ii---setting-up.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 28 Sep 2010 11:00:00 GMT</pubDate></item><item><title><![CDATA[Anatomy of a 48 hour HTML5-JS Game]]></title><description><![CDATA[<p>I participated in my second <a href="http://www.ludumdare.com/compo/">Ludum Dare</a> 48 hour game-building compo this weekend, and this was my fourth attempt at <a href="http://www.ludumdare.com/compo/ludum-dare-23/?action=preview&amp;uid=7112">building a game from scratch</a> in 48 hours in HTML5/JS.</p>
-
-<p>Each time I have approached the problem in a slightly different way, but I'm beginning to get the process sussed (with a few caveats) so let's break down my latest attempt (<a href="http://www.ludumdare.com/compo/ludum-dare-23/?action=preview&amp;uid=7112">Web</a> | <a href="https://github.com/robashton/ld4823tw">Source</a>) and see how it is put together.</p>
-
-<h2>Libraries + Frameworks</h2>
-
-<p>I've tried a couple of approaches for this so far, one is to start with a set of 'base code' (written in advance either extracted from another project, or written especially for the 48 hour compo).</p>
-
-<p>I've ended up settling for a halfway house, I have some libraries that I <em>really</em> like from JS/HTML development in general, and some libraries/components that I keep around for convenience.</p>
-
-<p><strong>Third party</strong></p>
-
-<p><em><a href="http://documentcloud.github.com/underscore/">Underscore</a></em> - this is a library containing a load of polyfills for doing common operations in JS (iteration, binding, etc) - my favourite method is probably _.extend, which I'll cover in a bit.</p>
-
-<p><em><a href="http://jquery.org/">jQuery</a></em> - we all know what this is - to be honest, I use it for DOM selection and the most basic of manipulation only - as such it's a bit heavy-weight for what I need. Still - it's familiar to me and allows me to get started - can't say wrong with that.</p>
-
-<p><strong>Hand-rolled components</strong></p>
-
-<p><strong><a href="https://github.com/robashton/swallow">Swallow</a></strong> - Packaging up a directory as a JSON file and downloading it all-as-one might not be the most elegant/modern way of dealing with multiple assets but it at least allows an easy deterministic way of dealing with dependencies, and means that I forego a lot of the issues with playing Audio in browsers (creating a new audio file with a URL means the browser re-downloading the asset!). </p>
-
-<p>Base64 encoding all the binary assets and getting on with life means not faffing around with them during the compo - which is a good thing.</p>
-
-<pre><code>// Build script
-swallow.build({
-    in: 'assets',
-    out: 'site/assets.json'
-});
-
-// Client code
-GlobalResources.loadPackage('assets.json', function() {
-    game.start();
-});
-
-GlobalResources.getImage('image.png');
-GlobalResources.playSound('explosion');
-</code></pre>
-
-<p><strong><a href="https://github.com/robashton/camera">Camera</a></strong> - Separation of in-game coordinates from the pixels being displayed on screen is pretty important because otherwise we limit ourselves to a specific resolution and aspect ratio, and prevent our application from being run at different resolutions on different screens.</p>
-
-<p>The principle of this tiny piece of code is that rather than drawing using 'screen coordinates', we draw using 'world coordinates' and haven't got to any of the transformations ourselves in expensive JS.</p>
-
-<p>For example,</p>
-
-<pre><code>context.fillRect(0, 0, 100, 100);
-</code></pre>
-
-<p>Would ordinarily fill a rectangle 100 pixels by 100 pixels at the top-left of the screen, but if we apply transforms to the underlying canvas as if we had a camera moving over it, using the following code</p>
-
-<pre><code>camera.lookAt(50, 50);
-camera.zoomTo(100);
-camera.fieldOfView(Math.PI / 4);
-</code></pre>
-
-<p>Then the same fillRect code will be drawing the same rectangle  (roughly) in the middle of the screen. </p>
-
-<p>The advantage of this code is that the same picture can be drawn whether the canvas is sized at 320x240, 640x480, 800x600 (and can even handle strange aspect ratios). In case of bad performance, the canvas size can be set to half the size of the actual display and upscaled automatically!</p>
-
-<p><strong>Eventable</strong> - I've found that messaging is the best way to keep the ability to crank out features without littering the codebase with conditionals and irrelevant code, I have a basic set of behaviours in an object called "Eventable" that looks like</p>
-
-<pre><code>on(event, callback, context)
-onAny(callback, context)
-off(event, callback, context)
-offAny(callback, context)
-</code></pre>
-
-<p>I also have a basic <strong>Scene</strong> object, through which all entity events bubble up through for caretaker objects to deal with, consider the following scenario from my #LD23 game</p>
+<p>I'll write about the actual work I'm doing in the next few entries.</p>]]></description><link>http://codeofrob.com/entries/working-at-hibernating-rhinos.html</link><guid isPermaLink="true">http://codeofrob.com/entries/working-at-hibernating-rhinos.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 11 Feb 2013 12:34:00 GMT</pubDate></item><item><title><![CDATA[Lots of small things]]></title><description><![CDATA[<p><strong>Questions:</strong></p>
 
 <ul>
-<li>EnemyFactory decides to spawn an Asteroid</li>
-<li><p>EnemyFactory hooks '<em>Destroyed</em>' event on Asteroid</p>
-
-<pre><code>   asteroid.on('Destroyed', this.onAsteroidDestroyed, this);
-</code></pre></li>
-<li><p>Asteroid goes off and does its thing</p></li>
-<li>Player blasts away Asteroid</li>
-<li><p>Asteroid raises event like so:</p>
-
-<pre><code>this.raise('Destroyed');
-</code></pre></li>
-<li><p>EnemyFactory removes the Asteroid from the scene</p></li>
-<li>Also listening to events from the scene are
-<ul>
-<li>ExplosionCreation</li>
-<li>ScoreKeeper</li>
-<li>SoundCreation</li>
-</ul></li>
+<li>"But how do you maintain large JS codebases..."</li>
+<li>"How do I build Enterprise Scale JS applications"</li>
+<li>"How do I refactor across an entire project in JS"</li>
 </ul>
 
-<p>They hooked the events from the scene when they were added to it like so</p>
+<p><strong>Answers:</strong></p>
 
-<pre><code>scene.on('Destroyed', this.onEntityDestroyed, this);
+<ul>
+<li>You don't</li>
+<li>Lots of small things</li>
+<li>Build small things that do one thing well</li>
+<li>You shouldn't build large JS codebases</li>
+</ul>
+
+<p>Etc</p>
+
+<p>I almost started a drinking game at NodeDublin, "take a drink every time somebody mentions the Unix Philosophy or one of the above statements", I'm glad I did not - it was held in the Guinness Storehouse and I'd have not lasted beyond the first couple of sessions had I gone through with it.</p>
+
+<p>These are sentiments uttered at conferences, in meeting rooms, in blog comments, in blog entries and pretty much whenever the subject of large code-bases in JS come up. Normally uttered with a self-satisfied smirk and with little to no further guidance on how exactly one might go about it.</p>
+
+<p>Sure, you can always fall back to Typescript or Coffeesript or KoolaidScript, sure you can leverage awesome IDEs like Webstorm, Visual Studio, etc, but we've been building Enterprise Systems in C# and Java for years in this way, and the wheels of progress eventually stop turning because iteration becomes expensive, maintenance becomes 90% of the job and every meeting boils down to a question of "legacy", "compromise" and  "we are where we are".</p>
+
+<p>So, this is what I am doing, this is my current recipe, a collection of the rules of thumb I am using for building an open source game engine (PrimoJS) in JavaScript in a way that doesn't make my brain run out of my ears whenever I want to write a new feature. (Caveat: I haven't "released" this engine, I am merely pulling it together out of code already written to help me do Ludum Dares faster)</p>
+
+<p>This is client side JavaScript only in this project, all of this is equally applicable to JS in ASP.NET MVC projects, in J2EE-whatevs projects and probably your Ruby on Rails projects too.</p>
+
+<p>TLDR: Browserify + npm + github = success</p>
+
+<h2>NodeJS</h2>
+
+<p>I don't care if you're not writing NodeJS for whatever reason, the command line tooling being built up in this area to help with JS is fantastic, and trying to use the copy-cat tooling being built up in your favourite Enterprise environment is just setting yourself up for frustration and trouble in the future. It's just an exe, get it and integrate it with your toolchain, make your life better today.</p>
+
+<h2>Browserify</h2>
+
+<p>Okay, I'm a convert - I've been talking AMD for a while now, and the idea of having to run a build script had put me off Browserify for a while - it turns out the development experience is pretty good and by the time you get to the browser to hit refresh, this is generally done already anyway. AMD is now dead to me.</p>
+
+<pre><code>npm install -g browserify
 </code></pre>
 
-<p>And in their respective methods they get to do</p>
+<p>Once you have it, if you write your JS with node-flavoured CommonJS style require calls, you can package JS up for the client by running Browserify as part of your build script.</p>
 
-<pre><code>onEntityDestroyed: function(data, sender) {
-    this.createExplosion(sender.x, sender.y);
-}
+<p><strong>app.js</strong></p>
 
-onEntityDestroyed: function(data, sender) {
-    this.increaseScore(sender.getPoints() * this.currentLevel);
-}
+<pre><code>var windowing = require('./windowing')
+  , messaging = require('./messaging')
 
-onEntityDestroyed: function(data, sender) {
-    this.playSound('explosion', sender.x, sender.y);
-}
+
+messaging.on('foo', function(message) {
+  windowing.showMessage(message)
+})
 </code></pre>
 
-<p>Having the ability to slap on extra functionality without creating masses of extension code meant that throwing in power-ups was a simple matter of creating something to listen to destruction events and add new entities to the scene to represent as power-ups.</p>
+<p><strong>Then build</strong></p>
 
-<p>Keeping the UI updated looks something like this:</p>
-
-<pre><code>var Hud = function(scene) {
-    scene.autoHook(this);
-    this.score = $('#score');
-    this.health = $('#health');
-    this.energy = $('#energy');
-};
-Hud.prototype = {
-    onScoreChanged: function(score) {
-        this.score.text(score);
-    },
-    onHealthChanged: function(health, sender) {
-        if(sender.id !== 'player') return;
-        this.health.css('width', sender.percentageHealth() + '%');
-    },
-    onEnergyChanged: function(energy, sender) {
-        if(sender.id !== 'player') return;
-        this.energy.css('width', sender.percentageEnergy() + '%');
-    }
-}
+<pre><code>browserify site/app.js &gt; site/app-built.js
 </code></pre>
 
-<p>Hmmm, tidy.</p>
+<p>This might be alarming at first, because it seems like concatenating these files might make the debug experience a thing of nightmares, but that's what the --debug flag is for:</p>
 
-<p>I choose not to publish this as a library, because this is something specific to the way I like to work and everybody is either using one that already exists or are capable of writing on themselves.</p>
-
-<h2>Patterns and Practises</h2>
-
-<p><strong>Working in a single file</strong></p>
-
-<p>When working on my more long-term projects, I often use a dependency/module system like RequireJS to break up the project across multiple files (one-per-class type of thing)</p>
-
-<p>When working on a 48 hour game jam, I find that just coding everything in a single file like a madman is really helpful providing I'm using a good text editor with the ability to search and jump around the document built in.</p>
-
-<p><strong>Working with "Classes"</strong></p>
-
-<p>I admit it, I'm a sucker for encapsulating state and behaviour into discrete little objects that I can create and throw around the place,</p>
-
-<p>The thing is, because JS allows for duck-typing, this object flinging makes throwing things into a scene and performing operations on them pretty convenient.</p>
-
-<p>For example, I have a scene object, which exposes the following methods, and at its most simplistic looks something like this:</p>
-
-<pre><code>add: function(entity) {
-    this.entities[entity.id] = entity;
-},
-remove: function(entity) {
-    delete this.entities[entity.id];
-}
-tick: function() {
-    this.eachEntity(this.entityTick);
-},
-entityTick: function(entity) {
-    if(entity.tick) entity.tick();
-},
-draw: function(context) {
-    this.eachEntity(this.entityDraw, context);
-},
-entityDraw: function(entity, context) {
-    if(entity.draw) entity.draw();
-}
+<pre><code>browserify site/app.js -o site/app-built.js --debug
 </code></pre>
 
-<p>Now, in my long-term projects, drawing/logic/etc are just components that are attached to the entities, and the scene is certainly not responsible for this stuff - but for this kind of rapid-work project having something really simplistic really aids in the development process.</p>
+<p>This inserts special directives into the JS so the browser knows what the original files were and they can therefore be opened and debugged in their original state.</p>
 
-<p>The important things of note, is above - we only care that an entity has a field called 'id', we don't care where it got it from - and if that entity has a draw method, we'll use it and if the entity has a tick method, we'll use that too.</p>
+<p>I have a Makefile I copied from VoxelJS - it looks like this</p>
 
-<p>I don't bother trying to emulate classic inheritance, even in something as simplistic as this it's not desirable (and leads to more complexity). I do however make judicious use of underscore's 'extend' method.</p>
+<pre><code>all: concat
 
-<pre><code>// Basic rendering functionality for a textured quad
-var Quad = function() {
-    // stuff
-};
+concat:
+  browserify site/app.js &gt; site/app-built.js
 
-Quad.prototype = {
-    draw: function(context) {}; // stuff
-}
-
-// A basic powerup which floats towards the player
-var Powerup = function(image, x, y) {
-    Quad.call(this, image, x, y);
-    Eventable.call(this);
-    this.id = IdGenerator.Next("powerup");
-};
-Powerup.prototype = {
-    tick: function() {
-        this.moveTowardsPlayer();
-    },
-    notifyCollision: function(other) {
-        if(other.isPlayer())
-            this.bestow();
-    }
-};
-_.extend(Powerup.prototype, Quad.prototype, Eventable.prototype);
-
-// An actual powerup
-var DestructionFieldPickup = function(x, y) {
-    Powerup.call(this, "destructionfield.png", x, y );
-
-};
-DestructionFieldPickup.prototype = {
-    bestow: function() {
-        this.scene.addEntity(new DestructionField(this.x, this.y));
-    }
-}
-_.extend(DestructionFieldPickup.prototype, Powerup.prototype);
+watch:
+  browserify site/app.js -o site/app-built.js --watch --debug
 </code></pre>
 
-<p>I'd usually shy away from such hierarchies, but in a 48 hour jam they're a really easy way of throwing functionality in with gay abandon (remember, I don't need to maintain this code, I don't need to remember that the Pickup somehow magically has an 'x' value 2 months later, I don't need to remember what fields have already been declared so not to overwrite them etc).</p>
+<p>During development of my application, I type</p>
 
-<p>Working with such lightweight base components and with such explicit objects means that providing my codebase remains below 2000 lines of code (about the maximum deliverable for a solo 48 hour jam if I'm honest), I can keep it all in my head and not fuss around too much.</p>
+<pre><code>make watch
+</code></pre>
 
-<p>At least they're relatively small and (mostly) hide their data, and hold onto the functionality they expose in neat, readable blobs.</p>
+<p>and I don't have to think about this ever again.</p>
 
-<h2>Assets</h2>
+<p>Now, the cool part. With RequireJS I was always having to set up elaborate configuration scripts, "You can find underscore over here, you can find jQuery over here, you can find this other legacy JS over here, please do these things with them", this was, in short, a ball-ache.</p>
 
-<p>I'm not an artist, and I'm not a sound engineer either, I have found however that with Inkscape it is possible to create relatively non-sucky art with the combination of geometric shapes.</p>
+<p>Browserify eschues this way of thinking, and simply says "if it's a relative path, I'll use it, if it's a global path I'll look in node_modules"</p>
 
-<p><img src="../img/ship.png" alt="" /></p>
+<h2>NPM</h2>
 
-<p>Including these is simple, as they're bundled up with Swallow - however, sounds are more tricky.</p>
+<p>Here comes and important learning: <em>it is not enough</em> to simply use a require system, split your JS across multiple files in a folder and say "my files are small and therefore I am building small things", having all your code in a single project is not sufficient encouragement to think about the boundaries between those files and before long you will find yourself with 10,000 lines of spaghetti JS across 100 files in a folder with relative include paths and feel the pain it causes when trying to change anything at all inside of that.</p>
 
-<p>Sound on the internet SUCKS.</p>
+<p><strong>NPM has the answer</strong></p>
 
-<p><strong>SUCKS. SUCKS SUCKS.</strong></p>
+<p>By saying "I am going to build independent modules, and require them from my application as needed", you are making a statement of intent that those modules will have some fairly important qualities.</p>
 
-<p><em>breath</em>, basically you'll be fine if you use a combination of <strong>ogg vorbis</strong> and <strong>MP3</strong>, and don't worry about the older browsers.</p>
+<ul>
+<li>A module should be re-writeable in a day without affecting the rest of the system</li>
+<li>A module should export a single function that has clearly described responsibilities</li>
+<li>A module is independently versioned &amp; published to the registry as its own thing</li>
+<li>A module should therefore not be coupled to any of the modules that consume it, relationships should be uni-directional</li>
+<li>A module has its own git repository and history</li>
+</ul>
 
-<p>In a little game like this, I don't worry about the cost and simply download both files all of the time (in swallow), I guess I could package them up individually and do a check on start-up, and perhaps a little library is warranted (either one on the internet or hand-rolled)</p>
+<p>For example, the biggest module in the PrimoJS eco-system is the core engine, at 700LOC, and that is <em>too big</em>, I am still harvesting that original codebase into smaller modules - this takes time because it is hard to go from big to small, it is hard to go from coupled to uncoupled and it is harder still when you are trying to be always making changes that roll forward, rather than backwards in terms of progress.</p>
 
-<p>The code for playing a sound goes as follows therefore:</p>
+<p>Nevertheless, PrimoJS is currently split across 16 modules, all of which fit the above list of requirements, they could all be used independently of each other, or more likely brought into a project that has pulled in the core engine and wants the additional functionality that these modules bring.</p>
 
-<pre><code>playSound: function(path) {
-  var player = new Audio();
-  if(player.canPlayType("audio/mpeg")) {
-    player.src = "data:audio/mpeg;base64," + this.findData(path + '.mp3');
-  } else {
-    player.src = "data:audio/ogg;base64," + this.findData(path + '.ogg');
+<p>What does this look like in reality? This is the package.json of one of my 'example' projects, the actual application using PrimoJS</p>
+
+<pre><code>{
+  "name": "centipede2013",
+  "version": "1.0.0",
+  "dependencies": {
+    "send": "~0.1.0",
+    "express": "~3.0.3",
+    "underscore": "~1.4.3"
+  },
+  "devDependencies": {
+    "primo": "",
+    "primo-animation": "",
+    "primo-text": "",
+    "primo-boundary": "",
+    "primo-rigidbody": "",
+    "primo-events": "",
+    "primo-audio": ""
+  },
+  "engines": {
+    "node": "0.8.x",
+    "npm": "1.1.x"
   }
-  player.volume = 0.5;
-  player.play();
 }
 </code></pre>
 
-<p>This will work okay, as the data is cached (so no faffing with re-load pauses).</p>
+<p>The core engine is brought in, and then other components are brought in for use with that project, it is important to note that none of these components have a dependency on that core primo module, or vice versa - they are independent and could be used independently. 
+What does this look like? Well, I can use NPM list to show me the dependency graph, which goes something like this:</p>
 
-<h2>In Summary</h2>
+<pre><code>├─┬ primo@0.1.1
+│ ├── primo-camera@0.0.0
+│ ├── primo-canvas@0.0.0
+│ ├── primo-counter@0.0.0
+│ ├── primo-events@1.0.2
+│ ├── primo-spritemap@0.0.0
+│ └── primo-timer@0.0.0
+├─┬ primo-animation@0.0.1
+│ └─┬ primo-spritemap@0.0.1
+│   ├── primo-canvas@0.0.0
+│   └── primo-events@1.0.2
+├── primo-boundary@0.0.0
+├── primo-audio@0.0.6
+├── primo-events@1.0.2
+├─┬ primo-rigidbody@0.0.2
+│ └── primo-utils@0.0.0
+├── primo-text@0.0.0
+</code></pre>
 
-<p>In a 48 hour game jam, I've found that productivity is <em>much</em> more important than the long-term maintainability of the code, but this does not mean abandoning some sensible software practises, as short term maintainability is still important (keeping 2000 lines of procedural spaghetti code in your head isn't quite as easy...).</p>
+<p>We'll notice that the spritemap is used several times, as is primo-events and primo-canvas. If I was using relative paths, this would be pretty messy and hard to trace, but with a package manager the relationship is clear and it is obvious that those modules are independent.</p>
 
-<p>Any questions? The code is over <a href="https://github.com/robashton/ld4823tw/blob/master/site/game.js">here</a>, and the above should help with the navigation a bit...</p>
-]]></description><link>http://codeofrob.com/entries/anatomy-of-a-48-hour-html5-js-game.html</link><guid isPermaLink="true">http://codeofrob.com/entries/anatomy-of-a-48-hour-html5-js-game.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 23 Apr 2012 12:34:00 GMT</pubDate></item></channel></rss>
+<p>Fine, so what now? I have a folder on my hard drive that has a pile of other folders in them, each has its own package.json, its own git repository and can be developed independently - but this is hardly ideal from a development point of view is it?</p>
+
+<p>An obvious question to be asked now, is "If you have a bug in primo-animation that impacts your centipede application, how do you fix, test, verify and iterate on that bug without copying JS around and making a mess of things. (How often have you downloaded the source of NHIbernate in .NET and had to debug an issue with it that happens in your code base? It's not fun is it)</p>
+
+<p>That's where NPM really shines, we have NPM link - one of the finest commands in the history of package management.</p>
+
+<pre><code>cd components/animation
+  /usr/local/lib/node_modules/primo-animation -&gt; /home/robashton/src/primo/components/animation
+cd ../../examples-centipede
+npm link primo-animation
+/home/robashton/src/primo/examples-centipede/node_modules/primo-animation -&gt; /usr/local/lib/node_modules/primo-animation -&gt; /home/robashton/src/primo/components/animation
+</code></pre>
+
+<p>NPM can set up symlinks, so editing the files in primo animation <em>in place</em>, will result in the changes being visible in the application as you make these changes.</p>
+
+<p>This tells you a few things</p>
+
+<ul>
+<li>This is an explicit step, you have to conciously choose to edit across module boundaries</li>
+<li>You shouldn't be doing this often on a stable system</li>
+<li>Ideally, you'd have a test harness so you can iterate and develop fixes/etc independently of the usage of the module itself</li>
+</ul>
+
+<p>Now, as the ever-pragmatic developer, I know that Primo right now is open to a lot of churn and I'm happy to be editing across these boundaries occasionally (especially with new modules), but as modules become mature I shouldn't be touching them any more - and later on I might choose to swap one out for another that does it better anyway.</p>
+
+<p>What's even better about the use of NPM is that I can pretty much forgoe that whole thing where I have a folder called 'libs' with all sorts of crazy JS in it. That's a pretty sweet deal and something I can whole-heartedly get behind on.</p>
+
+<h2>The Caveats</h2>
+
+<p><strong>NPM</strong></p>
+
+<p>It is worth pointing out that for client-side JS package management, the whole ecosystem is very much in the air -  we have Bower, Volo, Yeoman, Jam, etc. Each come with their own idea of a manifest, linking, dev etc.</p>
+
+<p>For now, I don't see the point - NPM works really well and has already solved most of the problems inherent to a pure world of JS (We're not talking other kinds of deps such as HTML/CSS/etc - and for that Bower might still hold the answer)</p>
+
+<p>The problem with NPM is that you're never sure which modules are client-side or server-side, not everything works everywhere - for example, the jQuery package in NPM is the server-side jQuery which makes life pretty confusing for now.</p>
+
+<p><strong>Folder hell</strong></p>
+
+<p>I have lots of folders, each with their own git repository, their own package.json, their own published state etc. This shouldn't bother me, because they're indepdendent and work done on these things should be independent - but that's not really the case when adding new features to a game that requires new code in primo-pritemap that requires new code in primo-canvas.</p>
+
+<p>This shouldn't happen very often (and it doesn't, because having things that do one thing and needing it to do two things means you probably want two things, that second thing being a new thing), but when it does, and you're offline, you end up with folders that are out of date with regards to the published state of the package and the only way I can see to manage this is to go through all these folder and check manually whether I need to push and/or publish. This could be solved by tooling - any takers?</p>
+
+<p><strong>Package hell</strong></p>
+
+<p>I have lots of packages, each with their own git repo - but the primary use case is for usage within the PrimoJS eco-system - when you pull down primo for use in a new game you only get the core, and a lot of the time you might want animations, audio, physics etc.</p>
+
+<pre><code>&gt; npm install primo --save
+</code></pre>
+
+<p>There is nothing here to tell the developer that they might also want to do</p>
+
+<pre><code>&gt; npm install primo-animations primo-audio primo-rigidbody --save
+</code></pre>
+
+<p>I think this can be solved with documentation and tooling, maybe a command line script ala RoR for generating a new game's folder structure</p>
+
+<pre><code>&gt; primo-create mynewgame
+do you want all the default components available? (y/n)
+&gt; y
+do you want a level editor (y/n)
+&gt; n
+do you want a browserify build script? (y/n)
+&gt; y
+</code></pre>
+
+<p><strong>Module discovery + documentation</strong></p>
+
+<p>Again, lots of small modules - where does the documentation go? Where does the user go to find answers to his questions when he has them? where does the user go to work out which module is for what?</p>
+
+<p>I think this varies across projects, are your modules all part of the same eco-system? Are they truly standalone and usable wherever? I think for each 'tree' of modules, a single <em>source</em> of information is useful - even if the sub-categories are just links to the documentation for the specific modules. Making the user go searching for the right module and the right documentation is just asking for trouble down the line. (So, in my case, it would be primojs.com and links to the available modules.</p>
+
+<h2>Summary</h2>
+
+<p>This is just one way of tackling this, but it is real world and it does work quite nicely (apart from the solveable caveats above). It will be interesting to see which direction client side dependency management will go over time, but CommonJS is not going anywhere anytime soon and is a safe bet to be building your project on (regardless of whether it is Browserify or Stitch/etc doing the packaging for you)</p>
+
+<p>The most important part of all of this is creating the the modules to be standalone so you don't <em>have</em> to traverse across them when building new features or fixing bugs. Replacing folders with modules is for nought if you don't actually make modules.</p>
+
+<h2>Links</h2>
+
+<ul>
+<li>Browserify <a href="http://github.com/substack/node-browserify">http://github.com/substack/node-browserify</a></li>
+<li>NodeJS <a href="http://nodejs.org">http://nodejs.org</a></li>
+<li>NPM <a href="http://npmjs.org">http://npmjs.org</a></li>
+<li>PrimoJS (not "released" yet) <a href="http://github.com/robashton/primojs">http://github.com/robashton/primojs</a></li>
+<li>VoxelJS <a href="http://github.com/maxogden/voxel">http://github.com/magogden/voxel</a></li>
+</ul>]]></description><link>http://codeofrob.com/entries/lots-of-small-things.html</link><guid isPermaLink="true">http://codeofrob.com/entries/lots-of-small-things.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 25 Jan 2013 12:34:00 GMT</pubDate></item><item><title><![CDATA[Why work for free]]></title><description><![CDATA[<p>I've been asked this question a number of times since making my offer to <a href="http://codeofrob.com/entries/i-am-not-looking-for-a-job.html">travel around and do some free work</a> for those that were fast enough to get their offers into my inbox last week.</p>
+
+<p><em>Why work for free?</em></p>
+
+<p>Let's shorten this and ask </p>
+
+<p><em>Why work?</em></p>
+
+<p>Most people will respond to this question with an answer involving <em>money</em>, and those that don't are either lying or already rich because the world does not operate around good will and pixie dust.</p>
+
+<p>You can follow this up with another question</p>
+
+<p><em>Do you enjoy your job?</em></p>
+
+<p>Sometimes you get a genuine yes for this question, mostly with founders, small start-ups and independent developers, sometimes you get a <em>yes</em> from full-time employees and on digging into this <em>yes</em> you can find something interesting out by asking the question</p>
+
+<p><em>Why do you enjoy your job?</em></p>
+
+<p>I very rarely hear "We get to build great stuff" or "I learn a lot every day", it's usually "Oh, it's not perfect but I do get all the free coffee I can drink at my workplace", or "I have to sit in a lot of meetings but I find it fun to play the politics to get my preferred technological approach into the software", or "I don't get to write much code any more, but it's fun trying to work at the high level instead of the coal face"</p>
+
+<p>Sometimes you'll find that they are genuinely saying the things above and meaning them, sometimes you'll find that they are merely rationalisations that we've built up so we don't spend every day weeping silently into our (free) coffee.</p>
+
+<p>It's fair enough, our job is to build software - not have a great time pontificating and learning about the newest and latest shinies and most people working in our industry have realised this. Incidentally this is why the phrase "we need to be pragmatic" has crept into our dialogue as a common weapon to be wielded against anybody insolent enough to suggest doing something differently.</p>
+
+<p>Some of this isn't fun, but what generally ends up mattering to a developer is that the good things outweigh the bad - things like</p>
+
+<ul>
+<li>I get time to learn new things outside the day to day treadmill</li>
+<li>We have weekly brown-bag sessions where we share what we have learned</li>
+<li>We are building something that people are going to actually use and love</li>
+<li>I love being part of a team so committed to delivery</li>
+<li>We get to solve genuinely interesting problems</li>
+<li>We get to drink free coffee</li>
+</ul>
+
+<p>Outweighing</p>
+
+<ul>
+<li>We have way too many meetings</li>
+<li>We were doing waterfall, but we tried to do agile but that just means we have a wall full of post-it notes and no real requirements</li>
+<li>I don't get to write much code any more</li>
+<li>There is too much politics at the workspace</li>
+<li>We don't have enough space to work in</li>
+<li>There isn't a good training plan</li>
+</ul>
+
+<p>We've already established that a lot of developers work because they find what they do interesting. There is an inherent challenge in building software, managing complexity, managing expectations, managing managers and balancing all that managing against the task of actually building software. Sad fact of life is that at most organisations with more than 12 people in them, the negatives mentioned above end up outweighing the positives and we fall back on the rationalisations I've already mentioned.</p>
+
+<p>So, back to the heart of it</p>
+
+<p><em>Why do you enjoy software development</em></p>
+
+<p>Personally? The main reasons I enjoy software development are mentioned above, but my personal bullet-point list is</p>
+
+<ul>
+<li>I love building things, I love seeing a product that people are going to use that I helped make</li>
+<li>I love learning things, I love learning about how better to deal with the problem of "code", how better to deal with issues of complexity (both real and imagined)</li>
+<li>I love working with teams to better do the above, I love both spreading and changing my ideas via meaningful contact with those teams</li>
+<li>I love sticking my headphones on, and bashing out code for a few hours in vim</li>
+</ul>
+
+<p>It is hard in a long-term contract to be able to do the above sometimes, a lot of products I'm called to work on are never going to be seen by a real human being outside of the company, a lot of the products are being sold to people who want to spend money to manage their money that they made by moving money around and aren't making an impact on any real hhuman beings (It's where I get a lot of my money from so I shouldn't complain too much). </p>
+
+<p>It's hard in a long-term contract to be learning constantly from the actual work at hand, it's hard to be constantly teaching. After a month of work with the same team, you've had some massively accelerated information share, worked out how best to compromise with each other and you're lucky if you get any external input (this sort of siloed development is too common). This is okay, and it is something I have ended up being a part of many times and I've been a part of many such teams where we have gone on to release good solid software to satisfied customers and this is not to be understated.</p>
+
+<p>It is hard in a long term contract however to not become stale, and I don't want to be stale, I want to carry on being relevant, I want to continue being knowledgable, I want to keep on being told I'm wrong and learning from that, I want to be a vector of external ideas - as a friend put it recently "a cross-pollinator".</p>
+
+<p>I want to do the bits I enjoy for a few months without too much of the stuff I don't enjoy.</p>
+
+<p><em>Why do it for free then?</em></p>
+
+<p>I want to cram a whole pile of experience into a few months, I want to be a better developer, I want to work with real teams on real things and I want to trade experience with those teams - <em>that</em> is my payment and this will also add to my long-term value. </p>
+
+<p>With paid work, I might get a contract a month and be asked to come and deliver training on say, Javascript or NoSQL, I might get asked to do some external review and if I'm lucky I'll be asked to pair with some developers - but the point is that money gets in the way of the relationship between me and the client, and more importantly between me and the developent team.</p>
+
+<p>It is still not a one way trade if I am not being paid in currency, it is still a trade that sees both sides profit and when it comes to delivering value to paid clients later in the year it will carry on paying dividends even then. The relationship has changed though, and instead of being an external consultant who is being paid to be there and whose value must be extracted even if it means resentful developers, I am an external agent of knowledge <em>sharing</em> and I am there because <em>I want to be there</em>.</p>
+
+<p>Not only that, but I can't actually make enough room in my calendar to make room for all the offers and I can therefore squeeze an great amount of experience into a small space of time. The new ideas, the knowledge and the new skills this will tender is worth a whole lot more to me than currency.</p>
+
+<p>So why work for free? It changes the trust-relationship between me and the team, it makes my motivation obvious to those involved with me and I can learn a lot more in a smaller amount of time.  </p>
+
+<p>If I was rich enough to retire, this is something I would <em>choose</em> to do - and that is something we should all be so lucky to say about our jobs.</p>]]></description><link>http://codeofrob.com/entries/why-work-for-free.html</link><guid isPermaLink="true">http://codeofrob.com/entries/why-work-for-free.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 11 Dec 2012 12:34:00 GMT</pubDate></item><item><title><![CDATA[I am not looking for a job]]></title><description><![CDATA[<p>After a productive weekend in Vilnius at the "We Actually Build Stuff" conference, I came back to the client I have been spending most of my time with in Belgium these past two years feeling a bit despondent.</p>
+
+<p>Why was I still there? I had already made my intent clear a month ago - that after this contract expired I wasn't going to renew, I had saved enough money to survive for a year if need be, I was not exactly enjoying what I was doing (for many of the standard self-defeating enterprise issues) and as one of my friends put it "Staying just to save some extra cash just seems like a stupid idea if you're not enjoying it"</p>
+
+<p>So I went in, found myself unable to function any more and decided to expediate the process of leaving, kindly they came to an agreement and I was able to head off providing I reply to a few e-mails :-).</p>
+
+<p>Many folk have already offered that I come and take a job with them, and while their hearts are in the right place, I wish to make it known that this is not what I want to do for the next couple of years.</p>
+
+<ul>
+<li>I want to do something meaningful</li>
+<li>I want to work with smart people</li>
+<li>I want to focus on creating value</li>
+<li>I want to build stuff</li>
+<li>I want to help other people build stuff</li>
+</ul>
+
+<p>I actually have some semi-concrete plans next year that will make all of this happen, this will take a few months to put into place though and in the meanwhile I have an offer for YOU, if you are interested and feeling brave.</p>
+
+<p>I am offering the following two things</p>
+
+<p><strong>I will come and spend a few days (1-2 weeks) at your workplace (in Europe), building stuff for expenses and a roof over my head</strong></p>
+
+<p>Seriously, I don't have much to do (I have a few paid commitments which will take priority, but other than that plenty of time) and I want to help you Build Stuff, for FREE. </p>
+
+<p>Of course you are perfectly welcome to toss me a few euros for my time as well, but whatever, money is not important for the next few months at least.</p>
+
+<p>I can help you with your Javascripts, your .NETs and your NoSqls, I am especially interested in helping teams who are <em>new</em> to JS get to grips with it quickly, I am very intersted in discussing difficult migration paths from legacy code (such as Silverlight for example).</p>
+
+<p>If you are building games, then I am <em>especially</em> interested in coming to say hello, even if you're in somewhere boring like Guildford ;-)</p>
+
+<p><strong>I will cook you a curry for a roof over my head</strong></p>
+
+<p>Coupled with the first offer, if you're the developer putting me up then I'll cook you a curry, I'm pretty practised at this and can tailor this to your tastes if asked - this is a serious offer, I love cooking and I love coding - what is better than combining the two.</p>
+
+<p>Anyway, if either of these appeal to you, get in touch at <a href="mailto:robashton@codeofrob.com">robashton@codeofrob.com</a> or twitter <a href="http://twitter.com/robashton">@robashton</a></p>
+
+<p>My availability can be seen publicly at <a href="https://www.google.com/calendar/embed?src=robashtondeveloper%40gmail.com&amp;ctz=Europe/Brussels">google calendars</a></p>]]></description><link>http://codeofrob.com/entries/i-am-not-looking-for-a-job.html</link><guid isPermaLink="true">http://codeofrob.com/entries/i-am-not-looking-for-a-job.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 11 Dec 2012 12:34:00 GMT</pubDate></item><item><title><![CDATA[Learn Functional Programming With Me - Attributes And Vectors]]></title><description><![CDATA[<p>So last time I left the program, I had a black square which moved across the page but left a delightful black smear across the window, it looked something like this:</p>
+
+<p><img src="/img/blackline.png" alt="Black smear" title="" /></p>
+
+<p>I promised I'd add keyboard input this time around, and I don't like to lie - so while I sit here at my client's rather amazing karting day I've decided to give adding this a go as I don't really like karting that much ;-).</p>
+
+<p>First things first, I need to clear my screen in between frames or I'm going to keep on having an ugly black smear instead of a moving black square, in JS this would look like.</p>
+
+<pre><code>context.clearRect(0, 0, width, height);
+</code></pre>
+
+<p>Not rocket science, right?</p>
+
+<p>Well, right now, I have the function for drawing a square, which gets the context and draws a square, this looks like</p>
+
+<pre><code>(defn drawSquare [x y w h]
+  (let [target (.getElementById js/document "target")
+        context (.getContext target "2d")]
+    (.fillRect context x y w h)
+  )
+)
+</code></pre>
+
+<p>Great, but in order to have the moving square, I'm going need that context more than once, and making multiple requests to get the context is a bad idea because it means lots of calls to the DOM (slow).</p>
+
+<p>Clearly this means I'm going to need three functions for my purposes:</p>
+
+<pre><code>(defn clearScreen [ctx]
+  (.clearRect ctx 0 0 WIDTH HEIGHT)
+)
+
+(defn drawRect [ctx x y w h]
+  (.fillRect ctx x y w h)
+)
+
+(defn context []
+  (let [target (.getElementById js/document "target")]
+  (.getContext target "2d"))
+)
+</code></pre>
+
+<p>Meaning I can do</p>
+
+<pre><code>(defn drawScene [x]
+  (let [ctx (context)]
+    (clearScreen ctx)
+    (drawRect x 0 100 100)
+  )
+)
+</code></pre>
+
+<p>Now, you'll have noticed (if you're actually paying attention), that I have a 'Width' and 'Height' parameter for clearScreen that I haven't bothered trying to filter - that's because they're attributes of the Canvas Element and I need to get the darned things from that element and I haven't worked out a clean way of passing these things around (or retrieving them all from a function so I have the values present at that time. (Remember that I am trying to avoid global state, and as far as I know I haven't got "Types" for storing collections of data in.</p>
+
+<p>Okay - so first things first, how do I get attributes from an HTML element? HTML elements? Attributes? These aren't Clojure concepts - I can do a quick Google and see that this is possible:</p>
+
+<pre><code>(. target -width)
+</code></pre>
+
+<p>According to the Wiki on Clojurescript, this is just part of the "host interop" featureset - I'm not entirely sure how this maps to typical Clojure.</p>
+
+<p>Now - this still means I have the problem of how to get these out of a function, in JS I'd probably have something like</p>
+
+<pre><code>var Rendering = function(element) {
+  this.context = element.getContext('2d');
+  this.width = element.width;
+  this.height = element.height;
+}
+</code></pre>
+
+<p>Or something trite like that (see my other canvas codes in Github for what this actually looks like).</p>
+
+<p>Can't do this here as far as I know, turns out I can return a vector, or a list or a set or something from a function (duh), so I can do something like</p>
+
+<pre><code>(defn context []
+  (let [target (.getElementById js/document "target")
+    [
+      (.getContext target "2d")
+      (. target -width)
+      (. target -height)
+    ]
+  )
+)
+</code></pre>
+
+<p>Which will return a vector containing</p>
+
+<pre><code>[context width height]
+</code></pre>
+
+<p>I can pass this into my clearRect function for example with</p>
+
+<pre><code>(defn drawScene [x]
+  (let [ctx (context)]
+    (clearScreen ctx)
+    (drawRect x 0 100 100)
+  )
+)
+</code></pre>
+
+<p>So nothing different here, but I'll need to unpack that vector in order to use it</p>
+
+<pre><code>(defn clearScreen [ctx]
+  (let [[context width height] ctx
+    (.clearRect context 0 0 width height)
+  )
+)
+</code></pre>
+
+<p>Which is a bit verbose, or doing a bit of research it appears I can automatically unpack that vector when I call the function ala</p>
+
+<pre><code>(defn clearScreen [[context width height]]
+  (.clearRect context 0 0 width height)
+)
+</code></pre>
+
+<p>I'm not entirely sure how I feel about this, I'm just passing blobs of data around and assuming their structure in my functions - does Clojure have any inference over this stuff for verifiability (I'm not sure) - seems I'm losing a lot of the safety I'd have with OO constructs (regardless of type safety or whatever).</p>
+
+<p>Either way, my complete program currently looks like this:</p>
+
+<pre><code>(ns game)
+
+(defn context []
+  (let [target (.getElementById js/document "target")]
+    [
+      (.getContext target "2d") 
+      (. target -width)
+      (. target -height)
+    ]
+  )
+)
+
+(defn clearScreen [[ctx width height]]
+  (set! (. ctx -fillStyle) "#FFF")
+  (.clearRect ctx 0 0 width height) 
+)
+
+(defn drawSquare [[ctx width height] x y w h]
+  (set! (. ctx -fillStyle) "#000")
+  (.fillRect ctx x y w h) 
+)
+
+
+(defn tick [x]
+  (let [ctx (context)] 
+    (clearScreen ctx) 
+    (drawSquare ctx x 0 100 100)  
+    (if (&lt;= x 1000) 
+      (js/setTimeout (fn []
+        (tick (inc x)) 
+      ) 33  )
+    )
+  )
+)
+
+(defn ^:export init []
+  (tick 0) 
+)
+</code></pre>
+
+<p>This has the effect of drawing a square, clearing the rect and drawing the square again, which means my square floats across the screen.</p>
+
+<p>Seems I've once again run out of room to talk about input to this program from the keyboard, hopefully I'll reach that next entry!</p>
+
+<p>I still have some pending questions from these two entries:</p>
+
+<ul>
+<li>The recursive setTimeout with the anonymous closure?</li>
+<li>Passing that vector around - is this a good idea?</li>
+</ul>
+
+<p>Anybody feel free to chip in at any time.</p>]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---attributes-and-vectors.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---attributes-and-vectors.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 15 Jun 2012 12:34:00 GMT</pubDate></item><item><title><![CDATA[Learn Functional Programming With Me - Moving The Square]]></title><description><![CDATA[<p>So, last session I managed to get a square being drawn, as if I haven't done that a thousand times in JS - now to do something a bit more dangerous (because it involves state), and more likely to get me in trouble - let's move the square around using the keyboard.</p>
+
+<p><strong>Reminder</strong>: The source for all of this can be found at <a href="https://github.com/robashton/clojure-spaceinvaders">github.com/robashton/clojure-spaceinvaders</a></p>
+
+<h2>Parameterising the function</h2>
+
+<p>This is a no-brainer, I'm going to need to know where to draw this thing, I start off by passing in the state required to draw a rect to my function.</p>
+
+<pre><code>(defn drawRect [x y w h]
+  (let [target (.getElementById js/document "target")
+        context (.getContext target "2d")]
+     (.fillRect context x y w h)           
+  )
+)
+</code></pre>
+
+<p>So far so good - but now I'm going to need to not only pass in those variables, but - well they're going to have to be variable (somehow) because they're going to have to change each frame and it's stuff like this that makes me break out in a cold sweat because I haven't discovered the patterns to solve this type of problem yet.</p>
+
+<p>Let's explain - you see that 'let' statement, the values I've defined there, those key value pairs are <em>immutable</em>, this means I cannot change them - for example, if I want to make this square move of its own voilition, the literal equivalent of</p>
+
+<pre><code>for(var x = 0; x &lt; 1000; x++)
+  drawRect(x, 0, 100, 100);
+</code></pre>
+
+<p>Doesn't exist.</p>
+
+<p>Now, if I were to make my best guess at how to solve this, I'd say that we need a function that takes in x, and then calls itself with x+1, for example at a conceptual level:</p>
+
+<pre><code>function drawAndMove(x) {
+  drawRect(x, 0, 100, 100)
+  if(x &lt;= 1000)
+    drawAndMove(x+1)
+}
+drawAndMove(0);
+</code></pre>
+
+<p>This actually maps across to a construct in our chosen world that looks something like the following:</p>
+
+<pre><code>(loop [x 0]
+  (drawRect x 0 100 100)     
+  (if (&lt;= x 1000)
+    (recur (inc x))
+  )
+)
+</code></pre>
+
+<ul>
+<li>I want to loop, I want the following values available in this loop (x = 0)</li>
+<li>Please draw the rect at x,0,100,100</li>
+<li>If x &lt;= 1000, recurse and increment x</li>
+</ul>
+
+<p>Okay, this is a bit crazy and verbose - perhaps there is a better more shorthand way of doing this (anybody care to chip in around now?), but Imma press ahead and say that actually, that is not the greatest loop of all time.</p>
+
+<p>We actually have to yield to the UI thread each 'frame' which blows this whole thing out of the water - that's not to say that this code isn't functional - because I love having a row of black drawn over my canvas on the UI thread with no user interaction whatsoever - but we actually need something like the following</p>
+
+<pre><code>function tick() {
+  logic();
+  render();
+  setTimeout(tick, 33);
+}
+</code></pre>
+
+<p>Again, cutting a corner here because I don't want to write a full on game loop in clojure just yet.</p>
+
+<p>Figuring it out, I've ended up with something like this</p>
+
+<pre><code>(defn tick [x]
+  (drawRect x 0 100 100)
+  (if (&lt;= x 1000)
+    (js/setTimeout (fn []
+       (tick (inc x))
+    ) 33  )
+  )
+)
+
+
+(defn ^:export init []
+   (tick 0)
+)
+</code></pre>
+
+<ul>
+<li>Define a function called tick, which takes in the current position of our object</li>
+<li>Draw a rect at that location</li>
+<li>If x is still less than 1000, then</li>
+<li>In 33 milliseconds, call tick again but with x+1</li>
+</ul>
+
+<p>I've actually gone far enough for a single blog entry at this point so I'll leave keyboard input till another day - I have some thoughts about this work so far however:</p>
+
+<ul>
+<li>That setTimeout doo-hick is taking in an anonymous function, am I creating this function every frame? I wouldn't do that in most of my JS, it's effectively the same as creating a closure in a loop - not good?</li>
+<li>I saw something like this that used global state and an atom, and then tick could be called with no parameters - is this a better solution? It seems somewhat against what functional programming is about</li>
+<li>Thoughts?</li>
+</ul>]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---moving-the-square.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---moving-the-square.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 13 Jun 2012 12:34:00 GMT</pubDate></item><item><title><![CDATA[Learn Functional Programming With Me - Drawing A Square]]></title><description><![CDATA[<p>So.. setting up in ClojureScript isn't the most exciting thing I've ever done - however, following the instructions at the <a href="https://github.com/clojure/clojurescript/wiki/Quick-Start">project wiki</a> got me set up with a basic build pipeline which allows me to include ClojureScript into the browser.</p>
+
+<p>You can find what I've done and all the work so far here: <a href="http://github.com/robashton/clojure-spaceinvaders">github.com/robashton/clojure-spaceinvaders</a>.</p>
+
+<h2>Intro</h2>
+
+<p>My mission today will be to draw a square on a canvas object, nothing more than that - as there will be quite a few concepts to learn just to get this far.</p>
+
+<p>Moving on then, I'm going to start off by doing most of my work in 'game.js' and I don't think I need to export any variables to the outside world, so that keeps things tidy.</p>
+
+<p>About that - as far as I see it, what I want to build is a simulation of Space Invaders, which is as stateless and as side effect free in nature (or as far as is practical - whatever that means). This simulation will be the core of everything - and the side effects will exist on the periphery, in so far as updating the canvas and interacting with the user goes.</p>
+
+<h2>Some basic syntax</h2>
+
+<p>So, how do I begin? Well, I guess I'd better get the rest of you caught up with me in understanding Clojure Syntax.</p>
+
+<p><em>this is a traditional function call</em></p>
+
+<pre><code>foo(x, y)
+</code></pre>
+
+<p><em>this is a Clojure function call</em></p>
+
+<pre><code>(foo x y)
+</code></pre>
+
+<p><em>this is a traditional function definition</em></p>
+
+<pre><code>function foo(x, y) {
+   console.log(x, y)
+}
+</code></pre>
+
+<p><em>this is a Clojure function definition</em></p>
+
+<pre><code>(defn foo [x, y]
+  (log x y)
+)
+</code></pre>
+
+<p>This should be enough to get us started at least. Apparently some of these things we put after the first paren are not only functions, but special forms or macros - but as I haven't learned anything about them yet, I'm happy in my world of pretending they're all just functions.</p>
+
+<p>So, how am I going to start off in my happy world of Clojurescript? I need to create an HTML5 Canvas Context so I can do  things with it, and in order to do that I need to need to wait for the DOM ready event and oh oh oh - oh dear, <em>all of this looks like it might be hard because these are all external systems to my happy ClojureScript world and will involve some initial pain - oh well I wanted to learn how to do something practical and nearly all things practical are going to involve talking to external systems so I'd better get the pain over with <strong>OH IT HURTS IT HURTS.</em></strong></p>
+
+<p>Ahem.</p>
+
+<h2>Getting a function called on start-up</h2>
+
+<p>Ever the pragmatist, rather than re-implement the standard fuzz around this stuff in Clojure, or pull in jQuery or anything I'd do in JS, we'll just go with the body onload event, and rely on it calling a global function that I export from my game.js.</p>
+
+<pre><code>(ns game) 
+(defn ^:export init [] 
+
+) 
+</code></pre>
+
+<p>Given a body declaration of something like</p>
+
+<pre><code>&lt;body onload="game.init();"&gt;
+</code></pre>
+
+<p>That funky export thing just tells the Google Closure compiler not to mangle the name of the function (the ClojureScript compiler runs output through Closure - yes, that is confusing when you read it out loud).</p>
+
+<p>How do I test it works? Well inside my init function, let's access our first native object and see what the syntax is for that.</p>
+
+<pre><code>(.log js/console "Hello World")
+</code></pre>
+
+<p>Actually not too bad, "Please call .log - which exists on the object js/console, and pass in "Hello World" as parameters.</p>
+
+<p>Great - so I'm now printing hello world, how are we going to draw a square to our canvas? Well first we'll need a context object, and in order to get that context object, we'll have to get a canvas object and call a method on it - this will mean having a variable of some sort from which we can gain other functionality.</p>
+
+<h2>Introducing some more syntax.</h2>
+
+<p><em>Traditional variable declaration</em></p>
+
+<pre><code>var x = 0;
+</code></pre>
+
+<p><em>Clojurescript variable declaration</em></p>
+
+<pre><code>(let [x 0] 
+  (doStuff x)
+)
+</code></pre>
+
+<p>So, two things here - we have this 'let' thing, into which you pass in a vector of key-value pairs (x and 0 in this case, so x = 0), and then a body of code doing things with those values.</p>
+
+<p>Ah yes, Clojure has vectors, which are square brackets which contain a bunch of things. (parens are just lists of things, hence 'LISP' apparently). The difference between the two? Well, for my purposes right now, one has square brackets and the other has parentheses - I'm sure it will become clearer in the future.</p>
+
+<h2>Drawing my square</h2>
+
+<p>Anyway, expanding all of this we can get the following in order to do draw a square on our canvas</p>
+
+<pre><code>  (ns game)
+
+
+  (defn drawSquare []
+    (let [target (.getElementById js/document "target")
+          context (.getContext target "2d")]
+       (.fillRect context 0 0 100 100)
+    )
+  )
+
+  (defn ^:export init []
+     (drawSquare)
+  )
+</code></pre>
+
+<ul>
+<li>Create a function called drawSquare, taking in no parameters</li>
+<li>Let target = the result of calling getElementById on the document with a parameter of 'target'</li>
+<li>Let context = the result of calling getContext on target with a parameter of '2d'</li>
+<li>Call fillRect on context, with parameters of 0,0,100,00</li>
+<li>When init is called, call drawSquare with no parameters</li>
+</ul>
+
+<p>I guess we learn something else here, which is you can make a nice little chain of lets that all feed into each other, as you'd kinda hope.</p>
+
+<p>Next, we'll see about drawing a basic representation of our 'defender' and move it around using the keyboard (probably)</p>]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---drawing-a-square.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---drawing-a-square.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 12 Jun 2012 12:34:00 GMT</pubDate></item><item><title><![CDATA[Learn Functional Programming With Me - A Mission Statement]]></title><description><![CDATA[<p>I was at NDC2012 last week and ended up hanging around the tongue-in-cheek "Hipster stand" along with a fine bunch of people who sat around coding and chatting most of the week on various interesting projects.</p>
+
+<p>One of those fine people was <a href="https://twitter.com/bodiltv">@bodiltv</a> who proclaimed their love for Lisp, Emacs and various other things that I thought (like most people) I'd left behind after university never to touch again.</p>
+
+<p>However, functional programming is something that is seeing somewhat of a re-emergence in the crowds of people who I tend to lump into a bucket of "Smarter than Rob", and I was looking for an excuse to give it a go - having to build something with somebody sat next to me to show me the ropes was an excellent motivator.</p>
+
+<p>Over the course of a couple of hours on Thursday, <a href="https://twitter.com/bodiltv">@bodiltv</a> and I sat down and wrote a simple little script that looks something like this:</p>
+
+<pre><code>(ns foo.core 
+(:use [net.cgrand.enlive-html :as html])  
+)
+
+(def BASEURL "https://en.wikipedia.org/wiki/")
+
+(defn fetch-url [url]
+  (html/html-resource (java.net.URL. url)))
+
+(defn define
+  "Fetches a page from wikipedia and prints the first paragraph"
+    [q]
+      (let [url (str BASEURL q)
+           content (fetch-url url)]
+           ((comp html/text
+                  first
+                  html/select) content [:#mw-content-text :p])
+      )
+)
+</code></pre>
+
+<p>We also then looked at futures and how such things like that could help us, and with the knowledge of state being immutable know that we were safe when doing so. I then asked the question that most people ask when encountering this stuff for the (first/second) time, "How on earth do you build something <em>real</em> with this stuff".</p>
+
+<p>So here goes, a mission statement - <em>I am going to build space invaders on top of HTML5 Canvas with Clojurescript</em>.</p>
+
+<p>Yes, I am breaking out the blog again and relying on YOU, the reader who knows more about these things than I do to guide me on my way as I inevitably make lots of mistakes.</p>
+
+<p>It's hard to do this, because on the surface of things it seems so far away from the style of development I am used to, but by learning out in the open I am hoping we'll accelerate the process of getting to the point where I can be productive in a functional environment.</p>
+
+<p>Next entry: Let's see what my environment is going to look like, how I am going to interact with the Canvas and structure myself during this experiment.</p>]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---a-mission-statement.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---a-mission-statement.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 11 Jun 2012 12:34:00 GMT</pubDate></item></channel></rss>
