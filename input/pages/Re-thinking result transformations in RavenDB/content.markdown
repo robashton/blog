@@ -10,7 +10,7 @@ First, a re-cap on what TransformResults actually is; consider we have a couple 
 			name: "Rainbow Dash",
 			colour: '#9EDBF9',
 			trampstamp: 'rainbow-lightning',
-			pet: 'pets/tank'
+			petid: 'pets/tank'
 		}
 
 *a pet*
@@ -57,7 +57,7 @@ We mostly end up doing the last one and so we do that and it looks like this:
 								}
 					TransformResults = (database, results) =>
 							from result in results
-							let pet = database.Load<Pet>(result.Id)
+							let pet = database.Load<Pet>(result.PetId)
 							select new {
 								PonyId = pony.Id
 								Name = pony.Name,

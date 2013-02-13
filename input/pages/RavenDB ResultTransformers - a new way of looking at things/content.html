@@ -1,0 +1,87 @@
+<p>So, how do we solve a problem like TransformResults? Easy! We make ResultsTransfomers!</p>
+
+<p><img src="/img/prime.jpg" alt="Optimus Prime" title="" /></p>
+
+<p>Okay, so what's in a name?</p>
+
+<p>Well, rather than attach the function we want to transform the results with to the index like so</p>
+
+<pre><code>    public class Ponies : AbstractIndexCreationTask&lt;Pony&gt;
+    {
+         public Ponies()
+         {
+              Map = from pony in ponies
+                            select new {
+                                pony.Name,
+                                pony.Colour,
+                                pony.Trampstamp
+                            }
+                TransformResults = (database, results) =&gt;
+                        from result in results
+                        let pet = database.Load&lt;Pet&gt;(result.PetId)
+                        select new {
+                            PonyId = pony.Id
+                            Name = pony.Name,
+                            PetName = pet.Name,
+                            PetSpecies = pet.Species
+                        }
+         }
+    }
+</code></pre>
+
+<p>How about defining it separately like this?</p>
+
+<pre><code>    public class Ponies : AbstractIndexCreationTask&lt;Pony&gt;
+    {
+         public Ponies()
+         {
+              Map = from pony in ponies
+                            select new {
+                                pony.Name,
+                                pony.Colour,
+                                pony.Trampstamp
+                            }
+         }
+    }
+</code></pre>
+
+<p>And</p>
+
+<pre><code>public class PonyWithPetViewModel 
+    {
+
+        public string PonyId { get; set; }
+        public string Name { get; set; }
+        public string PetName { get; set; }
+        public string PetSpecies = { get; set; }
+    }
+
+
+    public class PoniesWithPets : AbstractTransformerCreationTask&lt;Pony&gt;
+    {
+         public PoniesWithPets()
+         {
+              TransformResults = ponies =&gt; 
+                        from pony in ponies
+                        let pet = database.Load&lt;Pet&gt;(pony.PetId)
+                        select new {
+                            PonyId = pony.Id
+                            Name = pony.Name,
+                            PetName = pet.Name,
+                            PetSpecies = pet.Species
+                        }
+         }
+    }
+</code></pre>
+
+<p>Then, to get a list of ponies with pets in that view model format, we can simply supply the transformer want to use as part of the query</p>
+
+<pre><code>    session.Query&lt;Pony&gt;()
+                 .Where(pony =&gt; pony.Name == "Pinkie Pie")
+                 .TransformWith&lt;PoniesWithPets, PonyWithPetViewModel&gt;
+                 .ToList()
+</code></pre>
+
+<p>This is much tidier, and allows us to use transformers to elegantly create view models across any index providing the input is sane enough, it also removes some of the complexity around indexes. Look - we didn't even specify an index for this query and yet we were able to use a transformer on it, dynamic index win!</p>
+
+<p>This actually took a couple of days to implement, but I still have four days of work at Hibernating Rhinos so hopefully more coming soon!</p>

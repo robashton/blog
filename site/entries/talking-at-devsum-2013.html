@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title id="title">Re-thinking result transformations in RavenDB</title>
+    <title id="title">Talking at DevSum 2013</title>
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
     <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
     <script type="text/javascript">
@@ -20,83 +20,12 @@
   <body>
     <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>
     <div id="blog-entry">
-      <h1 id="post-title">Re-thinking result transformations in RavenDB</h1>
-      <div id="post"><p>After all the work on indexes, things started getting downright <em>dirty</em> at the Hibernating Rhinos offices as we looked at re-vamping TransformResults in RavenDB.</p>
+      <h1 id="post-title">Talking at DevSum 2013</h1>
+      <div id="post"><p>I've been told I need to tell people when I'm doing talks, so consider this my attempt at making this so.</p>
 
-<p>First, a re-cap on what TransformResults actually is; consider we have a couple of documents that look something like this:</p>
+<p>I'll be talking at <a href="http://devsum.se/">Devsum 2013</a> on the 29th/30th of May on the <a href="http://devsum.se/talare/rob-ashton/">A pragmatic guide to the outside-in testing of  ASP.NET MVC applications</a></p>
 
-<p><em>A pony</em></p>
-
-<pre><code>    {
-        id: "ponies/rainbowdash",
-        name: "Rainbow Dash",
-        colour: '#9EDBF9',
-        trampstamp: 'rainbow-lightning',
-        petid: 'pets/tank'
-    }
-</code></pre>
-
-<p><em>a pet</em></p>
-
-<pre><code>    {
-        id: "pets/tank",
-        name: "Tank",
-        species: "Tortoise",
-        colour: #
-    }
-</code></pre>
-
-<p>Let's say we have an index that looks like this</p>
-
-<pre><code>    public class Ponies : AbstractIndexCreationTask&lt;Pony&gt;
-    {
-         public Ponies()
-         {
-              Map = from pony in ponies
-                            select new {
-                                pony.Name,
-                                pony.Colour,
-                                pony.Trampstamp
-                            }
-         }
-    }
-</code></pre>
-
-<p>When querying for a list of blue ponies, we might actually decide we want to know what species their pets are, we have the following options</p>
-
-<ul>
-<li>Include them from the client (This brings back a lot of information that we don't need)</li>
-<li>Add a results transformer to the index</li>
-</ul>
-
-<p>We mostly end up doing the last one and so we do that and it looks like this:</p>
-
-<pre><code>    public class Ponies : AbstractIndexCreationTask&lt;Pony&gt;
-    {
-         public Ponies()
-         {
-              Map = from pony in ponies
-                            select new {
-                                pony.Name,
-                                pony.Colour,
-                                pony.Trampstamp
-                            }
-                TransformResults = (database, results) =&gt;
-                        from result in results
-                        let pet = database.Load&lt;Pet&gt;(result.PetId)
-                        select new {
-                            PonyId = pony.Id
-                            Name = pony.Name,
-                            PetName = pet.Name,
-                            PetSpecies = pet.Species
-                        }
-         }
-    }
-</code></pre>
-
-<p>This gives us the ability to send only the information we want to the client as well as pull in information from other documents, that's pretty neat, but now it's in need of a bit of TLC, as some of its functionality has been <a href="http://ayende.com/blog/160545/feature-intersection-is-killing-me-referenced-document-indexing">superceded by Referenced Documents in Map</a> and it's a bit awkward as it is.</p>
-
-<p>I'll talk more about that tomorrow when I go into some of the issues that we're experiencing with this feature.</p></div>
+<p>I went to Devsum last year and had a lot of fun, last year the venue was just down the road from an Irish Pub and that pretty much put the icing on the cake. Let me know if you're going to be there and we can organise a guinness driven get-together.</p></div>
       <div id="links">
         <a href="/">Go back to the index</a><br />
         <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>
