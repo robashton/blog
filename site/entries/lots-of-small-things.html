@@ -23,21 +23,30 @@
       <h1 id="post-title">Lots of small things</h1>
       <div id="post"><p><strong>Questions:</strong></p>
 
-<ul><li>&quot;But how do you maintain large JS codebases...&quot;</li><li>&quot;How do I build Enterprise Scale JS applications&quot;</li><li>&quot;How do I refactor across an entire project in JS&quot;</li></ul>
+<ul>
+<li>"But how do you maintain large JS codebases..."</li>
+<li>"How do I build Enterprise Scale JS applications"</li>
+<li>"How do I refactor across an entire project in JS"</li>
+</ul>
 
 <p><strong>Answers:</strong></p>
 
-<ul><li>You don&#39;t</li><li>Lots of small things</li><li>Build small things that do one thing well</li><li>You shouldn&#39;t build large JS codebases</li></ul>
+<ul>
+<li>You don't</li>
+<li>Lots of small things</li>
+<li>Build small things that do one thing well</li>
+<li>You shouldn't build large JS codebases</li>
+</ul>
 
 <p>Etc</p>
 
-<p>I almost started a drinking game at NodeDublin, &quot;take a drink every time somebody mentions the Unix Philosophy or one of the above statements&quot;, I&#39;m glad I did not - it was held in the Guinness Storehouse and I&#39;d have not lasted beyond the first couple of sessions had I gone through with it.</p>
+<p>I almost started a drinking game at NodeDublin, "take a drink every time somebody mentions the Unix Philosophy or one of the above statements", I'm glad I did not - it was held in the Guinness Storehouse and I'd have not lasted beyond the first couple of sessions had I gone through with it.</p>
 
 <p>These are sentiments uttered at conferences, in meeting rooms, in blog comments, in blog entries and pretty much whenever the subject of large code-bases in JS come up. Normally uttered with a self-satisfied smirk and with little to no further guidance on how exactly one might go about it.</p>
 
-<p>Sure, you can always fall back to Typescript or Coffeesript or KoolaidScript, sure you can leverage awesome IDEs like Webstorm, Visual Studio, etc, but we&#39;ve been building Enterprise Systems in C# and Java for years in this way, and the wheels of progress eventually stop turning because iteration becomes expensive, maintenance becomes 90% of the job and every meeting boils down to a question of &quot;legacy&quot;, &quot;compromise&quot; and  &quot;we are where we are&quot;.</p>
+<p>Sure, you can always fall back to Typescript or Coffeesript or KoolaidScript, sure you can leverage awesome IDEs like Webstorm, Visual Studio, etc, but we've been building Enterprise Systems in C# and Java for years in this way, and the wheels of progress eventually stop turning because iteration becomes expensive, maintenance becomes 90% of the job and every meeting boils down to a question of "legacy", "compromise" and  "we are where we are".</p>
 
-<p>So, this is what I am doing, this is my current recipe, a collection of the rules of thumb I am using for building an open source game engine (PrimoJS) in JavaScript in a way that doesn&#39;t make my brain run out of my ears whenever I want to write a new feature. (Caveat: I haven&#39;t &quot;released&quot; this engine, I am merely pulling it together out of code already written to help me do Ludum Dares faster)</p>
+<p>So, this is what I am doing, this is my current recipe, a collection of the rules of thumb I am using for building an open source game engine (PrimoJS) in JavaScript in a way that doesn't make my brain run out of my ears whenever I want to write a new feature. (Caveat: I haven't "released" this engine, I am merely pulling it together out of code already written to help me do Ludum Dares faster)</p>
 
 <p>This is client side JavaScript only in this project, all of this is equally applicable to JS in ASP.NET MVC projects, in J2EE-whatevs projects and probably your Ruby on Rails projects too.</p>
 
@@ -45,33 +54,37 @@
 
 <h2>NodeJS</h2>
 
-<p>I don&#39;t care if you&#39;re not writing NodeJS for whatever reason, the command line tooling being built up in this area to help with JS is fantastic, and trying to use the copy-cat tooling being built up in your favourite Enterprise environment is just setting yourself up for frustration and trouble in the future. It&#39;s just an exe, get it and integrate it with your toolchain, make your life better today.</p>
+<p>I don't care if you're not writing NodeJS for whatever reason, the command line tooling being built up in this area to help with JS is fantastic, and trying to use the copy-cat tooling being built up in your favourite Enterprise environment is just setting yourself up for frustration and trouble in the future. It's just an exe, get it and integrate it with your toolchain, make your life better today.</p>
 
 <h2>Browserify</h2>
 
-<p>Okay, I&#39;m a convert - I&#39;ve been talking AMD for a while now, and the idea of having to run a build script had put me off Browserify for a while - it turns out the development experience is pretty good and by the time you get to the browser to hit refresh, this is generally done already anyway. AMD is now dead to me.</p>
+<p>Okay, I'm a convert - I've been talking AMD for a while now, and the idea of having to run a build script had put me off Browserify for a while - it turns out the development experience is pretty good and by the time you get to the browser to hit refresh, this is generally done already anyway. AMD is now dead to me.</p>
 
-<pre><code>npm install -g browserify</code></pre>
+<pre><code>npm install -g browserify
+</code></pre>
 
 <p>Once you have it, if you write your JS with node-flavoured CommonJS style require calls, you can package JS up for the client by running Browserify as part of your build script.</p>
 
 <p><strong>app.js</strong></p>
 
-<pre><code>var windowing = require(&#39;./windowing&#39;)
-  , messaging = require(&#39;./messaging&#39;)
+<pre><code>var windowing = require('./windowing')
+  , messaging = require('./messaging')
 
 
-messaging.on(&#39;foo&#39;, function(message) {
+messaging.on('foo', function(message) {
   windowing.showMessage(message)
-})</code></pre>
+})
+</code></pre>
 
 <p><strong>Then build</strong></p>
 
-<pre><code>browserify site/app.js &gt; site/app-built.js</code></pre>
+<pre><code>browserify site/app.js &gt; site/app-built.js
+</code></pre>
 
-<p>This might be alarming at first, because it seems like concatenating these files might make the debug experience a thing of nightmares, but that&#39;s what the --debug flag is for:</p>
+<p>This might be alarming at first, because it seems like concatenating these files might make the debug experience a thing of nightmares, but that's what the --debug flag is for:</p>
 
-<pre><code>browserify site/app.js -o site/app-built.js --debug</code></pre>
+<pre><code>browserify site/app.js -o site/app-built.js --debug
+</code></pre>
 
 <p>This inserts special directives into the JS so the browser knows what the original files were and they can therefore be opened and debugged in their original state.</p>
 
@@ -83,56 +96,65 @@ concat:
   browserify site/app.js &gt; site/app-built.js
 
 watch:
-  browserify site/app.js -o site/app-built.js --watch --debug</code></pre>
+  browserify site/app.js -o site/app-built.js --watch --debug
+</code></pre>
 
 <p>During development of my application, I type</p>
 
-<pre><code>make watch</code></pre>
+<pre><code>make watch
+</code></pre>
 
-<p>and I don&#39;t have to think about this ever again.</p>
+<p>and I don't have to think about this ever again.</p>
 
-<p>Now, the cool part. With RequireJS I was always having to set up elaborate configuration scripts, &quot;You can find underscore over here, you can find jQuery over here, you can find this other legacy JS over here, please do these things with them&quot;, this was, in short, a ball-ache.</p>
+<p>Now, the cool part. With RequireJS I was always having to set up elaborate configuration scripts, "You can find underscore over here, you can find jQuery over here, you can find this other legacy JS over here, please do these things with them", this was, in short, a ball-ache.</p>
 
-<p>Browserify eschues this way of thinking, and simply says &quot;if it&#39;s a relative path, I&#39;ll use it, if it&#39;s a global path I&#39;ll look in node_modules&quot;</p>
+<p>Browserify eschues this way of thinking, and simply says "if it's a relative path, I'll use it, if it's a global path I'll look in node_modules"</p>
 
 <h2>NPM</h2>
 
-<p>Here comes and important learning: <em>it is not enough</em> to simply use a require system, split your JS across multiple files in a folder and say &quot;my files are small and therefore I am building small things&quot;, having all your code in a single project is not sufficient encouragement to think about the boundaries between those files and before long you will find yourself with 10,000 lines of spaghetti JS across 100 files in a folder with relative include paths and feel the pain it causes when trying to change anything at all inside of that.</p>
+<p>Here comes and important learning: <em>it is not enough</em> to simply use a require system, split your JS across multiple files in a folder and say "my files are small and therefore I am building small things", having all your code in a single project is not sufficient encouragement to think about the boundaries between those files and before long you will find yourself with 10,000 lines of spaghetti JS across 100 files in a folder with relative include paths and feel the pain it causes when trying to change anything at all inside of that.</p>
 
 <p><strong>NPM has the answer</strong></p>
 
-<p>By saying &quot;I am going to build independent modules, and require them from my application as needed&quot;, you are making a statement of intent that those modules will have some fairly important qualities.</p>
+<p>By saying "I am going to build independent modules, and require them from my application as needed", you are making a statement of intent that those modules will have some fairly important qualities.</p>
 
-<ul><li>A module should be re-writeable in a day without affecting the rest of the system</li><li>A module should export a single function that has clearly described responsibilities</li><li>A module is independently versioned &amp; published to the registry as its own thing</li><li>A module should therefore not be coupled to any of the modules that consume it, relationships should be uni-directional</li><li>A module has its own git repository and history</li></ul>
+<ul>
+<li>A module should be re-writeable in a day without affecting the rest of the system</li>
+<li>A module should export a single function that has clearly described responsibilities</li>
+<li>A module is independently versioned &amp; published to the registry as its own thing</li>
+<li>A module should therefore not be coupled to any of the modules that consume it, relationships should be uni-directional</li>
+<li>A module has its own git repository and history</li>
+</ul>
 
 <p>For example, the biggest module in the PrimoJS eco-system is the core engine, at 700LOC, and that is <em>too big</em>, I am still harvesting that original codebase into smaller modules - this takes time because it is hard to go from big to small, it is hard to go from coupled to uncoupled and it is harder still when you are trying to be always making changes that roll forward, rather than backwards in terms of progress.</p>
 
 <p>Nevertheless, PrimoJS is currently split across 16 modules, all of which fit the above list of requirements, they could all be used independently of each other, or more likely brought into a project that has pulled in the core engine and wants the additional functionality that these modules bring.</p>
 
-<p>What does this look like in reality? This is the package.json of one of my &#39;example&#39; projects, the actual application using PrimoJS</p>
+<p>What does this look like in reality? This is the package.json of one of my 'example' projects, the actual application using PrimoJS</p>
 
 <pre><code>{
-  &quot;name&quot;: &quot;centipede2013&quot;,
-  &quot;version&quot;: &quot;1.0.0&quot;,
-  &quot;dependencies&quot;: {
-    &quot;send&quot;: &quot;~0.1.0&quot;,
-    &quot;express&quot;: &quot;~3.0.3&quot;,
-    &quot;underscore&quot;: &quot;~1.4.3&quot;
+  "name": "centipede2013",
+  "version": "1.0.0",
+  "dependencies": {
+    "send": "~0.1.0",
+    "express": "~3.0.3",
+    "underscore": "~1.4.3"
   },
-  &quot;devDependencies&quot;: {
-    &quot;primo&quot;: &quot;&quot;,
-    &quot;primo-animation&quot;: &quot;&quot;,
-    &quot;primo-text&quot;: &quot;&quot;,
-    &quot;primo-boundary&quot;: &quot;&quot;,
-    &quot;primo-rigidbody&quot;: &quot;&quot;,
-    &quot;primo-events&quot;: &quot;&quot;,
-    &quot;primo-audio&quot;: &quot;&quot;
+  "devDependencies": {
+    "primo": "",
+    "primo-animation": "",
+    "primo-text": "",
+    "primo-boundary": "",
+    "primo-rigidbody": "",
+    "primo-events": "",
+    "primo-audio": ""
   },
-  &quot;engines&quot;: {
-    &quot;node&quot;: &quot;0.8.x&quot;,
-    &quot;npm&quot;: &quot;1.1.x&quot;
+  "engines": {
+    "node": "0.8.x",
+    "npm": "1.1.x"
   }
-}</code></pre>
+}
+</code></pre>
 
 <p>The core engine is brought in, and then other components are brought in for use with that project, it is important to note that none of these components have a dependency on that core primo module, or vice versa - they are independent and could be used independently. 
 What does this look like? Well, I can use NPM list to show me the dependency graph, which goes something like this:</p>
@@ -153,31 +175,37 @@ What does this look like? Well, I can use NPM list to show me the dependency gra
 ├── primo-events@1.0.2
 ├─┬ primo-rigidbody@0.0.2
 │ └── primo-utils@0.0.0
-├── primo-text@0.0.0</code></pre>
+├── primo-text@0.0.0
+</code></pre>
 
-<p>We&#39;ll notice that the spritemap is used several times, as is primo-events and primo-canvas. If I was using relative paths, this would be pretty messy and hard to trace, but with a package manager the relationship is clear and it is obvious that those modules are independent.</p>
+<p>We'll notice that the spritemap is used several times, as is primo-events and primo-canvas. If I was using relative paths, this would be pretty messy and hard to trace, but with a package manager the relationship is clear and it is obvious that those modules are independent.</p>
 
 <p>Fine, so what now? I have a folder on my hard drive that has a pile of other folders in them, each has its own package.json, its own git repository and can be developed independently - but this is hardly ideal from a development point of view is it?</p>
 
-<p>An obvious question to be asked now, is &quot;If you have a bug in primo-animation that impacts your centipede application, how do you fix, test, verify and iterate on that bug without copying JS around and making a mess of things. (How often have you downloaded the source of NHIbernate in .NET and had to debug an issue with it that happens in your code base? It&#39;s not fun is it)</p>
+<p>An obvious question to be asked now, is "If you have a bug in primo-animation that impacts your centipede application, how do you fix, test, verify and iterate on that bug without copying JS around and making a mess of things. (How often have you downloaded the source of NHIbernate in .NET and had to debug an issue with it that happens in your code base? It's not fun is it)</p>
 
-<p>That&#39;s where NPM really shines, we have NPM link - one of the finest commands in the history of package management.</p>
+<p>That's where NPM really shines, we have NPM link - one of the finest commands in the history of package management.</p>
 
 <pre><code>cd components/animation
   /usr/local/lib/node_modules/primo-animation -&gt; /home/robashton/src/primo/components/animation
 cd ../../examples-centipede
 npm link primo-animation
-/home/robashton/src/primo/examples-centipede/node_modules/primo-animation -&gt; /usr/local/lib/node_modules/primo-animation -&gt; /home/robashton/src/primo/components/animation</code></pre>
+/home/robashton/src/primo/examples-centipede/node_modules/primo-animation -&gt; /usr/local/lib/node_modules/primo-animation -&gt; /home/robashton/src/primo/components/animation
+</code></pre>
 
 <p>NPM can set up symlinks, so editing the files in primo animation <em>in place</em>, will result in the changes being visible in the application as you make these changes.</p>
 
 <p>This tells you a few things</p>
 
-<ul><li>This is an explicit step, you have to conciously choose to edit across module boundaries</li><li>You shouldn&#39;t be doing this often on a stable system</li><li>Ideally, you&#39;d have a test harness so you can iterate and develop fixes/etc independently of the usage of the module itself</li></ul>
+<ul>
+<li>This is an explicit step, you have to conciously choose to edit across module boundaries</li>
+<li>You shouldn't be doing this often on a stable system</li>
+<li>Ideally, you'd have a test harness so you can iterate and develop fixes/etc independently of the usage of the module itself</li>
+</ul>
 
-<p>Now, as the ever-pragmatic developer, I know that Primo right now is open to a lot of churn and I&#39;m happy to be editing across these boundaries occasionally (especially with new modules), but as modules become mature I shouldn&#39;t be touching them any more - and later on I might choose to swap one out for another that does it better anyway.</p>
+<p>Now, as the ever-pragmatic developer, I know that Primo right now is open to a lot of churn and I'm happy to be editing across these boundaries occasionally (especially with new modules), but as modules become mature I shouldn't be touching them any more - and later on I might choose to swap one out for another that does it better anyway.</p>
 
-<p>What&#39;s even better about the use of NPM is that I can pretty much forgoe that whole thing where I have a folder called &#39;libs&#39; with all sorts of crazy JS in it. That&#39;s a pretty sweet deal and something I can whole-heartedly get behind on.</p>
+<p>What's even better about the use of NPM is that I can pretty much forgoe that whole thing where I have a folder called 'libs' with all sorts of crazy JS in it. That's a pretty sweet deal and something I can whole-heartedly get behind on.</p>
 
 <h2>The Caveats</h2>
 
@@ -185,27 +213,29 @@ npm link primo-animation
 
 <p>It is worth pointing out that for client-side JS package management, the whole ecosystem is very much in the air -  we have Bower, Volo, Yeoman, Jam, etc. Each come with their own idea of a manifest, linking, dev etc.</p>
 
-<p>For now, I don&#39;t see the point - NPM works really well and has already solved most of the problems inherent to a pure world of JS (We&#39;re not talking other kinds of deps such as HTML/CSS/etc - and for that Bower might still hold the answer)</p>
+<p>For now, I don't see the point - NPM works really well and has already solved most of the problems inherent to a pure world of JS (We're not talking other kinds of deps such as HTML/CSS/etc - and for that Bower might still hold the answer)</p>
 
-<p>The problem with NPM is that you&#39;re never sure which modules are client-side or server-side, not everything works everywhere - for example, the jQuery package in NPM is the server-side jQuery which makes life pretty confusing for now.</p>
+<p>The problem with NPM is that you're never sure which modules are client-side or server-side, not everything works everywhere - for example, the jQuery package in NPM is the server-side jQuery which makes life pretty confusing for now.</p>
 
 <p><strong>Folder hell</strong></p>
 
-<p>I have lots of folders, each with their own git repository, their own package.json, their own published state etc. This shouldn&#39;t bother me, because they&#39;re indepdendent and work done on these things should be independent - but that&#39;s not really the case when adding new features to a game that requires new code in primo-pritemap that requires new code in primo-canvas.</p>
+<p>I have lots of folders, each with their own git repository, their own package.json, their own published state etc. This shouldn't bother me, because they're indepdendent and work done on these things should be independent - but that's not really the case when adding new features to a game that requires new code in primo-pritemap that requires new code in primo-canvas.</p>
 
-<p>This shouldn&#39;t happen very often (and it doesn&#39;t, because having things that do one thing and needing it to do two things means you probably want two things, that second thing being a new thing), but when it does, and you&#39;re offline, you end up with folders that are out of date with regards to the published state of the package and the only way I can see to manage this is to go through all these folder and check manually whether I need to push and/or publish. This could be solved by tooling - any takers?</p>
+<p>This shouldn't happen very often (and it doesn't, because having things that do one thing and needing it to do two things means you probably want two things, that second thing being a new thing), but when it does, and you're offline, you end up with folders that are out of date with regards to the published state of the package and the only way I can see to manage this is to go through all these folder and check manually whether I need to push and/or publish. This could be solved by tooling - any takers?</p>
 
 <p><strong>Package hell</strong></p>
 
 <p>I have lots of packages, each with their own git repo - but the primary use case is for usage within the PrimoJS eco-system - when you pull down primo for use in a new game you only get the core, and a lot of the time you might want animations, audio, physics etc.</p>
 
-<pre><code>&gt; npm install primo --save</code></pre>
+<pre><code>&gt; npm install primo --save
+</code></pre>
 
 <p>There is nothing here to tell the developer that they might also want to do</p>
 
-<pre><code>&gt; npm install primo-animations primo-audio primo-rigidbody --save</code></pre>
+<pre><code>&gt; npm install primo-animations primo-audio primo-rigidbody --save
+</code></pre>
 
-<p>I think this can be solved with documentation and tooling, maybe a command line script ala RoR for generating a new game&#39;s folder structure</p>
+<p>I think this can be solved with documentation and tooling, maybe a command line script ala RoR for generating a new game's folder structure</p>
 
 <pre><code>&gt; primo-create mynewgame
 do you want all the default components available? (y/n)
@@ -213,23 +243,30 @@ do you want all the default components available? (y/n)
 do you want a level editor (y/n)
 &gt; n
 do you want a browserify build script? (y/n)
-&gt; y</code></pre>
+&gt; y
+</code></pre>
 
 <p><strong>Module discovery + documentation</strong></p>
 
 <p>Again, lots of small modules - where does the documentation go? Where does the user go to find answers to his questions when he has them? where does the user go to work out which module is for what?</p>
 
-<p>I think this varies across projects, are your modules all part of the same eco-system? Are they truly standalone and usable wherever? I think for each &#39;tree&#39; of modules, a single <em>source</em> of information is useful - even if the sub-categories are just links to the documentation for the specific modules. Making the user go searching for the right module and the right documentation is just asking for trouble down the line. (So, in my case, it would be primojs.com and links to the available modules.</p>
+<p>I think this varies across projects, are your modules all part of the same eco-system? Are they truly standalone and usable wherever? I think for each 'tree' of modules, a single <em>source</em> of information is useful - even if the sub-categories are just links to the documentation for the specific modules. Making the user go searching for the right module and the right documentation is just asking for trouble down the line. (So, in my case, it would be primojs.com and links to the available modules.</p>
 
 <h2>Summary</h2>
 
 <p>This is just one way of tackling this, but it is real world and it does work quite nicely (apart from the solveable caveats above). It will be interesting to see which direction client side dependency management will go over time, but CommonJS is not going anywhere anytime soon and is a safe bet to be building your project on (regardless of whether it is Browserify or Stitch/etc doing the packaging for you)</p>
 
-<p>The most important part of all of this is creating the the modules to be standalone so you don&#39;t <em>have</em> to traverse across them when building new features or fixing bugs. Replacing folders with modules is for nought if you don&#39;t actually make modules.</p>
+<p>The most important part of all of this is creating the the modules to be standalone so you don't <em>have</em> to traverse across them when building new features or fixing bugs. Replacing folders with modules is for nought if you don't actually make modules.</p>
 
 <h2>Links</h2>
 
-<ul><li>Browserify <a href="http://github.com/substack/node-browserify">http://github.com/substack/node-browserify</a></li><li>NodeJS <a href="http://nodejs.org">http://nodejs.org</a></li><li>NPM <a href="http://npmjs.org">http://npmjs.org</a></li><li>PrimoJS (not &quot;released&quot; yet) <a href="http://github.com/robashton/primojs">http://github.com/robashton/primojs</a></li><li>VoxelJS <a href="http://github.com/maxogden/voxel">http://github.com/magogden/voxel</a></li></ul></div>
+<ul>
+<li>Browserify <a href="http://github.com/substack/node-browserify">http://github.com/substack/node-browserify</a></li>
+<li>NodeJS <a href="http://nodejs.org">http://nodejs.org</a></li>
+<li>NPM <a href="http://npmjs.org">http://npmjs.org</a></li>
+<li>PrimoJS (not "released" yet) <a href="http://github.com/robashton/primojs">http://github.com/robashton/primojs</a></li>
+<li>VoxelJS <a href="http://github.com/maxogden/voxel">http://github.com/magogden/voxel</a></li>
+</ul></div>
       <div id="links">
         <a href="/">Go back to the index</a><br />
         <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>

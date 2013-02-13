@@ -1,91 +1,96 @@
-<p>So, last session I managed to get a square being drawn, as if I haven&#39;t done that a thousand times in JS - now to do something a bit more dangerous (because it involves state), and more likely to get me in trouble - let&#39;s move the square around using the keyboard.</p>
+<p>So, last session I managed to get a square being drawn, as if I haven't done that a thousand times in JS - now to do something a bit more dangerous (because it involves state), and more likely to get me in trouble - let's move the square around using the keyboard.</p>
 
-<p><strong>Reminder</strong>: The source for all of this can be found at <a href="https://github.com/robashton/clojure-spaceinvaders">github.com/robashton/clojure-spaceinvaders</a></p>
+<p><strong>Reminder</strong>: The source for all of this can be found at <a href="https://github.com/robashton/clojure-spaceinvaders">github.com/robashton/clojure-spaceinvaders</a></p>
 
-<p>Parameterising the function
-------------</p>
+<h2>Parameterising the function</h2>
 
-<p>This is a no-brainer, I&#39;m going to need to know where to draw this thing, I start off by passing in the state required to draw a rect to my function.</p>
+<p>This is a no-brainer, I'm going to need to know where to draw this thing, I start off by passing in the state required to draw a rect to my function.</p>
 
-<pre><code>(defn drawRect [x y w h]</code></pre>
+<pre><code>(defn drawRect [x y w h]
+  (let [target (.getElementById js/document "target")
+        context (.getContext target "2d")]
+     (.fillRect context x y w h)           
+  )
+)
+</code></pre>
 
-<p>
-      (let [target (.getElementById js/document &quot;target&quot;)
-            context (.getContext target &quot;2d&quot;)]
-         (.fillRect context x y w h)           
-      )
-    )</p>
+<p>So far so good - but now I'm going to need to not only pass in those variables, but - well they're going to have to be variable (somehow) because they're going to have to change each frame and it's stuff like this that makes me break out in a cold sweat because I haven't discovered the patterns to solve this type of problem yet.</p>
 
-<p>So far so good - but now I&#39;m going to need to not only pass in those variables, but - well they&#39;re going to have to be variable (somehow) because they&#39;re going to have to change each frame and it&#39;s stuff like this that makes me break out in a cold sweat because I haven&#39;t discovered the patterns to solve this type of problem yet.</p>
+<p>Let's explain - you see that 'let' statement, the values I've defined there, those key value pairs are <em>immutable</em>, this means I cannot change them - for example, if I want to make this square move of its own voilition, the literal equivalent of</p>
 
-<p>Let&#39;s explain - you see that &#39;let&#39; statement, the values I&#39;ve defined there, those key value pairs are <em>immutable</em>, this means I cannot change them - for example, if I want to make this square move of its own voilition, the literal equivalent of</p>
+<pre><code>for(var x = 0; x &lt; 1000; x++)
+  drawRect(x, 0, 100, 100);
+</code></pre>
 
-<pre><code>for(var x = 0; x &lt; 1000; x++)</code></pre>
+<p>Doesn't exist.</p>
 
-<p>
-      drawRect(x, 0, 100, 100);</p>
+<p>Now, if I were to make my best guess at how to solve this, I'd say that we need a function that takes in x, and then calls itself with x+1, for example at a conceptual level:</p>
 
-<p>Doesn&#39;t exist.</p>
+<pre><code>function drawAndMove(x) {
+  drawRect(x, 0, 100, 100)
+  if(x &lt;= 1000)
+    drawAndMove(x+1)
+}
+drawAndMove(0);
+</code></pre>
 
-<p>Now, if I were to make my best guess at how to solve this, I&#39;d say that we need a function that takes in x, and then calls itself with x+1, for example at a conceptual level:</p>
+<p>This actually maps across to a construct in our chosen world that looks something like the following:</p>
 
-<pre><code>function drawAndMove(x) {</code></pre>
+<pre><code>(loop [x 0]
+  (drawRect x 0 100 100)     
+  (if (&lt;= x 1000)
+    (recur (inc x))
+  )
+)
+</code></pre>
 
-<p>
-      drawRect(x, 0, 100, 100)
-      if(x &lt;= 1000)
-        drawAndMove(x+1)
-    }
-    drawAndMove(0);</p>
+<ul>
+<li>I want to loop, I want the following values available in this loop (x = 0)</li>
+<li>Please draw the rect at x,0,100,100</li>
+<li>If x &lt;= 1000, recurse and increment x</li>
+</ul>
 
-<p>This actually maps across to a construct in our chosen world that looks something like the following:</p>
+<p>Okay, this is a bit crazy and verbose - perhaps there is a better more shorthand way of doing this (anybody care to chip in around now?), but Imma press ahead and say that actually, that is not the greatest loop of all time.</p>
 
-<pre><code>(loop [x 0]</code></pre>
+<p>We actually have to yield to the UI thread each 'frame' which blows this whole thing out of the water - that's not to say that this code isn't functional - because I love having a row of black drawn over my canvas on the UI thread with no user interaction whatsoever - but we actually need something like the following</p>
 
-<p>
-      (drawRect x 0 100 100)     
-      (if (&lt;= x 1000)
-        (recur (inc x))
-      )
-    )</p>
+<pre><code>function tick() {
+  logic();
+  render();
+  setTimeout(tick, 33);
+}
+</code></pre>
 
-<ul><li>I want to loop, I want the following values available in this loop (x = 0)</li><li>Please draw the rect at x,0,100,100</li><li>If x &lt;= 1000, recurse and increment x</li></ul>
+<p>Again, cutting a corner here because I don't want to write a full on game loop in clojure just yet.</p>
 
-<p>Okay, this is a bit crazy and verbose - perhaps there is a better more shorthand way of doing this (anybody care to chip in around now?), but Imma press ahead and say that actually, that is not the greatest loop of all time.</p>
+<p>Figuring it out, I've ended up with something like this</p>
 
-<p>We actually have to yield to the UI thread each &#39;frame&#39; which blows this whole thing out of the water - that&#39;s not to say that this code isn&#39;t functional - because I love having a row of black drawn over my canvas on the UI thread with no user interaction whatsoever - but we actually need something like the following</p>
+<pre><code>(defn tick [x]
+  (drawRect x 0 100 100)
+  (if (&lt;= x 1000)
+    (js/setTimeout (fn []
+       (tick (inc x))
+    ) 33  )
+  )
+)
 
-<pre><code>function tick() {</code></pre>
 
-<p>
-      logic();
-      render();
-      setTimeout(tick, 33);
-    }</p>
+(defn ^:export init []
+   (tick 0)
+)
+</code></pre>
 
-<p>Again, cutting a corner here because I don&#39;t want to write a full on game loop in clojure just yet.</p>
+<ul>
+<li>Define a function called tick, which takes in the current position of our object</li>
+<li>Draw a rect at that location</li>
+<li>If x is still less than 1000, then</li>
+<li>In 33 milliseconds, call tick again but with x+1</li>
+</ul>
 
-<p>Figuring it out, I&#39;ve ended up with something like this</p>
+<p>I've actually gone far enough for a single blog entry at this point so I'll leave keyboard input till another day - I have some thoughts about this work so far however:</p>
 
-<pre><code>(defn tick [x]</code></pre>
-
-<p>
-      (drawRect x 0 100 100)
-      (if (&lt;= x 1000)
-        (js/setTimeout (fn []
-           (tick (inc x))
-        ) 33  )
-      )
-    )</p>
-
-<pre><code>(defn ^:export init []</code></pre>
-
-<p>
-       (tick 0)
-    )</p>
-
-<ul><li>Define a function called tick, which takes in the current position of our object</li><li>Draw a rect at that location</li><li>If x is still less than 1000, then</li><li>In 33 milliseconds, call tick again but with x+1</li></ul>
-
-<p>I&#39;ve actually gone far enough for a single blog entry at this point so I&#39;ll leave keyboard input till another day - I have some thoughts about this work so far however:</p>
-
-<ul><li>That setTimeout doo-hick is taking in an anonymous function, am I creating this function every frame? I wouldn&#39;t do that in most of my JS, it&#39;s effectively the same as creating a closure in a loop - not good?</li><li>I saw something like this that used global state and an atom, and then tick could be called with no parameters - is this a better solution? It seems somewhat against what functional programming is about</li><li>Thoughts?</li></ul>
+<ul>
+<li>That setTimeout doo-hick is taking in an anonymous function, am I creating this function every frame? I wouldn't do that in most of my JS, it's effectively the same as creating a closure in a loop - not good?</li>
+<li>I saw something like this that used global state and an atom, and then tick could be called with no parameters - is this a better solution? It seems somewhat against what functional programming is about</li>
+<li>Thoughts?</li>
+</ul>

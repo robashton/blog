@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title id="title">Adding idle indexes to RavenDB</title>
+    <title id="title">Automatically merging indexes in RavenDB for optimum performance</title>
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
     <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
     <script type="text/javascript">
@@ -20,26 +20,71 @@
   <body>
     <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>
     <div id="blog-entry">
-      <h1 id="post-title">Adding idle indexes to RavenDB</h1>
-      <div id="post"><p>As I mentioned <a href="/entries/working-at-hibernating-rhinos.html">yesterday</a>, I'm currently doing a week or so of work at Hibernating Rhinos (more specifically on RavenDB).</p>
+      <h1 id="post-title">Automatically merging indexes in RavenDB for optimum performance</h1>
+      <div id="post"><p>So, we can mark indexes as idle, we can automatically do this to auto indexes, and we delete auto indexes that aren't being used enough - that paves the way for a pretty useful feature - merging automatic indexes for fun and for profit.</p>
 
-<p>One of the first things I was asked to look at was the indexing system in RavenDB, as there was a backlog of tasks and requests on these, which tie into each other in numerous ways.</p>
+<p>What is that you ask? Well - when we do the following series of queries</p>
 
-<p>I don't like working on more than one thing at once when I'm Getting Things Done, and while it was tempting to jump right in and say <em>"We need to do the feature where dynamic indexes can be turned off, deleted and compacted over time"</em>, the task was broken up into a few discrete features - some which had been requested individually anyway.</p>
+<pre><code>session.Query&lt;Pony&gt;()
+    .Where(pony =&gt; pony.Name == "Rainbow Dash")
+    .FirstOrDefault()
+</code></pre>
 
-<p>That brings me to the first feature we added in the first few hours of starting work at the office, I sat down with <a href="http://twitter.com/ayende">@ayende</a> and added the capability for indexes to be idle.</p>
+<p>and</p>
 
-<h2>What does that mean? Why would we want to do it? </h2>
+<pre><code>session.Query&lt;Pony&gt;()
+        .Where(pony =&gt; pony.Colour == "Pink")
+        .ToList()
+</code></pre>
 
-<p>In RavenDB, querying is cheap because the answers have already been pretty much worked out by the indexing process. The indexing process has to crawl over every document as they're added and run user-logic over those documents, this is a process that tends to be IO bound as well as using up a few CPU cycles.</p>
+<p>We will end up with the following indexes in RavenDB</p>
 
-<p>Thus, the more indexes you have, the more work the database has to do during heavy write periods - and as some customers have many indexes and also undergo heavy write periods, it has been requested more than once that indexes be prioritisable - this feature is a big step in that direction. </p>
+<p><em>Pony/Name</em></p>
 
-<p><img src="/img/idlewis.png" alt="" title="" /></p>
+<pre><code>    from pony in ponies
+      select new {
+        pony.Name
+      }
+</code></pre>
 
-<p>Indexes on the server now have a new flag, "Priority", which can take the following values (Normal | Idle | Forced), the idea being that the user can use the administration console to set indexes that aren't as important to not be run during busy write periods, and instead only be processed during idle time.</p>
+<p><em>Pony/Colour</em></p>
 
-<p>The forced flag? Well, I'll write about that tomorrow when I cover how idle indexes have been used to make auto-indexing a bit cleverer.</p></div>
+<pre><code>    from pony in ponies
+      select new {
+        pony.Colour
+      }
+</code></pre>
+
+<p>Well, in reality there is no real reason why we'd have two indexes and incur the cost of iterating over documents every time they're added more often than we need.</p>
+
+<p>One of the things that the query optimiser already does, is look for the 'widest' index - that is the index that touches the most fields.</p>
+
+<p>It makes sense therefore, that rather than simply look for widest index that matches the query, we should look for the most compatible index and create a new one based off of that if it doesn't match completely.</p>
+
+<p>Consider the above, we should end up with two indexes</p>
+
+<pre><code>    from pony in ponies
+      select new {
+        pony.Name
+      }
+</code></pre>
+
+<p>and</p>
+
+<pre><code>    from pony in ponies
+      select new {
+        pony.Name,
+        pony.Colour
+      }
+</code></pre>
+
+<p>Over time, the first index won't be used (as it's not as wide as the second index), and it will wither and die because of idling and auto-removal.</p>
+
+<p>Over time, we'll actually end up with only one index per document type (providing there aren't any reasons why a query isn't compatible with an existing index, such as different indexing or sorting options)</p>
+
+<p>This ensures that over time when using automatically generated queries, that RavenDB keeps itself as lean as possible and using as few resources as possible (and tidy!)</p>
+
+<p>Now that covers what I did on in first couple of days at Hibernating Rhinos, next up I'll talk about what I'm helping do with result transformations.</p></div>
       <div id="links">
         <a href="/">Go back to the index</a><br />
         <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>

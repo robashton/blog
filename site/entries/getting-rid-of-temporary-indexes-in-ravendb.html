@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title id="title">Adding idle indexes to RavenDB</title>
+    <title id="title">Getting rid of temporary indexes in RavenDB</title>
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
     <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
     <script type="text/javascript">
@@ -20,26 +20,27 @@
   <body>
     <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>
     <div id="blog-entry">
-      <h1 id="post-title">Adding idle indexes to RavenDB</h1>
-      <div id="post"><p>As I mentioned <a href="/entries/working-at-hibernating-rhinos.html">yesterday</a>, I'm currently doing a week or so of work at Hibernating Rhinos (more specifically on RavenDB).</p>
+      <h1 id="post-title">Getting rid of temporary indexes in RavenDB</h1>
+      <div id="post"><p>I talked about RavenDB's new ability to promote and demote automatically created indexes <a href="/entries/auto-idling-auto-indexes-in-ravendb.html">yesterday</a>, but what are the implications of this?</p>
 
-<p>One of the first things I was asked to look at was the indexing system in RavenDB, as there was a backlog of tasks and requests on these, which tie into each other in numerous ways.</p>
+<p>I mentioned that the process in RavenDB for managing dynamically created indexes is as thus:</p>
 
-<p>I don't like working on more than one thing at once when I'm Getting Things Done, and while it was tempting to jump right in and say <em>"We need to do the feature where dynamic indexes can be turned off, deleted and compacted over time"</em>, the task was broken up into a few discrete features - some which had been requested individually anyway.</p>
+<ul>
+<li>Look for appropriate index to use in query</li>
+<li>If found, return the most appropriate index</li>
+<li>If not found, create an index that will deal with the query</li>
+<li>Return that index as a Temporary</li>
+<li>If that index is used enough, promote it into an Auto index</li>
+<li>If that index is not used enough, delete it</li>
+</ul>
 
-<p>That brings me to the first feature we added in the first few hours of starting work at the office, I sat down with <a href="http://twitter.com/ayende">@ayende</a> and added the capability for indexes to be idle.</p>
+<p>Well, we now have a way of marking indexes as idle and therefore not taking up needless resources, we can <em>remove temporary indexes entirely</em>.</p>
 
-<h2>What does that mean? Why would we want to do it? </h2>
+<p>That's actually a lot of code we can remove, in fact a pile of code that I wrote over two years ago, that's kinda cool, as it means entire code-path that doesn't need maintaining any more.</p>
 
-<p>In RavenDB, querying is cheap because the answers have already been pretty much worked out by the indexing process. The indexing process has to crawl over every document as they're added and run user-logic over those documents, this is a process that tends to be IO bound as well as using up a few CPU cycles.</p>
+<p>Obviously we can still remove auto indexes that were only queried once or twice, but that can take part with the algorithm that marks them as idle, and to make things even better we can add some functionality to the Studio to manage these idle indexes or delete them.</p>
 
-<p>Thus, the more indexes you have, the more work the database has to do during heavy write periods - and as some customers have many indexes and also undergo heavy write periods, it has been requested more than once that indexes be prioritisable - this feature is a big step in that direction. </p>
-
-<p><img src="/img/idlewis.png" alt="" title="" /></p>
-
-<p>Indexes on the server now have a new flag, "Priority", which can take the following values (Normal | Idle | Forced), the idea being that the user can use the administration console to set indexes that aren't as important to not be run during busy write periods, and instead only be processed during idle time.</p>
-
-<p>The forced flag? Well, I'll write about that tomorrow when I cover how idle indexes have been used to make auto-indexing a bit cleverer.</p></div>
+<p>Now, this still isn't as awesome as it could be, but we've laid the ground work for a pretty awesome feature, I'll talk about that tomorrow.</p></div>
       <div id="links">
         <a href="/">Go back to the index</a><br />
         <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>

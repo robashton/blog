@@ -21,199 +21,177 @@
     <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>
     <div id="blog-entry">
       <h1 id="post-title">Learn Functional Programming With Me - Attributes And Vectors</h1>
-      <div id="post"><p>So last time I left the program, I had a black square which moved across the page but left a delightful black smear across the window, it looked something like this:</p>
+      <div id="post"><p>So last time I left the program, I had a black square which moved across the page but left a delightful black smear across the window, it looked something like this:</p>
 
-<p><img alt="Black smear" src="/img/blackline.png"/></p>
+<p><img src="/img/blackline.png" alt="Black smear" title="" /></p>
 
-<p>I promised I&#39;d add keyboard input this time around, and I don&#39;t like to lie - so while I sit here at my client&#39;s rather amazing karting day I&#39;ve decided to give adding this a go as I don&#39;t really like karting that much ;-).</p>
+<p>I promised I'd add keyboard input this time around, and I don't like to lie - so while I sit here at my client's rather amazing karting day I've decided to give adding this a go as I don't really like karting that much ;-).</p>
 
-<p>First things first, I need to clear my screen in between frames or I&#39;m going to keep on having an ugly black smear instead of a moving black square, in JS this would look like.</p>
+<p>First things first, I need to clear my screen in between frames or I'm going to keep on having an ugly black smear instead of a moving black square, in JS this would look like.</p>
 
-<pre><code>context.clearRect(0, 0, width, height);</code></pre>
+<pre><code>context.clearRect(0, 0, width, height);
+</code></pre>
 
-<p></p>
+<p>Not rocket science, right?</p>
 
-<p>Not rocket science, right?</p>
+<p>Well, right now, I have the function for drawing a square, which gets the context and draws a square, this looks like</p>
 
-<p>Well, right now, I have the function for drawing a square, which gets the context and draws a square, this looks like</p>
+<pre><code>(defn drawSquare [x y w h]
+  (let [target (.getElementById js/document "target")
+        context (.getContext target "2d")]
+    (.fillRect context x y w h)
+  )
+)
+</code></pre>
 
-<pre><code>(defn drawSquare [x y w h]</code></pre>
+<p>Great, but in order to have the moving square, I'm going need that context more than once, and making multiple requests to get the context is a bad idea because it means lots of calls to the DOM (slow).</p>
 
-<p>
-      (let [target (.getElementById js/document &quot;target&quot;)
-            context (.getContext target &quot;2d&quot;)]
-        (.fillRect context x y w h)
-      )
-    )</p>
+<p>Clearly this means I'm going to need three functions for my purposes:</p>
 
-<p>Great, but in order to have the moving square, I&#39;m going need that context more than once, and making multiple requests to get the context is a bad idea because it means lots of calls to the DOM (slow).</p>
+<pre><code>(defn clearScreen [ctx]
+  (.clearRect ctx 0 0 WIDTH HEIGHT)
+)
 
-<p>Clearly this means I&#39;m going to need three functions for my purposes:</p>
+(defn drawRect [ctx x y w h]
+  (.fillRect ctx x y w h)
+)
 
-<pre><code>(defn clearScreen [ctx]</code></pre>
+(defn context []
+  (let [target (.getElementById js/document "target")]
+  (.getContext target "2d"))
+)
+</code></pre>
 
-<p>
-      (.clearRect ctx 0 0 WIDTH HEIGHT)
-    )</p>
+<p>Meaning I can do</p>
 
-<pre><code>(defn drawRect [ctx x y w h]</code></pre>
+<pre><code>(defn drawScene [x]
+  (let [ctx (context)]
+    (clearScreen ctx)
+    (drawRect x 0 100 100)
+  )
+)
+</code></pre>
 
-<p>
-      (.fillRect ctx x y w h)
-    )</p>
+<p>Now, you'll have noticed (if you're actually paying attention), that I have a 'Width' and 'Height' parameter for clearScreen that I haven't bothered trying to filter - that's because they're attributes of the Canvas Element and I need to get the darned things from that element and I haven't worked out a clean way of passing these things around (or retrieving them all from a function so I have the values present at that time. (Remember that I am trying to avoid global state, and as far as I know I haven't got "Types" for storing collections of data in.</p>
 
-<pre><code>(defn context []</code></pre>
+<p>Okay - so first things first, how do I get attributes from an HTML element? HTML elements? Attributes? These aren't Clojure concepts - I can do a quick Google and see that this is possible:</p>
 
-<p>
-      (let [target (.getElementById js/document &quot;target&quot;)]
-      (.getContext target &quot;2d&quot;))
-    )</p>
+<pre><code>(. target -width)
+</code></pre>
 
-<p>Meaning I can do</p>
+<p>According to the Wiki on Clojurescript, this is just part of the "host interop" featureset - I'm not entirely sure how this maps to typical Clojure.</p>
 
-<pre><code>(defn drawScene [x]</code></pre>
+<p>Now - this still means I have the problem of how to get these out of a function, in JS I'd probably have something like</p>
 
-<p>
-      (let [ctx (context)]
-        (clearScreen ctx)
-        (drawRect x 0 100 100)
-      )
-    )</p>
+<pre><code>var Rendering = function(element) {
+  this.context = element.getContext('2d');
+  this.width = element.width;
+  this.height = element.height;
+}
+</code></pre>
 
-<p>Now, you&#39;ll have noticed (if you&#39;re actually paying attention), that I have a &#39;Width&#39; and &#39;Height&#39; parameter for clearScreen that I haven&#39;t bothered trying to filter - that&#39;s because they&#39;re attributes of the Canvas Element and I need to get the darned things from that element and I haven&#39;t worked out a clean way of passing these things around (or retrieving them all from a function so I have the values present at that time. (Remember that I am trying to avoid global state, and as far as I know I haven&#39;t got &quot;Types&quot; for storing collections of data in.</p>
+<p>Or something trite like that (see my other canvas codes in Github for what this actually looks like).</p>
 
-<p>Okay - so first things first, how do I get attributes from an HTML element? HTML elements? Attributes? These aren&#39;t Clojure concepts - I can do a quick Google and see that this is possible:</p>
+<p>Can't do this here as far as I know, turns out I can return a vector, or a list or a set or something from a function (duh), so I can do something like</p>
 
-<pre><code>(. target -width)</code></pre>
+<pre><code>(defn context []
+  (let [target (.getElementById js/document "target")
+    [
+      (.getContext target "2d")
+      (. target -width)
+      (. target -height)
+    ]
+  )
+)
+</code></pre>
 
-<p></p>
+<p>Which will return a vector containing</p>
 
-<p>According to the Wiki on Clojurescript, this is just part of the &quot;host interop&quot; featureset - I&#39;m not entirely sure how this maps to typical Clojure.</p>
+<pre><code>[context width height]
+</code></pre>
 
-<p>Now - this still means I have the problem of how to get these out of a function, in JS I&#39;d probably have something like</p>
+<p>I can pass this into my clearRect function for example with</p>
 
-<pre><code>var Rendering = function(element) {</code></pre>
+<pre><code>(defn drawScene [x]
+  (let [ctx (context)]
+    (clearScreen ctx)
+    (drawRect x 0 100 100)
+  )
+)
+</code></pre>
 
-<p>
-      this.context = element.getContext(&#39;2d&#39;);
-      this.width = element.width;
-      this.height = element.height;
-    }</p>
+<p>So nothing different here, but I'll need to unpack that vector in order to use it</p>
 
-<p>Or something trite like that (see my other canvas codes in Github for what this actually looks like).</p>
+<pre><code>(defn clearScreen [ctx]
+  (let [[context width height] ctx
+    (.clearRect context 0 0 width height)
+  )
+)
+</code></pre>
 
-<p>Can&#39;t do this here as far as I know, turns out I can return a vector, or a list or a set or something from a function (duh), so I can do something like</p>
+<p>Which is a bit verbose, or doing a bit of research it appears I can automatically unpack that vector when I call the function ala</p>
 
-<pre><code>(defn context []</code></pre>
+<pre><code>(defn clearScreen [[context width height]]
+  (.clearRect context 0 0 width height)
+)
+</code></pre>
 
-<p>
-      (let [target (.getElementById js/document &quot;target&quot;)
-        [
-          (.getContext target &quot;2d&quot;)
-          (. target -width)
-          (. target -height)
-        ]
-      )
-    )</p>
+<p>I'm not entirely sure how I feel about this, I'm just passing blobs of data around and assuming their structure in my functions - does Clojure have any inference over this stuff for verifiability (I'm not sure) - seems I'm losing a lot of the safety I'd have with OO constructs (regardless of type safety or whatever).</p>
 
-<p>Which will return a vector containing</p>
+<p>Either way, my complete program currently looks like this:</p>
 
-<pre><code>[context width height]</code></pre>
+<pre><code>(ns game)
 
-<p></p>
+(defn context []
+  (let [target (.getElementById js/document "target")]
+    [
+      (.getContext target "2d") 
+      (. target -width)
+      (. target -height)
+    ]
+  )
+)
 
-<p>I can pass this into my clearRect function for example with</p>
+(defn clearScreen [[ctx width height]]
+  (set! (. ctx -fillStyle) "#FFF")
+  (.clearRect ctx 0 0 width height) 
+)
 
-<pre><code>(defn drawScene [x]</code></pre>
+(defn drawSquare [[ctx width height] x y w h]
+  (set! (. ctx -fillStyle) "#000")
+  (.fillRect ctx x y w h) 
+)
 
-<p>
-      (let [ctx (context)]
-        (clearScreen ctx)
-        (drawRect x 0 100 100)
-      )
-    )</p>
 
-<p>So nothing different here, but I&#39;ll need to unpack that vector in order to use it</p>
+(defn tick [x]
+  (let [ctx (context)] 
+    (clearScreen ctx) 
+    (drawSquare ctx x 0 100 100)  
+    (if (&lt;= x 1000) 
+      (js/setTimeout (fn []
+        (tick (inc x)) 
+      ) 33  )
+    )
+  )
+)
 
-<pre><code>(defn clearScreen [ctx]</code></pre>
+(defn ^:export init []
+  (tick 0) 
+)
+</code></pre>
 
-<p>
-      (let [[context width height] ctx
-        (.clearRect context 0 0 width height)
-      )
-    )</p>
+<p>This has the effect of drawing a square, clearing the rect and drawing the square again, which means my square floats across the screen.</p>
 
-<p>Which is a bit verbose, or doing a bit of research it appears I can automatically unpack that vector when I call the function ala</p>
+<p>Seems I've once again run out of room to talk about input to this program from the keyboard, hopefully I'll reach that next entry!</p>
 
-<pre><code>(defn clearScreen [[context width height]]</code></pre>
+<p>I still have some pending questions from these two entries:</p>
 
-<p>
-      (.clearRect context 0 0 width height)
-    )</p>
+<ul>
+<li>The recursive setTimeout with the anonymous closure?</li>
+<li>Passing that vector around - is this a good idea?</li>
+</ul>
 
-<p>I&#39;m not entirely sure how I feel about this, I&#39;m just passing blobs of data around and assuming their structure in my functions - does Clojure have any inference over this stuff for verifiability (I&#39;m not sure) - seems I&#39;m losing a lot of the safety I&#39;d have with OO constructs (regardless of type safety or whatever).</p>
-
-<p>Either way, my complete program currently looks like this:</p>
-
-<pre><code>(ns game)</code></pre>
-
-<p></p>
-
-<pre><code>(defn context []</code></pre>
-
-<p>
-      (let [target (.getElementById js/document &quot;target&quot;)]
-        [
-          (.getContext target &quot;2d&quot;) 
-          (. target -width)
-          (. target -height)
-        ]
-      )
-    )</p>
-
-<pre><code>(defn clearScreen [[ctx width height]]</code></pre>
-
-<p>
-      (set! (. ctx -fillStyle) &quot;#FFF&quot;)
-      (.clearRect ctx 0 0 width height) 
-    )</p>
-
-<pre><code>(defn drawSquare [[ctx width height] x y w h]</code></pre>
-
-<p>
-      (set! (. ctx -fillStyle) &quot;#000&quot;)
-      (.fillRect ctx x y w h) 
-    )</p>
-
-<pre><code>(defn tick [x]</code></pre>
-
-<p>
-      (let [ctx (context)] 
-        (clearScreen ctx) 
-        (drawSquare ctx x 0 100 100)  
-        (if (&lt;= x 1000) 
-          (js/setTimeout (fn []
-            (tick (inc x)) 
-          ) 33  )
-        )
-      )
-    )</p>
-
-<pre><code>(defn ^:export init []</code></pre>
-
-<p>
-      (tick 0) 
-    )</p>
-
-<p>This has the effect of drawing a square, clearing the rect and drawing the square again, which means my square floats across the screen.</p>
-
-<p>Seems I&#39;ve once again run out of room to talk about input to this program from the keyboard, hopefully I&#39;ll reach that next entry!</p>
-
-<p>I still have some pending questions from these two entries:</p>
-
-<ul><li>The recursive setTimeout with the anonymous closure?</li><li>Passing that vector around - is this a good idea?</li></ul>
-
-<p>Anybody feel free to chip in at any time.</p></div>
+<p>Anybody feel free to chip in at any time.</p></div>
       <div id="links">
         <a href="/">Go back to the index</a><br />
         <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>

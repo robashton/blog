@@ -14,7 +14,11 @@ Or something similar (I forget the exact conventions). After a period of time, t
 
 On top of this, we now have idle indexes - so what does this mean? We can actually do a lot of this automatically now too, if we select the least-used indexes in the system *(for example, order all the auto-indexes by the last time they were queried, and if there is a big gap between the last index and the penultimate index, then demote the index automatically)*
 
-If the index is queried against after this, we can promote it again - happy days!
+If the index is queried against after this, we can promote it again - happy days, thus the following scenarios:
+
+- Manual indexes get left alone unless managed in the studio
+- Auto indexes get made idle if they're not queried very much
+- Auto indexes get promoted if they're then queried
 
 Having the database make these decisions for you keeps away any of the possible complexity of maintaining a well behaving RavenDB implementation.
 

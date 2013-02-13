@@ -5,7 +5,7 @@ var _ = require('underscore');
 var plates = require('plates');
 var common = require('./common');
 var RSS = require('rss');
-var markdown = require('markdown').markdown;
+var markdown = require('node-markdown').Markdown;
 
 console.log('Rebuilding site')
 
@@ -26,7 +26,7 @@ var compilePosts = function(posts) {
     var mdstat = path.existsSync(mdfilename);
     if(mdstat) {
       var mdcontent = fs.readFileSync(mdfilename, 'utf8'); 
-      var html = markdown.toHTML(mdcontent);
+      var html = markdown(mdcontent);
       fs.writeFileSync(htmlfilename, html , 'utf8');
     }
     var inputHtml = fs.readFileSync(htmlfilename, 'utf8');
@@ -76,7 +76,7 @@ var compilePosts = function(posts) {
 };
 
 common.getAllPostsInfo(function(posts) {
-  posts = _.chain(posts)
+  var newposts = _.chain(posts)
       .sortBy(function(item) { return -(new Date(item.date)); })
       .filter(function(item) { return new Date(item.date) < new Date()})
       .value()

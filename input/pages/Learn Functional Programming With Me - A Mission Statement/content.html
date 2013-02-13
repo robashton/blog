@@ -1,45 +1,38 @@
-<p>I was at NDC2012 last week and ended up hanging around the tongue-in-cheek &quot;Hipster stand&quot; along with a fine bunch of people who sat around coding and chatting most of the week on various interesting projects.</p>
+<p>I was at NDC2012 last week and ended up hanging around the tongue-in-cheek "Hipster stand" along with a fine bunch of people who sat around coding and chatting most of the week on various interesting projects.</p>
 
-<p>One of those fine people was <a href="https://twitter.com/bodiltv">@bodiltv</a> who proclaimed their love for Lisp, Emacs and various other things that I thought (like most people) I&#39;d left behind after university never to touch again.</p>
+<p>One of those fine people was <a href="https://twitter.com/bodiltv">@bodiltv</a> who proclaimed their love for Lisp, Emacs and various other things that I thought (like most people) I'd left behind after university never to touch again.</p>
 
-<p>However, functional programming is something that is seeing somewhat of a re-emergence in the crowds of people who I tend to lump into a bucket of &quot;Smarter than Rob&quot;, and I was looking for an excuse to give it a go - having to build something with somebody sat next to me to show me the ropes was an excellent motivator.</p>
+<p>However, functional programming is something that is seeing somewhat of a re-emergence in the crowds of people who I tend to lump into a bucket of "Smarter than Rob", and I was looking for an excuse to give it a go - having to build something with somebody sat next to me to show me the ropes was an excellent motivator.</p>
 
-<p>Over the course of a couple of hours on Thursday, <a href="https://twitter.com/bodiltv">@bodiltv</a> and I sat down and wrote a simple little script that looks something like this:</p>
+<p>Over the course of a couple of hours on Thursday, <a href="https://twitter.com/bodiltv">@bodiltv</a> and I sat down and wrote a simple little script that looks something like this:</p>
 
-<pre><code>(ns foo.core </code></pre>
+<pre><code>(ns foo.core 
+(:use [net.cgrand.enlive-html :as html])  
+)
 
-<p>
-    (:use [net.cgrand.enlive-html :as html])  
-    )</p>
+(def BASEURL "https://en.wikipedia.org/wiki/")
 
-<pre><code>(def BASEURL &quot;https://en.wikipedia.org/wiki/&quot;)</code></pre>
+(defn fetch-url [url]
+  (html/html-resource (java.net.URL. url)))
 
-<p></p>
+(defn define
+  "Fetches a page from wikipedia and prints the first paragraph"
+    [q]
+      (let [url (str BASEURL q)
+           content (fetch-url url)]
+           ((comp html/text
+                  first
+                  html/select) content [:#mw-content-text :p])
+      )
+)
+</code></pre>
 
-<pre><code>(defn fetch-url [url]</code></pre>
+<p>We also then looked at futures and how such things like that could help us, and with the knowledge of state being immutable know that we were safe when doing so. I then asked the question that most people ask when encountering this stuff for the (first/second) time, "How on earth do you build something <em>real</em> with this stuff".</p>
 
-<p>
-      (html/html-resource (java.net.URL. url)))</p>
+<p>So here goes, a mission statement - <em>I am going to build space invaders on top of HTML5 Canvas with Clojurescript</em>.</p>
 
-<pre><code>(defn define</code></pre>
+<p>Yes, I am breaking out the blog again and relying on YOU, the reader who knows more about these things than I do to guide me on my way as I inevitably make lots of mistakes.</p>
 
-<p>
-      &quot;Fetches a page from wikipedia and prints the first paragraph&quot;
-        [q]
-          (let [url (str BASEURL q)
-               content (fetch-url url)]
-               ((comp html/text
-                      first
-                      html/select) content [:#mw-content-text :p])
-          )
-    )</p>
+<p>It's hard to do this, because on the surface of things it seems so far away from the style of development I am used to, but by learning out in the open I am hoping we'll accelerate the process of getting to the point where I can be productive in a functional environment.</p>
 
-<p>We also then looked at futures and how such things like that could help us, and with the knowledge of state being immutable know that we were safe when doing so. I then asked the question that most people ask when encountering this stuff for the (first/second) time, &quot;How on earth do you build something <em>real</em> with this stuff&quot;.</p>
-
-<p>So here goes, a mission statement - <em>I am going to build space invaders on top of HTML5 Canvas with Clojurescript</em>.</p>
-
-<p>Yes, I am breaking out the blog again and relying on YOU, the reader who knows more about these things than I do to guide me on my way as I inevitably make lots of mistakes.</p>
-
-<p>It&#39;s hard to do this, because on the surface of things it seems so far away from the style of development I am used to, but by learning out in the open I am hoping we&#39;ll accelerate the process of getting to the point where I can be productive in a functional environment.</p>
-
-<p>Next entry: Let&#39;s see what my environment is going to look like, how I am going to interact with the Canvas and structure myself during this experiment.</p>
+<p>Next entry: Let's see what my environment is going to look like, how I am going to interact with the Canvas and structure myself during this experiment.</p>
