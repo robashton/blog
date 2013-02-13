@@ -31,6 +31,7 @@ http.createServer(function(req, res) {
     });
 }).listen(PORT);
 
+/*
 var build = null
 setInterval(function() {
   if(build) return
@@ -42,3 +43,5 @@ setInterval(function() {
     build = null
   })
 }, 10000)
+
+*/
