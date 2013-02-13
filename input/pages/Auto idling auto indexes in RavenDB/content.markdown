@@ -1,4 +1,4 @@
-[Last entry](/entries/adding-idle-indexes-to-ravendb.html') I talked about the addition of a priority flag on indexes to save resources on un-important indexes.
+[Last entry](/entries/adding-idle-indexes-to-ravendb.html) I talked about the addition of a priority flag on indexes to save resources on un-important indexes.
 
 This is great news for those indexes that are created and managed manually (once Raven Studio has the UI for it anyway), but a lot of customers are using auto indexes (a feature I'm proud to say I had a hand in [All those years ago](http://ayende.com/blog/4667/ravens-dynamic-queries)).
 
