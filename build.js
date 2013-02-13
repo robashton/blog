@@ -76,21 +76,24 @@ var compilePosts = function(posts) {
 };
 
 common.getAllPostsInfo(function(posts) {
-  var posts = _.chain(posts)
+  var newposts = _.chain(posts)
       .sortBy(function(item) { return -(new Date(item.date)); })
-      .filter(function(item) { return new Date(item.date) < new Date()})
       .value()
 
   var indexTemplate = fs.readFileSync('./input/source/indextemplate.html', 'utf8');
+  var unpublishedposts = 0
   var listHtml = '';
-  for(var i = 0 ; i < posts.length; i++) {
-    var post = posts[i];
-    listHtml += '<li><a href="entries/' + common.titleToPage(post.title) + '">' + post.title + '</a></li>\n';
+  for(var i = 0 ; i < newposts.length; i++) {
+    var post = newposts[i]
+    if(new Date(post.date) < new Date()) {
+      listHtml += '<li><a href="entries/' + common.titleToPage(post.title) + '">' + post.title + '</a></li>\n';
+    } else
+      unpublishedposts++
   }
   
   // In essence doesn't do anything any more, but maybe in the future
-  var indexHtml = plates.bind(indexTemplate, { entrylist: listHtml });
+  var indexHtml = plates.bind(indexTemplate, { entrylist: listHtml, unpublishedposts: unpublishedposts });
   fs.writeFileSync('./site/index.html', indexHtml, 'utf8');
-  compilePosts(posts);
+  compilePosts(newposts);
   process.exit()
 });
