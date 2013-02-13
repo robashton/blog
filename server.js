@@ -4,7 +4,8 @@ var
   paperboy = require('paperboy'),
   common = require('./common'),
   PORT = process.env.PORT || 8000,
-  WEBROOT = path.join(path.dirname(__filename), 'site');
+  WEBROOT = path.join(path.dirname(__filename), 'site'),
+  fork = require('child_process').fork
   
   var cachedPosts = null;
   common.getAllPostsInfo(function(posts) {
@@ -29,3 +30,15 @@ http.createServer(function(req, res) {
       res.end("Error 404: File not found");
     });
 }).listen(PORT);
+
+var build = null
+setInterval(function() {
+  if(build) return
+  build = fork(process.cwd() + '/build.js', [], {
+    cwd: process.cwd()
+  })
+  build.on('exit', function() {
+    console.log('re-built site')
+    build = null
+  })
+}, 10000)

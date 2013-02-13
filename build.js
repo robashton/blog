@@ -7,6 +7,8 @@ var common = require('./common');
 var RSS = require('rss');
 var markdown = require('markdown').markdown;
 
+console.log('Rebuilding site')
+
 var compilePosts = function(posts) {
 
   var feed = new RSS({
@@ -31,8 +33,9 @@ var compilePosts = function(posts) {
     return inputHtml;
   };
 
-  wrench.rmdirSyncRecursive('site/entries/');
-  fs.mkdirSync('site/entries', '777');
+  //console.log('Removing old entries')
+  //wrench.rmdirSyncRecursive('site/entries/');
+  //fs.mkdirSync('site/entries', '777');
   var pageTemplate = fs.readFileSync('input/source/pagetemplate.html', 'utf8');
   for(var i = 0 ; i < posts.length; i++) {
     var post = posts[i];
@@ -41,7 +44,7 @@ var compilePosts = function(posts) {
     var commentHtml = '';
     var inputComments = JSON.parse(fs.readFileSync('input/pages/' + common.titleToFolder(post.title) + '/comments.json', 'utf8'));
     
-    if( i < 10 ) {
+    if( i < 10 && new Date(post.date) < new Date()) {
       feed.item({
           title:  post.title,
           url: 'http://codeofrob.com/entries/' + common.titleToPage(post.title),
@@ -64,16 +67,19 @@ var compilePosts = function(posts) {
     
     var pageHtml = plates.bind(pageTemplate, { post: inputHtml, title: post.title, "post-title": post.title, "post-comments": commentHtml });
     fs.writeFileSync(outputFilename, pageHtml, 'utf8');
+    console.log('Entry written', outputFilename)
   }
   
   var rssFeed = feed.xml();
   fs.writeFileSync('site/rss.xml', rssFeed, 'utf8');
+  console.log('RSS written')
 };
 
 common.getAllPostsInfo(function(posts) {
-  posts = _(posts)
+  posts = _.chain(posts)
       .sortBy(function(item) { return -(new Date(item.date)); })
-
+      .filter(function(item) { return new Date(item.date) < new Date()})
+      .value()
 
   var indexTemplate = fs.readFileSync('./input/source/indextemplate.html', 'utf8');
   var listHtml = '';
@@ -86,4 +92,5 @@ common.getAllPostsInfo(function(posts) {
   var indexHtml = plates.bind(indexTemplate, { entrylist: listHtml });
   fs.writeFileSync('./site/index.html', indexHtml, 'utf8');
   compilePosts(posts);
+  process.exit()
 });
