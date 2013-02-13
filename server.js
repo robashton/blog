@@ -41,4 +41,4 @@ setInterval(function() {
     console.log('re-built site')
     build = null
   })
-}, 10000)
+}, 60000)

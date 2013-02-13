@@ -1,5 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><generator>NodeJS RSS Module</generator><lastBuildDate>Wed, 13 Feb 2013 07:32:22 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Adding idle indexes to RavenDB]]></title><description><![CDATA[<p>As I mentioned <a href="/entries/working-at-hibernating-rhinos.html">yesterday</a>, I&#39;m currently doing a week or so of work at Hibernating Rhinos (more specifically on RavenDB).</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><generator>NodeJS RSS Module</generator><lastBuildDate>Wed, 13 Feb 2013 15:53:30 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Auto idling auto indexes in RavenDB]]></title><description><![CDATA[<p><a href="/entries/adding-idle-indexes-to-ravendb.html&#39;">Last entry</a> I talked about the addition of a priority flag on indexes to save resources on un-important indexes.</p>
+
+<p>This is great news for those indexes that are created and managed manually (once Raven Studio has the UI for it anyway), but a lot of customers are using auto indexes (a feature I&#39;m proud to say I had a hand in <a href="http://ayende.com/blog/4667/ravens-dynamic-queries">All those years ago</a>).</p>
+
+<p>What does this therefore mean for this type of index? Well, the way RavenDB currently works for those unfamiliar with it, is if you make a query for all the ponies with rainbow in their name like so:</p>
+
+<pre><code>session.Query&lt;Pony&gt;().Where(pony =&gt; pony.Name.Contains(&quot;Rainbow&quot;))</code></pre>
+
+<p></p>
+
+<p>There is a query optimiser which will try to find an appropriate index to use for this query, and if it fails it will create an index for you at the following URL:</p>
+
+<pre><code>/Index/Temp/PonyWithName</code></pre>
+
+<p></p>
+
+<p>Or something similar (I forget the exact conventions). After a period of time, the index will be deleted unless it is used within a certain threshold of activity.</p>
+
+<p>On top of this, we now have idle indexes - so what does this mean? We can actually do a lot of this automatically now too, if we select the least-used indexes in the system <em>(for example, order all the auto-indexes by the last time they were queried, and if there is a big gap between the last index and the penultimate index, then demote the index automatically)</em></p>
+
+<p>If the index is queried against after this, we can promote it again - happy days!</p>
+
+<p>Having the database make these decisions for you keeps away any of the possible complexity of maintaining a well behaving RavenDB implementation.</p>
+
+<p>I left off yesterday by talking about the Forced flag, the idea behind this is you can force an index to keep its current state by using the Studio and not have any of this fancy magic stuff happen to you.</p>
+
+<p>Now, with this done - the next natural cause of action is obvious, what would that be...?</p>]]></description><link>http://codeofrob.com/entries/auto-idling-auto-indexes-in-ravendb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/auto-idling-auto-indexes-in-ravendb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 13 Feb 2013 12:34:00 GMT</pubDate></item><item><title><![CDATA[Adding idle indexes to RavenDB]]></title><description><![CDATA[<p>As I mentioned <a href="/entries/working-at-hibernating-rhinos.html">yesterday</a>, I&#39;m currently doing a week or so of work at Hibernating Rhinos (more specifically on RavenDB).</p>
 
 <p>One of the first things I was asked to look at was the indexing system in RavenDB, as there was a backlog of tasks and requests on these, which tie into each other in numerous ways.</p>
 
@@ -251,7 +277,37 @@ do you want a browserify build script? (y/n)
 
 <h2>Links</h2>
 
-<ul><li>Browserify <a href="http://github.com/substack/node-browserify">http://github.com/substack/node-browserify</a></li><li>NodeJS <a href="http://nodejs.org">http://nodejs.org</a></li><li>NPM <a href="http://npmjs.org">http://npmjs.org</a></li><li>PrimoJS (not &quot;released&quot; yet) <a href="http://github.com/robashton/primojs">http://github.com/robashton/primojs</a></li><li>VoxelJS <a href="http://github.com/maxogden/voxel">http://github.com/magogden/voxel</a></li></ul>]]></description><link>http://codeofrob.com/entries/lots-of-small-things.html</link><guid isPermaLink="true">http://codeofrob.com/entries/lots-of-small-things.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 25 Jan 2013 12:34:00 GMT</pubDate></item><item><title><![CDATA[Why work for free]]></title><description><![CDATA[<p>I&#39;ve been asked this question a number of times since making my offer to <a href="http://codeofrob.com/entries/i-am-not-looking-for-a-job.html">travel around and do some free work</a> for those that were fast enough to get their offers into my inbox last week.</p>
+<ul><li>Browserify <a href="http://github.com/substack/node-browserify">http://github.com/substack/node-browserify</a></li><li>NodeJS <a href="http://nodejs.org">http://nodejs.org</a></li><li>NPM <a href="http://npmjs.org">http://npmjs.org</a></li><li>PrimoJS (not &quot;released&quot; yet) <a href="http://github.com/robashton/primojs">http://github.com/robashton/primojs</a></li><li>VoxelJS <a href="http://github.com/maxogden/voxel">http://github.com/magogden/voxel</a></li></ul>]]></description><link>http://codeofrob.com/entries/lots-of-small-things.html</link><guid isPermaLink="true">http://codeofrob.com/entries/lots-of-small-things.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 25 Jan 2013 12:34:00 GMT</pubDate></item><item><title><![CDATA[I am not looking for a job]]></title><description><![CDATA[<p>After a productive weekend in Vilnius at the &quot;We Actually Build Stuff&quot; conference, I came back to the client I have been spending most of my time with in Belgium these past two years feeling a bit despondent.</p>
+
+<p>Why was I still there? I had already made my intent clear a month ago - that after this contract expired I wasn&#39;t going to renew, I had saved enough money to survive for a year if need be, I was not exactly enjoying what I was doing (for many of the standard self-defeating enterprise issues) and as one of my friends put it &quot;Staying just to save some extra cash just seems like a stupid idea if you&#39;re not enjoying it&quot;</p>
+
+<p>So I went in, found myself unable to function any more and decided to expediate the process of leaving, kindly they came to an agreement and I was able to head off providing I reply to a few e-mails :-).</p>
+
+<p>Many folk have already offered that I come and take a job with them, and while their hearts are in the right place, I wish to make it known that this is not what I want to do for the next couple of years.</p>
+
+<ul><li>I want to do something meaningful</li><li>I want to work with smart people</li><li>I want to focus on creating value</li><li>I want to build stuff</li><li>I want to help other people build stuff</li></ul>
+
+<p>I actually have some semi-concrete plans next year that will make all of this happen, this will take a few months to put into place though and in the meanwhile I have an offer for YOU, if you are interested and feeling brave.</p>
+
+<p>I am offering the following two things</p>
+
+<p><strong>I will come and spend a few days (1-2 weeks) at your workplace (in Europe), building stuff for expenses and a roof over my head</strong></p>
+
+<p>Seriously, I don&#39;t have much to do (I have a few paid commitments which will take priority, but other than that plenty of time) and I want to help you Build Stuff, for FREE. </p>
+
+<p>Of course you are perfectly welcome to toss me a few euros for my time as well, but whatever, money is not important for the next few months at least.</p>
+
+<p>I can help you with your Javascripts, your .NETs and your NoSqls, I am especially interested in helping teams who are <em>new</em> to JS get to grips with it quickly, I am very intersted in discussing difficult migration paths from legacy code (such as Silverlight for example).</p>
+
+<p>If you are building games, then I am <em>especially</em> interested in coming to say hello, even if you&#39;re in somewhere boring like Guildford ;-)</p>
+
+<p><strong>I will cook you a curry for a roof over my head</strong></p>
+
+<p>Coupled with the first offer, if you&#39;re the developer putting me up then I&#39;ll cook you a curry, I&#39;m pretty practised at this and can tailor this to your tastes if asked - this is a serious offer, I love cooking and I love coding - what is better than combining the two.</p>
+
+<p>Anyway, if either of these appeal to you, get in touch at <a href="mailto:robashton@codeofrob.com">robashton@codeofrob.com</a> or twitter <a href="http://twitter.com/robashton">@robashton</a></p>
+
+<p>My availability can be seen publicly at <a href="https://www.google.com/calendar/embed?src=robashtondeveloper%40gmail.com&amp;ctz=Europe/Brussels">google calendars</a></p>]]></description><link>http://codeofrob.com/entries/i-am-not-looking-for-a-job.html</link><guid isPermaLink="true">http://codeofrob.com/entries/i-am-not-looking-for-a-job.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 11 Dec 2012 12:34:00 GMT</pubDate></item><item><title><![CDATA[Why work for free]]></title><description><![CDATA[<p>I&#39;ve been asked this question a number of times since making my offer to <a href="http://codeofrob.com/entries/i-am-not-looking-for-a-job.html">travel around and do some free work</a> for those that were fast enough to get their offers into my inbox last week.</p>
 
 <p><em>Why work for free?</em></p>
 
@@ -313,37 +369,7 @@ do you want a browserify build script? (y/n)
 
 <p>So why work for free? It changes the trust-relationship between me and the team, it makes my motivation obvious to those involved with me and I can learn a lot more in a smaller amount of time.  </p>
 
-<p>If I was rich enough to retire, this is something I would <em>choose</em> to do - and that is something we should all be so lucky to say about our jobs.</p>]]></description><link>http://codeofrob.com/entries/why-work-for-free.html</link><guid isPermaLink="true">http://codeofrob.com/entries/why-work-for-free.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 11 Dec 2012 12:34:00 GMT</pubDate></item><item><title><![CDATA[I am not looking for a job]]></title><description><![CDATA[<p>After a productive weekend in Vilnius at the &quot;We Actually Build Stuff&quot; conference, I came back to the client I have been spending most of my time with in Belgium these past two years feeling a bit despondent.</p>
-
-<p>Why was I still there? I had already made my intent clear a month ago - that after this contract expired I wasn&#39;t going to renew, I had saved enough money to survive for a year if need be, I was not exactly enjoying what I was doing (for many of the standard self-defeating enterprise issues) and as one of my friends put it &quot;Staying just to save some extra cash just seems like a stupid idea if you&#39;re not enjoying it&quot;</p>
-
-<p>So I went in, found myself unable to function any more and decided to expediate the process of leaving, kindly they came to an agreement and I was able to head off providing I reply to a few e-mails :-).</p>
-
-<p>Many folk have already offered that I come and take a job with them, and while their hearts are in the right place, I wish to make it known that this is not what I want to do for the next couple of years.</p>
-
-<ul><li>I want to do something meaningful</li><li>I want to work with smart people</li><li>I want to focus on creating value</li><li>I want to build stuff</li><li>I want to help other people build stuff</li></ul>
-
-<p>I actually have some semi-concrete plans next year that will make all of this happen, this will take a few months to put into place though and in the meanwhile I have an offer for YOU, if you are interested and feeling brave.</p>
-
-<p>I am offering the following two things</p>
-
-<p><strong>I will come and spend a few days (1-2 weeks) at your workplace (in Europe), building stuff for expenses and a roof over my head</strong></p>
-
-<p>Seriously, I don&#39;t have much to do (I have a few paid commitments which will take priority, but other than that plenty of time) and I want to help you Build Stuff, for FREE. </p>
-
-<p>Of course you are perfectly welcome to toss me a few euros for my time as well, but whatever, money is not important for the next few months at least.</p>
-
-<p>I can help you with your Javascripts, your .NETs and your NoSqls, I am especially interested in helping teams who are <em>new</em> to JS get to grips with it quickly, I am very intersted in discussing difficult migration paths from legacy code (such as Silverlight for example).</p>
-
-<p>If you are building games, then I am <em>especially</em> interested in coming to say hello, even if you&#39;re in somewhere boring like Guildford ;-)</p>
-
-<p><strong>I will cook you a curry for a roof over my head</strong></p>
-
-<p>Coupled with the first offer, if you&#39;re the developer putting me up then I&#39;ll cook you a curry, I&#39;m pretty practised at this and can tailor this to your tastes if asked - this is a serious offer, I love cooking and I love coding - what is better than combining the two.</p>
-
-<p>Anyway, if either of these appeal to you, get in touch at <a href="mailto:robashton@codeofrob.com">robashton@codeofrob.com</a> or twitter <a href="http://twitter.com/robashton">@robashton</a></p>
-
-<p>My availability can be seen publicly at <a href="https://www.google.com/calendar/embed?src=robashtondeveloper%40gmail.com&amp;ctz=Europe/Brussels">google calendars</a></p>]]></description><link>http://codeofrob.com/entries/i-am-not-looking-for-a-job.html</link><guid isPermaLink="true">http://codeofrob.com/entries/i-am-not-looking-for-a-job.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 11 Dec 2012 12:34:00 GMT</pubDate></item><item><title><![CDATA[Learn Functional Programming With Me - Attributes And Vectors]]></title><description><![CDATA[<p>So last time I left the program, I had a black square which moved across the page but left a delightful black smear across the window, it looked something like this:</p>
+<p>If I was rich enough to retire, this is something I would <em>choose</em> to do - and that is something we should all be so lucky to say about our jobs.</p>]]></description><link>http://codeofrob.com/entries/why-work-for-free.html</link><guid isPermaLink="true">http://codeofrob.com/entries/why-work-for-free.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 11 Dec 2012 12:34:00 GMT</pubDate></item><item><title><![CDATA[Learn Functional Programming With Me - Attributes And Vectors]]></title><description><![CDATA[<p>So last time I left the program, I had a black square which moved across the page but left a delightful black smear across the window, it looked something like this:</p>
 
 <p><img alt="Black smear" src="/img/blackline.png"/></p>
 
@@ -802,55 +828,4 @@ do you want a browserify build script? (y/n)
 
 <p>It&#39;s hard to do this, because on the surface of things it seems so far away from the style of development I am used to, but by learning out in the open I am hoping we&#39;ll accelerate the process of getting to the point where I can be productive in a functional environment.</p>
 
-<p>Next entry: Let&#39;s see what my environment is going to look like, how I am going to interact with the Canvas and structure myself during this experiment.</p>]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---a-mission-statement.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---a-mission-statement.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 11 Jun 2012 12:34:00 GMT</pubDate></item><item><title><![CDATA[Github Live]]></title><description><![CDATA[<h5>Visualize git 'pushes' live as they happen across Github.</h5>
-
-<p>I visited <a href="https://twitter.com/#!/cranialstrain">@cranialstrain</a> in England this weekend, and he suggested we hack something together around the Github APIs in response to the <a href="https://github.com/blog/1118-the-github-data-challenge">Github data challenge </a>.</p>
-
-<p>Looking at the Event stream, I thought it would be interesting to visualise what was going on in live, in a web browser, and given all the toys I've written over the past year or so in NodeJS, it was fairly clear that a simple web server processing the events and broadcasting them to clients wouldn't take a lot of work to complete.</p>
-
-<p>So, we ended up with <a href="http://githublive.codeofrob.com">Github Live</a>, which looks something like this once you've left it running for five minutes (during the morning, so it's a bit quiet)</p>
-
-<a href="/img/githublive.png"><img src="/img/githublive.png" width="640px"></img></a>
-
-<p><strong>The server side</strong></p>
-
-<p>The server is using Node, which is operating as a basic static file server, and as a point of call for incoming sockets with socket.io.</p>
-
-<p>It starts off every 10 seconds polling the Events API, storing the most recent timestamp so to avoid publishing duplicates (the events API doesn't have a "last retrieved id").</p>
-
-<p>It attempts to throttle requests to the events API to avoid the amount of duplicate events being retrieved from the API (if it finds an overlap, it increases the time until next request by a second, and if it doesn't, it decreases by a second).</p>
-
-<p>In hindsight, the hideous inline callbacks would be best replaced with a stream that did all this work, and just published events transparently to the consuming code.</p>
-
-<p>The next job, once this has taken place is that a request is made to Github for each pull, asking for information about the repository (for the language), so the events being streamed to the clients can be augmented with this information.</p>
-
-<p>This is another thing that should be dealt with by a stream rather than inline callback soup.</p>
-
-<p>Oh well, it's only 200 lines of throwaway code, perhaps something to tidy up on a rainy day.</p>
-
-<p><strong>The client side</strong></p>
-
-<p>Because it's quick and easy, we're using HTML and CSS3 to do display and transformations.</p>
-
-<p>As the events stream in from the server, some HTML is created for the event and it is put in an appropriate bucket (for the language being used).</p>
-
-<p>The outside container has a CSS transition applied to it, and the transform 'scale' is set to fit all buckets into the same window periodically.</p>
-
-<p>From this I have ascertained that</p>
-
-<ul>
-<li>I dislike vendor prefixes</li>
-<li>these are not as fast as I'd like</li>
-<li>Webkit has some unusual glitches if you're not careful</li>
-</ul>
-
-<p>I guess with some more work, these things could be worked around, there are some definite performance improvements that could be made client side here.</p>
-
-<p>I'd quite like to give an SVG implementation a go, and see about the performance of that. Another project for a rainy weekend.</p>
-
-<p><strong>The code</strong></p>
-
-<p>The code in all its (raw) form can be found at<a href="https://github.com/robashton/githubfall"> https://github.com/robashton/githubfall</a></p>
-
-<p>I'd be interested to see any obvious improvements made and pull requested in.</p>
-]]></description><link>http://codeofrob.com/entries/github-live.html</link><guid isPermaLink="true">http://codeofrob.com/entries/github-live.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 07 May 2012 12:28:00 GMT</pubDate></item></channel></rss>
+<p>Next entry: Let&#39;s see what my environment is going to look like, how I am going to interact with the Canvas and structure myself during this experiment.</p>]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---a-mission-statement.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---a-mission-statement.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 11 Jun 2012 12:34:00 GMT</pubDate></item></channel></rss>

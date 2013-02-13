@@ -1,0 +1,102 @@
+<html>
+  <head>
+    <title id="title">Auto idling auto indexes in RavenDB</title>
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+
+    </script>
+  </head>
+  <body>
+    <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>
+    <div id="blog-entry">
+      <h1 id="post-title">Auto idling auto indexes in RavenDB</h1>
+      <div id="post"><p><a href="/entries/adding-idle-indexes-to-ravendb.html&#39;">Last entry</a> I talked about the addition of a priority flag on indexes to save resources on un-important indexes.</p>
+
+<p>This is great news for those indexes that are created and managed manually (once Raven Studio has the UI for it anyway), but a lot of customers are using auto indexes (a feature I&#39;m proud to say I had a hand in <a href="http://ayende.com/blog/4667/ravens-dynamic-queries">All those years ago</a>).</p>
+
+<p>What does this therefore mean for this type of index? Well, the way RavenDB currently works for those unfamiliar with it, is if you make a query for all the ponies with rainbow in their name like so:</p>
+
+<pre><code>session.Query&lt;Pony&gt;().Where(pony =&gt; pony.Name.Contains(&quot;Rainbow&quot;))</code></pre>
+
+<p></p>
+
+<p>There is a query optimiser which will try to find an appropriate index to use for this query, and if it fails it will create an index for you at the following URL:</p>
+
+<pre><code>/Index/Temp/PonyWithName</code></pre>
+
+<p></p>
+
+<p>Or something similar (I forget the exact conventions). After a period of time, the index will be deleted unless it is used within a certain threshold of activity.</p>
+
+<p>On top of this, we now have idle indexes - so what does this mean? We can actually do a lot of this automatically now too, if we select the least-used indexes in the system <em>(for example, order all the auto-indexes by the last time they were queried, and if there is a big gap between the last index and the penultimate index, then demote the index automatically)</em></p>
+
+<p>If the index is queried against after this, we can promote it again - happy days!</p>
+
+<p>Having the database make these decisions for you keeps away any of the possible complexity of maintaining a well behaving RavenDB implementation.</p>
+
+<p>I left off yesterday by talking about the Forced flag, the idea behind this is you can force an index to keep its current state by using the Studio and not have any of this fancy magic stuff happen to you.</p>
+
+<p>Now, with this done - the next natural cause of action is obvious, what would that be...?</p></div>
+      <div id="links">
+        <a href="/">Go back to the index</a><br />
+        <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>
+        <a href="http://twitter.com/robashton">@robashton</a>
+      </div>
+      <div id="inqob_job_postings"></div> 
+      <script type="text/javascript" charset="utf-8">
+        var __inqob_settings = {
+          email_address:  'robashton@codeofrob.com', 
+          token:          '',
+          debug: false,
+          items: [{
+            keyword: 'codeofrob', 
+            price: 100 
+          }]
+        };
+
+        (function(is) {
+          var sc = document.createElement('script'); sc.type = 'text/javascript'; sc.async = true;
+          var src = (document.location.protocol == 'https:' ? 'https://' : 'http://') + 'inqob.com/get/script';
+          var q = [];
+          q.push('?t='+ new Date().getTime()); 
+          q.push('token=' + is.token); 
+          q.push('email_address=' + is.email_address); 
+          q.push('href=' + encodeURIComponent(window.location.href));
+          sc.src = src + q.join('&');
+          var s = document.getElementsByTagName('script')[0]; 
+          s.parentNode.insertBefore(sc, s);
+        })(__inqob_settings);      
+      </script>
+      <div id="disqus">
+        <div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+      </div>
+    </div>
+    <div id="post-comments">
+
+    </div>
+  </body>
+</html>
