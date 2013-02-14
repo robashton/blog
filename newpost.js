@@ -44,6 +44,7 @@ common.getAllPostsInfo(function(allposts) {
                       JSON.stringify(post), 'utf8')
     }
   }
+  createNewPost(date, title)
 })
 
 function addDayExcludingWeekends(date) {

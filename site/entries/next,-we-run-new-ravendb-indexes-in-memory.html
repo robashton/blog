@@ -1,0 +1,90 @@
+<html>
+  <head>
+    <title id="title">Next, we run new RavenDB indexes in memory</title>
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+
+    </script>
+  </head>
+  <body>
+    <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>
+    <div id="blog-entry">
+      <h1 id="post-title">Next, we run new RavenDB indexes in memory</h1>
+      <div id="post"><p><a href="/entries/getting-rid-of-temporary-indexes-in-ravendb.html">Yesterday</a> I wrote about the awesome news that we'd managed to delete an entire code-path from RavenDB as a result of some of the other changes coming in.</p>
+
+<p>Well, it's not quite as simple as that, you see - temporary indexes in RavenDB had a reallly big advantage in that they were run entirely in memory (until they reached a configurable threshold anyway).</p>
+
+<p>That's good, because  indexes and running data through indexes is typically an IO bound process, and if we can keep the indexes in memory while we work on them, the whole proces can be a lot more efficient.</p>
+
+<p>Well, having gotten rid of an entire code path, surely it makes sense to move the code that used to do this to be applicable to all indexes?</p>
+
+<p>Absolutely, so starting from whenever my pull request gets merged, all new indexes in RavenDB will be ran in memory to begin with (meaning you get less stale results much faster - great if you're using the auto-indexes or experimenting with manual indexes).</p>
+
+<p>After the index has caught up with reality, it will be flushed to disk and celebrations will be had, or if the index reaches a configurable memory threshold that will happen too.</p>
+
+<p>This is a small change that makes a big difference, and is possible (in part) because we managed to get rid of having two different types of index and two different code paths.</p>
+
+<p>In the next entry, I'll talk about further optimisations made in this pull request to do with auto indexes.</p></div>
+      <div id="links">
+        <a href="/">Go back to the index</a><br />
+        <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>
+        <a href="http://twitter.com/robashton">@robashton</a>
+      </div>
+      <div id="inqob_job_postings"></div> 
+      <script type="text/javascript" charset="utf-8">
+        var __inqob_settings = {
+          email_address:  'robashton@codeofrob.com', 
+          token:          '',
+          debug: false,
+          items: [{
+            keyword: 'codeofrob', 
+            price: 100 
+          }]
+        };
+
+        (function(is) {
+          var sc = document.createElement('script'); sc.type = 'text/javascript'; sc.async = true;
+          var src = (document.location.protocol == 'https:' ? 'https://' : 'http://') + 'inqob.com/get/script';
+          var q = [];
+          q.push('?t='+ new Date().getTime()); 
+          q.push('token=' + is.token); 
+          q.push('email_address=' + is.email_address); 
+          q.push('href=' + encodeURIComponent(window.location.href));
+          sc.src = src + q.join('&');
+          var s = document.getElementsByTagName('script')[0]; 
+          s.parentNode.insertBefore(sc, s);
+        })(__inqob_settings);      
+      </script>
+      <div id="disqus">
+        <div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+      </div>
+    </div>
+    <div id="post-comments">
+
+    </div>
+  </body>
+</html>
