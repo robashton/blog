@@ -11,11 +11,12 @@ Well, rather than attach the function we want to transform the results with to t
 		{
 			 public Ponies()
 			 {
-				  Map = from pony in ponies
-								select new {
-									pony.Name,
-									pony.Colour,
-									pony.Trampstamp
+				  Map = ponies =>
+                  from pony in ponies
+                  select new {
+                    pony.Name,
+                    pony.Colour,
+                    pony.Trampstamp
 								}
 					TransformResults = (database, results) =>
 							from result in results
@@ -36,7 +37,8 @@ How about defining it separately like this?
 		{
 			 public Ponies()
 			 {
-				  Map = from pony in ponies
+				  Map = ponies =>
+                from pony in ponies
 								select new {
 									pony.Name,
 									pony.Colour,
@@ -49,11 +51,10 @@ And
 
     public class PonyWithPetViewModel 
 		{
-
 			public string PonyId { get; set; }
 			public string Name { get; set; }
 			public string PetName { get; set; }
-			public string PetSpecies = { get; set; }
+			public string PetSpecies { get; set; }
 		}
 
 	

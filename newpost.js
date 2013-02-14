@@ -29,7 +29,7 @@ common.getAllPostsInfo(function(allposts) {
   }
 
   var lastdate = date
-  if(date < latestdate) {
+  if(date <= latestdate) {
     console.log('Shifting posts to the future')
     for(var i = 0; i < allposts.length; i++) {
       var post = allposts[i]

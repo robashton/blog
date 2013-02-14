@@ -8,7 +8,7 @@ First, a re-cap on what TransformResults actually is; consider we have a couple 
 		{
 			id: "ponies/rainbowdash",
 			name: "Rainbow Dash",
-			colour: '#9EDBF9',
+			colour: '#9EDBF9',      // I actually looked this up
 			trampstamp: 'rainbow-lightning',
 			petid: 'pets/tank'
 		}
@@ -19,7 +19,7 @@ First, a re-cap on what TransformResults actually is; consider we have a couple 
 			id: "pets/tank",
 			name: "Tank",
 			species: "Tortoise",
-			colour: #
+			colour: '#0F0'          // I didn't look this up
 		}
 
 Let's say we have an index that looks like this
@@ -28,7 +28,8 @@ Let's say we have an index that looks like this
 		{
 			 public Ponies()
 			 {
-				  Map = from pony in ponies
+				  Map = ponies =>
+                from pony in ponies
 								select new {
 									pony.Name,
 									pony.Colour,
@@ -49,7 +50,8 @@ We mostly end up doing the last one and so we do that and it looks like this:
 		{
 			 public Ponies()
 			 {
-				  Map = from pony in ponies
+				  Map = ponies =>
+                from pony in ponies
 								select new {
 									pony.Name,
 									pony.Colour,

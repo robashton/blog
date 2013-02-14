@@ -92,7 +92,7 @@ common.getAllPostsInfo(function(posts) {
     } else
       unpublishedposts++
     
-    allEntries += 'http://codeofrob.com/entries/' + common.titleToPage(post.title) + '.html\r\n'
+    allEntries += post.date + ': http://codeofrob.com/entries/' + common.titleToPage(post.title) + '\r\n'
   }
   
   // In essence doesn't do anything any more, but maybe in the future
