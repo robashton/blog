@@ -83,17 +83,22 @@ common.getAllPostsInfo(function(posts) {
   var indexTemplate = fs.readFileSync('./input/source/indextemplate.html', 'utf8');
   var unpublishedposts = 0
   var listHtml = '';
+
+  var allEntries = ''
   for(var i = 0 ; i < newposts.length; i++) {
     var post = newposts[i]
     if(new Date(post.date) < new Date()) {
       listHtml += '<li><a href="entries/' + common.titleToPage(post.title) + '">' + post.title + '</a></li>\n';
     } else
       unpublishedposts++
+    
+    allEntries += 'http://codeofrob.com/entries/' + common.titleToPage(post.title) + '.html\r\n'
   }
   
   // In essence doesn't do anything any more, but maybe in the future
   var indexHtml = plates.bind(indexTemplate, { entrylist: listHtml, unpublishedposts: unpublishedposts });
   fs.writeFileSync('./site/index.html', indexHtml, 'utf8');
+  fs.writeFileSync('./site/allposts.txt', allEntries, 'utf8')
   compilePosts(newposts);
   process.exit()
 });
