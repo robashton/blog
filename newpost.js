@@ -13,7 +13,7 @@ var title = argv.title
   , date = null
 
 common.getAllPostsInfo(function(allposts) {
-  allposts = _.sort(allposts, function(post) { return -(new Date(post.date)) })
+  allposts = _.sortBy(allposts, function(post) { return (new Date(post.date)) })
 
   var newestpost = _.max(allposts, function(item) { return new Date(item.date) })
   var latestdate = new Date(newestpost.date)
@@ -34,20 +34,22 @@ common.getAllPostsInfo(function(allposts) {
     for(var i = 0; i < allposts.length; i++) {
       var post = allposts[i]
       var postdate = new Date(post.date)
-      if(postdate < lastdate) {
-        postdate = addDayExcludingWeekends(postdate)
+      if(postdate > lastdate) {
+        postdate = addDayExcludingWeekends(lastdate)
         lastdate = postdate
         post.date = postdate
         console.log(post.title, ' will now be published on ', post.date)
       }
+      fs.writeFileSync('input/pages/' + common.titleToFolder(post.title) + '/meta.json', 
+                      JSON.stringify(post), 'utf8')
     }
   }
 })
 
 function addDayExcludingWeekends(date) {
-  var newdate = null
+  var newdate = date
   do {
-    newdate = new Date(date.getTime() + (24 * 60 * 60 * 1000))
+    newdate = new Date(newdate.getTime() + (24 * 60 * 60 * 1000))
   } while ( newdate.getUTCDay() === 0 || newdate.getUTCDay() === 6)
   return newdate
 }
