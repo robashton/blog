@@ -21,8 +21,63 @@
     <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>
     <div id="blog-entry">
       <h1 id="post-title">Result transformers - not just for querying</h1>
-      <div id="post"><p><a href="url">title</a>
-<img src="img" alt="alt" title="" /></p></div>
+      <div id="post"><p>In the <a href="/entries/ravendb-resulttransformers---a-new-way-of-looking-at-things.html">last entry</a> I demonstrated a new artifact in RavenDB for transforming results from queries into view models with all the information attached you could think of.</p>
+
+<p>Well, the primary use case (in my mind) for this, is the creation of view models for web clients without having to de-normalise data or perform multiple remote calls.</p>
+
+<p>Well, actually - if we're viewing say, a single item by id, it doesn't make a lot of sense to have to do a query to get that single item by id. It doesn't make a lot of sense to have to create an index for this.</p>
+
+<p>In the past, that's the best we could hope for, unless perhaps you used the 'include' functionality to load related documents and then created the view model in the client out of those related documents. This looks something like this:</p>
+
+<pre><code>var order = session.Include("CustomerId")
+                        .Load&lt;Order&gt;("orders/1")
+
+var customer = session.Load&lt;Customer&gt;(order.CustomerId)
+
+// Build view model here
+</code></pre>
+
+<p>This is okay and everything, but requires a bit of mental leg-work on the part of the client.</p>
+
+<p>What you really want to do is just ask for the view model, sort of like making a single query in SQL to get all the information you want with one go.</p>
+
+<p>Well, how about this?</p>
+
+<pre><code>  var orderViewModel = session.Load&lt;OrderWithCustomerTransform, OrderWithCustomer&gt;("orders/1")
+</code></pre>
+
+<p>That's a lot nicer, the code for this is as thus</p>
+
+<pre><code>public class OrderWithCustomer 
+{
+   public string OrderId { get; set; }
+   public string OrderDate { get; set; }
+   public string CustomerId { get; set; }
+   public stirng CustomerName { get; set; }
+}
+
+    public class OrderWithCustomerTransform : AbstractIndexCreationTask&lt;Order&gt;
+    {
+         public OrderWithCustomerTransform()
+         {
+                TransformResults = (database, orders) =&gt;
+                        from order in orders
+                        let customer = database.Load&lt;Pet&gt;(order.CustomerId)
+                        select new {
+             OrderId = order.Id,
+             OrderDate = order.Date,
+             CustomerId = customer.Id,
+             CustomerName = customer.Name
+                        }
+         }
+    }
+</code></pre>
+
+<p>Being able to compose view models on the server as part of the load process by pulling in related documents and only pull out the fields you need is awesome.</p>
+
+<p>Being able to re-use these transforms across different indexes or load operations and get a consistent return shape is even awesomer.</p>
+
+<p>Tomorrow I'll show a really cool edge case around this, and how we got rid of a lot of he confusion around transforms.</p></div>
       <div id="links">
         <a href="/">Go back to the index</a><br />
         <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>

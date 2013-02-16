@@ -34,7 +34,7 @@ common.getAllPostsInfo(function(allposts) {
     for(var i = 0; i < allposts.length; i++) {
       var post = allposts[i]
       var postdate = new Date(post.date)
-      if(postdate > lastdate) {
+      if(postdate >= lastdate) {
         postdate = addDayExcludingWeekends(lastdate)
         lastdate = postdate
         post.date = postdate

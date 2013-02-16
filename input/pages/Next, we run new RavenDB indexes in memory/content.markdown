@@ -1,4 +1,4 @@
-[Yesterday](/entries/getting-rid-of-temporary-indexes-in-ravendb.html) I wrote about the awesome news that we'd managed to delete an entire code-path from RavenDB as a result of some of the other changes coming in.
+[Other day](/entries/getting-rid-of-temporary-indexes-in-ravendb.html) I wrote about the awesome news that we'd managed to delete an entire code-path from RavenDB as a result of some of the other changes coming in.
 
 Well, it's not quite as simple as that, you see - temporary indexes in RavenDB had a reallly big advantage in that they were run entirely in memory (until they reached a configurable threshold anyway).
 
