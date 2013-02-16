@@ -1,0 +1,103 @@
+<html>
+  <head>
+    <title id="title">RavenDB - Avoiding ambiguity in result transformers</title>
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+
+    </script>
+  </head>
+  <body>
+    <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>
+    <div id="blog-entry">
+      <h1 id="post-title">RavenDB - Avoiding ambiguity in result transformers</h1>
+      <div id="post"><p>So, this is a niche case that is quite annoying for people writing transformers as part of a map or a map/reduce index - and now we have the ability to specify transformers separately to the index this problem only gets worse.</p>
+
+<p>What is this problem?</p>
+
+<p>Well, if I make a map that does this:</p>
+
+<pre><code>public class Ponies : AbstractIndexCreationTask&lt;Pony&gt;
+{
+   public Ponies() {
+     Map = ponies =&gt;
+           from pony in ponies
+           select new {
+             pony.Name,
+             pony.Colour
+           }
+
+     Store(pony =&gt; pony.CutieMark, FieldStorage.Yes);
+   }
+}
+</code></pre>
+
+<p>Available to me <em>without even loading the document</em> after performing a query, is "Name", "Colour", and "CutieMark". Obviously we can store other things in there as well, and so some funky things in the map - but this is the essence of this functionality.</p>
+
+<p>The same thing happens by default when you apply a reduce stage to an index, because you lose the original document entirely because of aggregation.</p>
+
+<p>This can be a bit confusing, as sometimes you want the result from that store data, and sometimes you want the data from the document, and this has been an all-or-nothing thing.</p>
+
+<p>Now we can <a href="/entries/result-transformers---not-just-for-querying.html">Use Load&lt;></a> with a ResultTransformer, this is even more ambiguous.</p></div>
+      <div id="links">
+        <a href="/">Go back to the index</a><br />
+        <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>
+        <a href="http://twitter.com/robashton">@robashton</a>
+      </div>
+      <div id="inqob_job_postings"></div> 
+      <script type="text/javascript" charset="utf-8">
+        var __inqob_settings = {
+          email_address:  'robashton@codeofrob.com', 
+          token:          '',
+          debug: false,
+          items: [{
+            keyword: 'codeofrob', 
+            price: 100 
+          }]
+        };
+
+        (function(is) {
+          var sc = document.createElement('script'); sc.type = 'text/javascript'; sc.async = true;
+          var src = (document.location.protocol == 'https:' ? 'https://' : 'http://') + 'inqob.com/get/script';
+          var q = [];
+          q.push('?t='+ new Date().getTime()); 
+          q.push('token=' + is.token); 
+          q.push('email_address=' + is.email_address); 
+          q.push('href=' + encodeURIComponent(window.location.href));
+          sc.src = src + q.join('&');
+          var s = document.getElementsByTagName('script')[0]; 
+          s.parentNode.insertBefore(sc, s);
+        })(__inqob_settings);      
+      </script>
+      <div id="disqus">
+        <div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+      </div>
+    </div>
+    <div id="post-comments">
+
+    </div>
+  </body>
+</html>
