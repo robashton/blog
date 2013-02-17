@@ -4,6 +4,8 @@ I spent a few hours in the car on the way to and back from the Dead Sea and this
 
 The first thing I did was download [the source](https://code.google.com/p/leveldb/) and un-pack it, I also grabbed [@kellabytes](http://twitter.com/kellabyte)'s '[Dazzle](https://github.com/kellabyte/Dazzle)' source code as an 'RTFM' back-up.
 
+What I really like is that the header files for LevelDB are the best means of documentation, I forgot I liked this about C++, I now remember - all the learnings done ended up being done by just reading the source code, pretty neat.
+
 So, what do we have?
 
 *Opening a database*
@@ -30,7 +32,7 @@ So, what do we have?
     store->Delete(leveldb::WriteOptions(), "key");
 
 
-*Eeeeeeeee*
+*Squeeeeeeee*
 
 I love how simple that is, and that each of these is a safe operation, important to note the following at this point:
 
@@ -49,6 +51,8 @@ Importantly for RavenDB, we need to be able to write multiple operations in an a
      batch.Put("key2", value);
      db->Write(leveldb::WriteOptions(), &batch);
 
-What I really like is that the header files for LevelDB are the best means of documentation, I forgot I liked this about C++, I now remember :-)
 
-This isn't actually enough for RavenDB, and I'll cover the reasons for that in the next entry.
+LevelDB can actually operate in async or synchronous mode, but because Raven makes gaurantees about writes I can't think why we'd use the async mode (because there isn't any way to know when these writes are finished to my knowledge).
+
+These guarantees aren't actually enough for RavenDB, and I'll cover the reasons for that in the next entry.
+
