@@ -28,7 +28,7 @@ In 7 days, **this** is what we got done:
   - [Transparent loading of documents in transformers](/entries/ravendb---avoiding-ambiguity-in-result-transformers.html)
   - [Query inputs for result transformers](/entries/custom-query-inputs-in-ravendb.html)
   - [Investigation of mono persistence for RavenDB](/entries/investigating-ravendb-on-mono-for-reals.html)
-  - [An](/entries/basic-operations-with-leveldb.html) [investigation](/entries/secondary-indexes-on-top-of-leveldb.html) [into](/entries/transactional-guarantees-on-top-of-leveldb.html) [the use](/entries/writing-a-transaction-manager-on-top-of-leveldb.html) [leveldb](/entries/streaming-large-values-from-leveldb.html)
+  - [An](/entries/basic-operations-with-leveldb.html) [investigation](/entries/secondary-indexes-on-top-of-leveldb.html) [into](/entries/transactional-guarantees-on-top-of-leveldb.html) [the use](/entries/writing-a-transaction-manager-on-top-of-leveldb.html) [leveldb](/entries/streaming-large-values-from-leveldb.html) for RavenDB persistence
 
 Now, I'll admit that some of the taxes on these items have not been paid, and that's the hit and run aspect of the job. These taxes include some of the tidying around the edges of these tasks (such as verifying the API for everything is written for the async interfaces, or adding buttons to the Admin Studio), but the challenging aspect of driving the vertical stake end-to-end through the features (complete with tests) has been done and the challenging questions have been debated and answered.
 
