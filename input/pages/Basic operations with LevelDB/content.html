@@ -1,0 +1,55 @@
+<p>So, in <a href="/entries/investigating-ravendb-on-mono-for-reals.html">trying out LevelDB</a>, I need to work out the basics, and then apply those learnings to whether the functionality exposed is compatible with RavenDB's storage needs.</p>
+
+<p>I spent a few hours in the car on the way to and back from the Dead Sea and this seemed like an ideal time to crack out the g++ and write some C++ on top of LevelDB.</p>
+
+<p>The first thing I did was download <a href="https://code.google.com/p/leveldb/">the source</a> and un-pack it, I also grabbed <a href="http://twitter.com/kellabyte">@kellabytes</a>'s '<a href="https://github.com/kellabyte/Dazzle">Dazzle</a>' source code as an 'RTFM' back-up.</p>
+
+<p>So, what do we have?</p>
+
+<p><em>Opening a database</em></p>
+
+<pre><code>leveldb::DB* db;
+leveldb::DB::Open(options, "play/testdb", &amp;db);
+</code></pre>
+
+<p><em>Putting something in</em></p>
+
+<pre><code>status = db-&gt;Put(leveldb::WriteOptions(), "Key", "Hello World");
+</code></pre>
+
+<p><em>Getting something out</em></p>
+
+<pre><code>std::string document;
+store-&gt;Get(leveldb::ReadOptions(), "key", &amp;document);
+</code></pre>
+
+<p><em>Deleting something</em></p>
+
+<pre><code>store-&gt;Delete(leveldb::WriteOptions(), "key");
+</code></pre>
+
+<p><em>Eeeeeeeee</em></p>
+
+<p>I love how simple that is, and that each of these is a safe operation, important to note the following at this point:</p>
+
+<ul>
+<li>I'm passing in strings to those put/get operations</li>
+<li>LevelDB is copying to/from those strings</li>
+<li>Because we're using strings, scope determines the release of memory</li>
+</ul>
+
+<p>This is elegant, Put actually takes a "Slice" type too, but that's implicitly convertable from a string and therefore this works nicely. </p>
+
+<p>I'll cover Slice on its own as it's an interesting notion if I understand it correctly.</p>
+
+<p>Importantly for RavenDB, we need to be able to write multiple operations in an atomic fashion, LevelDB appears to accommodate for this neatly.</p>
+
+<pre><code> leveldb::WriteBatch batch;
+ batch.Delete("key");
+ batch.Put("key2", value);
+ db-&gt;Write(leveldb::WriteOptions(), &amp;batch);
+</code></pre>
+
+<p>What I really like is that the header files for LevelDB are the best means of documentation, I forgot I liked this about C++, I now remember :-)</p>
+
+<p>This isn't actually enough for RavenDB, and I'll cover the reasons for that in the next entry.</p>
