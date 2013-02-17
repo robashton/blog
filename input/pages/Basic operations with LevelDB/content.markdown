@@ -52,7 +52,7 @@ Importantly for RavenDB, we need to be able to write multiple operations in an a
      db->Write(leveldb::WriteOptions(), &batch);
 
 
-LevelDB can actually operate in async or synchronous mode, but because Raven makes gaurantees about writes I can't think why we'd use the async mode (because there isn't any way to know when these writes are finished to my knowledge).
+LevelDB can actually operate in async or synchronous mode, but because Raven makes gaurantees about writes having happened I can't think we'd be able to use async mode (because there isn't any way to know when these writes are finished to my knowledge).
 
 These guarantees aren't actually enough for RavenDB, and I'll cover the reasons for that in the next entry.
 

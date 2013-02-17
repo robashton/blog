@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title id="title">Basic operations with LevelDB</title>
+    <title id="title">Writing a transaction manager on top of LevelDB</title>
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
     <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
     <script type="text/javascript">
@@ -20,64 +20,79 @@
   <body>
     <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>
     <div id="blog-entry">
-      <h1 id="post-title">Basic operations with LevelDB</h1>
-      <div id="post"><p>So, in <a href="/entries/investigating-ravendb-on-mono-for-reals.html">trying out LevelDB</a>, I need to work out the basics, and then apply those learnings to whether the functionality exposed is compatible with RavenDB's storage needs.</p>
+      <h1 id="post-title">Writing a transaction manager on top of LevelDB</h1>
+      <div id="post"><p>So we can do <a href="/entries/transactional-guarantees-on-top-of-leveldb.html">consistent reads</a> and <a href="/entries/basic-operations-with-leveldb.html">batched writes</a>, but consistency across the two of these isn't built in.</p>
 
-<p>I spent a few hours in the car on the way to and back from the Dead Sea and this seemed like an ideal time to crack out the g++ and write some C++ on top of LevelDB.</p>
+<p>Turns out this isn't a big deal and doesn't require an awful lot of work to build in on top of LevelDB. </p>
 
-<p>The first thing I did was download <a href="https://code.google.com/p/leveldb/">the source</a> and un-pack it, I also grabbed <a href="http://twitter.com/kellabyte">@kellabytes</a>'s '<a href="https://github.com/kellabyte/Dazzle">Dazzle</a>' source code as an 'RTFM' back-up.</p>
+<p>This might actually be one of the strengths of LevelDB, that it does some of the more technically challenging stuff (putting all the levels and atomicity into the DB for the experts), but doesn't make decisions like what sort of guarantees you need in your database for you.</p>
 
-<p>What I really like is that the header files for LevelDB are the best means of documentation, I forgot I liked this about C++, I now remember - all the learnings done ended up being done by just reading the source code, pretty neat.</p>
+<p>So, into the C# for a little experiment I wrote a very rudimentary transaction manager on top of ConcurrentDictionary.</p>
 
-<p>So, what do we have?</p>
-
-<p><em>Opening a database</em></p>
-
-<pre><code>leveldb::DB* db;
-leveldb::DB::Open(options, "play/testdb", &amp;db);
+<pre><code>var myStore = new Storage(leveldb);
+myStore.Batch(accessor =&gt; {
+  var doc = accessor.Get("key1");
+  accessor.Put("key2", "Hello");
+});
 </code></pre>
 
-<p><em>Putting something in</em></p>
+<p>What does this look like?</p>
 
-<pre><code>status = db-&gt;Put(leveldb::WriteOptions(), "Key", "Hello World");
+<pre><code>public void Batch(Action&lt;StorageAccessor&gt; actions) {
+  var transaction = this.CreateTransaction();
+  var accessor = new StorageAccessor(this, transaction);
+  try {
+    actions(accessor);
+  } catch(Exception ex) {
+    this.RollbackTransaction(transaction);
+    throw;
+  }
+  this.CommitTransaction(transaction);
+}
 </code></pre>
 
-<p><em>Getting something out</em></p>
+<p>Where the accessor simply calls the Get/Put/Delete methods on the storage and passes in the transaction associated with it.</p>
 
-<pre><code>std::string document;
-store-&gt;Get(leveldb::ReadOptions(), "key", &amp;document);
+<pre><code>public class StorageAccessor {
+  private Storage storage;
+  private StorageTransaction transaction;
+
+  public StorageAccessor(Storage storage, StorageTransaction transaction) {
+    this.storage = storage;
+    this.transaction = transaction;
+  }
+
+  public Object Get(string id) {
+    return this.storage.Get(id, this.transaction);
+  }
+
+  public void Put(string id, Object obj) {
+    this.storage.Put(id, obj, this.transaction);
+  }
+
+  public void Delete(string id) {
+    this.storage.Delete(id, this.transaction);
+  }
+}
 </code></pre>
 
-<p><em>Deleting something</em></p>
+<p>Where we then make a check to see if another transaction has modified that key in the meantime</p>
 
-<pre><code>store-&gt;Delete(leveldb::WriteOptions(), "key");
+<pre><code>public void Put(string id, Object obj, StorageTransaction transaction) {
+  this.keysToTransactionId.AddOrUpdate(id, (key) =&gt; {
+      transaction.AddOperation(storage =&gt; storage.Put(id, obj));
+      return transaction.Id;
+    }, 
+    (key, oldValue) =&gt; {
+    // NOTE: This doesn't handle the transaction doing multiple operations on the same key
+    throw new Exception("This should be a concurrency exception but I'm lazy");
+  });
+}
 </code></pre>
 
-<p><em>Squeeeeeeee</em></p>
+<p>Obviously a real implementation needs to do things like keep modified information around so reads can go via that before hitting the LevelDB snapshot, but in essence you can build a pretty simple transaction manager providing your underlying storage does the hard work of managing atomicity of operations.</p>
 
-<p>I love how simple that is, and that each of these is a safe operation, important to note the following at this point:</p>
-
-<ul>
-<li>I'm passing in strings to those put/get operations</li>
-<li>LevelDB is copying to/from those strings</li>
-<li>Because we're using strings, scope determines the release of memory</li>
-</ul>
-
-<p>This is elegant, Put actually takes a "Slice" type too, but that's implicitly convertable from a string and therefore this works nicely. </p>
-
-<p>I'll cover Slice on its own as it's an interesting notion if I understand it correctly.</p>
-
-<p>Importantly for RavenDB, we need to be able to write multiple operations in an atomic fashion, LevelDB appears to accommodate for this neatly.</p>
-
-<pre><code> leveldb::WriteBatch batch;
- batch.Delete("key");
- batch.Put("key2", value);
- db-&gt;Write(leveldb::WriteOptions(), &amp;batch);
-</code></pre>
-
-<p>LevelDB can actually operate in async or synchronous mode, but because Raven makes gaurantees about writes having happened I can't think we'd be able to use async mode (because there isn't any way to know when these writes are finished to my knowledge).</p>
-
-<p>These guarantees aren't actually enough for RavenDB, and I'll cover the reasons for that in the next entry.</p></div>
+<p>Next up, back to the C++ as I look at what we're doing do about large values in RavenDB documents.</p></div>
       <div id="links">
         <a href="/">Go back to the index</a><br />
         <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>

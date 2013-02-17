@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title id="title">Basic operations with LevelDB</title>
+    <title id="title">Transactional guarantees on top of LevelDB</title>
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
     <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
     <script type="text/javascript">
@@ -20,64 +20,50 @@
   <body>
     <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>
     <div id="blog-entry">
-      <h1 id="post-title">Basic operations with LevelDB</h1>
-      <div id="post"><p>So, in <a href="/entries/investigating-ravendb-on-mono-for-reals.html">trying out LevelDB</a>, I need to work out the basics, and then apply those learnings to whether the functionality exposed is compatible with RavenDB's storage needs.</p>
+      <h1 id="post-title">Transactional guarantees on top of LevelDB</h1>
+      <div id="post"><p>So, I'm <a href="/entries/basic-operations-with-leveldb.html">experimenting with LevelDB</a> and I've discovered that it does atomic writes both on single operations and batches of operations.</p>
 
-<p>I spent a few hours in the car on the way to and back from the Dead Sea and this seemed like an ideal time to crack out the g++ and write some C++ on top of LevelDB.</p>
+<p>This isn't actually all we need in RavenDB, as we need to be able to support multiple reads and writes - potentially over a period of time.</p>
 
-<p>The first thing I did was download <a href="https://code.google.com/p/leveldb/">the source</a> and un-pack it, I also grabbed <a href="http://twitter.com/kellabyte">@kellabytes</a>'s '<a href="https://github.com/kellabyte/Dazzle">Dazzle</a>' source code as an 'RTFM' back-up.</p>
+<p>We can't just be reading from a database that might be changing under our feet all of the time, and it turns out that LevelDB gives us the ability to read from a particular version of the database.</p>
 
-<p>What I really like is that the header files for LevelDB are the best means of documentation, I forgot I liked this about C++, I now remember - all the learnings done ended up being done by just reading the source code, pretty neat.</p>
+<p>When beginning a long running operation that needs a consistent read-state, we can create a snapshot and use this in all of our reads to ensure we have a consistent view of the database.</p>
 
-<p>So, what do we have?</p>
+<pre><code>// Create a snapshot at the beginning of a sequence of operations
+leveldb::Snapshot* snapshot = db-&gt;GetSnapshot();
 
-<p><em>Opening a database</em></p>
 
-<pre><code>leveldb::DB* db;
-leveldb::DB::Open(options, "play/testdb", &amp;db);
+// For each read operation we can use this snapshot
+leveldb::ReadOptions options;
+options.snapshot = snapshot;
+
+db-&gt;Get(options, "key", &amp;document);
 </code></pre>
 
-<p><em>Putting something in</em></p>
+<p>That solves that problem then, although it leaves another question in the air - which is how LevelDB handles multiple writers modifying the same key.</p>
 
-<pre><code>status = db-&gt;Put(leveldb::WriteOptions(), "Key", "Hello World");
+<p>Consider a thread coming along and beginning an operation</p>
+
+<pre><code>tx1 = store-&gt;BeginOperation();
 </code></pre>
 
-<p><em>Getting something out</em></p>
+<p>And another thread beginning an operation</p>
 
-<pre><code>std::string document;
-store-&gt;Get(leveldb::ReadOptions(), "key", &amp;document);
+<pre><code>tx2 = store-&gt;BeginOperation();
 </code></pre>
 
-<p><em>Deleting something</em></p>
+<p>And then</p>
 
-<pre><code>store-&gt;Delete(leveldb::WriteOptions(), "key");
+<pre><code>// Thread one deletes a key
+store-&gt;Delete("key1", tx1);
+
+// Thread two Writes to that key
+store-&gt;Put("key1", tx2);
 </code></pre>
 
-<p><em>Squeeeeeeee</em></p>
+<p>By default (at least as I understand) LevelDB will happily accept these operations as it doesn't have any concurrency control.</p>
 
-<p>I love how simple that is, and that each of these is a safe operation, important to note the following at this point:</p>
-
-<ul>
-<li>I'm passing in strings to those put/get operations</li>
-<li>LevelDB is copying to/from those strings</li>
-<li>Because we're using strings, scope determines the release of memory</li>
-</ul>
-
-<p>This is elegant, Put actually takes a "Slice" type too, but that's implicitly convertable from a string and therefore this works nicely. </p>
-
-<p>I'll cover Slice on its own as it's an interesting notion if I understand it correctly.</p>
-
-<p>Importantly for RavenDB, we need to be able to write multiple operations in an atomic fashion, LevelDB appears to accommodate for this neatly.</p>
-
-<pre><code> leveldb::WriteBatch batch;
- batch.Delete("key");
- batch.Put("key2", value);
- db-&gt;Write(leveldb::WriteOptions(), &amp;batch);
-</code></pre>
-
-<p>LevelDB can actually operate in async or synchronous mode, but because Raven makes gaurantees about writes having happened I can't think we'd be able to use async mode (because there isn't any way to know when these writes are finished to my knowledge).</p>
-
-<p>These guarantees aren't actually enough for RavenDB, and I'll cover the reasons for that in the next entry.</p></div>
+<p>Happily, this is easy enough to work through as we'll see in the next entry.</p></div>
       <div id="links">
         <a href="/">Go back to the index</a><br />
         <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>

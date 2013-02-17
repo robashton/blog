@@ -1,0 +1,43 @@
+<p>So, I'm <a href="/entries/basic-operations-with-leveldb.html">experimenting with LevelDB</a> and I've discovered that it does atomic writes both on single operations and batches of operations.</p>
+
+<p>This isn't actually all we need in RavenDB, as we need to be able to support multiple reads and writes - potentially over a period of time.</p>
+
+<p>We can't just be reading from a database that might be changing under our feet all of the time, and it turns out that LevelDB gives us the ability to read from a particular version of the database.</p>
+
+<p>When beginning a long running operation that needs a consistent read-state, we can create a snapshot and use this in all of our reads to ensure we have a consistent view of the database.</p>
+
+<pre><code>// Create a snapshot at the beginning of a sequence of operations
+leveldb::Snapshot* snapshot = db-&gt;GetSnapshot();
+
+
+// For each read operation we can use this snapshot
+leveldb::ReadOptions options;
+options.snapshot = snapshot;
+
+db-&gt;Get(options, "key", &amp;document);
+</code></pre>
+
+<p>That solves that problem then, although it leaves another question in the air - which is how LevelDB handles multiple writers modifying the same key.</p>
+
+<p>Consider a thread coming along and beginning an operation</p>
+
+<pre><code>tx1 = store-&gt;BeginOperation();
+</code></pre>
+
+<p>And another thread beginning an operation</p>
+
+<pre><code>tx2 = store-&gt;BeginOperation();
+</code></pre>
+
+<p>And then</p>
+
+<pre><code>// Thread one deletes a key
+store-&gt;Delete("key1", tx1);
+
+// Thread two Writes to that key
+store-&gt;Put("key1", tx2);
+</code></pre>
+
+<p>By default (at least as I understand) LevelDB will happily accept these operations as it doesn't have any concurrency control.</p>
+
+<p>Happily, this is easy enough to work through as we'll see in the next entry.</p>

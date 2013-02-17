@@ -1,0 +1,154 @@
+<html>
+  <head>
+    <title id="title">Secondary indexes on top of LevelDB</title>
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+
+    </script>
+  </head>
+  <body>
+    <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>
+    <div id="blog-entry">
+      <h1 id="post-title">Secondary indexes on top of LevelDB</h1>
+      <div id="post"><p>Got <a href="/entries/basic-operations-with-leveldb.htm">atomic writes</a>, <a href="/entries/transactional-guarantees-on-top-of-leveldb.html">consistent reads</a>, <a href="/entries/writing-a-transaction-manager-on-top-of-leveldb.html">transactions</a> and we can <a href="/entries/streaming-large-values-from-leveldb.html">do streaming</a> if we need to - now if we can do secondary indexes we can move forwards with creating a storage implementation for RavenDB.</p>
+
+<p>An example of a couple of indexes we need in RavenDB is:</p>
+
+<ul>
+<li>The document itself stored by key (primary index)</li>
+<li>The document key stored by etag (secondary index)</li>
+</ul>
+
+<p>Whenever we write a document in RavenDB, we want to</p>
+
+<ul>
+<li>Remove the old Etag (or at least update it)</li>
+<li>Write the document against its key</li>
+<li>Write a new etag for the document</li>
+</ul>
+
+<p>(Actually, a bit more goes on than this as we store meta data for headers etc, but this will do for now)</p>
+
+<p>The operation we want to do when indexing is</p>
+
+<ul>
+<li>What are all the new etags since last we indexed?</li>
+<li>Loop through each of these, load the document and index it</li>
+</ul>
+
+<p>Etags are sortable by design, in my rough and ready document database the etag is just an integer that I increase every time I add a new document.</p>
+
+<p>Now, when writing and reading from the database, we need to be able to differentiate between types of key in the database, and ordering for each of these types is set by the key.</p>
+
+<p><em>For example, reading a document</em></p>
+
+<pre><code>#define DOCPREFIX "/docs/"
+#define ETAGPREFIX "/etags/"
+
+
+void Get(std::string id, std::string* doc) {
+  std::stringstream st;
+  st &lt;&lt; DOCPREFIX;
+  st &lt;&lt; id;
+  std::string key = st.str();
+  this-&gt;lastStatus = this-&gt;db-&gt;Get(leveldb::ReadOptions(), key, doc);
+}
+</code></pre>
+
+<p>So I'm sticking a prefix in front of each key to denote what sort of key it is, yay.</p>
+
+<p>That means that my secondary index of etags will end up looking like this</p>
+
+<pre><code>/etags/0 -&gt; /docs/1
+/etags/1 -&gt; /docs/5
+/etags/2 -&gt; /docs/4
+/etags/3 -&gt; /docs/6
+/etags/4 -&gt; /docs/3
+/etags/6 -&gt; /docs/7
+/etags/8 -&gt; /docs/12
+/etags/9 -&gt; /docs/5
+</code></pre>
+
+<p>When I want to index documents newer than /etags/5, I can do</p>
+
+<pre><code>int IndexNewDocumentsNewerThan(int etag) {
+  std::stringstream st;
+  st &lt;&lt; ETAGPREFIX;
+  st &lt;&lt; etag;
+  std::string startkey = st.str();
+
+  leveldb::Iterator* it = this-&gt;db-&gt;NewIterator(leveldb::ReadOptions());
+  for (it-&gt;Seek(startkey); it-&gt;Valid() &amp;&amp; this-&gt;IsEtagKey(it-&gt;key().ToString()); it-&gt;Next()) {
+    std::string document = it-&gt;value().ToString();
+    IndexDocument(value);
+  }
+  delete it;
+}
+</code></pre>
+
+<p>Building up other indexes is a trivial matter of making sure we have a suitable ordering in place, and queries are simply a matter of building up these keys appropriately.</p>
+
+<p>With all of this, I think we have enough information to go and build persistence for RavenDB on top of LevelDB (and then test test test, performance performance performance etc).</p></div>
+      <div id="links">
+        <a href="/">Go back to the index</a><br />
+        <a href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>
+        <a href="http://twitter.com/robashton">@robashton</a>
+      </div>
+      <div id="inqob_job_postings"></div> 
+      <script type="text/javascript" charset="utf-8">
+        var __inqob_settings = {
+          email_address:  'robashton@codeofrob.com', 
+          token:          '',
+          debug: false,
+          items: [{
+            keyword: 'codeofrob', 
+            price: 100 
+          }]
+        };
+
+        (function(is) {
+          var sc = document.createElement('script'); sc.type = 'text/javascript'; sc.async = true;
+          var src = (document.location.protocol == 'https:' ? 'https://' : 'http://') + 'inqob.com/get/script';
+          var q = [];
+          q.push('?t='+ new Date().getTime()); 
+          q.push('token=' + is.token); 
+          q.push('email_address=' + is.email_address); 
+          q.push('href=' + encodeURIComponent(window.location.href));
+          sc.src = src + q.join('&');
+          var s = document.getElementsByTagName('script')[0]; 
+          s.parentNode.insertBefore(sc, s);
+        })(__inqob_settings);      
+      </script>
+      <div id="disqus">
+        <div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+      </div>
+    </div>
+    <div id="post-comments">
+
+    </div>
+  </body>
+</html>
