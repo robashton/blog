@@ -3,3 +3,38 @@
 <p>Well, this has been asked for a number of times and since <a href="/entries/ravendb-resulttransformers---a-new-way-of-looking-at-things.html'">splitting out results-transformers</a> into their own process, it has become much easier to add this functionality.</p>
 
 <p>What does this look like?</p>
+
+<p>Well, say we have a result transformer that takes Ponies and creates unicorns, only our database doesn't know about horns - let's see what we can do here.</p>
+
+<pre><code>public class Unicorn {
+  public string Name { get; set; }
+  public string Colour { get; set; }
+  public string CutieMark { get; set; }
+  public int Hornsize { get; set; }
+}
+
+public class PoniesIntoUnicorns : AbstractTransformerCreationTask&lt;Pony&gt; {
+  public PoniesIntoUnicorns() {
+    Transform = ponies =&gt; from pony in ponies
+                          select new {
+                            pony.Name,
+                            pony.Colour,
+                            pony.CutieMark,
+                            Hornsize = pony.Size * Query["hornscalefactor"]
+                          }
+  }
+}
+</code></pre>
+
+<p>Okay, contrived example but this feature isn't for me and my pony database, it's for you and your requirements, and you know it's you I'm talking about because you're looking at the above and going <em>finally, I've been waiting for this</em>.</p>
+
+<p>How do we use the above?</p>
+
+<pre><code>session.Query&lt;Pony&gt;()
+       .Where(pony =&gt; pony.Colour === "purple")
+       .TransformWith&lt;PoniesIntoUnicorns, Unicorn&gt;()
+       .AddQueryInput("hornscalefactor", 0.1)
+       .ToArray();
+</code></pre>
+
+<p>Pretty simple and effective, glad I could oblige :)</p>
