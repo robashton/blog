@@ -37,6 +37,7 @@ var compilePosts = function(posts) {
   //wrench.rmdirSyncRecursive('site/entries/');
   //fs.mkdirSync('site/entries', '777');
   var pageTemplate = fs.readFileSync('input/source/pagetemplate.html', 'utf8');
+  var rssItems = 0;
   for(var i = 0 ; i < posts.length; i++) {
     var post = posts[i];
     var outputFilename = 'site/entries/' + common.titleToPage(post.title);
@@ -44,11 +45,12 @@ var compilePosts = function(posts) {
     var commentHtml = '';
     var inputComments = JSON.parse(fs.readFileSync('input/pages/' + common.titleToFolder(post.title) + '/comments.json', 'utf8'));
     
-    if( i < 10 && new Date(post.date) < new Date()) {
+    if( rssItems < 10 && new Date(post.date) < new Date()) {
+      rssItems++
       feed.item({
           title:  post.title,
           url: 'http://codeofrob.com/entries/' + common.titleToPage(post.title),
-          description: inputHtml.replace(/\<!\[CDATA\[/gm, '').replace(/\]\]\>/gm, ''), // replace(/<(?:.|\n)*?>/gm, '').substr(0, 512) + '...',
+          description: inputHtml.replace(/\<!\[CDATA\[/gm, '').replace(/\]\]\>/gm, ''), 
           date: post.date
       });
     }
