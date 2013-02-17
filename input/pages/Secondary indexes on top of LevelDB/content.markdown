@@ -69,3 +69,6 @@ When I want to index documents newer than /etags/5, I can do
 Building up other indexes is a trivial matter of making sure we have a suitable ordering in place, and queries are simply a matter of building up these keys appropriately.
 
 With all of this, I think we have enough information to go and build persistence for RavenDB on top of LevelDB (and then test test test, performance performance performance etc).
+
+If you want to check out the spikes and playarounds with LevelDB, you can find them on my [Github](https://github.com/robashton/leveldb-play)
+
