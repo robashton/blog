@@ -1,0 +1,160 @@
+<html>
+  <head>
+    <title id="title">The price of abstraction - using LevelDB in RavenDB</title>
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+
+    </script>
+  </head>
+  <body>
+    <a class="subscribe" href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>
+    <div id="blog-entry">
+      <h1 id="post-title">The price of abstraction - using LevelDB in RavenDB</h1>
+      <div id="post"><p>So, in our little foray into LevelDB, we've uncovered the following:</p>
+
+<ul>
+<li>We can do <a href="/entries/basic-operations-with-leveldb.htm">atomic writes</a></li>
+<li>We can have <a href="/entries/transactional-guarantees-on-top-of-leveldb.html">consistent reads</a>, </li>
+<li>We can create a <a href="/entries/writing-a-transaction-manager-on-top-of-leveldb.html">transaction manager</a> on top of LevelDB </li>
+<li>We can can <a href="/entries/streaming-large-values-from-leveldb.html">stream data out of LevelDB</a></li>
+<li>And we can create <a href="/entries/secondary-indexes-on-top-of-leveldb.html">secondary indexes</a></li>
+</ul>
+
+<p>With this, I set about creating a fork of RavenDB with a starting implementation of LevelDB for document storage.</p>
+
+<p>I grabbed the <a href="https://github.com/meebey/leveldb-sharp">C# bindings</a> from Github and set about re-implementing my in-memory transaction manager on top of them.</p>
+
+<p>The first thing I notice about the C# bindings is that the API looks like this:</p>
+
+<pre><code>string value = db.Get(string key)
+db.Put(string key, string value)
+</code></pre>
+
+<p>This is not what <a href="/entries/secondary-indexes-on-top-of-leveldb.html">RavenDB wants</a>, what RavenDB wants is a MemoryStream or at the very least a ByteArray - as it is not in the business of pushing large strings around the place in managed memory.</p>
+
+<p>No problem, I fork the original project and set about addding Byte array support and then notice something.</p>
+
+<p><em>The bindings are using the C API for LevelDB</em> (which makes sense if you're going to support cross platform C#), but more importantly the C API looks something like this:</p>
+
+<pre><code>char* leveldb_get(char* key)
+</code></pre>
+
+<p>See that return result? That's a malloc, what does the LevelDB C# code do?</p>
+
+<pre><code> var value = Marshal.PtrToStringAnsi(valuePtr, (int) valueLength);
+ return value;
+</code></pre>
+
+<p>Ignoring the <a href="https://github.com/meebey/leveldb-sharp/issues/2">memory leak</a>, as it's a known issue and an easy mistake to make, we can see we're copying the data out of the unmanaged array into a managed string via the PtrToStringAnsi call.</p>
+
+<p>What does the C api do?</p>
+
+<pre><code>Status s = db-&gt;rep-&gt;Get(options-&gt;rep, Slice(key, keylen), &amp;tmp);
+if (s.ok()) {
+  *vallen = tmp.size();
+  result = CopyString(tmp);
+} else {
+  *vallen = 0;
+  if (!s.IsNotFound()) {
+    SaveError(errptr, s);
+  }
+}
+return result;
+</code></pre>
+
+<p>And CopyString?</p>
+
+<pre><code>static char* CopyString(const std::string&amp; str) {
+  char* result = reinterpret_cast&lt;char*&gt;(malloc(sizeof(char) * str.size()));
+  memcpy(result, str.data(), sizeof(char) * str.size());
+  return result;
+}
+</code></pre>
+
+<p><em>urk</em></p>
+
+<p>In order to get a stored document from LevelDB, the following operations are performed:</p>
+
+<pre><code>- Internally, LevelDB will load the document into memory
+- Internally, LevelDB will copy that memory into a string on a Get call
+- The C API copies that memory into a mallocced byte array
+- The C# API copies that memory into a managed string (probably on the Large Object Heap)
+</code></pre>
+
+<p>What we have here, is a C# wrapper around a C API that is a wrapper around a C++ API, and each of them is trying to be semantically equivalent to the underlying API - and the abstraction is <em>killing us</em>.</p>
+
+<p>For small values, this probably isn't a big deal, but RavenDB documents can be any size, and RavenDB documents often <em>are</em> any size - ideally what we want is</p>
+
+<pre><code>MemoryStream stream = db.Get(string key)
+</code></pre>
+
+<p>Where that stream reads from the start of an unmanaged array to the end of that unmanaged array and then disposes it.</p>
+
+<p>In essence, the job of getting LevelDB into RavenDB is going to involve writing a new C API for LevelDB specific to our needs, then writing a C# API around that API specific to our needs.</p>
+
+<p>Thankfully we need about 10% of the exposed functionality in LevelDB so our job isn't as hard as "writing a set of managed bindings for LevelDB", but this means that I won't have time to do this before I leave Israel.</p>
+
+<p>I put my sad face on and get to work on something more manageable for my final day of work :-(</p></div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feeds.feedburner.com/RobAshton">Subscribe</a>
+        <a href="http://twitter.com/robashton">Follow me</a>
+      </div>
+      <div id="inqob_job_postings"></div> 
+      <script type="text/javascript" charset="utf-8">
+        var __inqob_settings = {
+          email_address:  'robashton@codeofrob.com', 
+          token:          '',
+          debug: false,
+          items: [{
+            keyword: 'codeofrob', 
+            price: 100 
+          }]
+        };
+
+        (function(is) {
+          var sc = document.createElement('script'); sc.type = 'text/javascript'; sc.async = true;
+          var src = (document.location.protocol == 'https:' ? 'https://' : 'http://') + 'inqob.com/get/script';
+          var q = [];
+          q.push('?t='+ new Date().getTime()); 
+          q.push('token=' + is.token); 
+          q.push('email_address=' + is.email_address); 
+          q.push('href=' + encodeURIComponent(window.location.href));
+          sc.src = src + q.join('&');
+          var s = document.getElementsByTagName('script')[0]; 
+          s.parentNode.insertBefore(sc, s);
+        })(__inqob_settings);      
+      </script>
+      <div id="disqus">
+        <div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+      </div>
+    </div>
+    <div id="post-comments">
+
+    </div>
+  </body>
+</html>
