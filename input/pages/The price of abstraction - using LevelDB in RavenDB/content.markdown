@@ -15,7 +15,7 @@ The first thing I notice about the C# bindings is that the API looks like this:
     string value = db.Get(string key)
     db.Put(string key, string value)
 
-This is not what [RavenDB wants](/entries/secondary-indexes-on-top-of-leveldb.html), what RavenDB wants is a MemoryStream or at the very least a ByteArray - as it is not in the business of pushing large strings around the place in managed memory.
+This is not what [RavenDB wants](/entries/streaming-large-values-from-leveldb.html), what RavenDB wants is a MemoryStream or at the very least a ByteArray - as it is not in the business of pushing large strings around the place in managed memory.
 
 No problem, I fork the original project and set about addding Byte array support and then notice something.
 
