@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Sun, 17 Feb 2013 20:50:54 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Automatically merging indexes in RavenDB for optimal performance]]></title><description><![CDATA[<p>So, we can mark indexes as idle, we can automatically do this to auto indexes, and we delete auto indexes that aren't being used enough - that paves the way for a pretty useful feature - merging automatic indexes for fun and for profit.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Mon, 18 Feb 2013 09:02:38 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Next, we run new RavenDB indexes in memory]]></title><description><![CDATA[<p><a href="/entries/getting-rid-of-temporary-indexes-in-ravendb.html">Other day</a> I wrote about the awesome news that we'd managed to delete an entire code-path from RavenDB as a result of some of the other changes coming in.</p>
+
+<p>Well, it's not quite as simple as that, you see - temporary indexes in RavenDB had a reallly big advantage in that they were run entirely in memory (until they reached a configurable threshold anyway).</p>
+
+<p>That's good, because  indexes and running data through indexes is typically an IO bound process, and if we can keep the indexes in memory while we work on them, the whole proces can be a lot more efficient.</p>
+
+<p>Well, having gotten rid of an entire code path, surely it makes sense to move the code that used to do this to be applicable to all indexes?</p>
+
+<p>Absolutely, so starting from whenever my pull request gets merged, all new indexes in RavenDB will be ran in memory to begin with (meaning you get less stale results much faster - great if you're using the auto-indexes or experimenting with manual indexes on large sets of data).</p>
+
+<p>After the index has caught up with reality, it will be flushed to disk and celebrations will be had, or if the index reaches a configurable memory threshold that will happen too.</p>
+
+<p>This is a small change that makes a big difference, and is possible (in part) because we managed to get rid of having two different types of index and two different code paths.</p>
+
+<p>In the next entry, I'll talk about further optimisations made in this pull request to do with auto indexes.</p>]]></description><link>http://codeofrob.com/entries/next,-we-run-new-ravendb-indexes-in-memory.html</link><guid isPermaLink="true">http://codeofrob.com/entries/next,-we-run-new-ravendb-indexes-in-memory.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 18 Feb 2013 09:00:00 GMT</pubDate></item><item><title><![CDATA[Automatically merging indexes in RavenDB for optimal performance]]></title><description><![CDATA[<p>So, we can mark indexes as idle, we can automatically do this to auto indexes, and we delete auto indexes that aren't being used enough - that paves the way for a pretty useful feature - merging automatic indexes for fun and for profit.</p>
 
 <p>What is that you ask? Well - when we do the following series of queries</p>
 
@@ -687,99 +701,4 @@ do you want a browserify build script? (y/n)
 <li>Passing that vector around - is this a good idea?</li>
 </ul>
 
-<p>Anybody feel free to chip in at any time.</p>]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---attributes-and-vectors.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---attributes-and-vectors.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 15 Jun 2012 12:34:00 GMT</pubDate></item><item><title><![CDATA[Learn Functional Programming With Me - Moving The Square]]></title><description><![CDATA[<p>So, last session I managed to get a square being drawn, as if I haven't done that a thousand times in JS - now to do something a bit more dangerous (because it involves state), and more likely to get me in trouble - let's move the square around using the keyboard.</p>
-
-<p><strong>Reminder</strong>: The source for all of this can be found at <a href="https://github.com/robashton/clojure-spaceinvaders">github.com/robashton/clojure-spaceinvaders</a></p>
-
-<h2>Parameterising the function</h2>
-
-<p>This is a no-brainer, I'm going to need to know where to draw this thing, I start off by passing in the state required to draw a rect to my function.</p>
-
-<pre><code>(defn drawRect [x y w h]
-  (let [target (.getElementById js/document "target")
-        context (.getContext target "2d")]
-     (.fillRect context x y w h)           
-  )
-)
-</code></pre>
-
-<p>So far so good - but now I'm going to need to not only pass in those variables, but - well they're going to have to be variable (somehow) because they're going to have to change each frame and it's stuff like this that makes me break out in a cold sweat because I haven't discovered the patterns to solve this type of problem yet.</p>
-
-<p>Let's explain - you see that 'let' statement, the values I've defined there, those key value pairs are <em>immutable</em>, this means I cannot change them - for example, if I want to make this square move of its own voilition, the literal equivalent of</p>
-
-<pre><code>for(var x = 0; x &lt; 1000; x++)
-  drawRect(x, 0, 100, 100);
-</code></pre>
-
-<p>Doesn't exist.</p>
-
-<p>Now, if I were to make my best guess at how to solve this, I'd say that we need a function that takes in x, and then calls itself with x+1, for example at a conceptual level:</p>
-
-<pre><code>function drawAndMove(x) {
-  drawRect(x, 0, 100, 100)
-  if(x &lt;= 1000)
-    drawAndMove(x+1)
-}
-drawAndMove(0);
-</code></pre>
-
-<p>This actually maps across to a construct in our chosen world that looks something like the following:</p>
-
-<pre><code>(loop [x 0]
-  (drawRect x 0 100 100)     
-  (if (&lt;= x 1000)
-    (recur (inc x))
-  )
-)
-</code></pre>
-
-<ul>
-<li>I want to loop, I want the following values available in this loop (x = 0)</li>
-<li>Please draw the rect at x,0,100,100</li>
-<li>If x &lt;= 1000, recurse and increment x</li>
-</ul>
-
-<p>Okay, this is a bit crazy and verbose - perhaps there is a better more shorthand way of doing this (anybody care to chip in around now?), but Imma press ahead and say that actually, that is not the greatest loop of all time.</p>
-
-<p>We actually have to yield to the UI thread each 'frame' which blows this whole thing out of the water - that's not to say that this code isn't functional - because I love having a row of black drawn over my canvas on the UI thread with no user interaction whatsoever - but we actually need something like the following</p>
-
-<pre><code>function tick() {
-  logic();
-  render();
-  setTimeout(tick, 33);
-}
-</code></pre>
-
-<p>Again, cutting a corner here because I don't want to write a full on game loop in clojure just yet.</p>
-
-<p>Figuring it out, I've ended up with something like this</p>
-
-<pre><code>(defn tick [x]
-  (drawRect x 0 100 100)
-  (if (&lt;= x 1000)
-    (js/setTimeout (fn []
-       (tick (inc x))
-    ) 33  )
-  )
-)
-
-
-(defn ^:export init []
-   (tick 0)
-)
-</code></pre>
-
-<ul>
-<li>Define a function called tick, which takes in the current position of our object</li>
-<li>Draw a rect at that location</li>
-<li>If x is still less than 1000, then</li>
-<li>In 33 milliseconds, call tick again but with x+1</li>
-</ul>
-
-<p>I've actually gone far enough for a single blog entry at this point so I'll leave keyboard input till another day - I have some thoughts about this work so far however:</p>
-
-<ul>
-<li>That setTimeout doo-hick is taking in an anonymous function, am I creating this function every frame? I wouldn't do that in most of my JS, it's effectively the same as creating a closure in a loop - not good?</li>
-<li>I saw something like this that used global state and an atom, and then tick could be called with no parameters - is this a better solution? It seems somewhat against what functional programming is about</li>
-<li>Thoughts?</li>
-</ul>]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---moving-the-square.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---moving-the-square.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 13 Jun 2012 12:34:00 GMT</pubDate></item></channel></rss>
+<p>Anybody feel free to chip in at any time.</p>]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---attributes-and-vectors.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---attributes-and-vectors.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 15 Jun 2012 12:34:00 GMT</pubDate></item></channel></rss>

@@ -33,4 +33,6 @@ Rinse and repeat, we can actually do this within an enumerator and send appropri
 
 Whether this is necessary or not..., well it's nice to know we have the flexibility to touch and manipulate the memory as we need to.
 
-Great, now we just need support for secondary indexes, and for this I'll write a rudimentary document store.
+Most likely, copying into the string and using string.c_str() to get the pointer to the copied data will give us easier code - we'll see how that works out when it comes to writing the C# we need.
+
+Anyway, now we just need support for secondary indexes, and for this I'll write a rudimentary document store.
