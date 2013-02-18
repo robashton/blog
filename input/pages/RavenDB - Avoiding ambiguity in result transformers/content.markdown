@@ -11,10 +11,13 @@ Well, if I make a map that does this:
                from pony in ponies
                select new {
                  pony.Name,
-                 pony.Colour
+                 pony.Colour,
+                 pony.CutieMark
                }
 
          Store(pony => pony.CutieMark, FieldStorage.Yes);
+         Store(pony => pony.Name, FieldStorage.Yes);
+         Store(pony => pony.Colour, FieldStorage.Yes);
        }
     }
 
