@@ -1,5 +1,351 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Mon, 18 Feb 2013 13:25:36 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Next, we run new RavenDB indexes in memory]]></title><description><![CDATA[<p><a href="/entries/getting-rid-of-temporary-indexes-in-ravendb.html">Other day</a> I wrote about the awesome news that we'd managed to delete an entire code-path from RavenDB as a result of some of the other changes coming in.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Wed, 27 Feb 2013 11:36:42 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Custom query inputs in RavenDB]]></title><description><![CDATA[<p>Back on the list of things "added to RavenDB" <a href="/entries/working-at-hibernating-rhinos.html">during my time at Hibernating Rhinos</a>, ever wished you could pass custom arguments to the transformer when performing a query in RavenDB?</p>
+
+<p>Well, this has been asked for a number of times and since <a href="/entries/ravendb-resulttransformers---a-new-way-of-looking-at-things.html'">splitting out results-transformers</a> into their own process, it has become much easier to add this functionality.</p>
+
+<p>What does this look like?</p>
+
+<p>Well, say we have a result transformer that takes Ponies and creates unicorns, only our database doesn't know about horns - let's see what we can do here.</p>
+
+<pre><code>public class Unicorn {
+  public string Name { get; set; }
+  public string Colour { get; set; }
+  public string CutieMark { get; set; }
+  public int Hornsize { get; set; }
+}
+
+public class PoniesIntoUnicorns : AbstractTransformerCreationTask&lt;Pony&gt; {
+  public PoniesIntoUnicorns() {
+    Transform = ponies =&gt; from pony in ponies
+                          select new {
+                            pony.Name,
+                            pony.Colour,
+                            pony.CutieMark,
+                            Hornsize = pony.Size * Query["hornscalefactor"]
+                          }
+  }
+}
+</code></pre>
+
+<p>Okay, contrived example but this feature isn't for me and my pony database, it's for you and your requirements, and you know it's you I'm talking about because you're looking at the above and going <em>finally, I've been waiting for this</em>.</p>
+
+<p>How do we use the above?</p>
+
+<pre><code>session.Query&lt;Pony&gt;()
+       .Where(pony =&gt; pony.Colour === "purple")
+       .TransformWith&lt;PoniesIntoUnicorns, Unicorn&gt;()
+       .AddQueryInput("hornscalefactor", 0.1)
+       .ToArray();
+</code></pre>
+
+<p>Pretty simple and effective, glad I could oblige :)</p>
+
+<p>Oh yeah, it works for Load too</p>
+
+<pre><code>var unicorn = session.Load&lt;PoniesIntoUnicorns, Pony&gt;(
+              x=&gt; x.AddQueryInput("hornscalefactor", 0.1))
+</code></pre>
+
+<p>Not the tidiest API in the world, but I'm sure it will improve as people actually use it.</p>]]></description><link>http://codeofrob.com/entries/custom-query-inputs-in-ravendb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/custom-query-inputs-in-ravendb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 27 Feb 2013 09:00:00 GMT</pubDate></item><item><title><![CDATA[Talking at DevSum 2013]]></title><description><![CDATA[<p>I've been told I need to tell people when I'm doing talks, so consider this my attempt at making this so.</p>
+
+<p>I'll be talking at <a href="http://devsum.se/">Devsum 2013</a> on the 29th/30th of May on the <a href="http://devsum.se/talare/rob-ashton/">pragmatic outside-in testing of ASP.NET MVC applications</a></p>
+
+<p>I went to Devsum last year and had a lot of fun, last year the venue was just down the road from an Irish Pub and that pretty much put the icing on the cake. Let me know if you're going to be there and we can organise a guinness driven get-together.</p>
+
+<p>Hoping to announce a few other talks here soon, I finish travelling and working around the world at the end of May and I'm available.</p>]]></description><link>http://codeofrob.com/entries/talking-at-devsum-2013.html</link><guid isPermaLink="true">http://codeofrob.com/entries/talking-at-devsum-2013.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 26 Feb 2013 09:00:00 GMT</pubDate></item><item><title><![CDATA[RavenDB - Avoiding ambiguity in result transformers]]></title><description><![CDATA[<p>So, this is a niche case that is quite annoying for people writing transformers as part of a map or a map/reduce index - and now we have the ability to specify transformers separately to the index this problem only gets worse.</p>
+
+<p>What is this problem?</p>
+
+<p>Well, if I make a map that does this:</p>
+
+<pre><code>public class Ponies : AbstractIndexCreationTask&lt;Pony&gt;
+{
+   public Ponies() {
+     Map = ponies =&gt;
+           from pony in ponies
+           select new {
+             pony.Name,
+             pony.Colour,
+             pony.CutieMark
+           }
+
+     Store(pony =&gt; pony.CutieMark, FieldStorage.Yes);
+     Store(pony =&gt; pony.Name, FieldStorage.Yes);
+     Store(pony =&gt; pony.Colour, FieldStorage.Yes);
+   }
+}
+</code></pre>
+
+<p>Available to me <em>without even loading the document</em> after performing a query, is "Name", "Colour", and "CutieMark". Obviously we can store other things in there as well, and so some funky things in the map - but this is the essence of this functionality.</p>
+
+<p>The same thing happens by default when you apply a reduce stage to an index, because you lose the original document entirely because of aggregation.</p>
+
+<p>This can be a bit confusing, as sometimes you want the result from that store data, and sometimes you want the data from the document, and this has been an all-or-nothing thing.</p>
+
+<p>Now we can <a href="/entries/result-transformers---not-just-for-querying.html">Use Load&lt;></a> with a ResultTransformer, this is even more ambiguous.</p>
+
+<p>So, from now on, whenever you access anything in a ResultTransformer, RavenDB will first look in the stored fields for the information, and if not found - will load the document associated with the current result and fetch it from that.</p>
+
+<p>It's a small change, but one which will remove a lot of the confusion around this feature.</p>]]></description><link>http://codeofrob.com/entries/ravendb---avoiding-ambiguity-in-result-transformers.html</link><guid isPermaLink="true">http://codeofrob.com/entries/ravendb---avoiding-ambiguity-in-result-transformers.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 25 Feb 2013 09:00:00 GMT</pubDate></item><item><title><![CDATA[Result transformers - not just for querying]]></title><description><![CDATA[<p>In the <a href="/entries/ravendb-resulttransformers---a-new-way-of-looking-at-things.html">last entry</a> I demonstrated a new artifact in RavenDB for transforming results from queries into view models with all the information attached you could think of.</p>
+
+<p>Well, the primary use case (in my mind) for this, is the creation of view models for web clients without having to de-normalise data or perform multiple remote calls.</p>
+
+<p>Well, actually - if we're viewing say, a single item by id, it doesn't make a lot of sense to have to do a query to get that single item by id. It doesn't make a lot of sense to have to create an index for this.</p>
+
+<p>In the past, that's the best we could hope for, unless perhaps you used the 'include' functionality to load related documents and then created the view model in the client out of those related documents. This looks something like this:</p>
+
+<pre><code>var order = session.Include("CustomerId")
+                        .Load&lt;Order&gt;("orders/1")
+
+var customer = session.Load&lt;Customer&gt;(order.CustomerId)
+
+// Build view model here
+</code></pre>
+
+<p>This is okay and everything, but requires a bit of mental leg-work on the part of the client.</p>
+
+<p>What you really want to do is just ask for the view model, sort of like making a single query in SQL to get all the information you want with one go.</p>
+
+<p>Well, how about this?</p>
+
+<pre><code>  var orderViewModel = session.Load&lt;OrderWithCustomerTransform, OrderWithCustomer&gt;("orders/1")
+</code></pre>
+
+<p>That's a lot nicer, the code for this is as thus</p>
+
+<pre><code>public class OrderWithCustomer 
+{
+   public string OrderId { get; set; }
+   public string OrderDate { get; set; }
+   public string CustomerId { get; set; }
+   public stirng CustomerName { get; set; }
+}
+
+    public class OrderWithCustomerTransform : AbstractIndexCreationTask&lt;Order&gt;
+    {
+         public OrderWithCustomerTransform()
+         {
+                TransformResults = (database, orders) =&gt;
+                        from order in orders
+                        let customer = database.Load&lt;Pet&gt;(order.CustomerId)
+                        select new {
+             OrderId = order.Id,
+             OrderDate = order.Date,
+             CustomerId = customer.Id,
+             CustomerName = customer.Name
+                        }
+         }
+    }
+</code></pre>
+
+<p>Being able to compose view models on the server as part of the load process by pulling in related documents and only pull out the fields you need is awesome.</p>
+
+<p>Being able to re-use these transforms across different indexes or load operations and get a consistent return shape is even awesomer.</p>
+
+<p>Tomorrow I'll show a really cool edge case around this, and how we got rid of a lot of he confusion around transforms.</p>]]></description><link>http://codeofrob.com/entries/result-transformers---not-just-for-querying.html</link><guid isPermaLink="true">http://codeofrob.com/entries/result-transformers---not-just-for-querying.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 22 Feb 2013 09:00:00 GMT</pubDate></item><item><title><![CDATA[RavenDB ResultTransformers - a new way of looking at things]]></title><description><![CDATA[<p>So, how do we solve a problem like TransformResults? Easy! We make ResultsTransfomers!</p>
+
+<p><img src="/img/prime.jpg" alt="Optimus Prime" title="" /></p>
+
+<p>Okay, so what's in a name?</p>
+
+<p>Well, rather than attach the function we want to transform the results with to the index like so</p>
+
+<pre><code>    public class Ponies : AbstractIndexCreationTask&lt;Pony&gt;
+    {
+         public Ponies()
+         {
+              Map = ponies =&gt;
+              from pony in ponies
+              select new {
+                pony.Name,
+                pony.Colour,
+                pony.Trampstamp
+                            }
+                TransformResults = (database, results) =&gt;
+                        from result in results
+                        let pet = database.Load&lt;Pet&gt;(result.PetId)
+                        select new {
+                            PonyId = pony.Id
+                            Name = pony.Name,
+                            PetName = pet.Name,
+                            PetSpecies = pet.Species
+                        }
+         }
+    }
+</code></pre>
+
+<p>How about defining it separately like this?</p>
+
+<pre><code>    public class Ponies : AbstractIndexCreationTask&lt;Pony&gt;
+    {
+         public Ponies()
+         {
+              Map = ponies =&gt;
+            from pony in ponies
+                            select new {
+                                pony.Name,
+                                pony.Colour,
+                                pony.Trampstamp
+                            }
+         }
+    }
+</code></pre>
+
+<p>And</p>
+
+<pre><code>public class PonyWithPetViewModel 
+    {
+        public string PonyId { get; set; }
+        public string Name { get; set; }
+        public string PetName { get; set; }
+        public string PetSpecies { get; set; }
+    }
+
+
+    public class PoniesWithPets : AbstractTransformerCreationTask&lt;Pony&gt;
+    {
+         public PoniesWithPets()
+         {
+              TransformResults = ponies =&gt; 
+                        from pony in ponies
+                        let pet = database.Load&lt;Pet&gt;(pony.PetId)
+                        select new {
+                            PonyId = pony.Id
+                            Name = pony.Name,
+                            PetName = pet.Name,
+                            PetSpecies = pet.Species
+                        }
+         }
+    }
+</code></pre>
+
+<p>Then, to get a list of ponies with pets in that view model format, we can simply supply the transformer want to use as part of the query</p>
+
+<pre><code>    session.Query&lt;Pony&gt;()
+                 .Where(pony =&gt; pony.Name == "Pinkie Pie")
+                 .TransformWith&lt;PoniesWithPets, PonyWithPetViewModel&gt;
+                 .ToList()
+</code></pre>
+
+<p>This is much tidier, and allows us to use transformers to elegantly create view models across any index providing the input is sane enough, it also removes some of the complexity around indexes. Look - we didn't even specify an index for this query and yet we were able to use a transformer on it, dynamic index win!</p>
+
+<p>This actually took a couple of days to implement, but I still have four days of work at Hibernating Rhinos so hopefully more coming soon!</p>]]></description><link>http://codeofrob.com/entries/ravendb-resulttransformers---a-new-way-of-looking-at-things.html</link><guid isPermaLink="true">http://codeofrob.com/entries/ravendb-resulttransformers---a-new-way-of-looking-at-things.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 21 Feb 2013 09:00:00 GMT</pubDate></item><item><title><![CDATA[The problem with result transformations in RavenDB]]></title><description><![CDATA[<p>I mentioned yesterday that there are some problems with how <a href="/entries/re-thinking-result-transformations-in-ravendb.html">result transformations work in RavenDB</a></p>
+
+<p>In truth, there are no problems, but as <a href="http://twitter.com/ayende">@ayende</a> mentioned himself, feature intersection is causing issues for development in RavenDB.</p>
+
+<p>What is this feature intersection? Well, we have a <em>lot</em> of features around indexes and queries now, and they're all touching and overlapping in all sorts of strange ways - this is hardly surprising, it happens to many well-used software projects with feature requests flying in every day and so many awesome ideas to implement.</p>
+
+<p>The problem that result transformations were initially trying to solve (and I know, I helped implement them in a hotel lobby with Ayende a couple of years ago), were the question of "joins" across documents. Well - this worked well, and had the added bonus of being able to define the exact result shape coming back from RavenDB (pre-forming entire view models in a single query as it were).</p>
+
+<p>That's great, and now we have the ability to do what we did yesterday with yet another feature, load document in map, like so:</p>
+
+<pre><code>    public class Ponies : AbstractIndexCreationTask&lt;Pony&gt;
+    {
+         public Ponies()
+         {
+                Map = from pony in ponies
+                            let pet = LoadDocument(pony.id)
+                            select new {
+                                pony.Name,
+                                pony.Colour,
+                                pony.Trampstamp.
+                                PetName = pet.Name.
+                                PetSpecies = pet.Species
+                            }
+         }
+    }
+</code></pre>
+
+<p>This is kinda cool, although it has implications in complexity when it comes to the indexing and re-indexing of documents that isn't what this blog entry is about.</p>
+
+<p>We've ended up with information in the index which we might want as part of our output, and it's not immediately obvious how we're going to get that out, and this is also doing quite a bit of the work we might want to do with the result transformation phase. (Feature overlap)</p>
+
+<ul>
+<li>How about what happens if we have a standard view model that we want to return from a transform, but several different indexes we might query to do that?</li>
+<li>What about what happens we want to do a result transform when performing a dynamic query?</li>
+<li>And what if we want to use the stored data in index instead of transforming a loaded document?</li>
+</ul>
+
+<p>We've actually got a few <em>niggles</em> around these functionalities too, existing as entries in the issue tracker (such as we don't ignore FieldsToFetch when performing a transform), and we've ended up boolean flags to "SkipTransformResults"!!</p>
+
+<p>In essence, it's a bit messy and there is one immediate step we can take to fix this - any takers on what that might be?</p>]]></description><link>http://codeofrob.com/entries/the-problem-with-result-transformations-in-ravendb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/the-problem-with-result-transformations-in-ravendb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 20 Feb 2013 09:00:00 GMT</pubDate></item><item><title><![CDATA[Re-thinking result transformations in RavenDB]]></title><description><![CDATA[<p>After all the work on indexes, things started getting downright <em>dirty</em> at the Hibernating Rhinos offices as we looked at re-vamping TransformResults in RavenDB.</p>
+
+<p>First, a re-cap on what TransformResults actually is; consider we have a couple of documents that look something like this:</p>
+
+<p><em>A pony</em></p>
+
+<pre><code>    {
+        id: "ponies/rainbowdash",
+        name: "Rainbow Dash",
+        colour: '#9EDBF9',      // I actually looked this up
+        trampstamp: 'rainbow-lightning',
+        petid: 'pets/tank'
+    }
+</code></pre>
+
+<p><em>a pet</em></p>
+
+<pre><code>    {
+        id: "pets/tank",
+        name: "Tank",
+        species: "Tortoise",
+        colour: '#0F0'          // I didn't look this up
+    }
+</code></pre>
+
+<p>Let's say we have an index that looks like this</p>
+
+<pre><code>    public class Ponies : AbstractIndexCreationTask&lt;Pony&gt;
+    {
+         public Ponies()
+         {
+              Map = ponies =&gt;
+            from pony in ponies
+                            select new {
+                                pony.Name,
+                                pony.Colour,
+                                pony.Trampstamp
+                            }
+         }
+    }
+</code></pre>
+
+<p>When querying for a list of blue ponies, we might actually decide we want to know what species their pets are, we have the following options</p>
+
+<ul>
+<li>Include them from the client (This brings back a lot of information that we don't need)</li>
+<li>Add a results transformer to the index</li>
+</ul>
+
+<p>We mostly end up doing the last one and so we do that and it looks like this:</p>
+
+<pre><code>    public class Ponies : AbstractIndexCreationTask&lt;Pony&gt;
+    {
+         public Ponies()
+         {
+              Map = ponies =&gt;
+            from pony in ponies
+                            select new {
+                                pony.Name,
+                                pony.Colour,
+                                pony.Trampstamp
+                            }
+                TransformResults = (database, results) =&gt;
+                        from result in results
+                        let pet = database.Load&lt;Pet&gt;(result.PetId)
+                        select new {
+                            PonyId = pony.Id
+                            Name = pony.Name,
+                            PetName = pet.Name,
+                            PetSpecies = pet.Species
+                        }
+         }
+    }
+</code></pre>
+
+<p>This gives us the ability to send only the information we want to the client as well as pull in information from other documents, that's pretty neat, but now it's in need of a bit of TLC, as some of its functionality has been <a href="http://ayende.com/blog/160545/feature-intersection-is-killing-me-referenced-document-indexing">superceded by Referenced Documents in Map</a> and it's a bit awkward as it is.</p>
+
+<p>I'll talk more about that tomorrow when I go into some of the issues that we're experiencing with this feature.</p>]]></description><link>http://codeofrob.com/entries/re-thinking-result-transformations-in-ravendb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/re-thinking-result-transformations-in-ravendb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 19 Feb 2013 09:00:00 GMT</pubDate></item><item><title><![CDATA[Next, we run new RavenDB indexes in memory]]></title><description><![CDATA[<p><a href="/entries/getting-rid-of-temporary-indexes-in-ravendb.html">Other day</a> I wrote about the awesome news that we'd managed to delete an entire code-path from RavenDB as a result of some of the other changes coming in.</p>
 
 <p>Well, it's not quite as simple as that, you see - temporary indexes in RavenDB had a reallly big advantage in that they were run entirely in memory (until they reached a configurable threshold anyway).</p>
 
@@ -95,610 +441,4 @@
 
 <p>Obviously we can still remove auto indexes that were only queried once or twice, but that can take part with the algorithm that marks them as idle, and to make things even better we can add some functionality to the Studio to manage these idle indexes or delete them.</p>
 
-<p>Now, this still isn't as awesome as it could be, but we've laid the ground work for a pretty awesome feature, I'll talk about that tomorrow.</p>]]></description><link>http://codeofrob.com/entries/getting-rid-of-temporary-indexes-in-ravendb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/getting-rid-of-temporary-indexes-in-ravendb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 14 Feb 2013 12:34:00 GMT</pubDate></item><item><title><![CDATA[Auto idling auto indexes in RavenDB]]></title><description><![CDATA[<p><a href="/entries/adding-idle-indexes-to-ravendb.html">Last entry</a> I talked about the addition of a priority flag on indexes to save resources on un-important indexes.</p>
-
-<p>This is great news for those indexes that are created and managed manually (once Raven Studio has the UI for it anyway), but a lot of customers are using auto indexes (a feature I'm proud to say I had a hand in <a href="http://ayende.com/blog/4667/ravens-dynamic-queries">All those years ago</a>).</p>
-
-<p>What does this therefore mean for this type of index? Well, the way RavenDB currently works for those unfamiliar with it, is if you make a query for all the ponies with rainbow in their name like so:</p>
-
-<pre><code>session.Query&lt;Pony&gt;().Where(pony =&gt; pony.Name.Contains("Rainbow"))
-</code></pre>
-
-<p>There is a query optimiser which will try to find an appropriate index to use for this query, and if it fails it will create an index for you at the following URL:</p>
-
-<pre><code>/Index/Temp/PonyWithName
-</code></pre>
-
-<p>Or something similar (I forget the exact conventions). After a period of time, the index will be deleted unless it is used within a certain threshold of activity.</p>
-
-<p>On top of this, we now have idle indexes - so what does this mean? We can actually do a lot of this automatically now too, if we select the least-used indexes in the system <em>(for example, order all the auto-indexes by the last time they were queried, and if there is a big gap between the last index and the penultimate index, then demote the index automatically)</em></p>
-
-<p>If the index is queried against after this, we can promote it again - happy days, thus the following scenarios:</p>
-
-<ul>
-<li>Manual indexes get left alone unless managed in the studio</li>
-<li>Auto indexes get made idle if they're not queried very much</li>
-<li>Auto indexes get promoted if they're then queried</li>
-</ul>
-
-<p>Having the database make these decisions for you keeps away any of the possible complexity of maintaining a well behaving RavenDB implementation.</p>
-
-<p>I left off yesterday by talking about the Forced flag, the idea behind this is you can force an index to keep its current state by using the Studio and not have any of this fancy magic stuff happen  for you. I expect most people won't use it, but it's always good to give customers the ability to assert control.</p>
-
-<p>Now, with this done - the next natural cause of action is obvious really, what would that be...? Stay tuned for my next entry to find out.</p>]]></description><link>http://codeofrob.com/entries/auto-idling-auto-indexes-in-ravendb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/auto-idling-auto-indexes-in-ravendb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 13 Feb 2013 12:34:00 GMT</pubDate></item><item><title><![CDATA[Adding idle indexes to RavenDB]]></title><description><![CDATA[<p>As I mentioned <a href="/entries/working-at-hibernating-rhinos.html">yesterday</a>, I'm currently doing a week or so of work at Hibernating Rhinos (more specifically on RavenDB).</p>
-
-<p>One of the first things I was asked to look at was the indexing system in RavenDB, as there was a backlog of tasks and requests on these, which tie into each other in numerous ways.</p>
-
-<p>I don't like working on more than one thing at once when I'm Getting Things Done, and while it was tempting to jump right in and say <em>"We need to do the feature where dynamic indexes can be turned off, deleted and compacted over time"</em>, the task was broken up into a few discrete features - some which had been requested individually anyway.</p>
-
-<p>That brings me to the first feature we added in the first few hours of starting work at the office, I sat down with <a href="http://twitter.com/ayende">@ayende</a> and added the capability for indexes to be idle.</p>
-
-<h2>What does that mean? Why would we want to do it? </h2>
-
-<p>In RavenDB, querying is cheap because the answers have already been pretty much worked out by the indexing process. The indexing process has to crawl over every document as they're added and run user-logic over those documents, this is a process that tends to be IO bound as well as using up a few CPU cycles.</p>
-
-<p>Thus, the more indexes you have, the more work the database has to do during heavy write periods - and as some customers have many indexes and also undergo heavy write periods, it has been requested more than once that indexes be prioritisable - this feature is a big step in that direction. </p>
-
-<p><img src="/img/idlewis.png" alt="" title="" /></p>
-
-<p>Indexes on the server now have a new flag, "Priority", which can take the following values (Normal | Idle | Forced), the idea being that the user can use the administration console to set indexes that aren't as important to not be run during busy write periods, and instead only be processed during idle time.</p>
-
-<p>The forced flag? Well, I'll write about that tomorrow when I cover how idle indexes have been used to make auto-indexing a bit cleverer.</p>]]></description><link>http://codeofrob.com/entries/adding-idle-indexes-to-ravendb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/adding-idle-indexes-to-ravendb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 12 Feb 2013 12:34:00 GMT</pubDate></item><item><title><![CDATA[Working at Hibernating Rhinos]]></title><description><![CDATA[<p>After a week off in the Western Isles, I've started a stint on my <a href="/entries/i-am-not-looking-for-a-job.html">adventures</a> working in Israel for <a href="http://hibernatingrhinos.com">Hibernating Rhinos</a>.</p>
-
-<p>Most of you are familiar with this company, but for those that aren't, it's <a href="http://twitter.com/ayende">@ayende</a>'s company, and they make the profilers for various ORMS and that document database we all love, <a href="http://ravendb.net">RavenDB</a>.</p>
-
-<p><img src="/img/ravendb.png" alt="" title="" /></p>
-
-<p>This is a good one for me,  I've never been to Israel before so that's a big+1, I'm already pretty familiar with the product and code-base having spent a while talking about it and contributing over the years - and as I've just spent a holiday doing no code I'm pretty excited to be getting some work done.</p>
-
-<p>I made it through security at about 1am after being asked too many times "what are you doing in Israel" and being unable to think of a truthful answer that didn't make people suspicious. "I'm on a working holiday" led to questions of payment and of course I'm currently free as in beer so that's something I need to work on if I'm going to any other countries with strict entry requirements.</p>
-
-<p>Anyway, I've got a car while I'm here and an apartment for the next week and I'm doing work on RavenDB, what work you ask? Well, like any good employer, Ayende has created a to-do list and let me get on with it how I like.</p>
-
-<p>I quite like this way of working, "Here is a pile of stuff that needs doing, get to it and ask if you need any help", no long meeting to align on vision and share synergies with stakeholders, no complicated requirements document or architecture plans - just a list of bullet points and the expectation that I'll go and seek the information that I need to get the job done. (Managers take note!).</p>
-
-<p>This is also a very productive way of working, I'll talk more about the actual work I'm doing in the next post, but what I can say is that I've cleared most of what I was expected to do in the whole time I'm here in the first couple of days of arriving. That's what Getting Things Done is all about and it aligns well with my aims of working on travelling.</p>
-
-<p>How we are working is nice, as I said - there is a to-do list, that's publicly visible on <a href="http://issues.hibernatingrhinos.com">issues.hibernatingrhinos.com</a> under the tag "Rob's sprint", I'm working off a fork of the main project and keeping a pull request open as I go through - the current pull request can be found <a href="https://github.com/ravendb/ravendb/pull/502">here</a>, and here is a screenshot of that so far:</p>
-
-<p><img src="/img/hrpr.png" alt="" title="" /></p>
-
-<p>And this is the issues list so far (green means 'done')</p>
-
-<p><img src="/img/hryt.png" alt="" title="" /></p>
-
-<p>I've got plans of tourism on Friday and Saturday (Sunday is a work day in Israel - that's something new I found out), maybe I'll put some photos online of me floating in the dead sea.</p>
-
-<p>I'll write about the actual work I'm doing in the next few entries.</p>]]></description><link>http://codeofrob.com/entries/working-at-hibernating-rhinos.html</link><guid isPermaLink="true">http://codeofrob.com/entries/working-at-hibernating-rhinos.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 11 Feb 2013 12:34:00 GMT</pubDate></item><item><title><![CDATA[Lots of small things]]></title><description><![CDATA[<p><strong>Questions:</strong></p>
-
-<ul>
-<li>"But how do you maintain large JS codebases..."</li>
-<li>"How do I build Enterprise Scale JS applications"</li>
-<li>"How do I refactor across an entire project in JS"</li>
-</ul>
-
-<p><strong>Answers:</strong></p>
-
-<ul>
-<li>You don't</li>
-<li>Lots of small things</li>
-<li>Build small things that do one thing well</li>
-<li>You shouldn't build large JS codebases</li>
-</ul>
-
-<p>Etc</p>
-
-<p>I almost started a drinking game at NodeDublin, "take a drink every time somebody mentions the Unix Philosophy or one of the above statements", I'm glad I did not - it was held in the Guinness Storehouse and I'd have not lasted beyond the first couple of sessions had I gone through with it.</p>
-
-<p>These are sentiments uttered at conferences, in meeting rooms, in blog comments, in blog entries and pretty much whenever the subject of large code-bases in JS come up. Normally uttered with a self-satisfied smirk and with little to no further guidance on how exactly one might go about it.</p>
-
-<p>Sure, you can always fall back to Typescript or Coffeesript or KoolaidScript, sure you can leverage awesome IDEs like Webstorm, Visual Studio, etc, but we've been building Enterprise Systems in C# and Java for years in this way, and the wheels of progress eventually stop turning because iteration becomes expensive, maintenance becomes 90% of the job and every meeting boils down to a question of "legacy", "compromise" and  "we are where we are".</p>
-
-<p>So, this is what I am doing, this is my current recipe, a collection of the rules of thumb I am using for building an open source game engine (PrimoJS) in JavaScript in a way that doesn't make my brain run out of my ears whenever I want to write a new feature. (Caveat: I haven't "released" this engine, I am merely pulling it together out of code already written to help me do Ludum Dares faster)</p>
-
-<p>This is client side JavaScript only in this project, all of this is equally applicable to JS in ASP.NET MVC projects, in J2EE-whatevs projects and probably your Ruby on Rails projects too.</p>
-
-<p>TLDR: Browserify + npm + github = success</p>
-
-<h2>NodeJS</h2>
-
-<p>I don't care if you're not writing NodeJS for whatever reason, the command line tooling being built up in this area to help with JS is fantastic, and trying to use the copy-cat tooling being built up in your favourite Enterprise environment is just setting yourself up for frustration and trouble in the future. It's just an exe, get it and integrate it with your toolchain, make your life better today.</p>
-
-<h2>Browserify</h2>
-
-<p>Okay, I'm a convert - I've been talking AMD for a while now, and the idea of having to run a build script had put me off Browserify for a while - it turns out the development experience is pretty good and by the time you get to the browser to hit refresh, this is generally done already anyway. AMD is now dead to me.</p>
-
-<pre><code>npm install -g browserify
-</code></pre>
-
-<p>Once you have it, if you write your JS with node-flavoured CommonJS style require calls, you can package JS up for the client by running Browserify as part of your build script.</p>
-
-<p><strong>app.js</strong></p>
-
-<pre><code>var windowing = require('./windowing')
-  , messaging = require('./messaging')
-
-
-messaging.on('foo', function(message) {
-  windowing.showMessage(message)
-})
-</code></pre>
-
-<p><strong>Then build</strong></p>
-
-<pre><code>browserify site/app.js &gt; site/app-built.js
-</code></pre>
-
-<p>This might be alarming at first, because it seems like concatenating these files might make the debug experience a thing of nightmares, but that's what the --debug flag is for:</p>
-
-<pre><code>browserify site/app.js -o site/app-built.js --debug
-</code></pre>
-
-<p>This inserts special directives into the JS so the browser knows what the original files were and they can therefore be opened and debugged in their original state.</p>
-
-<p>I have a Makefile I copied from VoxelJS - it looks like this</p>
-
-<pre><code>all: concat
-
-concat:
-  browserify site/app.js &gt; site/app-built.js
-
-watch:
-  browserify site/app.js -o site/app-built.js --watch --debug
-</code></pre>
-
-<p>During development of my application, I type</p>
-
-<pre><code>make watch
-</code></pre>
-
-<p>and I don't have to think about this ever again.</p>
-
-<p>Now, the cool part. With RequireJS I was always having to set up elaborate configuration scripts, "You can find underscore over here, you can find jQuery over here, you can find this other legacy JS over here, please do these things with them", this was, in short, a ball-ache.</p>
-
-<p>Browserify eschues this way of thinking, and simply says "if it's a relative path, I'll use it, if it's a global path I'll look in node_modules"</p>
-
-<h2>NPM</h2>
-
-<p>Here comes and important learning: <em>it is not enough</em> to simply use a require system, split your JS across multiple files in a folder and say "my files are small and therefore I am building small things", having all your code in a single project is not sufficient encouragement to think about the boundaries between those files and before long you will find yourself with 10,000 lines of spaghetti JS across 100 files in a folder with relative include paths and feel the pain it causes when trying to change anything at all inside of that.</p>
-
-<p><strong>NPM has the answer</strong></p>
-
-<p>By saying "I am going to build independent modules, and require them from my application as needed", you are making a statement of intent that those modules will have some fairly important qualities.</p>
-
-<ul>
-<li>A module should be re-writeable in a day without affecting the rest of the system</li>
-<li>A module should export a single function that has clearly described responsibilities</li>
-<li>A module is independently versioned &amp; published to the registry as its own thing</li>
-<li>A module should therefore not be coupled to any of the modules that consume it, relationships should be uni-directional</li>
-<li>A module has its own git repository and history</li>
-</ul>
-
-<p>For example, the biggest module in the PrimoJS eco-system is the core engine, at 700LOC, and that is <em>too big</em>, I am still harvesting that original codebase into smaller modules - this takes time because it is hard to go from big to small, it is hard to go from coupled to uncoupled and it is harder still when you are trying to be always making changes that roll forward, rather than backwards in terms of progress.</p>
-
-<p>Nevertheless, PrimoJS is currently split across 16 modules, all of which fit the above list of requirements, they could all be used independently of each other, or more likely brought into a project that has pulled in the core engine and wants the additional functionality that these modules bring.</p>
-
-<p>What does this look like in reality? This is the package.json of one of my 'example' projects, the actual application using PrimoJS</p>
-
-<pre><code>{
-  "name": "centipede2013",
-  "version": "1.0.0",
-  "dependencies": {
-    "send": "~0.1.0",
-    "express": "~3.0.3",
-    "underscore": "~1.4.3"
-  },
-  "devDependencies": {
-    "primo": "",
-    "primo-animation": "",
-    "primo-text": "",
-    "primo-boundary": "",
-    "primo-rigidbody": "",
-    "primo-events": "",
-    "primo-audio": ""
-  },
-  "engines": {
-    "node": "0.8.x",
-    "npm": "1.1.x"
-  }
-}
-</code></pre>
-
-<p>The core engine is brought in, and then other components are brought in for use with that project, it is important to note that none of these components have a dependency on that core primo module, or vice versa - they are independent and could be used independently. 
-What does this look like? Well, I can use NPM list to show me the dependency graph, which goes something like this:</p>
-
-<pre><code>├─┬ primo@0.1.1
-│ ├── primo-camera@0.0.0
-│ ├── primo-canvas@0.0.0
-│ ├── primo-counter@0.0.0
-│ ├── primo-events@1.0.2
-│ ├── primo-spritemap@0.0.0
-│ └── primo-timer@0.0.0
-├─┬ primo-animation@0.0.1
-│ └─┬ primo-spritemap@0.0.1
-│   ├── primo-canvas@0.0.0
-│   └── primo-events@1.0.2
-├── primo-boundary@0.0.0
-├── primo-audio@0.0.6
-├── primo-events@1.0.2
-├─┬ primo-rigidbody@0.0.2
-│ └── primo-utils@0.0.0
-├── primo-text@0.0.0
-</code></pre>
-
-<p>We'll notice that the spritemap is used several times, as is primo-events and primo-canvas. If I was using relative paths, this would be pretty messy and hard to trace, but with a package manager the relationship is clear and it is obvious that those modules are independent.</p>
-
-<p>Fine, so what now? I have a folder on my hard drive that has a pile of other folders in them, each has its own package.json, its own git repository and can be developed independently - but this is hardly ideal from a development point of view is it?</p>
-
-<p>An obvious question to be asked now, is "If you have a bug in primo-animation that impacts your centipede application, how do you fix, test, verify and iterate on that bug without copying JS around and making a mess of things. (How often have you downloaded the source of NHIbernate in .NET and had to debug an issue with it that happens in your code base? It's not fun is it)</p>
-
-<p>That's where NPM really shines, we have NPM link - one of the finest commands in the history of package management.</p>
-
-<pre><code>cd components/animation
-  /usr/local/lib/node_modules/primo-animation -&gt; /home/robashton/src/primo/components/animation
-cd ../../examples-centipede
-npm link primo-animation
-/home/robashton/src/primo/examples-centipede/node_modules/primo-animation -&gt; /usr/local/lib/node_modules/primo-animation -&gt; /home/robashton/src/primo/components/animation
-</code></pre>
-
-<p>NPM can set up symlinks, so editing the files in primo animation <em>in place</em>, will result in the changes being visible in the application as you make these changes.</p>
-
-<p>This tells you a few things</p>
-
-<ul>
-<li>This is an explicit step, you have to conciously choose to edit across module boundaries</li>
-<li>You shouldn't be doing this often on a stable system</li>
-<li>Ideally, you'd have a test harness so you can iterate and develop fixes/etc independently of the usage of the module itself</li>
-</ul>
-
-<p>Now, as the ever-pragmatic developer, I know that Primo right now is open to a lot of churn and I'm happy to be editing across these boundaries occasionally (especially with new modules), but as modules become mature I shouldn't be touching them any more - and later on I might choose to swap one out for another that does it better anyway.</p>
-
-<p>What's even better about the use of NPM is that I can pretty much forgoe that whole thing where I have a folder called 'libs' with all sorts of crazy JS in it. That's a pretty sweet deal and something I can whole-heartedly get behind on.</p>
-
-<h2>The Caveats</h2>
-
-<p><strong>NPM</strong></p>
-
-<p>It is worth pointing out that for client-side JS package management, the whole ecosystem is very much in the air -  we have Bower, Volo, Yeoman, Jam, etc. Each come with their own idea of a manifest, linking, dev etc.</p>
-
-<p>For now, I don't see the point - NPM works really well and has already solved most of the problems inherent to a pure world of JS (We're not talking other kinds of deps such as HTML/CSS/etc - and for that Bower might still hold the answer)</p>
-
-<p>The problem with NPM is that you're never sure which modules are client-side or server-side, not everything works everywhere - for example, the jQuery package in NPM is the server-side jQuery which makes life pretty confusing for now.</p>
-
-<p><strong>Folder hell</strong></p>
-
-<p>I have lots of folders, each with their own git repository, their own package.json, their own published state etc. This shouldn't bother me, because they're indepdendent and work done on these things should be independent - but that's not really the case when adding new features to a game that requires new code in primo-pritemap that requires new code in primo-canvas.</p>
-
-<p>This shouldn't happen very often (and it doesn't, because having things that do one thing and needing it to do two things means you probably want two things, that second thing being a new thing), but when it does, and you're offline, you end up with folders that are out of date with regards to the published state of the package and the only way I can see to manage this is to go through all these folder and check manually whether I need to push and/or publish. This could be solved by tooling - any takers?</p>
-
-<p><strong>Package hell</strong></p>
-
-<p>I have lots of packages, each with their own git repo - but the primary use case is for usage within the PrimoJS eco-system - when you pull down primo for use in a new game you only get the core, and a lot of the time you might want animations, audio, physics etc.</p>
-
-<pre><code>&gt; npm install primo --save
-</code></pre>
-
-<p>There is nothing here to tell the developer that they might also want to do</p>
-
-<pre><code>&gt; npm install primo-animations primo-audio primo-rigidbody --save
-</code></pre>
-
-<p>I think this can be solved with documentation and tooling, maybe a command line script ala RoR for generating a new game's folder structure</p>
-
-<pre><code>&gt; primo-create mynewgame
-do you want all the default components available? (y/n)
-&gt; y
-do you want a level editor (y/n)
-&gt; n
-do you want a browserify build script? (y/n)
-&gt; y
-</code></pre>
-
-<p><strong>Module discovery + documentation</strong></p>
-
-<p>Again, lots of small modules - where does the documentation go? Where does the user go to find answers to his questions when he has them? where does the user go to work out which module is for what?</p>
-
-<p>I think this varies across projects, are your modules all part of the same eco-system? Are they truly standalone and usable wherever? I think for each 'tree' of modules, a single <em>source</em> of information is useful - even if the sub-categories are just links to the documentation for the specific modules. Making the user go searching for the right module and the right documentation is just asking for trouble down the line. (So, in my case, it would be primojs.com and links to the available modules.</p>
-
-<h2>Summary</h2>
-
-<p>This is just one way of tackling this, but it is real world and it does work quite nicely (apart from the solveable caveats above). It will be interesting to see which direction client side dependency management will go over time, but CommonJS is not going anywhere anytime soon and is a safe bet to be building your project on (regardless of whether it is Browserify or Stitch/etc doing the packaging for you)</p>
-
-<p>The most important part of all of this is creating the the modules to be standalone so you don't <em>have</em> to traverse across them when building new features or fixing bugs. Replacing folders with modules is for nought if you don't actually make modules.</p>
-
-<h2>Links</h2>
-
-<ul>
-<li>Browserify <a href="http://github.com/substack/node-browserify">http://github.com/substack/node-browserify</a></li>
-<li>NodeJS <a href="http://nodejs.org">http://nodejs.org</a></li>
-<li>NPM <a href="http://npmjs.org">http://npmjs.org</a></li>
-<li>PrimoJS (not "released" yet) <a href="http://github.com/robashton/primojs">http://github.com/robashton/primojs</a></li>
-<li>VoxelJS <a href="http://github.com/maxogden/voxel">http://github.com/magogden/voxel</a></li>
-</ul>]]></description><link>http://codeofrob.com/entries/lots-of-small-things.html</link><guid isPermaLink="true">http://codeofrob.com/entries/lots-of-small-things.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 25 Jan 2013 12:34:00 GMT</pubDate></item><item><title><![CDATA[Why work for free]]></title><description><![CDATA[<p>I've been asked this question a number of times since making my offer to <a href="http://codeofrob.com/entries/i-am-not-looking-for-a-job.html">travel around and do some free work</a> for those that were fast enough to get their offers into my inbox last week.</p>
-
-<p><em>Why work for free?</em></p>
-
-<p>Let's shorten this and ask </p>
-
-<p><em>Why work?</em></p>
-
-<p>Most people will respond to this question with an answer involving <em>money</em>, and those that don't are either lying or already rich because the world does not operate around good will and pixie dust.</p>
-
-<p>You can follow this up with another question</p>
-
-<p><em>Do you enjoy your job?</em></p>
-
-<p>Sometimes you get a genuine yes for this question, mostly with founders, small start-ups and independent developers, sometimes you get a <em>yes</em> from full-time employees and on digging into this <em>yes</em> you can find something interesting out by asking the question</p>
-
-<p><em>Why do you enjoy your job?</em></p>
-
-<p>I very rarely hear "We get to build great stuff" or "I learn a lot every day", it's usually "Oh, it's not perfect but I do get all the free coffee I can drink at my workplace", or "I have to sit in a lot of meetings but I find it fun to play the politics to get my preferred technological approach into the software", or "I don't get to write much code any more, but it's fun trying to work at the high level instead of the coal face"</p>
-
-<p>Sometimes you'll find that they are genuinely saying the things above and meaning them, sometimes you'll find that they are merely rationalisations that we've built up so we don't spend every day weeping silently into our (free) coffee.</p>
-
-<p>It's fair enough, our job is to build software - not have a great time pontificating and learning about the newest and latest shinies and most people working in our industry have realised this. Incidentally this is why the phrase "we need to be pragmatic" has crept into our dialogue as a common weapon to be wielded against anybody insolent enough to suggest doing something differently.</p>
-
-<p>Some of this isn't fun, but what generally ends up mattering to a developer is that the good things outweigh the bad - things like</p>
-
-<ul>
-<li>I get time to learn new things outside the day to day treadmill</li>
-<li>We have weekly brown-bag sessions where we share what we have learned</li>
-<li>We are building something that people are going to actually use and love</li>
-<li>I love being part of a team so committed to delivery</li>
-<li>We get to solve genuinely interesting problems</li>
-<li>We get to drink free coffee</li>
-</ul>
-
-<p>Outweighing</p>
-
-<ul>
-<li>We have way too many meetings</li>
-<li>We were doing waterfall, but we tried to do agile but that just means we have a wall full of post-it notes and no real requirements</li>
-<li>I don't get to write much code any more</li>
-<li>There is too much politics at the workspace</li>
-<li>We don't have enough space to work in</li>
-<li>There isn't a good training plan</li>
-</ul>
-
-<p>We've already established that a lot of developers work because they find what they do interesting. There is an inherent challenge in building software, managing complexity, managing expectations, managing managers and balancing all that managing against the task of actually building software. Sad fact of life is that at most organisations with more than 12 people in them, the negatives mentioned above end up outweighing the positives and we fall back on the rationalisations I've already mentioned.</p>
-
-<p>So, back to the heart of it</p>
-
-<p><em>Why do you enjoy software development</em></p>
-
-<p>Personally? The main reasons I enjoy software development are mentioned above, but my personal bullet-point list is</p>
-
-<ul>
-<li>I love building things, I love seeing a product that people are going to use that I helped make</li>
-<li>I love learning things, I love learning about how better to deal with the problem of "code", how better to deal with issues of complexity (both real and imagined)</li>
-<li>I love working with teams to better do the above, I love both spreading and changing my ideas via meaningful contact with those teams</li>
-<li>I love sticking my headphones on, and bashing out code for a few hours in vim</li>
-</ul>
-
-<p>It is hard in a long-term contract to be able to do the above sometimes, a lot of products I'm called to work on are never going to be seen by a real human being outside of the company, a lot of the products are being sold to people who want to spend money to manage their money that they made by moving money around and aren't making an impact on any real hhuman beings (It's where I get a lot of my money from so I shouldn't complain too much). </p>
-
-<p>It's hard in a long-term contract to be learning constantly from the actual work at hand, it's hard to be constantly teaching. After a month of work with the same team, you've had some massively accelerated information share, worked out how best to compromise with each other and you're lucky if you get any external input (this sort of siloed development is too common). This is okay, and it is something I have ended up being a part of many times and I've been a part of many such teams where we have gone on to release good solid software to satisfied customers and this is not to be understated.</p>
-
-<p>It is hard in a long term contract however to not become stale, and I don't want to be stale, I want to carry on being relevant, I want to continue being knowledgable, I want to keep on being told I'm wrong and learning from that, I want to be a vector of external ideas - as a friend put it recently "a cross-pollinator".</p>
-
-<p>I want to do the bits I enjoy for a few months without too much of the stuff I don't enjoy.</p>
-
-<p><em>Why do it for free then?</em></p>
-
-<p>I want to cram a whole pile of experience into a few months, I want to be a better developer, I want to work with real teams on real things and I want to trade experience with those teams - <em>that</em> is my payment and this will also add to my long-term value. </p>
-
-<p>With paid work, I might get a contract a month and be asked to come and deliver training on say, Javascript or NoSQL, I might get asked to do some external review and if I'm lucky I'll be asked to pair with some developers - but the point is that money gets in the way of the relationship between me and the client, and more importantly between me and the developent team.</p>
-
-<p>It is still not a one way trade if I am not being paid in currency, it is still a trade that sees both sides profit and when it comes to delivering value to paid clients later in the year it will carry on paying dividends even then. The relationship has changed though, and instead of being an external consultant who is being paid to be there and whose value must be extracted even if it means resentful developers, I am an external agent of knowledge <em>sharing</em> and I am there because <em>I want to be there</em>.</p>
-
-<p>Not only that, but I can't actually make enough room in my calendar to make room for all the offers and I can therefore squeeze an great amount of experience into a small space of time. The new ideas, the knowledge and the new skills this will tender is worth a whole lot more to me than currency.</p>
-
-<p>So why work for free? It changes the trust-relationship between me and the team, it makes my motivation obvious to those involved with me and I can learn a lot more in a smaller amount of time.  </p>
-
-<p>If I was rich enough to retire, this is something I would <em>choose</em> to do - and that is something we should all be so lucky to say about our jobs.</p>]]></description><link>http://codeofrob.com/entries/why-work-for-free.html</link><guid isPermaLink="true">http://codeofrob.com/entries/why-work-for-free.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 11 Dec 2012 12:34:00 GMT</pubDate></item><item><title><![CDATA[I am not looking for a job]]></title><description><![CDATA[<p>After a productive weekend in Vilnius at the "We Actually Build Stuff" conference, I came back to the client I have been spending most of my time with in Belgium these past two years feeling a bit despondent.</p>
-
-<p>Why was I still there? I had already made my intent clear a month ago - that after this contract expired I wasn't going to renew, I had saved enough money to survive for a year if need be, I was not exactly enjoying what I was doing (for many of the standard self-defeating enterprise issues) and as one of my friends put it "Staying just to save some extra cash just seems like a stupid idea if you're not enjoying it"</p>
-
-<p>So I went in, found myself unable to function any more and decided to expediate the process of leaving, kindly they came to an agreement and I was able to head off providing I reply to a few e-mails :-).</p>
-
-<p>Many folk have already offered that I come and take a job with them, and while their hearts are in the right place, I wish to make it known that this is not what I want to do for the next couple of years.</p>
-
-<ul>
-<li>I want to do something meaningful</li>
-<li>I want to work with smart people</li>
-<li>I want to focus on creating value</li>
-<li>I want to build stuff</li>
-<li>I want to help other people build stuff</li>
-</ul>
-
-<p>I actually have some semi-concrete plans next year that will make all of this happen, this will take a few months to put into place though and in the meanwhile I have an offer for YOU, if you are interested and feeling brave.</p>
-
-<p>I am offering the following two things</p>
-
-<p><strong>I will come and spend a few days (1-2 weeks) at your workplace (in Europe), building stuff for expenses and a roof over my head</strong></p>
-
-<p>Seriously, I don't have much to do (I have a few paid commitments which will take priority, but other than that plenty of time) and I want to help you Build Stuff, for FREE. </p>
-
-<p>Of course you are perfectly welcome to toss me a few euros for my time as well, but whatever, money is not important for the next few months at least.</p>
-
-<p>I can help you with your Javascripts, your .NETs and your NoSqls, I am especially interested in helping teams who are <em>new</em> to JS get to grips with it quickly, I am very intersted in discussing difficult migration paths from legacy code (such as Silverlight for example).</p>
-
-<p>If you are building games, then I am <em>especially</em> interested in coming to say hello, even if you're in somewhere boring like Guildford ;-)</p>
-
-<p><strong>I will cook you a curry for a roof over my head</strong></p>
-
-<p>Coupled with the first offer, if you're the developer putting me up then I'll cook you a curry, I'm pretty practised at this and can tailor this to your tastes if asked - this is a serious offer, I love cooking and I love coding - what is better than combining the two.</p>
-
-<p>Anyway, if either of these appeal to you, get in touch at <a href="mailto:robashton@codeofrob.com">robashton@codeofrob.com</a> or twitter <a href="http://twitter.com/robashton">@robashton</a></p>
-
-<p>My availability can be seen publicly at <a href="https://www.google.com/calendar/embed?src=robashtondeveloper%40gmail.com&amp;ctz=Europe/Brussels">google calendars</a></p>]]></description><link>http://codeofrob.com/entries/i-am-not-looking-for-a-job.html</link><guid isPermaLink="true">http://codeofrob.com/entries/i-am-not-looking-for-a-job.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 11 Dec 2012 12:34:00 GMT</pubDate></item><item><title><![CDATA[Learn Functional Programming With Me - Attributes And Vectors]]></title><description><![CDATA[<p>So last time I left the program, I had a black square which moved across the page but left a delightful black smear across the window, it looked something like this:</p>
-
-<p><img src="/img/blackline.png" alt="Black smear" title="" /></p>
-
-<p>I promised I'd add keyboard input this time around, and I don't like to lie - so while I sit here at my client's rather amazing karting day I've decided to give adding this a go as I don't really like karting that much ;-).</p>
-
-<p>First things first, I need to clear my screen in between frames or I'm going to keep on having an ugly black smear instead of a moving black square, in JS this would look like.</p>
-
-<pre><code>context.clearRect(0, 0, width, height);
-</code></pre>
-
-<p>Not rocket science, right?</p>
-
-<p>Well, right now, I have the function for drawing a square, which gets the context and draws a square, this looks like</p>
-
-<pre><code>(defn drawSquare [x y w h]
-  (let [target (.getElementById js/document "target")
-        context (.getContext target "2d")]
-    (.fillRect context x y w h)
-  )
-)
-</code></pre>
-
-<p>Great, but in order to have the moving square, I'm going need that context more than once, and making multiple requests to get the context is a bad idea because it means lots of calls to the DOM (slow).</p>
-
-<p>Clearly this means I'm going to need three functions for my purposes:</p>
-
-<pre><code>(defn clearScreen [ctx]
-  (.clearRect ctx 0 0 WIDTH HEIGHT)
-)
-
-(defn drawRect [ctx x y w h]
-  (.fillRect ctx x y w h)
-)
-
-(defn context []
-  (let [target (.getElementById js/document "target")]
-  (.getContext target "2d"))
-)
-</code></pre>
-
-<p>Meaning I can do</p>
-
-<pre><code>(defn drawScene [x]
-  (let [ctx (context)]
-    (clearScreen ctx)
-    (drawRect x 0 100 100)
-  )
-)
-</code></pre>
-
-<p>Now, you'll have noticed (if you're actually paying attention), that I have a 'Width' and 'Height' parameter for clearScreen that I haven't bothered trying to filter - that's because they're attributes of the Canvas Element and I need to get the darned things from that element and I haven't worked out a clean way of passing these things around (or retrieving them all from a function so I have the values present at that time. (Remember that I am trying to avoid global state, and as far as I know I haven't got "Types" for storing collections of data in.</p>
-
-<p>Okay - so first things first, how do I get attributes from an HTML element? HTML elements? Attributes? These aren't Clojure concepts - I can do a quick Google and see that this is possible:</p>
-
-<pre><code>(. target -width)
-</code></pre>
-
-<p>According to the Wiki on Clojurescript, this is just part of the "host interop" featureset - I'm not entirely sure how this maps to typical Clojure.</p>
-
-<p>Now - this still means I have the problem of how to get these out of a function, in JS I'd probably have something like</p>
-
-<pre><code>var Rendering = function(element) {
-  this.context = element.getContext('2d');
-  this.width = element.width;
-  this.height = element.height;
-}
-</code></pre>
-
-<p>Or something trite like that (see my other canvas codes in Github for what this actually looks like).</p>
-
-<p>Can't do this here as far as I know, turns out I can return a vector, or a list or a set or something from a function (duh), so I can do something like</p>
-
-<pre><code>(defn context []
-  (let [target (.getElementById js/document "target")
-    [
-      (.getContext target "2d")
-      (. target -width)
-      (. target -height)
-    ]
-  )
-)
-</code></pre>
-
-<p>Which will return a vector containing</p>
-
-<pre><code>[context width height]
-</code></pre>
-
-<p>I can pass this into my clearRect function for example with</p>
-
-<pre><code>(defn drawScene [x]
-  (let [ctx (context)]
-    (clearScreen ctx)
-    (drawRect x 0 100 100)
-  )
-)
-</code></pre>
-
-<p>So nothing different here, but I'll need to unpack that vector in order to use it</p>
-
-<pre><code>(defn clearScreen [ctx]
-  (let [[context width height] ctx
-    (.clearRect context 0 0 width height)
-  )
-)
-</code></pre>
-
-<p>Which is a bit verbose, or doing a bit of research it appears I can automatically unpack that vector when I call the function ala</p>
-
-<pre><code>(defn clearScreen [[context width height]]
-  (.clearRect context 0 0 width height)
-)
-</code></pre>
-
-<p>I'm not entirely sure how I feel about this, I'm just passing blobs of data around and assuming their structure in my functions - does Clojure have any inference over this stuff for verifiability (I'm not sure) - seems I'm losing a lot of the safety I'd have with OO constructs (regardless of type safety or whatever).</p>
-
-<p>Either way, my complete program currently looks like this:</p>
-
-<pre><code>(ns game)
-
-(defn context []
-  (let [target (.getElementById js/document "target")]
-    [
-      (.getContext target "2d") 
-      (. target -width)
-      (. target -height)
-    ]
-  )
-)
-
-(defn clearScreen [[ctx width height]]
-  (set! (. ctx -fillStyle) "#FFF")
-  (.clearRect ctx 0 0 width height) 
-)
-
-(defn drawSquare [[ctx width height] x y w h]
-  (set! (. ctx -fillStyle) "#000")
-  (.fillRect ctx x y w h) 
-)
-
-
-(defn tick [x]
-  (let [ctx (context)] 
-    (clearScreen ctx) 
-    (drawSquare ctx x 0 100 100)  
-    (if (&lt;= x 1000) 
-      (js/setTimeout (fn []
-        (tick (inc x)) 
-      ) 33  )
-    )
-  )
-)
-
-(defn ^:export init []
-  (tick 0) 
-)
-</code></pre>
-
-<p>This has the effect of drawing a square, clearing the rect and drawing the square again, which means my square floats across the screen.</p>
-
-<p>Seems I've once again run out of room to talk about input to this program from the keyboard, hopefully I'll reach that next entry!</p>
-
-<p>I still have some pending questions from these two entries:</p>
-
-<ul>
-<li>The recursive setTimeout with the anonymous closure?</li>
-<li>Passing that vector around - is this a good idea?</li>
-</ul>
-
-<p>Anybody feel free to chip in at any time.</p>]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---attributes-and-vectors.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---attributes-and-vectors.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 15 Jun 2012 12:34:00 GMT</pubDate></item></channel></rss>
+<p>Now, this still isn't as awesome as it could be, but we've laid the ground work for a pretty awesome feature, I'll talk about that tomorrow.</p>]]></description><link>http://codeofrob.com/entries/getting-rid-of-temporary-indexes-in-ravendb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/getting-rid-of-temporary-indexes-in-ravendb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 14 Feb 2013 12:34:00 GMT</pubDate></item></channel></rss>

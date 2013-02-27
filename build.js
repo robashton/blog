@@ -66,8 +66,14 @@ var compilePosts = function(posts) {
       commentHtml += '</div>';
       commentHtml += '</div>\n';
     }
+
+    var datestr = ''
+    var d = new Date(post.date)
+    datestr += d.getFullYear() + '-'
+    datestr += (d.getMonth() + 1) + '-'
+    datestr += d.getDate()
     
-    var pageHtml = plates.bind(pageTemplate, { post: inputHtml, title: post.title, "post-title": post.title, "post-comments": commentHtml });
+    var pageHtml = plates.bind(pageTemplate, { post: inputHtml, title: post.title, "post-title": post.title,  date: datestr, "post-comments": commentHtml });
     fs.writeFileSync(outputFilename, pageHtml, 'utf8');
     console.log('Entry written', outputFilename)
   }
