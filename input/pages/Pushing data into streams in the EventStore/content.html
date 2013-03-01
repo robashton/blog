@@ -1,0 +1,216 @@
+<p>I'm <a href="/entries/playing-with-the-eventstore.html">playing with the EventStore</a> and I need to push some data into it in the form of streams.</p>
+
+<p>What does this look like? Well I'm using NodeJS, and naturally that means using JSON and object literals:</p>
+
+<p>So, if I have an event</p>
+
+<pre><code>// An Event
+{
+  Data: {
+    PonyName: "Rainbow Dash",
+    TrampStamp: "Rainbow",
+    Date: "January 2013"
+  },
+  EventType: "PonyBorn"
+}
+</code></pre>
+
+<p>And I want to get this into a stream, well first I want to package it up</p>
+
+<pre><code>// A package with the event in it
+{
+  CorrelationId: "something-i-know",
+  ExpectedVersion: "last-version-i-knew-about",
+  Events: [ ev ]
+}
+</code></pre>
+
+<p>And serialise it</p>
+
+<pre><code>var body = JSON.stringify(package)
+</code></pre>
+
+<p>I can POST it to the event store with the following code</p>
+
+<pre><code>var req = http.request({
+  host: "127.0.0.1",
+  port: 2113,
+  path: "/streams/ponies",
+  method: "POST",
+  headers: {
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+    "Content-Length": body.length
+  }
+}, function(res) {
+  // Handle this
+})
+
+req.write(body)
+req.end()
+</code></pre>
+
+<p>What do we notice about the data?</p>
+
+<ul>
+<li>We can supply a correlation id for our own convenience</li>
+<li>We supply an expected version so our event can be rejected if things are not as they should be</li>
+<li>We can send a collection of events to be committed all as one</li>
+<li>EventType can be sent in alongside the event data</li>
+</ul>
+
+<p>And what do we notice about the request?</p>
+
+<ul>
+<li>We choose which stream to post to as part of the URL</li>
+<li>We specify the content types we expect and are sending (because it can accept XML etc)</li>
+</ul>
+
+<p>What happens once I've done this?</p>
+
+<p>Well, we'll see that I have a ponies stream</p>
+
+<p><em>/streams</em></p>
+
+<pre><code>{
+  title: "ponies",
+  uri: "http://127.0.0.1:2113/streams/ponies",
+  accepts: [
+    {
+      type: "text/xml"
+    },
+    {
+      type: "application/atom+xml"
+    },
+    {
+      type: "application/json"
+    },
+    {
+      type: "application/atom+x.json"
+    }
+  ]
+},
+</code></pre>
+
+<p>And that if we go to this ponies stream via the URI specified we'll see</p>
+
+<p><em>/streams/ponies</em></p>
+
+<pre><code>[
+  {
+    title: "ponies #1",
+    id: "http://127.0.0.1:2113/streams/ponies/1",
+    updated: "2013-03-01T22:30:11.790066Z",
+    author: {
+      name: "EventStore"
+    },
+    summary: "Entry #1",
+    links: [
+      {
+        uri: "http://127.0.0.1:2113/streams/ponies/1",
+        relation: "edit"
+      },
+      {
+        uri: "http://127.0.0.1:2113/streams/ponies/event/1?format=text",
+        type: "text/plain"
+      },
+      {
+        uri: "http://127.0.0.1:2113/streams/ponies/event/1?format=json",
+        relation: "alternate",
+        type: "application/json"
+      },
+      {
+        uri: "http://127.0.0.1:2113/streams/ponies/event/1?format=xml",
+        relation: "alternate",
+        type: "text/xml"
+      }
+    ]
+  },
+  {
+    title: "ponies #0",
+    id: "http://127.0.0.1:2113/streams/ponies/0",
+    updated: "2013-03-01T22:30:11.79004Z",
+    author: {
+      name: "EventStore"
+    },
+    summary: "Entry #0",
+    links: [
+      {
+        uri: "http://127.0.0.1:2113/streams/ponies/0",
+        relation: "edit"
+      },
+      {
+        uri: "http://127.0.0.1:2113/streams/ponies/event/0?format=text",
+        type: "text/plain"
+      },
+      {
+        uri: "http://127.0.0.1:2113/streams/ponies/event/0?format=json",
+        relation: "alternate",
+        type: "application/json"
+      },
+      {
+        uri: "http://127.0.0.1:2113/streams/ponies/event/0?format=xml",
+        relation: "alternate",
+        type: "text/xml"
+      }
+    ]
+  }
+]
+</code></pre>
+
+<p>We have two events, navigating to them we can see that one of them is for the creation of the stream</p>
+
+<p><em>/streams/ponies/event/0?format=json</em></p>
+
+<pre><code>{
+  eventStreamId: "ponies",
+  eventNumber: 0,
+  eventType: "$stream-created-implicit",
+  data: "",
+  metadata: ""
+}
+</code></pre>
+
+<p>And the other one is the event we pushed</p>
+
+<p><em>/streams/ponies/event/1?format=json</em></p>
+
+<pre><code>{
+  eventStreamId: "ponies",
+  eventNumber: 1,
+  eventType: "PonyBorn",
+  data: {
+    PonyName: "Rainbow Dash",
+    TrampStamp: "Rainbow",
+    Date: "January 2013"
+  },
+  metadata: ""
+}
+</code></pre>
+
+<p>Neato, I guess we notice a few things here then</p>
+
+<ul>
+<li>The stream doesn't contain the actual events, just links to the events</li>
+<li>The stream is pageable, and contains the links to the pages (well, it's AtomPub)</li>
+<li>Each event has its own unique uri, because events are immutable these can be cached by any intermdiate proxy</li>
+</ul>
+
+<p>And indeed, if we look at the header on a HTTP request for one of these events we'll see</p>
+
+<pre><code>Cache-Control:max-age=31556926
+</code></pre>
+
+<p>That's cool, we've discovered that</p>
+
+<ul>
+<li>We can throw events into the event store with a default partitioning (the stream name specified)</li>
+<li>We can get them back out again by paging through the links in that stream</li>
+<li>Events are infinitely cacheable</li>
+<li>Everything is AtomPub</li>
+<li>Everything is easily navigable</li>
+</ul>
+
+<p>Now, if we were building a standard event sourced model we'd be able to page through these streams to build up our snapshots/viewmodels and that's all very neat and tidy and that would be the end of our story.</p>
+
+<p>Next up however, it's more interesting to go and have a look at projections now, and see what questions we can ask of those streams in the event store itself.</p>

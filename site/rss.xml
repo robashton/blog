@@ -1,5 +1,77 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Wed, 27 Feb 2013 11:36:42 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Custom query inputs in RavenDB]]></title><description><![CDATA[<p>Back on the list of things "added to RavenDB" <a href="/entries/working-at-hibernating-rhinos.html">during my time at Hibernating Rhinos</a>, ever wished you could pass custom arguments to the transformer when performing a query in RavenDB?</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Fri, 01 Mar 2013 23:54:38 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Basic operations with LevelDB]]></title><description><![CDATA[<p>So, in <a href="/entries/investigating-ravendb-on-mono-for-reals.html">trying out LevelDB</a>, I need to work out the basics, and then apply those learnings to whether the functionality exposed is compatible with RavenDB's storage needs.</p>
+
+<p>I spent a few hours in the car on the way to and back from the Dead Sea and this seemed like an ideal time to crack out the g++ and write some C++ on top of LevelDB.</p>
+
+<p>The first thing I did was download <a href="https://code.google.com/p/leveldb/">the source</a> and un-pack it, I also grabbed <a href="http://twitter.com/kellabyte">@kellabytes</a>'s '<a href="https://github.com/kellabyte/Dazzle">Dazzle</a>' source code as an 'RTFM' back-up.</p>
+
+<p>What I really like is that the header files for LevelDB are the best means of documentation, I forgot I liked this about C++, I now remember - all the learnings done ended up being done by just reading the source code, pretty neat.</p>
+
+<p>So, what do we have?</p>
+
+<p><em>Opening a database</em></p>
+
+<pre><code>leveldb::DB* db;
+leveldb::DB::Open(options, "play/testdb", &amp;db);
+</code></pre>
+
+<p><em>Putting something in</em></p>
+
+<pre><code>status = db-&gt;Put(leveldb::WriteOptions(), "Key", "Hello World");
+</code></pre>
+
+<p><em>Getting something out</em></p>
+
+<pre><code>std::string document;
+store-&gt;Get(leveldb::ReadOptions(), "key", &amp;document);
+</code></pre>
+
+<p><em>Deleting something</em></p>
+
+<pre><code>store-&gt;Delete(leveldb::WriteOptions(), "key");
+</code></pre>
+
+<p><em>Squeeeeeeee</em></p>
+
+<p>I love how simple that is, and that each of these is a safe operation, important to note the following at this point:</p>
+
+<ul>
+<li>I'm passing in strings to those put/get operations</li>
+<li>LevelDB is copying to/from those strings</li>
+<li>Because we're using strings, scope determines the release of memory</li>
+</ul>
+
+<p>This is elegant, Put actually takes a "Slice" type too, but that's implicitly convertable from a string and therefore this works nicely. </p>
+
+<p>I'll cover Slice on its own as it's an interesting notion if I understand it correctly.</p>
+
+<p>Importantly for RavenDB, we need to be able to write multiple operations in an atomic fashion, LevelDB appears to accommodate for this neatly.</p>
+
+<pre><code> leveldb::WriteBatch batch;
+ batch.Delete("key");
+ batch.Put("key2", value);
+ db-&gt;Write(leveldb::WriteOptions(), &amp;batch);
+</code></pre>
+
+<p>LevelDB can actually operate in async or synchronous mode, but because Raven makes gaurantees about writes having happened I can't think we'd be able to use async mode (because there isn't any way to know when these writes are finished to my knowledge).</p>
+
+<p>These guarantees aren't actually enough for RavenDB, and I'll cover the reasons for that in the next entry.</p>]]></description><link>http://codeofrob.com/entries/basic-operations-with-leveldb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/basic-operations-with-leveldb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 01 Mar 2013 09:00:00 GMT</pubDate></item><item><title><![CDATA[Investigating RavenDB on Mono for reals]]></title><description><![CDATA[<p>I've been down <a href="/entries/ravendb-on-mono.html">this road before</a> with a certain amount of success, and indeed I even did several talks entirely in linux about RavenDB complete with working demos (although some folk might doubt that story).</p>
+
+<p>So what gives then? How come RavenDB doesn't work on Mono out of the box now a couple of years later? Well - the short answer is that it never did. </p>
+
+<p>When I got it working on Mono in the past it was on top of "Munin", a managed storage engine that <a href="http://twitter.com/ayende">@ayende</a> and I hacked up in a hotel lobby in the small hours of the morning that "mostly works" but has never entirely been recommended for production.</p>
+
+<p>That's not to say we haven't got a lot of mileage out of it, as indeed it has been used in pretty much everyone's test suites since its conception and has faithfully done as asked all that time; however, it is clear that for <em>true</em> cross-platform happiness, we could do with a replacement for Esent for platforms that don't support it, and re-inventing the wheel ourselves when so many other people have done work on this for us doesn't make a lot of sense.</p>
+
+<p>The other problem is of course that RavenDB was developed on top of the .NET runtime, using the .NET compiler chain - and support for some of the features used by RavenDB make compilation on mono an hilariously frustrating process of bug fixes and pull requests (which then means it won't work OOB on versions of mono packaged with popular Linux distros). </p>
+
+<p>I'm not going near that with a barge pole, although I'm sure if somebody wants to sit there and get RavenDB simply <em>building</em> on Mono, it'll only take a few hours of workarounds which will be happily accepted as a pull request.</p>
+
+<p>With that, this series of blog posts is <strong>not</strong> going to finish with an entry saying "It now works on Mono", because that's going to take a couple of weeks' work and I haven't got a couple of weeks. However, the breadcrumbs and work completed so far should be good enough for anybody with the spare time and inclination to finish that work and get it working for reals.</p>
+
+<p>So, we've been doing some investigations, and in summary it looks like LevelDB is a good option for our usage patterns - I'm going to spend a couple of entries going over the little spikes I wrote to verify that, and then show the beginnings of the work inside RavenDB itself to kick this off with.</p>
+
+<p>With a proper cross-platform persistence solution, and a few hours tinkering with the build - RavenDB will work on Mono, allow me to help lay some foundations...</p>]]></description><link>http://codeofrob.com/entries/investigating-ravendb-on-mono-for-reals.html</link><guid isPermaLink="true">http://codeofrob.com/entries/investigating-ravendb-on-mono-for-reals.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 28 Feb 2013 09:00:00 GMT</pubDate></item><item><title><![CDATA[Custom query inputs in RavenDB]]></title><description><![CDATA[<p>Back on the list of things "added to RavenDB" <a href="/entries/working-at-hibernating-rhinos.html">during my time at Hibernating Rhinos</a>, ever wished you could pass custom arguments to the transformer when performing a query in RavenDB?</p>
 
 <p>Well, this has been asked for a number of times and since <a href="/entries/ravendb-resulttransformers---a-new-way-of-looking-at-things.html'">splitting out results-transformers</a> into their own process, it has become much easier to add this functionality.</p>
 
@@ -359,86 +431,4 @@ var customer = session.Load&lt;Customer&gt;(order.CustomerId)
 
 <p>This is a small change that makes a big difference, and is possible (in part) because we managed to get rid of having two different types of index and two different code paths.</p>
 
-<p>In the next entry, I'll talk about further optimisations made in this pull request to do with auto indexes.</p>]]></description><link>http://codeofrob.com/entries/next,-we-run-new-ravendb-indexes-in-memory.html</link><guid isPermaLink="true">http://codeofrob.com/entries/next,-we-run-new-ravendb-indexes-in-memory.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 18 Feb 2013 09:00:00 GMT</pubDate></item><item><title><![CDATA[Automatically merging indexes in RavenDB for optimal performance]]></title><description><![CDATA[<p>So, we can mark indexes as idle, we can automatically do this to auto indexes, and we delete auto indexes that aren't being used enough - that paves the way for a pretty useful feature - merging automatic indexes for fun and for profit.</p>
-
-<p>What is that you ask? Well - when we do the following series of queries</p>
-
-<pre><code>session.Query&lt;Pony&gt;()
-    .Where(pony =&gt; pony.Name == "Rainbow Dash")
-    .FirstOrDefault()
-</code></pre>
-
-<p>and</p>
-
-<pre><code>session.Query&lt;Pony&gt;()
-        .Where(pony =&gt; pony.Colour == "Pink")
-        .ToList()
-</code></pre>
-
-<p>We will end up with the following indexes in RavenDB</p>
-
-<p><em>Pony/Name</em></p>
-
-<pre><code>    from pony in ponies
-      select new {
-        pony.Name
-      }
-</code></pre>
-
-<p><em>Pony/Colour</em></p>
-
-<pre><code>    from pony in ponies
-      select new {
-        pony.Colour
-      }
-</code></pre>
-
-<p>Well, in reality there is no real reason why we'd have two indexes and incur the cost of iterating over documents every time they're added more often than we need.</p>
-
-<p>One of the things that the query optimiser already does, is look for the 'widest' index - that is the index that touches the most fields.</p>
-
-<p>It makes sense therefore, that rather than simply look for the widest index that matches the query, we should look for the most compatible index and create a new one based off of that if it doesn't match completely.</p>
-
-<p>Consider the above, we should end up with two indexes</p>
-
-<pre><code>    from pony in ponies
-      select new {
-        pony.Name
-      }
-</code></pre>
-
-<p>and</p>
-
-<pre><code>    from pony in ponies
-      select new {
-        pony.Name,
-        pony.Colour
-      }
-</code></pre>
-
-<p>Over time, the first index won't be used (as it's not as wide as the second index), and it will wither and die because of idling and auto-removal.</p>
-
-<p>Over time, we'll actually end up with only one index per document type (providing there aren't any reasons why a query isn't compatible with an existing index, such as different indexing or sorting options)</p>
-
-<p>This ensures that over time when using automatically generated queries, that RavenDB keeps itself as lean as possible and using as few resources as possible (and tidy!)</p>
-
-<p>Now that covers what I did on in first couple of days at Hibernating Rhinos, next up I'll talk about what I'm helping do with result transformations.</p>]]></description><link>http://codeofrob.com/entries/automatically-merging-indexes-in-ravendb-for-optimal-performance.html</link><guid isPermaLink="true">http://codeofrob.com/entries/automatically-merging-indexes-in-ravendb-for-optimal-performance.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 15 Feb 2013 09:00:00 GMT</pubDate></item><item><title><![CDATA[Getting rid of temporary indexes in RavenDB]]></title><description><![CDATA[<p>I talked about RavenDB's new ability to promote and demote automatically created indexes <a href="/entries/auto-idling-auto-indexes-in-ravendb.html">yesterday</a>, but what are the implications of this?</p>
-
-<p>I mentioned that the process in RavenDB for managing dynamically created indexes is as thus:</p>
-
-<ul>
-<li>Look for appropriate index to use in query</li>
-<li>If found, return the most appropriate index</li>
-<li>If not found, create an index that will deal with the query</li>
-<li>Return that index as a Temporary</li>
-<li>If that index is used enough, promote it into an Auto index</li>
-<li>If that index is not used enough, delete it</li>
-</ul>
-
-<p>Well, we now have a way of marking indexes as idle and therefore not taking up needless resources, we can <em>remove temporary indexes entirely</em>.</p>
-
-<p>That's actually a lot of code we can remove, in fact a pile of code that I wrote over two years ago, that's kinda cool, as it means entire code-path that doesn't need maintaining any more.</p>
-
-<p>Obviously we can still remove auto indexes that were only queried once or twice, but that can take part with the algorithm that marks them as idle, and to make things even better we can add some functionality to the Studio to manage these idle indexes or delete them.</p>
-
-<p>Now, this still isn't as awesome as it could be, but we've laid the ground work for a pretty awesome feature, I'll talk about that tomorrow.</p>]]></description><link>http://codeofrob.com/entries/getting-rid-of-temporary-indexes-in-ravendb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/getting-rid-of-temporary-indexes-in-ravendb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 14 Feb 2013 12:34:00 GMT</pubDate></item></channel></rss>
+<p>In the next entry, I'll talk about further optimisations made in this pull request to do with auto indexes.</p>]]></description><link>http://codeofrob.com/entries/next,-we-run-new-ravendb-indexes-in-memory.html</link><guid isPermaLink="true">http://codeofrob.com/entries/next,-we-run-new-ravendb-indexes-in-memory.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 18 Feb 2013 09:00:00 GMT</pubDate></item></channel></rss>

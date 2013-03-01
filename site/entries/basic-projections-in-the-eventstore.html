@@ -1,0 +1,196 @@
+<html>
+  <head>
+    <title id="title">Basic projections in the EventStore</title>
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+
+    </script>
+  </head>
+  <body>
+    <a class="subscribe" href="http://feeds.feedburner.com/RobAshton">Subscribe to my blog</a>
+    <div id="blog-entry">
+      <h1 id="post-title">Basic projections in the EventStore</h1>
+      <h6>Published on <span class="date">2013-3-14</span></h6>
+      <div id="post"><p>Being able to <a href="/entries/pushing-data-into-streams-in-the-eventstore.html">shove events in and out</a> is great for our event sourced apps, but actually - if we have these streams, it's really useful to be able to consistently manipulate the events as they come in and either query those events or re-organise them so they can be queried.</p>
+
+<p>To do this, we have the notion of projections, which are chunks of code that can be executed over a stream (with persisted state) as events are added to it. Now, in reality this isn't actually too different to what we'd be doing outside the event store when building up view models, and I foresee lots of bad things being done by people are the line between these different ways of reading streams are blurred and fought over.</p>
+
+<p>I'm actually quite interested in these projections as a way of building up state for reports/charts, or re-partitioning into streams for different consumers - let's have a look how the most basic of these could work. </p>
+
+<p>Let's say I've got a few events in the general structure of</p>
+
+<pre><code>{
+  EventType: "PonyJumped",
+  Data: {
+    Pony: "Derpy Hooves",
+    Height: 10,
+    Distance: 13
+  }
+}
+</code></pre>
+
+<p>and</p>
+
+<pre><code>{
+  EventType: "PonySpoke",
+  Data: {
+    Sentence: "This is the best day ever",
+    Pony: "Pinkie Pie"
+  }
+}
+</code></pre>
+
+<p>And I'm putting all of these events into a single stream <em>ponies</em></p>
+
+<p>Let's say that I've thrown a few hundred thousand of these events through the event store and I want to know something really basic, like how many times the ponies in my world have jumped since time began.</p>
+
+<p>If I go to the "New Projection" tab in the Admin UI, I basically have a few options to choose from which I'm going to gloss over for the most part (as they're likely to change anyway)</p>
+
+<ul>
+<li>Name: This is the name of the projection, I'll use this to look up the state</li>
+<li>Source: This is the code to be executed</li>
+<li>Emit Enabled: Projections can emit new events if this is enabled</li>
+<li>Enabled: Is this projection going to run?</li>
+<li>Mode: Continuous vs One-Time: Will this projection always be running or am I just running it to get some results now</li>
+</ul>
+
+<p>My options</p>
+
+<ul>
+<li>Name: "PonyJumpCount"</li>
+<li>Source: TBC</li>
+<li>Emit Enabled: Leaving this false</li>
+<li>Enabled: Yes please!</li>
+<li>Mode: Continous, I want to always know how many times ponies have jumped in my world</li>
+</ul>
+
+<p>Now for the source, by default we're shown this as something to start from</p>
+
+<pre><code>fromAll()
+  .whenAny(function(state,event) { 
+     return state; 
+  });
+</code></pre>
+
+<p>Basically, we have to select which streams we're going to be reading our events from, that "fromAll" bit means we're going to be reading from all of the streams, I'm going to go ahead and change that to "fromStream" and select our "ponies" stream.</p>
+
+<pre><code>fromStream("ponies")
+  .whenAny(function(state,event) { 
+     return state; 
+  });
+</code></pre>
+
+<p>How about that next bit "whenAny", well we've already matched which stream we want events from, well this is the bit we get to use to select which events from that stream we're interested in - "whenAny" just means "all the events in the stream".</p>
+
+<p>I'm going to go ahead and change that to a when, which takes in a map of the events we're interested in and the callback to process the event with, so..</p>
+
+<pre><code>fromStream("ponies")
+  .when(
+    "PonyJumped": function(state, event) {
+      return state
+    })
+</code></pre>
+
+<p>Now for that callback - we have "state" and "event", the former being the state we're building up for this projection, and the latter being the event we're going to be adding to that state.</p>
+
+<p>To begin with, we haven't actually got any state, but we can rectify that by chucking in an "$init" handler (anything starting with a dollar is something built in to the event store)</p>
+
+<pre><code>fromStream("ponies")
+  .when({
+    $init: function() {
+      return { count: 0 }
+    },
+    "PonyJumped": function(state, event) {
+      return state
+    }
+  })
+</code></pre>
+
+<p>And now, the actual bit of code for building up our projection</p>
+
+<pre><code>fromStream("ponies")
+   .when({
+        $init: function() {
+           return { count: 0 }
+        },
+        "PonyJumped": function(state, event) {
+          state.count += 1
+        }
+  })
+</code></pre>
+
+<p>If I hit save and navigate to</p>
+
+<p><em>http://127.0.0.1:2113/projection/PonyJumpCount/state</em></p>
+
+<pre><code>{
+  count: 1337
+}
+</code></pre>
+
+<p>I get some wonderful state.</p>
+
+<p>Well, that was very basic, next time we'll look at how we could generate one of these projections for each pony we have in our world.</p></div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feeds.feedburner.com/RobAshton">Subscribe</a>
+        <a href="http://twitter.com/robashton">Follow me</a>
+      </div>
+      <div id="inqob_job_postings"></div> 
+      <script type="text/javascript" charset="utf-8">
+        var __inqob_settings = {
+          email_address:  'robashton@codeofrob.com', 
+          token:          '',
+          debug: false,
+          items: [{
+            keyword: 'codeofrob', 
+            price: 100 
+          }]
+        };
+
+        (function(is) {
+          var sc = document.createElement('script'); sc.type = 'text/javascript'; sc.async = true;
+          var src = (document.location.protocol == 'https:' ? 'https://' : 'http://') + 'inqob.com/get/script';
+          var q = [];
+          q.push('?t='+ new Date().getTime()); 
+          q.push('token=' + is.token); 
+          q.push('email_address=' + is.email_address); 
+          q.push('href=' + encodeURIComponent(window.location.href));
+          sc.src = src + q.join('&');
+          var s = document.getElementsByTagName('script')[0]; 
+          s.parentNode.insertBefore(sc, s);
+        })(__inqob_settings);      
+      </script>
+      <div id="disqus">
+        <div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+      </div>
+    </div>
+    <div id="post-comments">
+
+    </div>
+  </body>
+</html>
