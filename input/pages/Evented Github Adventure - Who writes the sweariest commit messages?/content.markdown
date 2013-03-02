@@ -517,10 +517,11 @@ Actually, let's normalise this for the lols and see who is actually the swearies
       .attr("y", 350)
       .text(0 + "%")
 
-   svg.selectAll("text")
+   svg.selectAll(".label")
       .data(filteredData)
       .enter()
         .append("text")
+        .attr("class", "label")
         .attr("transform", function(d, i) { 
           var transform = "translate(" + i * (640 / filteredData.length) + "," + 380 + ") "
           transform += "rotate(75) "
