@@ -11,7 +11,7 @@ Well, now is the time to introduct another method we have at our disposal
 
 Well, what on earth IS a category? Turns out that the EventStore is quite clever and one of the default projections is hard at work looking at streams and categorising them.
 
-I called my streams pony-PONYNAME for good reason, because this default projection will have gone "Hey, there is a dash i that stream, I'm going to  create a category called pony, and each entry in that category is going to be a PONYNAME"
+I called my streams pony-PONYNAME for good reason, because this default projection will have gone "Hey, there is a dash in that stream, I'm going to create a category called pony, and each entry in that category is going to be a PONYNAME"
 
 That leaves us with
 
