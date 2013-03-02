@@ -19,6 +19,7 @@ module.exports = {
       var folder = './input/pages/' + folders[i];
       fs.readFile(folder + '/meta.json', function(err, data) {
         var meta = JSON.parse(data);
+        meta.date = new Date(meta.date)
         metaCollection.push(meta);
         if(metaCollection.length === folders.length)
           callback(metaCollection);

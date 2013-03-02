@@ -20,6 +20,8 @@ var compilePosts = function(posts) {
     author: 'Rob Ashton'
   });
 
+  var now = new Date()
+
   var readPageHtmlSync = function(folder) {
     var mdfilename = 'input/pages/' + folder + '/content.markdown';
     var htmlfilename = 'input/pages/' + folder + '/content.html';
@@ -33,9 +35,6 @@ var compilePosts = function(posts) {
     return inputHtml;
   };
 
-  //console.log('Removing old entries')
-  //wrench.rmdirSyncRecursive('site/entries/');
-  //fs.mkdirSync('site/entries', '777');
   var pageTemplate = fs.readFileSync('input/source/pagetemplate.html', 'utf8');
   var rssItems = 0;
   for(var i = 0 ; i < posts.length; i++) {
@@ -45,7 +44,7 @@ var compilePosts = function(posts) {
     var commentHtml = '';
     var inputComments = JSON.parse(fs.readFileSync('input/pages/' + common.titleToFolder(post.title) + '/comments.json', 'utf8'));
     
-    if( rssItems < 10 && new Date(post.date) < new Date()) {
+    if( rssItems < 10 && post.date < now) {
       rssItems++
       feed.item({
           title:  post.title,
@@ -68,10 +67,9 @@ var compilePosts = function(posts) {
     }
 
     var datestr = ''
-    var d = new Date(post.date)
-    datestr += d.getFullYear() + '-'
-    datestr += (d.getMonth() + 1) + '-'
-    datestr += d.getDate()
+    datestr += post.date.getFullYear() + '-'
+    datestr += (post.date.getMonth() + 1) + '-'
+    datestr += post.date.getDate()
     
     var pageHtml = plates.bind(pageTemplate, { post: inputHtml, title: post.title, "post-title": post.title,  date: datestr, "post-comments": commentHtml });
     fs.writeFileSync(outputFilename, pageHtml, 'utf8');
@@ -85,17 +83,19 @@ var compilePosts = function(posts) {
 
 common.getAllPostsInfo(function(posts) {
   var newposts = _.chain(posts)
-      .sortBy(function(item) { return -(new Date(item.date)); })
+      .sortBy(function(item) { return item.date; })
+      .reverse()
       .value()
 
   var indexTemplate = fs.readFileSync('./input/source/indextemplate.html', 'utf8');
   var unpublishedposts = 0
   var listHtml = '';
+  var now = new Date()
 
   var allEntries = ''
   for(var i = 0 ; i < newposts.length; i++) {
     var post = newposts[i]
-    if(new Date(post.date) < new Date()) {
+    if(post.date < now) {
       listHtml += '<li><a href="entries/' + common.titleToPage(post.title) + '">' + post.title + '</a></li>\n';
     } else
       unpublishedposts++
