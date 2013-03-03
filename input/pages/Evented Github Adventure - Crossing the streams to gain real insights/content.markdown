@@ -75,6 +75,8 @@ So, JavaScript and Lua developers top this one - what's the bet that's just beca
 
 *note: Once again, probably not enough data to draw real conclusions from*
 
+Anyway, next let's do a bit of analysis on seeing if these are "accidents" or not.
+
 <script type="text/javascript" src="/d3.v2.js"></script>
 <script type="text/javascript">
   var data = [

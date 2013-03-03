@@ -30,7 +30,7 @@ Here is how that might look:
     fromStream('github')
       .partitionBy(function(ev) {
         if(ev.body.repo) {
-          return ev.body.repo.fullname
+          return ev.body.repo.full_name
         }
       })
       .when({
@@ -53,12 +53,12 @@ How about simply making a note every time we reach a PushEvent, and then if we g
     fromStream('github')
       .partitionBy(function(ev) {
         if(ev.body.repo) {
-          return ev.body.repo.fullname
+          return ev.body.repo.full_name
         }
       })
       .when({
         $init: function(state, ev) {
-          state.lastPush = null
+          return {}
         },
         "PushEvent": function(state, ev) {
           if(state.lastPush) {
