@@ -444,8 +444,11 @@ Plugging this into d3, and filtering out the items without enough entries, we ge
 
    var filteredData = []
    for(var i =0 ; i < data.length; i++) {
-     if(data[i].state.total >= 50)
-       filteredData.push(data[i])
+     if(data[i].state.total >= 50) {
+       var datum = data[i]
+       datum.state.percentage = Math.floor((datum.state.curses / datum.state.total) * 10000) / 100
+       filteredData.push(datum)
+     }
    }
 
    var scale = d3.scale.linear()
@@ -489,7 +492,7 @@ Plugging this into d3, and filtering out the items without enough entries, we ge
 
 </script>
 
-Actually, let's normalise this for the lols and see who is actually the sweariest, normalised from about 0% to 1% (the majority of developers are quite clean about things ;) )
+Actually, let's normalise this for the lols and see who is actually the sweariest, normalised from about 0% to 7% (the majority of developers are quite clean about things ;) )
 
 <div id="normalised"></div>
 <script type="text/javascript">
@@ -498,12 +501,11 @@ Actually, let's normalise this for the lols and see who is actually the swearies
           .attr("width", 800)
           .attr("height", 480)
 
-
    var scale = d3.scale.linear()
-     .domain([0, d3.max(filteredData, function(d) { return d.state.curses })])
+     .domain([0, d3.max(filteredData, function(d) { return d.state.percentage })])
      .range([0, 1]);
 
-   var maxPercentage = scale( d3.max(filteredData, function(d) { return d.state.curses }) );
+   var maxPercentage = d3.max(filteredData, function(d) { return d.state.percentage });
 
    svg.append("text")
       .attr("fill", '#000')
@@ -538,14 +540,16 @@ Actually, let's normalise this for the lols and see who is actually the swearies
          .attr("class", "curse")
          .attr("fill", '#AAF')
          .attr("x", function(d, i) { return i * (640 / filteredData.length)})
-         .attr("y", function(d, i) { return 370 - (280 * scale(d.state.curses)) })
+         .attr("y", function(d, i) { return 370 - (280 * scale(d.state.percentage)) })
          .attr("width", 640 / (filteredData.length + 1))
-         .attr("height", function(d, i) { return 280 * scale(d.state.curses) })
+         .attr("height", function(d, i) { return 280 * scale(d.state.percentage) })
 
 </script>
 
 
-So... turns out that C++ developers are  quite civil and PHP developers are fucking angry - who can blame them?
+So... turns out that C# developers are quite mild-mannered and PHP/Scala developers are fucking angry - and who can blame them?
+
+*note: There isn't really enough data to draw this sort of result, but let's not let that stop us making outrageous statements*
 
 Projections are a great way to analyse streams to generate knowledge about what is going on, of course simply doing aggregations over data over time is something we can achieve in most systems, in the next entry we'll look at something more interesting.
 
