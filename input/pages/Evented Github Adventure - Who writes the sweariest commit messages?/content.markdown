@@ -547,5 +547,5 @@ Actually, let's normalise this for the lols and see who is actually the swearies
 
 So... turns out that C++ developers are  quite civil and PHP developers are fucking angry - who can blame them?
 
-Projections are a great way to analyse streams to generate knowledge about what is going on, of course simply doing 
+Projections are a great way to analyse streams to generate knowledge about what is going on, of course simply doing aggregations over data over time is something we can achieve in most systems, in the next entry we'll look at something more interesting.
 
