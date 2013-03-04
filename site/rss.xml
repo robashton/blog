@@ -1,5 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Sun, 03 Mar 2013 18:21:49 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Basic operations with LevelDB]]></title><description><![CDATA[<p>So, in <a href="/entries/investigating-ravendb-on-mono-for-reals.html">trying out LevelDB</a>, I need to work out the basics, and then apply those learnings to whether the functionality exposed is compatible with RavenDB's storage needs.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Mon, 04 Mar 2013 20:42:31 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Transactional guarantees on top of LevelDB]]></title><description><![CDATA[<p>So, I'm <a href="/entries/basic-operations-with-leveldb.html">experimenting with LevelDB</a> and I've discovered that it does atomic writes both on single operations and batches of operations.</p>
+
+<p>This isn't actually all we need in RavenDB, as we need to be able to support multiple reads and writes - potentially over a period of time.</p>
+
+<p>We can't just be reading from a database that might be changing under our feet all of the time, and it turns out that LevelDB gives us the ability to read from a particular version of the database.</p>
+
+<p>When beginning a long running operation that needs a consistent read-state, we can create a snapshot and use this in all of our reads to ensure we have a consistent view of the database.</p>
+
+<pre><code>// Create a snapshot at the beginning of a sequence of operations
+leveldb::Snapshot* snapshot = db-&gt;GetSnapshot();
+
+
+// For each read operation we can use this snapshot
+leveldb::ReadOptions options;
+options.snapshot = snapshot;
+
+db-&gt;Get(options, "key", &amp;document);
+</code></pre>
+
+<p>That solves that problem then, although it leaves another question in the air - which is how LevelDB handles multiple writers modifying the same key.</p>
+
+<p>Consider a thread coming along and beginning an operation</p>
+
+<pre><code>tx1 = store-&gt;BeginOperation();
+</code></pre>
+
+<p>And another thread beginning an operation</p>
+
+<pre><code>tx2 = store-&gt;BeginOperation();
+</code></pre>
+
+<p>And then</p>
+
+<pre><code>// Thread one deletes a key
+store-&gt;Delete("key1", tx1);
+
+// Thread two Writes to that key
+store-&gt;Put("key1", tx2);
+</code></pre>
+
+<p>By default (at least as I understand) LevelDB will happily accept these operations as it doesn't have any concurrency control.</p>
+
+<p>Happily, this is easy enough to work through as we'll see in the next entry.</p>]]></description><link>http://codeofrob.com/entries/transactional-guarantees-on-top-of-leveldb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/transactional-guarantees-on-top-of-leveldb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 04 Mar 2013 09:00:00 GMT</pubDate></item><item><title><![CDATA[Basic operations with LevelDB]]></title><description><![CDATA[<p>So, in <a href="/entries/investigating-ravendb-on-mono-for-reals.html">trying out LevelDB</a>, I need to work out the basics, and then apply those learnings to whether the functionality exposed is compatible with RavenDB's storage needs.</p>
 
 <p>I spent a few hours in the car on the way to and back from the Dead Sea and this seemed like an ideal time to crack out the g++ and write some C++ on top of LevelDB.</p>
 
@@ -417,18 +459,4 @@ var customer = session.Load&lt;Customer&gt;(order.CustomerId)
 
 <p>This gives us the ability to send only the information we want to the client as well as pull in information from other documents, that's pretty neat, but now it's in need of a bit of TLC, as some of its functionality has been <a href="http://ayende.com/blog/160545/feature-intersection-is-killing-me-referenced-document-indexing">superceded by Referenced Documents in Map</a> and it's a bit awkward as it is.</p>
 
-<p>I'll talk more about that tomorrow when I go into some of the issues that we're experiencing with this feature.</p>]]></description><link>http://codeofrob.com/entries/re-thinking-result-transformations-in-ravendb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/re-thinking-result-transformations-in-ravendb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 19 Feb 2013 09:00:00 GMT</pubDate></item><item><title><![CDATA[Next, we run new RavenDB indexes in memory]]></title><description><![CDATA[<p><a href="/entries/getting-rid-of-temporary-indexes-in-ravendb.html">Other day</a> I wrote about the awesome news that we'd managed to delete an entire code-path from RavenDB as a result of some of the other changes coming in.</p>
-
-<p>Well, it's not quite as simple as that, you see - temporary indexes in RavenDB had a reallly big advantage in that they were run entirely in memory (until they reached a configurable threshold anyway).</p>
-
-<p>That's good, because  indexes and running data through indexes is typically an IO bound process, and if we can keep the indexes in memory while we work on them, the whole proces can be a lot more efficient.</p>
-
-<p>Well, having gotten rid of an entire code path, surely it makes sense to move the code that used to do this to be applicable to all indexes?</p>
-
-<p>Absolutely, so starting from whenever my pull request gets merged, all new indexes in RavenDB will be ran in memory to begin with (meaning you get less stale results much faster - great if you're using the auto-indexes or experimenting with manual indexes on large sets of data).</p>
-
-<p>After the index has caught up with reality, it will be flushed to disk and celebrations will be had, or if the index reaches a configurable memory threshold that will happen too.</p>
-
-<p>This is a small change that makes a big difference, and is possible (in part) because we managed to get rid of having two different types of index and two different code paths.</p>
-
-<p>In the next entry, I'll talk about further optimisations made in this pull request to do with auto indexes.</p>]]></description><link>http://codeofrob.com/entries/next,-we-run-new-ravendb-indexes-in-memory.html</link><guid isPermaLink="true">http://codeofrob.com/entries/next,-we-run-new-ravendb-indexes-in-memory.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 18 Feb 2013 09:00:00 GMT</pubDate></item></channel></rss>
+<p>I'll talk more about that tomorrow when I go into some of the issues that we're experiencing with this feature.</p>]]></description><link>http://codeofrob.com/entries/re-thinking-result-transformations-in-ravendb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/re-thinking-result-transformations-in-ravendb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 19 Feb 2013 09:00:00 GMT</pubDate></item></channel></rss>
