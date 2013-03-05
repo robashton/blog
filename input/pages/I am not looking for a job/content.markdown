@@ -1,3 +1,5 @@
+**Note - I am now fully booked up until June, after which I will start charging again, please do get in touch however, as we can likely work something out that balances the wants of below, with the needs of a lifestyle that unfortunely does seem to cost money**
+
 After a productive weekend in Vilnius at the "We Actually Build Stuff" conference, I came back to the client I have been spending most of my time with in Belgium these past two years feeling a bit despondent.
 
 Why was I still there? I had already made my intent clear a month ago - that after this contract expired I wasn't going to renew, I had saved enough money to survive for a year if need be, I was not exactly enjoying what I was doing (for many of the standard self-defeating enterprise issues) and as one of my friends put it "Staying just to save some extra cash just seems like a stupid idea if you're not enjoying it"
