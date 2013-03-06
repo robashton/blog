@@ -10,6 +10,7 @@ var title = argv.title
   , year = argv.year || now.getUTCFullYear()
   , month = argv.month || now.getUTCMonth()
   , day = argv.day || null
+  , force = argv.force
   , date = null
 
 common.getAllPostsInfo(function(allposts) {
@@ -29,7 +30,7 @@ common.getAllPostsInfo(function(allposts) {
   }
 
   var lastdate = date
-  if(date <= latestdate) {
+  if(date <= latestdate && !force) {
     console.log('Shifting posts to the future')
     for(var i = 0; i < allposts.length; i++) {
       var post = allposts[i]
