@@ -42,7 +42,7 @@ Listening to the pain is the only sane way to do software development, blindly l
 
 Most of the time going with *make no assumptions* TDD is a waste of your client's money, and most of the time writing no tests at all will come back to bite you in the future - *got it*.
 
-TDD as you mean it is a great academic exercise for your free time or weekends, TDD as you mean it is a great marketing term if you're one of those consultants who consult on TDD, but TDD is not usually how we build great software on time.
+TDD as you mean it is a great academic exercise for your free time or weekends, TDD as you mean it is a great marketing term if you're one of those consultants who consult on TDD, and recruiters definitely love to see it on your CV but TDD is not usually how we build great software on time.
 
 **So what kind of tests *do* you write Rob?**
 
