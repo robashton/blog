@@ -16,11 +16,13 @@ Okay, so what the heck are sermons and what's the deal about getting them online
 
 Not that complicated, and my first suggestion is
 
-*Can't we just use Wordpress/Drupal/Etc and have this done in a couple of hours?*
+*Can't we just use Wordpress/Drupal/Etc and have this done in a few hours?*
 
-If I was building an MVP, that's pretty much what I'd do (and I still maintain that's what we should do), but Sam is pretty insistent that he wants it done in ASP.NET MVC (*shudder*) and RavenDB (*yay*), so I guess I need to get out my Windows laptop and once more work my way around Microsoft's attempt at an MVC framework.
+If I was building an MVP, that's pretty much what I'd do (and I still maintain that's what we should do), but Sam is pretty insistent that he wants it done in .NET (*shudder*) and RavenDB (*yay*), so I guess I need to get out my Windows laptop and once more work my way around .NET and ASP.NET MVC)
 
-Anyway, after trying to create a few "empty sites" in Visual Studio, I finally find a configuration that is "emptier" than the other ones and get to work, this is my first time on ASP.NET MVC since last I did .NET web development (Back in version 2 and beginning of 3)
+(Why ASP.NET MVC? Because I actually remember quite a lot of it from the last time I did .NET and I'm not going to waste time trying to learn another .NET web framework when I have to start building stuff *now* - when building something with such a short time-frame, you should be using something you know to make the most of the time)
+
+Anyway, after trying to create a few "empty sites" in Visual Studio, I finally find a configuration that is "emptier" than the other ones and get to work (still confusing Microsoft!)
 
 Turns out it's not only "mediocre" these days, but I'm actually able to get most of the basic CRUD operations and workflow done in a few hours, highlights of this experience being:
 
