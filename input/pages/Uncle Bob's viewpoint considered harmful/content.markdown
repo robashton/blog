@@ -40,7 +40,7 @@ That's the word. **pain**, let's say it again - **pain**, if it hurts - do somet
 
 Listening to the pain is the only sane way to do software development, blindly listening to far-right viewpoints like Uncle Bobs will get you so far, and listening to far-left viewpoints which advocate throwing caution to the wind will probably lead you to failure. The idea that tests are a waste of time is a dangerous one if given time to grow in an echo chamber, but the idea that TDD is the absolute is just as dangerous.
 
-Most of the time going with *make no assumptions* TDD is a waste of your client's money.
+Most of the time going with *make no assumptions* TDD is a waste of your client's money, and most of the time writing no tests at all will come back to bite you in the future - *got it*.
 
 **So what kind of tests *do* you write Rob?**
 
