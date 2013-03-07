@@ -9,6 +9,7 @@ var markdown = require('node-markdown').Markdown;
 
 console.log('Rebuilding site')
 
+
 var compilePosts = function(posts) {
 
   var feed = new RSS({

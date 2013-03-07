@@ -1,5 +1,85 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Wed, 06 Mar 2013 21:30:51 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Streaming large values from LevelDB]]></title><description><![CDATA[<p>We've uncovered that we can do <a href="/entries/basic-operations-with-leveldb.htm">atomic writes</a>, <a href="/entries/transactional-guarantees-on-top-of-leveldb.html">consistent reads</a> and <a href="/entries/writing-a-transaction-manager-on-top-of-leveldb.html">implement transactions</a> on top of LevelDB, but we've got another need in RavenDB which is that we have large objects (documents) inside RavenDB and we don't always want to load them into managed memory as a whole unit (instead, we want to stream them into a set of smaller objects)</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Thu, 07 Mar 2013 19:56:34 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Secondary indexes on top of LevelDB]]></title><description><![CDATA[<p>Got <a href="/entries/basic-operations-with-leveldb.htm">atomic writes</a>, <a href="/entries/transactional-guarantees-on-top-of-leveldb.html">consistent reads</a>, <a href="/entries/writing-a-transaction-manager-on-top-of-leveldb.html">transactions</a> and we can <a href="/entries/streaming-large-values-from-leveldb.html">do streaming</a> if we need to - now if we can do secondary indexes we can move forwards with creating a storage implementation for RavenDB.</p>
+
+<p>An example of a couple of indexes we need in RavenDB is:</p>
+
+<ul>
+<li>The document itself stored by key (primary index)</li>
+<li>The document key stored by etag (secondary index)</li>
+</ul>
+
+<p>Whenever we write a document in RavenDB, we want to</p>
+
+<ul>
+<li>Remove the old Etag (or at least update it)</li>
+<li>Write the document against its key</li>
+<li>Write a new etag for the document</li>
+</ul>
+
+<p>(Actually, a bit more goes on than this as we store meta data for headers etc, but this will do for now)</p>
+
+<p>The operation we want to do when indexing is</p>
+
+<ul>
+<li>What are all the new etags since last we indexed?</li>
+<li>Loop through each of these, load the document and index it</li>
+</ul>
+
+<p>Etags are sortable by design, in my rough and ready document database the etag is just an integer that I increase every time I add a new document.</p>
+
+<p>Now, when writing and reading from the database, we need to be able to differentiate between types of key in the database, and ordering for each of these types is set by the key.</p>
+
+<p><em>For example, reading a document</em></p>
+
+<pre><code>#define DOCPREFIX "/docs/"
+#define ETAGPREFIX "/etags/"
+
+
+void Get(std::string id, std::string* doc) {
+  std::stringstream st;
+  st &lt;&lt; DOCPREFIX;
+  st &lt;&lt; id;
+  std::string key = st.str();
+  this-&gt;lastStatus = this-&gt;db-&gt;Get(leveldb::ReadOptions(), key, doc);
+}
+</code></pre>
+
+<p>So I'm sticking a prefix in front of each key to denote what sort of key it is, yay.</p>
+
+<p>That means that my secondary index of etags will end up looking like this</p>
+
+<pre><code>/etags/0 -&gt; /docs/1
+/etags/1 -&gt; /docs/5
+/etags/2 -&gt; /docs/4
+/etags/3 -&gt; /docs/6
+/etags/4 -&gt; /docs/3
+/etags/6 -&gt; /docs/7
+/etags/8 -&gt; /docs/12
+/etags/9 -&gt; /docs/5
+</code></pre>
+
+<p>When I want to index documents newer than /etags/5, I can do</p>
+
+<pre><code>int IndexNewDocumentsNewerThan(int etag) {
+  std::stringstream st;
+  st &lt;&lt; ETAGPREFIX;
+  st &lt;&lt; etag;
+  std::string startkey = st.str();
+
+  leveldb::Iterator* it = this-&gt;db-&gt;NewIterator(leveldb::ReadOptions());
+  for (it-&gt;Seek(startkey); it-&gt;Valid() &amp;&amp; this-&gt;IsEtagKey(it-&gt;key().ToString()); it-&gt;Next()) {
+    std::string document = it-&gt;value().ToString();
+    IndexDocument(value);
+  }
+  delete it;
+}
+</code></pre>
+
+<p>Building up other indexes is a trivial matter of making sure we have a suitable ordering in place, and queries are simply a matter of building up these keys appropriately.</p>
+
+<p>With all of this, I think we have enough information to go and build persistence for RavenDB on top of LevelDB (and then test test test, performance performance performance etc).</p>
+
+<p>If you want to check out the spikes and playarounds with LevelDB, you can find them on my <a href="https://github.com/robashton/leveldb-play">Github</a></p>]]></description><link>http://codeofrob.com/entries/secondary-indexes-on-top-of-leveldb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/secondary-indexes-on-top-of-leveldb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 07 Mar 2013 09:00:00 GMT</pubDate></item><item><title><![CDATA[Streaming large values from LevelDB]]></title><description><![CDATA[<p>We've uncovered that we can do <a href="/entries/basic-operations-with-leveldb.htm">atomic writes</a>, <a href="/entries/transactional-guarantees-on-top-of-leveldb.html">consistent reads</a> and <a href="/entries/writing-a-transaction-manager-on-top-of-leveldb.html">implement transactions</a> on top of LevelDB, but we've got another need in RavenDB which is that we have large objects (documents) inside RavenDB and we don't always want to load them into managed memory as a whole unit (instead, we want to stream them into a set of smaller objects)</p>
 
 <p>Why don't we want to load them into memory in one go? Because large objects can wreck havoc with the garbage collector (the large object heap), and we also have streaming APIs in RavenDB that allow us to limit this sort of thing that we'd like to honour.</p>
 
@@ -364,60 +444,4 @@ public class PoniesIntoUnicorns : AbstractTransformerCreationTask&lt;Pony&gt; {
 
 <p>So, from now on, whenever you access anything in a ResultTransformer, RavenDB will first look in the stored fields for the information, and if not found - will load the document associated with the current result and fetch it from that.</p>
 
-<p>It's a small change, but one which will remove a lot of the confusion around this feature.</p>]]></description><link>http://codeofrob.com/entries/ravendb---avoiding-ambiguity-in-result-transformers.html</link><guid isPermaLink="true">http://codeofrob.com/entries/ravendb---avoiding-ambiguity-in-result-transformers.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 25 Feb 2013 09:00:00 GMT</pubDate></item><item><title><![CDATA[Result transformers - not just for querying]]></title><description><![CDATA[<p>In the <a href="/entries/ravendb-resulttransformers---a-new-way-of-looking-at-things.html">last entry</a> I demonstrated a new artifact in RavenDB for transforming results from queries into view models with all the information attached you could think of.</p>
-
-<p>Well, the primary use case (in my mind) for this, is the creation of view models for web clients without having to de-normalise data or perform multiple remote calls.</p>
-
-<p>Well, actually - if we're viewing say, a single item by id, it doesn't make a lot of sense to have to do a query to get that single item by id. It doesn't make a lot of sense to have to create an index for this.</p>
-
-<p>In the past, that's the best we could hope for, unless perhaps you used the 'include' functionality to load related documents and then created the view model in the client out of those related documents. This looks something like this:</p>
-
-<pre><code>var order = session.Include("CustomerId")
-                        .Load&lt;Order&gt;("orders/1")
-
-var customer = session.Load&lt;Customer&gt;(order.CustomerId)
-
-// Build view model here
-</code></pre>
-
-<p>This is okay and everything, but requires a bit of mental leg-work on the part of the client.</p>
-
-<p>What you really want to do is just ask for the view model, sort of like making a single query in SQL to get all the information you want with one go.</p>
-
-<p>Well, how about this?</p>
-
-<pre><code>  var orderViewModel = session.Load&lt;OrderWithCustomerTransform, OrderWithCustomer&gt;("orders/1")
-</code></pre>
-
-<p>That's a lot nicer, the code for this is as thus</p>
-
-<pre><code>public class OrderWithCustomer 
-{
-   public string OrderId { get; set; }
-   public string OrderDate { get; set; }
-   public string CustomerId { get; set; }
-   public stirng CustomerName { get; set; }
-}
-
-    public class OrderWithCustomerTransform : AbstractIndexCreationTask&lt;Order&gt;
-    {
-         public OrderWithCustomerTransform()
-         {
-                TransformResults = (database, orders) =&gt;
-                        from order in orders
-                        let customer = database.Load&lt;Pet&gt;(order.CustomerId)
-                        select new {
-             OrderId = order.Id,
-             OrderDate = order.Date,
-             CustomerId = customer.Id,
-             CustomerName = customer.Name
-                        }
-         }
-    }
-</code></pre>
-
-<p>Being able to compose view models on the server as part of the load process by pulling in related documents and only pull out the fields you need is awesome.</p>
-
-<p>Being able to re-use these transforms across different indexes or load operations and get a consistent return shape is even awesomer.</p>
-
-<p>Tomorrow I'll show a really cool edge case around this, and how we got rid of a lot of he confusion around transforms.</p>]]></description><link>http://codeofrob.com/entries/result-transformers---not-just-for-querying.html</link><guid isPermaLink="true">http://codeofrob.com/entries/result-transformers---not-just-for-querying.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 22 Feb 2013 09:00:00 GMT</pubDate></item></channel></rss>
+<p>It's a small change, but one which will remove a lot of the confusion around this feature.</p>]]></description><link>http://codeofrob.com/entries/ravendb---avoiding-ambiguity-in-result-transformers.html</link><guid isPermaLink="true">http://codeofrob.com/entries/ravendb---avoiding-ambiguity-in-result-transformers.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 25 Feb 2013 09:00:00 GMT</pubDate></item></channel></rss>

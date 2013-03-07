@@ -21,13 +21,13 @@ I'd normally not like to have a "common" assembly in a solution as the tendency 
 - Common ASP.NET MVC infrastructure (session-per-request)
 - The paging code
 
-There is little point trying to share view models or play around trying to re-use views and hide and show admin functionality on content pages (that stuff is always horrible to do), so this separation makes sense.
+There is little point trying to share view models or play around trying to re-use views and hide and show admin functionality on content pages (that stuff is always horrible to do unless you have time to build up some decent conventions), so this separation makes sense.
 
-As for my happiness rating with ASP.NET MVC today, well - it stayed out of my way because I did everything the way it wanted me to - because of this I ended up building the third party JS content-embedding system to the point where it pretty much reached feature parity with the system we were basing this off in the first place. (Hurrah)
+As for my happiness rating with ASP.NET MVC today, well - it stayed out of my way because I did everything the way it wanted me to - because of this I ended up building the third party JS content-embedding system to the point where it had pretty much reached feature parity with the system we were basing this off in the first place. (Hurrah)
 
 I'm pretty much doing things the way I've [Described previously on CodeBetter](http://codebetter.com/robashton/2011/06/13/finding-a-balance-with-asp-net-mvc/) without any of the feature-based grouping (haven't got time to set it up)
 
-Controller actions all still pretty much look like this:
+Controller actions all pretty much look like this across the site
 
     [HttpGet]
     public ActionResult Edit(int id) {
