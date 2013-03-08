@@ -1,5 +1,89 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Thu, 07 Mar 2013 20:05:38 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Secondary indexes on top of LevelDB]]></title><description><![CDATA[<p>Got <a href="/entries/basic-operations-with-leveldb.htm">atomic writes</a>, <a href="/entries/transactional-guarantees-on-top-of-leveldb.html">consistent reads</a>, <a href="/entries/writing-a-transaction-manager-on-top-of-leveldb.html">transactions</a> and we can <a href="/entries/streaming-large-values-from-leveldb.html">do streaming</a> if we need to - now if we can do secondary indexes we can move forwards with creating a storage implementation for RavenDB.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Fri, 08 Mar 2013 17:59:28 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[The price of abstraction - using LevelDB in RavenDB]]></title><description><![CDATA[<p>So, in our little foray into LevelDB, we've uncovered the following:</p>
+
+<ul>
+<li>We can do <a href="/entries/basic-operations-with-leveldb.htm">atomic writes</a></li>
+<li>We can have <a href="/entries/transactional-guarantees-on-top-of-leveldb.html">consistent reads</a>, </li>
+<li>We can create a <a href="/entries/writing-a-transaction-manager-on-top-of-leveldb.html">transaction manager</a> on top of LevelDB </li>
+<li>We can can <a href="/entries/streaming-large-values-from-leveldb.html">stream data out of LevelDB</a></li>
+<li>And we can create <a href="/entries/secondary-indexes-on-top-of-leveldb.html">secondary indexes</a></li>
+</ul>
+
+<p>With this, I set about creating a fork of RavenDB with a starting implementation of LevelDB for document storage.</p>
+
+<p>I grabbed the <a href="https://github.com/meebey/leveldb-sharp">C# bindings</a> from Github and set about re-implementing my in-memory transaction manager on top of them.</p>
+
+<p>The first thing I notice about the C# bindings is that the API looks like this:</p>
+
+<pre><code>string value = db.Get(string key)
+db.Put(string key, string value)
+</code></pre>
+
+<p>This is not what <a href="/entries/streaming-large-values-from-leveldb.html">RavenDB wants</a>, what RavenDB wants is a MemoryStream or at the very least a ByteArray - as it is not in the business of pushing large strings around the place in managed memory.</p>
+
+<p>No problem, I fork the original project and set about addding Byte array support and then notice something.</p>
+
+<p><em>The bindings are using the C API for LevelDB</em> (which makes sense if you're going to support cross platform C#), but more importantly the C API looks something like this:</p>
+
+<pre><code>char* leveldb_get(char* key)
+</code></pre>
+
+<p>See that return result? That's a malloc, what does the LevelDB C# code do?</p>
+
+<pre><code> var value = Marshal.PtrToStringAnsi(valuePtr, (int) valueLength);
+ return value;
+</code></pre>
+
+<p>Ignoring the <a href="https://github.com/meebey/leveldb-sharp/issues/2">memory leak</a>, as it's a known issue and an easy mistake to make, we can see we're copying the data out of the unmanaged array into a managed string via the PtrToStringAnsi call.</p>
+
+<p>What does the C api do?</p>
+
+<pre><code>Status s = db-&gt;rep-&gt;Get(options-&gt;rep, Slice(key, keylen), &amp;tmp);
+if (s.ok()) {
+  *vallen = tmp.size();
+  result = CopyString(tmp);
+} else {
+  *vallen = 0;
+  if (!s.IsNotFound()) {
+    SaveError(errptr, s);
+  }
+}
+return result;
+</code></pre>
+
+<p>And CopyString?</p>
+
+<pre><code>static char* CopyString(const std::string&amp; str) {
+  char* result = reinterpret_cast&lt;char*&gt;(malloc(sizeof(char) * str.size()));
+  memcpy(result, str.data(), sizeof(char) * str.size());
+  return result;
+}
+</code></pre>
+
+<p><em>urk</em></p>
+
+<p>In order to get a stored document from LevelDB, the following operations are performed:</p>
+
+<pre><code>- Internally, LevelDB will load the document into memory
+- Internally, LevelDB will copy that memory into a string on a Get call
+- The C API copies that memory into a mallocced byte array
+- The C# API copies that memory into a managed string (probably on the Large Object Heap)
+</code></pre>
+
+<p>What we have here, is a C# wrapper around a C API that is a wrapper around a C++ API, and each of them is trying to be semantically equivalent to the underlying API - and the abstraction is <em>killing us</em>.</p>
+
+<p>For small values, this probably isn't a big deal, but RavenDB documents can be any size, and RavenDB documents often <em>are</em> any size - ideally what we want is</p>
+
+<pre><code>MemoryStream stream = db.Get(string key)
+</code></pre>
+
+<p>Where that stream reads from the start of an unmanaged array to the end of that unmanaged array and then disposes it.</p>
+
+<p>In essence, the job of getting LevelDB into RavenDB is going to involve writing a new C API for LevelDB specific to our needs, then writing a C# API around that API specific to our needs.</p>
+
+<p>Thankfully we need about 10% of the exposed functionality in LevelDB so our job isn't as hard as "writing a set of managed bindings for LevelDB", but this means that I won't have time to do this before I leave Israel.</p>
+
+<p>I put my sad face on and get to work on something more manageable for my final day of work :-(</p>]]></description><link>http://codeofrob.com/entries/the-price-of-abstraction---using-leveldb-in-ravendb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/the-price-of-abstraction---using-leveldb-in-ravendb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 08 Mar 2013 09:00:00 GMT</pubDate></item><item><title><![CDATA[Secondary indexes on top of LevelDB]]></title><description><![CDATA[<p>Got <a href="/entries/basic-operations-with-leveldb.htm">atomic writes</a>, <a href="/entries/transactional-guarantees-on-top-of-leveldb.html">consistent reads</a>, <a href="/entries/writing-a-transaction-manager-on-top-of-leveldb.html">transactions</a> and we can <a href="/entries/streaming-large-values-from-leveldb.html">do streaming</a> if we need to - now if we can do secondary indexes we can move forwards with creating a storage implementation for RavenDB.</p>
 
 <p>An example of a couple of indexes we need in RavenDB is:</p>
 
@@ -410,38 +494,4 @@ public class PoniesIntoUnicorns : AbstractTransformerCreationTask&lt;Pony&gt; {
 
 <p>I went to Devsum last year and had a lot of fun, last year the venue was just down the road from an Irish Pub and that pretty much put the icing on the cake. Let me know if you're going to be there and we can organise a guinness driven get-together.</p>
 
-<p>Hoping to announce a few other talks here soon, I finish travelling and working around the world at the end of May and I'm available.</p>]]></description><link>http://codeofrob.com/entries/talking-at-devsum-2013.html</link><guid isPermaLink="true">http://codeofrob.com/entries/talking-at-devsum-2013.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 26 Feb 2013 09:00:00 GMT</pubDate></item><item><title><![CDATA[RavenDB - Avoiding ambiguity in result transformers]]></title><description><![CDATA[<p>So, this is a niche case that is quite annoying for people writing transformers as part of a map or a map/reduce index - and now we have the ability to specify transformers separately to the index this problem only gets worse.</p>
-
-<p>What is this problem?</p>
-
-<p>Well, if I make a map that does this:</p>
-
-<pre><code>public class Ponies : AbstractIndexCreationTask&lt;Pony&gt;
-{
-   public Ponies() {
-     Map = ponies =&gt;
-           from pony in ponies
-           select new {
-             pony.Name,
-             pony.Colour,
-             pony.CutieMark
-           }
-
-     Store(pony =&gt; pony.CutieMark, FieldStorage.Yes);
-     Store(pony =&gt; pony.Name, FieldStorage.Yes);
-     Store(pony =&gt; pony.Colour, FieldStorage.Yes);
-   }
-}
-</code></pre>
-
-<p>Available to me <em>without even loading the document</em> after performing a query, is "Name", "Colour", and "CutieMark". Obviously we can store other things in there as well, and so some funky things in the map - but this is the essence of this functionality.</p>
-
-<p>The same thing happens by default when you apply a reduce stage to an index, because you lose the original document entirely because of aggregation.</p>
-
-<p>This can be a bit confusing, as sometimes you want the result from that store data, and sometimes you want the data from the document, and this has been an all-or-nothing thing.</p>
-
-<p>Now we can <a href="/entries/result-transformers---not-just-for-querying.html">Use Load&lt;></a> with a ResultTransformer, this is even more ambiguous.</p>
-
-<p>So, from now on, whenever you access anything in a ResultTransformer, RavenDB will first look in the stored fields for the information, and if not found - will load the document associated with the current result and fetch it from that.</p>
-
-<p>It's a small change, but one which will remove a lot of the confusion around this feature.</p>]]></description><link>http://codeofrob.com/entries/ravendb---avoiding-ambiguity-in-result-transformers.html</link><guid isPermaLink="true">http://codeofrob.com/entries/ravendb---avoiding-ambiguity-in-result-transformers.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 25 Feb 2013 09:00:00 GMT</pubDate></item></channel></rss>
+<p>Hoping to announce a few other talks here soon, I finish travelling and working around the world at the end of May and I'm available.</p>]]></description><link>http://codeofrob.com/entries/talking-at-devsum-2013.html</link><guid isPermaLink="true">http://codeofrob.com/entries/talking-at-devsum-2013.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 26 Feb 2013 09:00:00 GMT</pubDate></item></channel></rss>
