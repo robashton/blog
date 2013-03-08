@@ -8,6 +8,7 @@ var RSS = require('rss');
 var markdown = require('node-markdown').Markdown;
 
 console.log('Rebuilding site')
+ 
 
 
 var compilePosts = function(posts) {

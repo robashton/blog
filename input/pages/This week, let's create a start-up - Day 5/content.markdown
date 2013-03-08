@@ -1,4 +1,4 @@
-Final day, how did we do?
+Final day of "[Build a start-up in a week](entries/this-week,-lets-create-a-start-up.html)", how did we do?
 
 Well, we deployed all assets to Amazon and ported across Sam's first customer from his original single-tenant system and everything works as expected. This work included lots of tidy up and "making nice jobs", very little faffing :)
 
@@ -63,7 +63,7 @@ Can't argue with how easy that was, and it still all works with that original pa
     // if null etc
     var series = session.Load<Series>(sermon.SeriesId)
 
-Remember that ISecureDocumentSession I wrote yesterday? That made the Include stuff hard to cater for on a Load, so I just do two load calls instead - in a more evolved system we'd have to do this better somehow because it isn't going to scale across all the other usages that IDocumentSession can give us.
+Remember that ISecureDocumentSession [I wrote yesterday](/entries/this-week,-lets-create-a-start-up---day-4.html)? That made the Include stuff hard to cater for on a Load, so I just do two load calls instead - in a more evolved system we'd have to do this better somehow because it isn't going to scale across all the other usages that IDocumentSession can give us.
 
 Instead I'd look at hooking into RavenDB properly to do this security (either using its server-side security bundle, or adding appropriate extension points for this sort of filtering job on the client)
 
