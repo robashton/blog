@@ -7,7 +7,7 @@ I saw a tweet by [@jonskeet](http://twitter.com/jonskeet) the other day which ca
 
 *Well okay then*
 
-Well, obviously I kinda agree if you go and hit up [Immature Uncle Bob's](http://blog.8thlight.com/uncle-bob/2013/03/08/AnOpenAndClosedCase.html) statement which is as written:
+Well, obviously I kinda agree if you go and hit up the ["Immature" 43 year old Uncle Bob's](http://blog.8thlight.com/uncle-bob/2013/03/08/AnOpenAndClosedCase.html) statement which is as written:
 
   <blockquote>
     They are “Closed for Modiﬁcation”. The source code of such a module is inviolate. No one is allowed to make source code changes to it.
@@ -70,7 +70,7 @@ You can discover these as you go, there is nothing wrong with littering your cod
 
 *Summary*
 
-I seem to have started with the one we all agree on first, oh well...
+I seem to have started with the least controversial and one of the most harmful of rules, oh well...
 
 Thus ends my brain dump on responsibility and the many roads to layer soup. Tomorrow I'll go the heart of the matter on OCP, and then wind down the rest of the week through the rest of the set.
 
