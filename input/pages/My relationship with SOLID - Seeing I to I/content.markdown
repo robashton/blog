@@ -76,7 +76,7 @@ Well described behaviour that's a little bit awkward is better than having a pil
 
 As mentioned yesterday, I actually don't mind the .NET teams decision to break ISP here because the usage of these streams would be much harder with the number of variations in behaviour a stream can actually have.
 
-Tomorrow we'll look at why ISP is irrelevant in the grand scheme of things however, as we reach the final entry in this little brain-dump and talk about DI.
+Tomorrow we'll look at why ISP is irrelevant in the grand scheme of things however, as we reach the final entry in this little brain-dump and talk about DI and how it encourages the use of role interfaces.
 
 
 
