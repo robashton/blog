@@ -1,0 +1,112 @@
+<p>I'm writing our <a href="/entries/hotelier---writing-our-first-feature.html">first feature</a>, and I'm going to write the code that means the un-authenticated customer can skip right through and start creating stuff with my total amazeballs system. </p>
+
+<p>Anyway, I'm going to create a view model for creating a hotel, inspiringly called HotelCreateViewModel</p>
+
+<p><strong>View model</strong></p>
+
+<pre><code>public class HotelCreateViewModel {
+  public string Name { get; set ;}
+  public string Description { get; set; }
+}
+</code></pre>
+
+<p>Why a separate view model? Because I'm going to use all of that crazy attribute stuff in ASP.NET MVC4 and I don't want that on my persistence model because from past experience it'll end up interfering with serialization and I don't want that.</p>
+
+<p><strong>Controller</strong></p>
+
+<pre><code>[HttpGet]
+public ActionResult Create() {
+  return View();
+}
+
+[HttpPost]
+public ActionResult Create(HotelCreateViewModel model) {
+
+}
+</code></pre>
+
+<p><strong>View</strong></p>
+
+<pre><code>@model Hotelier.ViewModels.HotelCreateViewModel
+@{
+  ViewBag.Title = "Create";
+}
+
+&lt;h2&gt;Tell us about your hotel&lt;/h2&gt;
+@using (Html.BeginForm()) {
+  Html.EditorForModel();
+  &lt;input type="submit"/&gt;
+}
+</code></pre>
+
+<p>Yes, I'm keeping things deliberately minimalistic, I just want a basic skeleton with everything in it so I can go and write a couple of basic tests to pull the whole thing together.</p>
+
+<p>Let's do that now then, I'm going to write a test, that when the user hits that page and goes to the creation stuff that there is indeed a form there with the expected fields on it.</p>
+
+<p>This will verify that I've managed to at least put together a working ASP.NET MVC skeleton.</p>
+
+<p><strong>Writing my first test</strong></p>
+
+<p>I've installed the <a href="http://visualstudiogallery.msdn.microsoft.com/2b96d16a-c986-4501-8f97-8008f9db141a">Mindscape Workbench</a> which comes with Coffeescript highlighting so I can use Visual Studio to write my tests.</p>
+
+<p>If I look at the files that <a href="http://github.com/robashton/zombify">Zombify</a> created for me, I'll see that I have a client.coffee and a system.coffee with a couple of placeholders left for me to fill in.</p>
+
+<p>The first one, system.coffee looks like this:</p>
+
+<pre><code>class System
+  constructor: -&gt;
+    @driver = new Driver '../{Replace this with your own website name'
+
+  start: (done) =&gt;
+    @driver.start done
+
+  #etc
+</code></pre>
+
+<p>I change this to</p>
+
+<pre><code>class System
+  constructor: -&gt;
+    @driver = new Driver '../Hotelier'
+
+  start: (done) =&gt;
+    @driver.start done
+
+  #etc
+</code></pre>
+
+<p>I'm then going to create a file in a new folder called "browsing<em>from</em>the<em>home</em>page.coffee"</p>
+
+<p>My folder structure now looks like this:</p>
+
+<p><img src="/img/coffee-hotelier.png"></p>
+
+<p>My first test is going to be quite simple, let's just dump it out for us to see</p>
+
+<pre><code>System = require('../system')
+
+Scenario "A new customer wants to set up their hotel", -&gt;
+  system = new System()
+  client = system.add_client()
+
+  Given "A new customer visits our website", (done) -&gt;
+    system.start -&gt;
+      client.browse_to_website(done)
+
+  When "the customer asks to set up their hotel", (done) -&gt;
+    client.ask_to_create_hotel(done)
+
+  Then "a form should be displayed", -&gt;
+    client.can_see('form')
+
+  And "the form asks for the name of the hotel", -&gt;
+    client.has_form_input('name')
+
+  And "the form asks for the description of the hotel", -&gt;
+    client_has_form_input('description')
+
+  after -&gt;
+    system.stop()
+</code></pre>
+
+<p>Now, a lot of the methods here don't actually exist yet, and I'll have to create them - to do this, we go to <em>client.coffee</em> and have a look at what we see there.</p>
