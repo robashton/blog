@@ -87,7 +87,7 @@ The true future of OCP is in building these open source little packages that are
 
 **Summary**
 
-So, in the age of tiny disposable modules that do just one thing, OCP is dead - who'd have thunk it. */dramatic oversimplification*
+So, in the age of tiny disposable modules that do just one thing, OCP is dead (*wink*) - who'd have thunk it. */dramatic oversimplification*
 
 
 
