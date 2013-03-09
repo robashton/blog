@@ -13,6 +13,10 @@ var
   });
 
 http.createServer(function(req, res) {
+  if(req.url.indexOf('/Images') >= 0)
+    req.url = req.url.replace('/Images', '/images')
+
+  console.log(req.url)
   paperboy
     .deliver(WEBROOT, req, res)
     .otherwise(function(err) {
