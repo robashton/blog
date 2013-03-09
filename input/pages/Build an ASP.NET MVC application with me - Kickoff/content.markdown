@@ -15,6 +15,7 @@ I could do this commercially, but a) It has been done before b) There isn't a hu
 The technology
 -----------------
 
+
 I'll be using RavenDB for persistence, and Zombify for my functional testing (I'll cover the reasons for these choices in the next couple of blog entries)
 
 I've made those decisions up front because this is the kind of project where I feel I can do that, it's going to be a rapid development project where I try to put the thing together quickly, and outline what I feel to be steps I've skipped in order to go faster and what their repercussions will be.

@@ -1,2 +1,50 @@
-<p><a href="url">title</a>
-<img src="img" alt="alt" title="" /></p>
+<p>I'm building a hotel booking system aimed towards small hotel/bnb owners who have static websites and want to embed a booking system onto those pages.</p>
+
+<p>I made the assertion I was going to use RavenDB, this is why:</p>
+
+<ul>
+<li>I had a sample project written using RavenDB a couple of years ago, it's out dated, I want to bring it forwards</li>
+<li>I haven't written much about RavenDB since those two years, and people are complaining that the blog entries I wrote are out of date</li>
+<li>RavenDB is <em>fantastic</em> for this kind of project, I know from experience that it'll stay out of my way while I put things together</li>
+<li>I want to do functional end-to-end testing, but don't want to write in-memory persistence. RavenDB will do this for me.</li>
+</ul>
+
+<p>That's about it. If you haven't used RavenDB yet then perhaps this will show you why you might choose to in a project of this nature.</p>
+
+<p>As a reminder, I'm able to with RavenDB create basic POCOs and persist them without worrying about it like so</p>
+
+<p><strong>Persisting a new hotel</strong></p>
+
+<pre><code>using(var session = store.OpenSession()) {
+  var hotel = new Hotel("The waterfall Inn");
+  session.Store(hotel);
+  session.SaveChanges();
+}
+</code></pre>
+
+<p><strong>Loading a hotel, changing something about it</strong></p>
+
+<pre><code>using(var session = store.OpenSession()) {
+  var hotel = session.Load&lt;Hotel&gt;(id);
+  hotel.AddRoom(new Room(5));
+  session.SaveChanges();
+}
+</code></pre>
+
+<p>Remember? It has auto change tracking, which means no faffing around remembering to call Save etc</p>
+
+<p><strong>Searching for hotels</strong></p>
+
+<pre><code>using(var session = store.OpenSession()) {
+  var hotels = session.Query&lt;Hotel&gt;()
+                      .Where(x=&gt; x.Name == "Waterfall")
+                      .ToList();
+
+}
+</code></pre>
+
+<p>Remember? Auto index creation and look-up meas you can very easily do queries etc, kinda neat.</p>
+
+<p><strong>Basically</strong></p>
+
+<p>RavenDB makes life easy and I want to focus a bit more on my method of building this type of application in general so it's ideal for that :)</p>
