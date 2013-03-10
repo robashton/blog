@@ -1,6 +1,14 @@
 var fs = require('fs');
 
 module.exports = {
+  addDayExcludingWeekends: function(date) {
+    var newdate = date
+    do {
+      newdate = new Date(newdate.getTime() + (24 * 60 * 60 * 1000))
+    } while ( newdate.getUTCDay() === 0 || newdate.getUTCDay() === 6)
+
+      return new Date([ newdate.getUTCFullYear(), '-', newdate.getUTCMonth()+1, '-', newdate.getUTCDate(), ' 09:30:00 GMT'].join(''))
+  },
   titleToPage: function(title) {
     return title.toLowerCase()
             .replace(/ /g, '-')

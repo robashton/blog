@@ -18,28 +18,21 @@ common.getAllPostsInfo(function(allposts) {
 
   var newestpost = _.max(allposts, function(item) { return new Date(item.date) })
   var latestdate = new Date(newestpost.date)
-  var newdate = addDayExcludingWeekends(latestdate)
-
-  var dateStr = ''
 
   if(day) {
-    dateStr = [ year, '-', month, '-', day,' ', '10:00:00 GMT'].join('') 
+    date = new Date([ year, '-', month, '-', day,' ', '10:00:00 GMT'].join('')
   } else {
-    dateStr = [ newdate.getUTCFullYear(), '-', newdate.getUTCMonth(), '-', newdate.getUTCDate(),' ', '10:00:00 GMT'].join('') 
+    date = common.addDayExcludingWeekends(latestdate)
   }
-
-  date = new Date(dateStr)
 
   var lastdate = date
   if(date <= latestdate && !force) {
     console.log('Shifting posts to the future')
     for(var i = 0; i < allposts.length; i++) {
       var post = allposts[i]
-      var postdate = new Date(post.date)
-      if(postdate >= lastdate) {
-        postdate = addDayExcludingWeekends(lastdate)
-        lastdate = postdate
-        post.date = postdate
+      if(post.date >= lastdate) {
+        post.date = common.addDayExcludingWeekends(lastdate)
+        lastdate = post.date
         console.log(post.title, ' will now be published on ', post.date)
       }
       fs.writeFileSync('input/pages/' + common.titleToFolder(post.title) + '/meta.json', 
@@ -48,15 +41,6 @@ common.getAllPostsInfo(function(allposts) {
   }
   createNewPost(date, title)
 })
-
-function addDayExcludingWeekends(date) {
-  var newdate = date
-  do {
-    newdate = new Date(newdate.getTime() + (24 * 60 * 60 * 1000))
-  } while ( newdate.getUTCDay() === 0 || newdate.getUTCDay() === 6)
-  return newdate
-}
-
 
 function createNewPost(date, title) {
   wrench.copyDirSyncRecursive('input/source/newpost', 'input/pages/' + title);
