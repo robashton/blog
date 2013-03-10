@@ -1,5 +1,6 @@
 var common = require('./common')
  ,  _ = require('underscore')
+ fs = require('fs')
 
 common.getAllPostsInfo(function(allposts) {
   allposts = _.sortBy(allposts, function(post) { return (post.date) })
