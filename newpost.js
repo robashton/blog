@@ -20,14 +20,15 @@ common.getAllPostsInfo(function(allposts) {
   var latestdate = new Date(newestpost.date)
   var newdate = addDayExcludingWeekends(latestdate)
 
+  var dateStr = ''
+
   if(day) {
-    date = new Date(year, month, day, 11, 0, 0)
+    dateStr = [ year, '-', month, '-', day,' ', '10:00:00 GMT'].join('') 
   } else {
-    date = new Date(newdate.getUTCFullYear(),
-                       newdate.getUTCMonth(),
-                       newdate.getUTCDate(),
-                       11, 0, 0);
+    dateStr = [ newdate.getUTCFullYear(), '-', newdate.getUTCMonth(), '-', newdate.getUTCDate(),' ', '10:00:00 GMT'].join('') 
   }
+
+  date = new Date(dateStr)
 
   var lastdate = date
   if(date <= latestdate && !force) {
