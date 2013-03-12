@@ -1,5 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Tue, 12 Mar 2013 07:42:19 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[The fallacy of the Dreyfus model in software development]]></title><description><![CDATA[<p>Not <a href="/entries/uncle-bobs-viewpoint-considered-harmful.html">another</a> <a href="http://blog.markrendle.net/2013/03/09/dont-unit-test-trivial-code/">post</a> <a href="http://blog.ploeh.dk/2013/03/08/test-trivial-code/">about</a> <a href="http://blog.8thlight.com/uncle-bob/2013/03/05/TheStartUpTrap.html">TDD</a> Rob, please no!</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Tue, 12 Mar 2013 09:44:10 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[This week, let's create a start-up]]></title><description><![CDATA[<p>This week (I'm writing this on <strong>Sunday</strong>) on my grand adventure of <a href="/entries/i-am-not-looking-for-a-job.html">"building stuff for people"</a>, I am going to help <a href="http://twitter.com/samuel_d_jack">@samuel_d-jack</a> build a start-up.</p>
+
+<p>I'm actually writing this on Monday morning so I'm not yet in the office and don't know what is expected of me, I'll be writing a blog post each day for publishing the next day, so these posts are going to show up out of kilter (I think the final one will be on a Tuesday even though it was penned on a Friday - oh well)</p>
+
+<p>What I do know</p>
+
+<ul>
+<li>Sam occasionally works on RavenDB</li>
+<li>Sam is a freelance .NET developer</li>
+<li>Sam is based up near Birmingham</li>
+<li>Sam wants to do something about helping churches get sermons online</li>
+</ul>
+
+<p>That's about it, I look forward to seeing what the problem is, and how he wants it solved.</p>]]></description><link>http://codeofrob.com/entries/this-week,-lets-create-a-start-up.html</link><guid isPermaLink="true">http://codeofrob.com/entries/this-week,-lets-create-a-start-up.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 12 Mar 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[The fallacy of the Dreyfus model in software development]]></title><description><![CDATA[<p>Not <a href="/entries/uncle-bobs-viewpoint-considered-harmful.html">another</a> <a href="http://blog.markrendle.net/2013/03/09/dont-unit-test-trivial-code/">post</a> <a href="http://blog.ploeh.dk/2013/03/08/test-trivial-code/">about</a> <a href="http://blog.8thlight.com/uncle-bob/2013/03/05/TheStartUpTrap.html">TDD</a> Rob, please no!</p>
 
 <p>Okay, so I'll reply on a tangent because I've had enough of talking about TDD and want to talk about software development as a learned "craft" and why pimping out magic software development strategies to "newbies" is harmful to the overall quality of software development.</p>
 
@@ -520,51 +533,4 @@ store-&gt;Get(leveldb::ReadOptions(), "key", &amp;document);
 
 <p>So, we've been doing some investigations, and in summary it looks like LevelDB is a good option for our usage patterns - I'm going to spend a couple of entries going over the little spikes I wrote to verify that, and then show the beginnings of the work inside RavenDB itself to kick this off with.</p>
 
-<p>With a proper cross-platform persistence solution, and a few hours tinkering with the build - RavenDB will work on Mono, allow me to help lay some foundations...</p>]]></description><link>http://codeofrob.com/entries/investigating-ravendb-on-mono-for-reals.html</link><guid isPermaLink="true">http://codeofrob.com/entries/investigating-ravendb-on-mono-for-reals.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 28 Feb 2013 09:00:00 GMT</pubDate></item><item><title><![CDATA[Custom query inputs in RavenDB]]></title><description><![CDATA[<p>Back on the list of things "added to RavenDB" <a href="/entries/working-at-hibernating-rhinos.html">during my time at Hibernating Rhinos</a>, ever wished you could pass custom arguments to the transformer when performing a query in RavenDB?</p>
-
-<p>Well, this has been asked for a number of times and since <a href="/entries/ravendb-resulttransformers---a-new-way-of-looking-at-things.html'">splitting out results-transformers</a> into their own process, it has become much easier to add this functionality.</p>
-
-<p>What does this look like?</p>
-
-<p>Well, say we have a result transformer that takes Ponies and creates unicorns, only our database doesn't know about horns - let's see what we can do here.</p>
-
-<pre><code>public class Unicorn {
-  public string Name { get; set; }
-  public string Colour { get; set; }
-  public string CutieMark { get; set; }
-  public int Hornsize { get; set; }
-}
-
-public class PoniesIntoUnicorns : AbstractTransformerCreationTask&lt;Pony&gt; {
-  public PoniesIntoUnicorns() {
-    Transform = ponies =&gt; from pony in ponies
-                          select new {
-                            pony.Name,
-                            pony.Colour,
-                            pony.CutieMark,
-                            Hornsize = pony.Size * Query["hornscalefactor"]
-                          }
-  }
-}
-</code></pre>
-
-<p>Okay, contrived example but this feature isn't for me and my pony database, it's for you and your requirements, and you know it's you I'm talking about because you're looking at the above and going <em>finally, I've been waiting for this</em>.</p>
-
-<p>How do we use the above?</p>
-
-<pre><code>session.Query&lt;Pony&gt;()
-       .Where(pony =&gt; pony.Colour === "purple")
-       .TransformWith&lt;PoniesIntoUnicorns, Unicorn&gt;()
-       .AddQueryInput("hornscalefactor", 0.1)
-       .ToArray();
-</code></pre>
-
-<p>Pretty simple and effective, glad I could oblige :)</p>
-
-<p>Oh yeah, it works for Load too</p>
-
-<pre><code>var unicorn = session.Load&lt;PoniesIntoUnicorns, Pony&gt;(
-              x=&gt; x.AddQueryInput("hornscalefactor", 0.1))
-</code></pre>
-
-<p>Not the tidiest API in the world, but I'm sure it will improve as people actually use it.</p>]]></description><link>http://codeofrob.com/entries/custom-query-inputs-in-ravendb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/custom-query-inputs-in-ravendb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 27 Feb 2013 09:00:00 GMT</pubDate></item></channel></rss>
+<p>With a proper cross-platform persistence solution, and a few hours tinkering with the build - RavenDB will work on Mono, allow me to help lay some foundations...</p>]]></description><link>http://codeofrob.com/entries/investigating-ravendb-on-mono-for-reals.html</link><guid isPermaLink="true">http://codeofrob.com/entries/investigating-ravendb-on-mono-for-reals.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 28 Feb 2013 09:00:00 GMT</pubDate></item></channel></rss>
