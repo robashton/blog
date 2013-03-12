@@ -7,7 +7,7 @@ var argv = require('optimist').argv
   var now = new Date()
 
 var title = argv.title
-  , datestr = arv.date
+  , datestr = argv.date
   , force = argv.force
   , date = null
 
@@ -17,8 +17,8 @@ common.getAllPostsInfo(function(allposts) {
   var newestpost = _.max(allposts, function(item) { return new Date(item.date) })
   var latestdate = new Date(newestpost.date)
 
-  if(day) {
-    date = new Date([ datestr, ' 09:30:00 GMT'].join('')
+  if(datestr) {
+    date = new Date([ datestr, ' 09:30:00 GMT'].join(''))
   } else {
     date = common.addDayExcludingWeekends(latestdate)
   }
