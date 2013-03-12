@@ -1,3 +1,5 @@
+**This post was written on Thursday**
+
 It's day 4 out of 5 and [we pretty much have an end-to-end MVP](/entries/this-week,-lets-create-a-start-up---day-3.html) sorted out, (and a genuine surprise for me given the platform chosen!).
 
 

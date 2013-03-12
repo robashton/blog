@@ -1,3 +1,5 @@
+**This post was written on Monday**
+
 I've finished my [first day](/entries/this-week,-lets-create-a-start-up.html) of the build a start-up in a week challenge, and now I know a little more about the project.
 
 - Sam has already built a codebase that his local church uses to put sermons online

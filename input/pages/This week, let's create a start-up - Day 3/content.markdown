@@ -1,3 +1,5 @@
+**This post was written on Wednesday**
+
 Now we have the [Admin functionality](/entries/this-week,-lets-create-a-start-up---day-1.html) and the [Public functionality](/entries/this-week,-lets-create-a-start-up---day-2.html) spiked properly into, it's time to look at file uploads properly.
 
 Sam has a tool which will (client-side) be used to process audio files for upload in a very simple and stripped down manner (built specifically for his target demographic) - I quite like that.

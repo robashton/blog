@@ -1,3 +1,5 @@
+**This post was written on Friday**
+
 Final day of "[Build a start-up in a week](entries/this-week,-lets-create-a-start-up.html)", how did we do?
 
 Well, we deployed all assets to Amazon and ported across Sam's first customer from his original single-tenant system and everything works as expected. This work included lots of tidy up and "making nice jobs", very little faffing :)

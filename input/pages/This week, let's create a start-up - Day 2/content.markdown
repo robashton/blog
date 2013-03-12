@@ -1,3 +1,5 @@
+**This post was written on Tuesday**
+
 Yesterday [I pretty much put together the admin side of the project](/entries/this-week,-lets-create-a-start-up---day-1.html), and today I decided to focus on the other side of the project - dumping content into a third party site as if it was on the site itelf.
 
 Carrying on from yesterday, this was actually pretty simple
