@@ -7,9 +7,7 @@ var argv = require('optimist').argv
   var now = new Date()
 
 var title = argv.title
-  , year = argv.year || now.getUTCFullYear()
-  , month = argv.month || now.getUTCMonth()
-  , day = argv.day || null
+  , datestr = arv.date
   , force = argv.force
   , date = null
 
@@ -20,7 +18,7 @@ common.getAllPostsInfo(function(allposts) {
   var latestdate = new Date(newestpost.date)
 
   if(day) {
-    date = new Date([ year, '-', month, '-', day,' ', '10:00:00 GMT'].join('')
+    date = new Date([ datestr, ' 09:30:00 GMT'].join('')
   } else {
     date = common.addDayExcludingWeekends(latestdate)
   }
