@@ -1,6 +1,6 @@
 This week (I'm writing this on **Sunday**) on my grand adventure of ["building stuff for people"](/entries/i-am-not-looking-for-a-job.html), I am going to help [@samuel_d-jack](http://twitter.com/samuel_d_jack) build a start-up.
 
-I'm actually writing this on Monday morning so I'm not yet in the office and don't know what is expected of me, I'll be writing a blog post each day for publishing the next day, so these posts are going to show up out of kilter (I think the final one will be on a Tuesday even though it was penned on a Friday - oh well)
+Because I'm not yet in the office and don't know what is expected of me there is little I can say about what I'll be doing yet, I'll be writing a blog post each day for publishing in order at some point in the future, so these posts are going to show up out of kilter (I think the final one will be on a Tuesday even though it was penned on a Friday - oh well)
 
 What I do know
 
