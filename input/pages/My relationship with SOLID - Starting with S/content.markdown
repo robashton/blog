@@ -7,17 +7,17 @@ I saw a tweet by [@jonskeet](http://twitter.com/jonskeet) the other day which ca
 
 *Well okay then*
 
-Well, obviously I kinda agree if you go and hit up the ["Immature" 43 year old Uncle Bob's](http://blog.8thlight.com/uncle-bob/2013/03/08/AnOpenAndClosedCase.html) statement which is as written:
+Well, obviously I kinda agree with this sentiment if you go and hit up the ["Immature" 43 year old Uncle Bob's](http://blog.8thlight.com/uncle-bob/2013/03/08/AnOpenAndClosedCase.html) statement which is as written:
 
   <blockquote>
     They are “Closed for Modiﬁcation”. The source code of such a module is inviolate. No one is allowed to make source code changes to it.
   </blockquote>
 
-But this got me thinking more widely on my relationship with SOLID as a whole and how that has changed over the years, and how many times (like the GoF patterns) I've seen an over-zealous and misunderstanding of these concepts wreak havoc in codebases.
+But this got me thinking more widely on my relationship with SOLID as a whole and how that has changed over the years. It reminded me how many times (like the GoF patterns) I've seen an over-zealous and misunderstanding of these concepts [wreak havoc in codebases](/entries/the-fallacy-of-the-dreyfus-model-in-software-development.html).
 
-I've been able to quote these word for word for the past half decade quite easily, and my relationship and understanding of how these seemingly innocuous statements impact my code has changed over time, much like [my relationship and understanding of TDD](/entries/uncle-bobs-viewpoint-considered-harmful.html)
+I've been able to quote the "rules" from SOLID word for word this past half-decade quite easily, but my relationship and understanding of how these seemingly innocuous statements impact my code has changed over time much like [my relationship and understanding of TDD](/entries/uncle-bobs-viewpoint-considered-harmful.html)
 
-So, for the next 5 days, I jot down my current relationship with SOLID without too much thought or proof-reading...
+So, for the next 5 entries, I will jot down my current relationship with SOLID without too much thought or proof-reading (*Okay, I lied, I got a few people to read these because I wanted to avoid pedantry* - thanks folk)
 
 **[The single responsibility principle](http://en.wikipedia.org/wiki/Single_responsibility_principle)**
 
@@ -38,7 +38,7 @@ And this is unfair, and yet the confusion continues because people see several p
     a  class should only have one responsibility
   </blockquote>
 
-The problem is, that most of the time, the abstractions people come up with to limit a classes responsibility are *horizontal* separations, when the true power of single responsibility lies in the vertical.
+The problem is that most of the time the abstractions people come up with to limit a classes responsibility are *horizontal* in nature. The true power of single responsibility however, lies in the vertical.
 
 Perhaps this is because they're easier to conceptualise, and easy to write frameworks and patterns for so we can feel productive in our day job - but this is really not as it should be.
 
