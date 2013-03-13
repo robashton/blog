@@ -1,5 +1,78 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Tue, 12 Mar 2013 10:20:29 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[This week, let's create a start-up]]></title><description><![CDATA[<p>This week (I'm writing this on <strong>Sunday</strong>) on my grand adventure of <a href="/entries/i-am-not-looking-for-a-job.html">"building stuff for people"</a>, I am going to help <a href="http://twitter.com/samuel_d_jack">@samuel_d-jack</a> build a start-up.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Wed, 13 Mar 2013 14:27:15 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[This week, let's create a start-up - Day 1]]></title><description><![CDATA[<p><strong>This post was written on Monday</strong></p>
+
+<p>I've finished my <a href="/entries/this-week,-lets-create-a-start-up.html">first day</a> of the build a start-up in a week challenge, and now I know a little more about the project.</p>
+
+<ul>
+<li>Sam has already built a codebase that his local church uses to put sermons online</li>
+<li>His target audience is non-technical churches that have managed to get a website up there (even if it's just static code)</li>
+<li>He wants to be able to embed a single line of code in one of their pages and give them all the functionality</li>
+<li>The functionality isn't too complex, but it has to be dead easy</li>
+</ul>
+
+<p>Okay, so what the heck are sermons and what's the deal about getting them online</p>
+
+<ul>
+<li>Churches have sermons</li>
+<li>A sermon is just an audio file (encoded to a variety of formats)</li>
+<li>Each sermon can belong to a series of sermons (perhaps on a topic of some sort)</li>
+<li>Sermons have meta data associated with them, as do the series</li>
+<li>Each church needs their own subset of this data</li>
+<li>Each church can have multiple users who can add sermons and series</li>
+</ul>
+
+<p>Not that complicated, and my first suggestion is</p>
+
+<p><em>Can't we just use Wordpress/Drupal/Etc and have this done in a few hours?</em></p>
+
+<p>If I was building an MVP, that's pretty much what I'd do, but Sam is pretty insistent that he wants it done in .NET (<em>long time no see</em>) and RavenDB (<em>I was doing this last week!</em>), so I guess I need to get out my Windows laptop and once more work my way around the perils of .NET and ASP.NET MVC)</p>
+
+<p>Why ASP.NET MVC? Because I actually remember quite a lot of it from the last time I did .NET and I'm not going to waste time trying to learn another .NET web framework when I have to start building stuff <em>now</em> - when building something with such a short time-frame, you should be using something you know to make the most of the time.</p>
+
+<p>Anyway, after trying to create a few "empty sites" in Visual Studio, I finally find a configuration that is "emptier" than the other ones and get to work (this is still confusing Microsoft!)</p>
+
+<p>Turns out it's not only "mediocre" these days, but I'm actually able to get most of the basic CRUD operations and workflow done in a few hours, highlights of this experience being:</p>
+
+<ul>
+<li>The Razor View Engine</li>
+<li>Html.EditorForModel</li>
+<li>Html.EditorFor</li>
+<li>Data Validation Attributes for the ViewModels (sorry guys, but they work quite well)</li>
+<li>Global action filters</li>
+</ul>
+
+<p>The default model binding seems to work out of the box for everything, and RavenDB is being managed via global action filters so I only have to do</p>
+
+<pre><code>this.Documents()
+</code></pre>
+
+<p>In any controller to get the document session (yay for extension methods), no I'm not bothering wiring up a container, the only objects in play are the input/view models and RavenDB and the state model that is being persisted in it, and it's unlikely to get much more complicated than that (so end-to-end tests will suffice with an in-memory RavenDB for now)</p>
+
+<p>I even wrote a little bit of magic to do paging in a standard way across any view that needs them in RavenDB</p>
+
+<pre><code>pagedResults = session.Query&lt;Whatever&gt;()
+       .Where(x=&gt; SomeCondition(x))
+       .PerformPaging(inputModel)
+</code></pre>
+
+<p>Yay again for extension methods.</p>
+
+<p>I also set up OAuth - I used DotNetOpenAuth, which worked once I'd written a pile of code in a controller action - it's <em>much</em> better than the previous incarnations I used last time I did .NET, but it's still not quite as good as say, passport in NodeJS (and I'll hazard a guess it doesn't quite meet the standards of whatever RoR provides for this either).</p>
+
+<p>I guess that's because with node, we usually have control over the entry point and everything can be done with connect middleware in a standardised fashion, whereas ASP.NET MVC is an opinionated framework which doesn't know what its opinions are and still suffers from a sad-mix of xml configuration and confusion, still - I guess once you know about this stuff you can copy and paste these bits of infrastructure around so it's not too awful.</p>
+
+<p>Anyway, today I achieved with ASP.NET MVC and RavenDB</p>
+
+<ul>
+<li>All the basic CRUD forms + workflow around sermons and series (about 10 dynamic pages in all)</li>
+<li>Basic paging/filtering controls for anything that needs them</li>
+<li>Audio upload (alhough not going to S3 yet)</li>
+<li>Authentication with credentials</li>
+<li>Authentication via OAuth</li>
+<li>Theming using the bootstrap theme Sam has already provided</li>
+</ul>
+
+<p>Tomorrow I'll hook up the script to embed content in third party websites, and get the MVP finished - that'll leave three days to do all the value-adds, I'm fairly happy with this progress and feel that <em>this</em> is still how we build software, even if it's not in the technology I'd have chosen.</p>]]></description><link>http://codeofrob.com/entries/this-week,-lets-create-a-start-up---day-1.html</link><guid isPermaLink="true">http://codeofrob.com/entries/this-week,-lets-create-a-start-up---day-1.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 13 Mar 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[This week, let's create a start-up]]></title><description><![CDATA[<p>This week (I'm writing this on <strong>Sunday</strong>) on my grand adventure of <a href="/entries/i-am-not-looking-for-a-job.html">"building stuff for people"</a>, I am going to help <a href="http://twitter.com/samuel_d_jack">@samuel_d-jack</a> build a start-up.</p>
 
 <p>Because I'm not yet in the office and don't know what is expected of me there is little I can say about what I'll be doing yet, I'll be writing a blog post each day for publishing in order at some point in the future, so these posts are going to show up out of kilter (I think the final one will be on a Tuesday even though it was penned on a Friday - oh well)</p>
 
@@ -517,20 +590,4 @@ store-&gt;Get(leveldb::ReadOptions(), "key", &amp;document);
 
 <p>LevelDB can actually operate in async or synchronous mode, but because Raven makes gaurantees about writes having happened I can't think we'd be able to use async mode (because there isn't any way to know when these writes are finished to my knowledge).</p>
 
-<p>These guarantees aren't actually enough for RavenDB, and I'll cover the reasons for that in the next entry.</p>]]></description><link>http://codeofrob.com/entries/basic-operations-with-leveldb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/basic-operations-with-leveldb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 01 Mar 2013 09:00:00 GMT</pubDate></item><item><title><![CDATA[Investigating RavenDB on Mono for reals]]></title><description><![CDATA[<p>I've been down <a href="/entries/ravendb-on-mono.html">this road before</a> with a certain amount of success, and indeed I even did several talks entirely in linux about RavenDB complete with working demos (although some folk might doubt that story).</p>
-
-<p>So what gives then? How come RavenDB doesn't work on Mono out of the box now a couple of years later? Well - the short answer is that it never did. </p>
-
-<p>When I got it working on Mono in the past it was on top of "Munin", a managed storage engine that <a href="http://twitter.com/ayende">@ayende</a> and I hacked up in a hotel lobby in the small hours of the morning that "mostly works" but has never entirely been recommended for production.</p>
-
-<p>That's not to say we haven't got a lot of mileage out of it, as indeed it has been used in pretty much everyone's test suites since its conception and has faithfully done as asked all that time; however, it is clear that for <em>true</em> cross-platform happiness, we could do with a replacement for Esent for platforms that don't support it, and re-inventing the wheel ourselves when so many other people have done work on this for us doesn't make a lot of sense.</p>
-
-<p>The other problem is of course that RavenDB was developed on top of the .NET runtime, using the .NET compiler chain - and support for some of the features used by RavenDB make compilation on mono an hilariously frustrating process of bug fixes and pull requests (which then means it won't work OOB on versions of mono packaged with popular Linux distros). </p>
-
-<p>I'm not going near that with a barge pole, although I'm sure if somebody wants to sit there and get RavenDB simply <em>building</em> on Mono, it'll only take a few hours of workarounds which will be happily accepted as a pull request.</p>
-
-<p>With that, this series of blog posts is <strong>not</strong> going to finish with an entry saying "It now works on Mono", because that's going to take a couple of weeks' work and I haven't got a couple of weeks. However, the breadcrumbs and work completed so far should be good enough for anybody with the spare time and inclination to finish that work and get it working for reals.</p>
-
-<p>So, we've been doing some investigations, and in summary it looks like LevelDB is a good option for our usage patterns - I'm going to spend a couple of entries going over the little spikes I wrote to verify that, and then show the beginnings of the work inside RavenDB itself to kick this off with.</p>
-
-<p>With a proper cross-platform persistence solution, and a few hours tinkering with the build - RavenDB will work on Mono, allow me to help lay some foundations...</p>]]></description><link>http://codeofrob.com/entries/investigating-ravendb-on-mono-for-reals.html</link><guid isPermaLink="true">http://codeofrob.com/entries/investigating-ravendb-on-mono-for-reals.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 28 Feb 2013 09:00:00 GMT</pubDate></item></channel></rss>
+<p>These guarantees aren't actually enough for RavenDB, and I'll cover the reasons for that in the next entry.</p>]]></description><link>http://codeofrob.com/entries/basic-operations-with-leveldb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/basic-operations-with-leveldb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 01 Mar 2013 09:00:00 GMT</pubDate></item></channel></rss>

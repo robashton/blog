@@ -1,0 +1,105 @@
+<p>This week I'm in Athens, working for a company that is interested in these technologies</p>
+
+<ul>
+<li>OMeta</li>
+<li>SVRB</li>
+<li>JS</li>
+<li>CoffeeScript</li>
+<li>OData</li>
+</ul>
+
+<p>My job in Athens is two fold</p>
+
+<ul>
+<li>Write some OMeta stuff somewhere (They have a specific project/task - don't worry)</li>
+<li>Look at the overal project and give my honest feedback</li>
+</ul>
+
+<p>Well, giving honest feedback is something I can do - however my relationship with OMeta and SVRB is that I've never heard of them.</p>
+
+<p><strong>It looks like I have some learning to do</strong></p>
+
+<p>So what IS OMeta? It turns out that I do have a little experience in this area because OMeta is a expression parsing language, and like most people I've written a few parsers and compilers in my few years as a software developer.</p>
+
+<p>OMeta is a bit different in that it had a specific goal - chiefly that of making it fast to prototype new languages/parsing constructs, and indeed it can be used to do pretty much the whole chain in the compilation process (parsing, intepreting and compilation).</p>
+
+<p><em>I'm not going to do a blog series on this, just wanted to throw up some stuff as I learned it :)</em></p>
+
+<p><strong>What I'm using</strong></p>
+
+<p>I have <a href="https://github.com/Page-/ometa-js">OMeta-JS</a>, and I'm doing most of my playing in the web browser with <a href="https://github.com/Page-/ometa-js/tree/highlighting/examples/highlighting">An OMeta parsing Ometa demo</a>.</p>
+
+<p>If I make some OMeta in the textbox and then go to the other textbox, I can copy and paste the JS into a repl and play around, it's not the most super effective way of working but I suspect this demo will be improved on to make it easier.</p>
+
+<p><strong>So again, what is OMeta?</strong></p>
+
+<p>I told you, it's a parsing language, check out the following:</p>
+
+<pre><code>ometa MyParser {
+  greeting = "Hello"
+}
+</code></pre>
+
+<p>If I compile this, I'll get the following:</p>
+
+<pre><code>var MyParser = OMeta._extend({
+  greeting: function() {
+      var $elf = this, _fromIdx = this.input.idx;
+      return this._applyWithArgs("token", "Hello");
+  }
+});
+</code></pre>
+
+<p>Which I can use in some code</p>
+
+<pre><code>MyParser.matchAll("Hello", "greeting")    : Success
+MyParser.matchAll("Goodbye", "greeting")  : Failure
+</code></pre>
+
+<p>What I can also do is transform these expressions into other expressions</p>
+
+<pre><code>ometa MyParser {
+  greeting = "Hello" -&gt; "Howdy"
+}
+
+MyParser.matchAll("Hello", "greeting")    : "Howdy"
+</code></pre>
+
+<p>And I can also build up matches out of other matches</p>
+
+<pre><code>ometa MyParser {
+  greeting = "Hello",
+  bob      = "Bob",
+  sentence = greeting bob
+}
+
+MyParser.matchAll("Hello Bob", "sentence")  : Success
+MyParser.matchAll("Hello James", "sentence")  : Failure
+MyParser.matchAll("Bob", "bob")  : Success
+</code></pre>
+
+<p>And this means I can build up transformations from simple expressions:</p>
+
+<pre><code>ometa MyParser {
+  greeting = "Hello" -&gt; "Howdy ",
+  bob      = "Bob"   -&gt; "Bobby"
+  sentence = greeting:g bob:b -&gt; (g + b)
+}
+
+MyParser.matchAll("Hello Bob", "sentence")  : "Howdy Bobby"
+MyParser.matchAll("Hello James", "sentence")  : Failure
+</code></pre>
+
+<p>Now obviously we don't use this language for parsing daft sentences like the above, what we do is use it to build up expectations around structures such as program code.</p>
+
+<pre><code>ometa CParser {
+  type    = identifier,
+  argList = listOf(arg, ","),
+  methodBody = "{" statementList "}"
+  program = type "main("  argList ")" methodBody
+}
+</code></pre>
+
+<p>And so on...</p>
+
+<p>Neat. I can see me using OMeta in the future rather than hand rolling parsers, my first effort on the other hand - a basic JSON to XML converter...</p>
