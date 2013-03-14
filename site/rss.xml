@@ -1,5 +1,73 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Wed, 13 Mar 2013 14:27:15 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[This week, let's create a start-up - Day 1]]></title><description><![CDATA[<p><strong>This post was written on Monday</strong></p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Thu, 14 Mar 2013 09:42:53 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[This week, let's create a start-up - Day 2]]></title><description><![CDATA[<p><strong>This post was written on Tuesday</strong></p>
+
+<p>Yesterday <a href="/entries/this-week,-lets-create-a-start-up---day-1.html">I pretty much put together the admin side of the project</a>, and today I decided to focus on the other side of the project - dumping content into a third party site as if it was on the site itelf.</p>
+
+<p>Carrying on from yesterday, this was actually pretty simple</p>
+
+<ul>
+<li>Create a JS file for inclusion on the third party site</li>
+<li>When imported, it looks for !#/this-stuff-after-the-hash-bang</li>
+<li>It then loads the appropriate content from the main truthvine site based on the path after the hashbang</li>
+</ul>
+
+<p>We have to use a hashbang because we can't rely on the site we're being embedded on to be able to do server-side redirects but we want back-forward buttons to work.</p>
+
+<p>What we ended up doing was splitting up the system so we have a solution that looks like this:</p>
+
+<ul>
+<li>TruthVineAdmin (ASP.NET MVC)</li>
+<li>TruthVinePublic (ASP.NET MVC)</li>
+<li>TruthVine (RavenDB/Infrastructure)</li>
+<li>TestThirdPartyWebsite (Static files only with the script tag in them)</li>
+</ul>
+
+<p>I'd normally not like to have a "common" assembly in a solution as the tendency of developers is to shuffle lots of needless 'shared' code to this place (where they'd be better off writing the code separately in the web projects), but I trust that Sam won't do this and the only things that go in this shared assembly are:</p>
+
+<ul>
+<li>RavenDB models</li>
+<li>Common ASP.NET MVC infrastructure (session-per-request)</li>
+<li>The paging code</li>
+</ul>
+
+<p>There is little point trying to share view models or play around trying to re-use views and hide and show admin functionality on content pages (that stuff is always horrible to do unless you have time to build up some decent conventions), so this separation makes sense.</p>
+
+<p>As for my happiness rating with ASP.NET MVC today, well - it stayed out of my way because I did everything the way it wanted me to - because of this I ended up building the third party JS content-embedding system to the point where it had pretty much reached feature parity with the system we were basing this off in the first place. (Hurrah)</p>
+
+<p>I'm pretty much doing things the way I've <a href="http://codebetter.com/robashton/2011/06/13/finding-a-balance-with-asp-net-mvc/">Described previously on CodeBetter</a> without any of the feature-based grouping (haven't got time to set it up)</p>
+
+<p>Controller actions all pretty much look like this across the site</p>
+
+<pre><code>[HttpGet]
+public ActionResult Edit(int id) {
+   var doc = this.Documents().Load&lt;ThatDocument&gt;(id)
+   if(doc == null) return new Error404Result()
+   return View(new EditViewModel(doc))
+}
+
+[HttpPost]
+public ActionResult Edit(EditViewModel input) {
+   var doc = this.Documents().Load&lt;ThatDocument&gt;(model.Id)
+   if(doc == null) return new Error404Result()
+
+   if(ModelState.IsValid) {
+    input.SaveTo(doc);
+    return RedirectToAction("View", new { Id = model.Id })
+   }
+   input.CopyFrom(doc);
+   return View(input);
+}
+</code></pre>
+
+<p>Straight down to earth and simple. Coupled with all of those helper methods and Razor it's pretty easy to throw up new forms and use redirects to create a workflow over the site.</p>
+
+<p>My happiness rating with RavenDB is as ever, it stays out the way and handled persistence for me - lovely.</p>
+
+<p>With a working admin portal and a working content embedding system, that's pretty much the end-to-end product written in two days, leaving us three days to mop up the rest of the tasks. </p>
+
+<p>The good thing about all the work so far is that the domain has been very well understood and communicated (thanks to the previous incarnation of the system) so we've not had to spend too long discussing or debating things, I've been showing the work to Sam on a feature by feature basis to get feedback (he is my customer after all) and adopting his feedback every hour or so. </p>
+
+<p>Tomorrow we'll look at getting these three sites deployed on EC2, and throwing the audio files up to S3, because that'll put us in a good place.</p>]]></description><link>http://codeofrob.com/entries/this-week,-lets-create-a-start-up---day-2.html</link><guid isPermaLink="true">http://codeofrob.com/entries/this-week,-lets-create-a-start-up---day-2.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 14 Mar 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[This week, let's create a start-up - Day 1]]></title><description><![CDATA[<p><strong>This post was written on Monday</strong></p>
 
 <p>I've finished my <a href="/entries/this-week,-lets-create-a-start-up.html">first day</a> of the build a start-up in a week challenge, and now I know a little more about the project.</p>
 
@@ -534,60 +602,4 @@ store-&gt;Put("key1", tx2);
 
 <p>By default (at least as I understand) LevelDB will happily accept these operations as it doesn't have any concurrency control.</p>
 
-<p>Happily, this is easy enough to work through as we'll see in the next entry.</p>]]></description><link>http://codeofrob.com/entries/transactional-guarantees-on-top-of-leveldb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/transactional-guarantees-on-top-of-leveldb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 04 Mar 2013 09:00:00 GMT</pubDate></item><item><title><![CDATA[Basic operations with LevelDB]]></title><description><![CDATA[<p>So, in <a href="/entries/investigating-ravendb-on-mono-for-reals.html">trying out LevelDB</a>, I need to work out the basics, and then apply those learnings to whether the functionality exposed is compatible with RavenDB's storage needs.</p>
-
-<p>I spent a few hours in the car on the way to and back from the Dead Sea and this seemed like an ideal time to crack out the g++ and write some C++ on top of LevelDB.</p>
-
-<p>The first thing I did was download <a href="https://code.google.com/p/leveldb/">the source</a> and un-pack it, I also grabbed <a href="http://twitter.com/kellabyte">@kellabytes</a>'s '<a href="https://github.com/kellabyte/Dazzle">Dazzle</a>' source code as an 'RTFM' back-up.</p>
-
-<p>What I really like is that the header files for LevelDB are the best means of documentation, I forgot I liked this about C++, I now remember - all the learnings done ended up being done by just reading the source code, pretty neat.</p>
-
-<p>So, what do we have?</p>
-
-<p><em>Opening a database</em></p>
-
-<pre><code>leveldb::DB* db;
-leveldb::DB::Open(options, "play/testdb", &amp;db);
-</code></pre>
-
-<p><em>Putting something in</em></p>
-
-<pre><code>status = db-&gt;Put(leveldb::WriteOptions(), "Key", "Hello World");
-</code></pre>
-
-<p><em>Getting something out</em></p>
-
-<pre><code>std::string document;
-store-&gt;Get(leveldb::ReadOptions(), "key", &amp;document);
-</code></pre>
-
-<p><em>Deleting something</em></p>
-
-<pre><code>store-&gt;Delete(leveldb::WriteOptions(), "key");
-</code></pre>
-
-<p><em>Squeeeeeeee</em></p>
-
-<p>I love how simple that is, and that each of these is a safe operation, important to note the following at this point:</p>
-
-<ul>
-<li>I'm passing in strings to those put/get operations</li>
-<li>LevelDB is copying to/from those strings</li>
-<li>Because we're using strings, scope determines the release of memory</li>
-</ul>
-
-<p>This is elegant, Put actually takes a "Slice" type too, but that's implicitly convertable from a string and therefore this works nicely. </p>
-
-<p>I'll cover Slice on its own as it's an interesting notion if I understand it correctly.</p>
-
-<p>Importantly for RavenDB, we need to be able to write multiple operations in an atomic fashion, LevelDB appears to accommodate for this neatly.</p>
-
-<pre><code> leveldb::WriteBatch batch;
- batch.Delete("key");
- batch.Put("key2", value);
- db-&gt;Write(leveldb::WriteOptions(), &amp;batch);
-</code></pre>
-
-<p>LevelDB can actually operate in async or synchronous mode, but because Raven makes gaurantees about writes having happened I can't think we'd be able to use async mode (because there isn't any way to know when these writes are finished to my knowledge).</p>
-
-<p>These guarantees aren't actually enough for RavenDB, and I'll cover the reasons for that in the next entry.</p>]]></description><link>http://codeofrob.com/entries/basic-operations-with-leveldb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/basic-operations-with-leveldb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 01 Mar 2013 09:00:00 GMT</pubDate></item></channel></rss>
+<p>Happily, this is easy enough to work through as we'll see in the next entry.</p>]]></description><link>http://codeofrob.com/entries/transactional-guarantees-on-top-of-leveldb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/transactional-guarantees-on-top-of-leveldb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 04 Mar 2013 09:00:00 GMT</pubDate></item></channel></rss>
