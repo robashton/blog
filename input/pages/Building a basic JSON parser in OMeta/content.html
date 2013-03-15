@@ -1,0 +1,357 @@
+<p>I learn by doing, not by reading books, this is bit of a disability when first encountering something <em>completely</em> new because it's hard to start until you know something but learning something when you can't learn by reading is a real pain!</p>
+
+<p>Nevertheless, I decided the best way to crack the nut of OMeta would be to write something to read JSON (it has already been done so I've got something to refer to if I get stuck), and I don't need to make it complete - just functional enough to say "okay, I can do something more real in OMeta now"</p>
+
+<p>Oh, and because this is something new and different, my spike into it will involve feeling my way through the problem with tests. I can't do it all in-line hardcore TDD-style in the test functions and extract because of the OMeta compilation phase - but it should be good enough for fast feedback while learning.</p>
+
+<p>So first off, I want to know how to match an empty object</p>
+
+<pre><code>{}
+</code></pre>
+
+<p>That's my empty object there, the simplest possible blob of JSON I can come up with :-)</p>
+
+<pre><code>describe("matching an empty object", function() {
+  var input = "{}"
+  var result = JsonReader.matchAll(input, "obj")
+  assert.deepEqual(result, {})
+})
+</code></pre>
+
+<p>So how do I match it?</p>
+
+<pre><code>ometa JsonReader {
+  obj = "{}" -&gt; {}
+}
+</code></pre>
+
+<p>How about matching a single numerical value?</p>
+
+<pre><code>describe("matching a single numerical value", function() {
+  var input = "400"
+  var result = jsonreader.matchall(input, "num")
+  assert.equal(result, 400)
+})
+</code></pre>
+
+<p>This won't work for long, but it's the easiest solution - match anything over and over again, then parse the result as an integer</p>
+
+<pre><code>ometa JsonReader {
+  num = anything+:x -&gt; parseInt(x.join(''), 10),
+  obj = "{}" -&gt; {}
+}
+</code></pre>
+
+<p>How about matching some text? we need to match text as it can be both a value or a key.</p>
+
+<pre><code>describe("Matching a single string value", function() {
+  var input = '"hello"'
+  var result = JsonReader.matchAll(input, "str")
+  assert.equal(result, "hello")
+})
+</code></pre>
+
+<p>Opting for the simplest I can think of</p>
+
+<pre><code>ometa JsonReader {
+  str = anything+:x -&gt; x.join('').replace(/\"/g, ''),
+  num = anything+:x -&gt; parseInt(x.join(''), 10),
+  obj = "{}" -&gt; {}
+}
+</code></pre>
+
+<p>This will come back to bite me I'm sure - how about matching a basic key value pair?</p>
+
+<pre><code>describe("Matching a key value pair with a numerical value", function() {
+  var input = '"foo":1337'
+  var result = JsonReader.matchAll(input, "kvp")
+  assert.deepEqual(result, [ "foo", 1337 ])
+})
+</code></pre>
+
+<p>Can we try this?</p>
+
+<pre><code>ometa JsonReader {
+  kvp = str:k ":" num:v -&gt; [ k, v ],
+  str = anything+:x -&gt; x.join('').replace(/\"/g, ''),
+  num = anything+:x -&gt; parseInt(x.join(''), 10),
+  obj = "{}" -&gt; {}
+}
+</code></pre>
+
+<p>Well we can, but it won't pass because we're being lazy and matching "anything" for both strings and numbers.</p>
+
+<p>Back to the drawing board, can we specify what we mean by an expected character in a string?</p>
+
+<pre><code>describe("Matching the character 'a'", function() {
+  var input = 'a'
+  var result = JsonReader.matchAll(input, "char")
+  assert.deepEqual('a', result)
+})
+</code></pre>
+
+<p>Well yes, there is only one!</p>
+
+<pre><code>ometa JsonReader {
+  char = anything:x -&gt; x,
+  kvp = str:k ":" num:v -&gt; [ k, v ],
+  str = anything+:x -&gt; x.join('').replace(/\"/g, ''),
+  num = anything+:x -&gt; parseInt(x.join(''), 10),
+  obj = "{}" -&gt; {}
+}
+</code></pre>
+
+<p>How about not managing to map something that isn't a character?</p>
+
+<pre><code>describe("Character matching doesn't match quotes", function() {
+  var input = '"'
+    , thrown = null
+  try {
+    JsonReader.matchAll(input, "char")
+  } catch(ex) {
+    thrown = ex
+  }
+  assert.notEqual(thrown, null)
+})
+</code></pre>
+
+<p>Not too hard</p>
+
+<pre><code>ometa JsonReader {
+  char =  (
+            ~'"'
+            anything
+          ):x -&gt; x,
+  kvp = str:k ":" num:v -&gt; [ k, v ],
+  str = anything+:x -&gt; x.join('').replace(/\"/g, ''),
+  num = anything+:x -&gt; parseInt(x.join(''), 10),
+  obj = "{}" -&gt; {}
+}
+</code></pre>
+
+<p>How about going back to that original test with the string matching?</p>
+
+<pre><code>describe("Matching a single string value", function() {
+  var input = '"hello"'
+  var result = JsonReader.matchAll(input, "str")
+  assert.equal(result, "hello")
+})
+</code></pre>
+
+<p>What happens if we come to a quote?</p>
+
+<pre><code>describe("Matching a string value with pre-mature quote", function() {
+  var input = '"hel"lo"'
+  var result = JsonReader.matchAll(input, "str")
+  assert.equal(result, "hel")
+})
+</code></pre>
+
+<p>If we say that rather than matching "anything" for str, we want to match only "char" with quotes around it then..</p>
+
+<pre><code>ometa JsonReader {
+  char =  (
+            ~'"'
+            anything
+          ):x -&gt; x,
+  kvp = str:k ":" num:v -&gt; [ k, v ],
+  str = '"' char+:x '"' -&gt; x.join(''),
+  num = anything+:x -&gt; parseInt(x.join(''), 10),
+  obj = "{}" -&gt; {}
+}
+</code></pre>
+
+<p>Now can we run that key-value one again?</p>
+
+<pre><code>describe("Matching a key value pair with a numerical value", function() {
+  var input = '"foo":1337'
+  var result = JsonReader.matchAll(input, "kvp")
+  assert.deepEqual(result, [ "foo", 1337 ])
+})
+</code></pre>
+
+<p>Huzzah.</p>
+
+<p>How about a key-value with a string value?</p>
+
+<pre><code>describe("Matching a key value pair with a string value", function() {
+  var input = '"foo":"bar"'
+  var result = JsonReader.matchAll(input, "kvp")
+  assert.deepEqual(result, [ "foo", "bar" ])
+})
+</code></pre>
+
+<p>Well this is where the our parsing language shines:</p>
+
+<pre><code>ometa JsonReader {
+  char =  (
+            ~'"'
+            anything
+          ):x -&gt; x,
+  value = (
+            num
+          | str
+          ):x -&gt; x,
+  kvp = str:k ":" value:v -&gt; [ k, v ],
+  str = '"' char+:x '"' -&gt; x.join(''),
+  num = anything+:x -&gt; parseInt(x.join(''), 10),
+  obj = "{}" -&gt; {}
+}
+</code></pre>
+
+<p>Actually, this probably means that matching objects shouldn't be too hard.</p>
+
+<pre><code>describe("Matching a key value pair with an object value", function() {
+  var input = '"foo":{}'
+  var result = JsonReader.matchAll(input, "kvp")
+  assert.deepEqual(result, [ "foo", {}])
+}) 
+</code></pre>
+
+<p>Just add the obj to the list of possible values expected (note it comes before number because number is still really greedy!</p>
+
+<pre><code>ometa JsonReader {
+  char =  (
+            ~'"'
+            anything
+          ):x -&gt; x,
+  value = (
+            str
+          | obj
+          | num
+          ):x -&gt; x,
+  kvp = str:k ":" value:v -&gt; [ k, v ],
+  str = '"' char+:x '"' -&gt; x.join(''),
+  num = anything+:x -&gt; parseInt(x.join(''), 10),
+  obj = "{}" -&gt; {}
+}
+</code></pre>
+
+<p>Now, this obj definition isn't actually correct - because objects contain one or more key value pairs.</p>
+
+<pre><code>describe("Matching an object with a single key value pair", function() {
+  var input = '{"foo":1337}'
+  var result = JsonReader.matchAll(input, "obj")
+  assert.deepEqual(result, { foo: 1337 })
+})
+</code></pre>
+
+<p>This won't actually work because as mentioned above, 'num' is still greedy and needs changing so it only matches numerical digits.</p>
+
+<pre><code>describe("Matching a number with an early termination", function() {
+  var input = '133"7'
+  var result = JsonReader.matchAll(input, "num")
+  assert.equal(result, 133)
+})
+</code></pre>
+
+<p>Turns out that there is a built-in called 'digit' to help us with this ( there is probably a built-in for strings too, but documentation for OMeta is not very good and I didn't see it)</p>
+
+<pre><code>ometa JsonReader {
+  char =  (
+            ~'"'
+            anything
+          ):x -&gt; x,
+  value = (
+            str
+          | obj
+          | num
+          ):x -&gt; x,
+  kvp = str:k ":" value:v -&gt; [ k, v ],
+  str = '"' char+:x '"' -&gt; x.join(''),
+  num = &lt;digit+&gt;:x -&gt; parseInt(x, 10),
+  obj = "{}" -&gt; {}
+}
+</code></pre>
+
+<p>Groovy, now perhaps we can try that test again:</p>
+
+<pre><code>describe("Matching an object with a single key value pair", function() {
+  var input = '{"foo":1337}'
+  var result = JsonReader.matchAll(input, "obj")
+  assert.deepEqual(result, { foo: 1337 })
+})
+</code></pre>
+
+<p>I decide to call an external function to help build up the object which has key/value pairs - that's the makeObject(args):output bit</p>
+
+<pre><code>ometa JsonReader {
+  char =  (
+            ~'"'
+            anything
+          ):x -&gt; x,
+  value = (
+            str
+          | obj
+          | num
+          ):x -&gt; x,
+  kvp = str:k ":" value:v -&gt; [ k, v ],
+  str = '"' char+:x '"' -&gt; x.join(''),
+  num = &lt;digit+&gt;:x -&gt; parseInt(x, 10),
+  obj = "{}" -&gt; {}
+      | "{" (
+              kvp:kv 
+              makeObject(kv):output
+            ):output
+        "}" -&gt; output
+}
+
+JsonReader.makeObject = function(kv) {
+  var obj = {}
+  obj[kv[0]] = kv[1]
+  return obj
+}
+</code></pre>
+
+<p>Finally, how about lists of arguments?</p>
+
+<pre><code>describe("Matching an object with multiple key value pairs", function() {
+  var input = '{"foo":43,"bar":343}'
+  var result = JsonReader.matchAll(input, "obj")
+  assert.deepEqual(result, { foo: 1337, bar: 343 })
+})
+</code></pre>
+
+<p>Turns out that there is another construct in OMeta for this scenario (The best way to find these constructs is to read the ometa-js source - sorry.)</p>
+
+<pre><code>ometa JsonReader {
+  char =  (
+            ~'"'
+            anything
+          ):x -&gt; x,
+  value = (
+            str
+          | obj
+          | num
+          ):x -&gt; x,
+  kvp = str:k ":" value:v -&gt; [ k, v ],
+  str = '"' char+:x '"' -&gt; x.join(''),
+  num = &lt;digit+&gt;:x -&gt; parseInt(x, 10),
+  obj = "{}" -&gt; {}
+      | "{" (
+              listOf(`kvp, ','):kvs
+              makeObject(kvs):output
+            )
+        "}" -&gt; output
+}
+
+JsonReader.makeObject = function(kvs) {
+  var obj = {}
+  for(var i = 0 ; i &lt; kvs.length; i++) {
+    var kv = kvs[i]
+    obj[kv[0]] = kv[1]
+  }
+  return obj
+}
+</code></pre>
+
+<p><strong>Summary</strong></p>
+
+<p>It's pretty trivial to build up a parser for something if you built up a test suite as you go and have some way of</p>
+
+<ul>
+<li>Seeing examples for the syntax that OMeta supports</li>
+<li>Seeing examples for the built-ins inside OMeta</li>
+</ul>
+
+<p>With this behind me, I can actually go and look at the source code of this company and see about doing something useful from this learning!</p>
