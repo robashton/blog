@@ -1,4 +1,4 @@
-This week I'm in Athens, working for a company that is uses these things
+This week I'm in Athens, working for [Rulemotion](http://rulemotion.com/) who use these technologies amongst others:
 
 - OMeta
 - SVRB
@@ -19,6 +19,8 @@ Well, giving honest feedback is something I can do - however my relationship wit
 So what IS OMeta? It turns out that I do have a little experience in this area because OMeta is a expression parsing language, and like most people I've written a few parsers and compilers in my few years as a software developer.
 
 OMeta is a bit different in that it had a specific goal - chiefly that of making it fast to prototype new languages/parsing constructs, and indeed it can be used to do pretty much the whole chain in the compilation process (parsing, intepreting and compilation).
+
+You can read the [original paper](http://www.vpri.org/pdf/tr2008003_experimenting.pdf), it's the best source of information apart from just reading the implementation.
 
 *I'm not going to do a blog series on this, just wanted to throw up some stuff as I learned it :)*
 

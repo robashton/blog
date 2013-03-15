@@ -34,7 +34,7 @@
 })
 </code></pre>
 
-<p>This won't work for long, but it's the easiest solution - match anything over and over again, then parse the result as an integer</p>
+<p>This won't work for long, but it's the easiest solution - match <em>anything</em> over and over again, then parse the result as an integer</p>
 
 <pre><code>ometa JsonReader {
   num = anything+:x -&gt; parseInt(x.join(''), 10),
@@ -42,7 +42,7 @@
 }
 </code></pre>
 
-<p>How about matching some text? we need to match text as it can be both a value or a key.</p>
+<p>How about matching some text? we need to match quoted text as it can be both a value or a key.</p>
 
 <pre><code>describe("Matching a single string value", function() {
   var input = '"hello"'
@@ -51,7 +51,7 @@
 })
 </code></pre>
 
-<p>Opting for the simplest I can think of</p>
+<p>Opting for the simplest I can think of, <em>match anything and them remove the quotes.</em></p>
 
 <pre><code>ometa JsonReader {
   str = anything+:x -&gt; x.join('').replace(/\"/g, ''),
@@ -69,7 +69,7 @@
 })
 </code></pre>
 
-<p>Can we try this?</p>
+<p>Can we try this? <em>Match a string, then a colon, then a number</em></p>
 
 <pre><code>ometa JsonReader {
   kvp = str:k ":" num:v -&gt; [ k, v ],
@@ -79,7 +79,7 @@
 }
 </code></pre>
 
-<p>Well we can, but it won't pass because we're being lazy and matching "anything" for both strings and numbers.</p>
+<p>Well we can, but it won't pass because we're being lazy and matching "anything" for both strings and numbers. (We're being greedy and it'll try and match quotes and braces and then fail) </p>
 
 <p>Back to the drawing board, can we specify what we mean by an expected character in a string?</p>
 
@@ -90,7 +90,7 @@
 })
 </code></pre>
 
-<p>Well yes, there is only one!</p>
+<p>Well yes, there is only one! So I'll cheat and just match <em>anything</em> again :P</p>
 
 <pre><code>ometa JsonReader {
   char = anything:x -&gt; x,
@@ -101,7 +101,7 @@
 }
 </code></pre>
 
-<p>How about not managing to map something that isn't a character?</p>
+<p>How about not managing to map something that isn't a character? <em>anything</em> isn't going to work remember!</p>
 
 <pre><code>describe("Character matching doesn't match quotes", function() {
   var input = '"'
@@ -115,7 +115,7 @@
 })
 </code></pre>
 
-<p>Not too hard</p>
+<p>Not too hard, just <em>check that we haven't got a double quote and then match anything else</em>:</p>
 
 <pre><code>ometa JsonReader {
   char =  (
@@ -138,7 +138,7 @@
 })
 </code></pre>
 
-<p>What happens if we come to a quote?</p>
+<p>What happens if we come to a quote in the middle of the data?</p>
 
 <pre><code>describe("Matching a string value with pre-mature quote", function() {
   var input = '"hel"lo"'
@@ -147,7 +147,7 @@
 })
 </code></pre>
 
-<p>If we say that rather than matching "anything" for str, we want to match only "char" with quotes around it then..</p>
+<p>If we say that rather than matching "anything" for str, we want to match <em>only a collection of "char" with quotes around it</em> then..</p>
 
 <pre><code>ometa JsonReader {
   char =  (
@@ -170,7 +170,7 @@
 })
 </code></pre>
 
-<p>Huzzah.</p>
+<p>Huzzah. Functional.</p>
 
 <p>How about a key-value with a string value?</p>
 
@@ -181,7 +181,7 @@
 })
 </code></pre>
 
-<p>Well this is where the our parsing language shines:</p>
+<p>Well this is where the our parsing language shines, as we can specify <em>"any valid value", where "value -> num | str"</em></p>
 
 <pre><code>ometa JsonReader {
   char =  (
@@ -208,7 +208,7 @@
 }) 
 </code></pre>
 
-<p>Just add the obj to the list of possible values expected (note it comes before number because number is still really greedy!</p>
+<p>Just add the obj to the list of possible values expected (<em>note it comes before number because number is still really greedy!</em>)</p>
 
 <pre><code>ometa JsonReader {
   char =  (
@@ -273,7 +273,7 @@
 })
 </code></pre>
 
-<p>I decide to call an external function to help build up the object which has key/value pairs - that's the makeObject(args):output bit</p>
+<p>I decide to call an external function to help build up the object which has key/value pairs - that's the <em>makeObject(args):output</em> bit:</p>
 
 <pre><code>ometa JsonReader {
   char =  (
@@ -312,7 +312,7 @@ JsonReader.makeObject = function(kv) {
 })
 </code></pre>
 
-<p>Turns out that there is another construct in OMeta for this scenario (The best way to find these constructs is to read the ometa-js source - sorry.)</p>
+<p>Turns out that there is another construct in OMeta for this scenario (The best way to find these constructs is to read the ometa-js source - sorry.) <em>listOf</em></p>
 
 <pre><code>ometa JsonReader {
   char =  (
