@@ -110,7 +110,7 @@ With an appropriate loop to build up the list
       | '/'
     ) 
 
-Now, a few things getting wrong with this whole implementation
+Now, a few things getting wrong with this whole implementation so far...
 
 - There is a semantic difference between a Service Operation and a Resource look-up, I'm not expressing this in the model
 - The code to build up the model is getting a bit mixed into my parsing expressions, I'll watch to see if this  gets un-manageable
