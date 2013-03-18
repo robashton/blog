@@ -154,7 +154,3 @@ And handle our explcit decisions like so
 **Et voila**
 
 So that's paging done and dusted, incredibly simple when you know how. Next up we'll explore the murky world of OData filtering.
-
-
-
-
