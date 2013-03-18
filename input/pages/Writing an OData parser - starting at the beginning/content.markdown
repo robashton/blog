@@ -61,12 +61,12 @@ This is what I wrote to support the above tests:
       Number = <digit+>:d -> parseInt(d, 10),
 
       OData = (
-          ResourceUri()
+          PathSegment
         | '/'
       ) 
       ,
 
-      ResourceUri = 
+      PathSegment = 
           '/'
             ResourceName:resource
             (
@@ -91,10 +91,9 @@ This is what I wrote to support the above tests:
 
 Things of note
 
-- I'm currently returning the model from ResourceUri as { resource: resource, key: key }, I'll end up making something else for this I think
+- I'm currently returning the model from PathSegment as { resource: resource, key: key }, I'll end up making something else for this I think
 - The "key" is optional, if it's not there then it will simply be undefined, this is what that question mark is for after those braces
-- The ResourcePart and ResourceName are copied from the old code and simply convert underscores into spaces, I haven't bothered writing tests for this as I've not checked what ODatas rules are for entity names yet (bite me)
-
+- The ResourcePart and ResourceName are copied from the old code and simply convert underscores into spaces, I haven't bothered writing tests for this as I've not checked what ODatas rules are for entity names yet (It's likely to be a bit more complicated than "any text at all")
 
 
 This is all very rudimentary, now - looking at the URI conventions, they seem to support arbitrary paths into object relationships like so:
@@ -107,9 +106,6 @@ This suggests I probably want to recurse in order to build up this sequence
       it("should have the resource specified", function() {
          assert.equal(result.resource, 'model')
       })
-      it("should have the resource specified", function() {
-         assert.equal(result.resource, 'model')
-      })
       it("should have the key specified for the resource", function() {
          assert.equal(result.key, '1')
       })
@@ -119,7 +115,6 @@ This suggests I probably want to recurse in order to build up this sequence
     })
 
 Not sure if this is an appropriate representation, but it'll do for now until I find out how we're going to be consuming this model.
-
 
 Having just arrived at the hotel and written this all on the boat, I'll defer having a look at how to do this until tomorrow, I've already passed the balmers peak.
 

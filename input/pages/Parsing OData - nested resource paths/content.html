@@ -1,0 +1,88 @@
+<p>I'm writing an OData parser in OMeta, and <a href="/entries/writing-an-odata-parser---starting-at-the-beginning.html">yesterday</a> I stopped with the realisation that I'd have to deal with paths of resources, each with their own potential identifier.</p>
+
+<p>First off, I come back to this code and look up the rules for Resource Names in OData as I left that hole open yesterday and it is an itch I want to scratch.</p>
+
+<p>I read the <a href="http://www.odata.org/documentation/uri-conventions#ResourcePath">Uri conventions</a>, the <a href="http://www.odata.org/media/30002/OData%20ABNF.html">ABNF</a> and this leads me to <a href="http://www.rfc-editor.org/rfc/rfc3229.txt">RFC3229</a> and I fell asleep.</p>
+
+<p>I'll see if this has been covered in Rulemotion's codebase when I get back into the office on Tuesday as I'd prefer to do this properly.</p>
+
+<p><strong>Recursing through resource paths</strong></p>
+
+<p>Back to the matter at hand, I want to deal with arbitrary paths like so</p>
+
+<pre><code>/model(1)/children(1)/otherchildren(1)/field
+</code></pre>
+
+<p>This shouldn't be <em>too hard</em>, although I am practising Mojito-driven-development this weekend so it does tax the brain cells that are still functioning.</p>
+
+<p>What I want to achieve:</p>
+
+<ul>
+<li>I want to be able to parse multiple resource paths separated by a '/'</li>
+<li>I want to build up a model of this path (each with a name and a specified id)</li>
+<li>I want to once this is done, carry on parsing the rest of the path</li>
+</ul>
+
+<p>Hmm, well simplest thing for this is to say that this is recursive and not change a thing at all about the initial expression</p>
+
+<pre><code>OData = (
+  (
+    PathSegment:model -&gt; model
+  )
+  | '/'
+) 
+
+
+PathSegment = 
+      '/'
+      ResourceName:resource
+      (
+        ("(" Number:key ")")?
+        (PathSegment: next)?
+      ) -&gt; { resource: resource, key: key, next: next }
+    ,
+</code></pre>
+
+<p>All we do here is say </p>
+
+<ul>
+<li>We expect a forward-slash, followed by the name of the addressed resource</li>
+<li>We then optionally expect a specified Id for that resource</li>
+<li>We then optionally expect another part of the path component</li>
+</ul>
+
+<p>In this way, we'll recursively build up the path to the addressed resource in the model and end up being able to follow this down when working out what to do with our OData request.</p>
+
+<p><strong>Links</strong></p>
+
+<p>There is another part to this, which is that rather than addressing paths, we can address links, which are expressed similarly:</p>
+
+<pre><code>/model(1)/$links/children
+</code></pre>
+
+<p>This can actually be dealt with in very much the same way:</p>
+
+<pre><code>PathSegment = 
+      '/'
+      ResourceName:resource
+      (
+        ("(" Number:key ")")?
+        (
+          (seq("/$links") PathSegment:link)
+        | PathSegment: next
+        )?
+      ) -&gt; { resource: resource, key: key, link: link, property: next }
+    ,
+</code></pre>
+
+<ul>
+<li>We expect a forward-slash, followed by the name of the addressed resource</li>
+<li>We then optionally expect a specified Id for that resource</li>
+<li>We then expect a sequence of characters (/$links) followed by another path segment</li>
+<li>OR we expect another path segment</li>
+<li>But the above two are optional</li>
+</ul>
+
+<p>The model is then built up recursively.</p>
+
+<p>I think that actually I shouldn't be allowing further addressing once we've followed a link - but I'm not so sure about that so I'll ask when I get back into the office.</p>

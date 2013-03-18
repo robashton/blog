@@ -1,0 +1,207 @@
+<html>
+  <head>
+    <title id="title">Parsing OData - service operations</title>
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+
+    </script>
+  </head>
+  <body>
+    <a class="subscribe" href="http://feed.codeofrob.com/RobAshton">Subscribe to my blog</a>
+    <div id="blog-entry">
+      <h1 id="post-title">Parsing OData - service operations</h1>
+      <h6>Published on <span class="date">2013-4-8</span></h6>
+      <div id="post"><p>As well as <a href="/entries/writing-an-odata-parser---starting-at-the-beginning.html">addressing resources</a> and <a href="/entries/parsing-odata---nested-resource-paths.html">resource paths</a>, in OData we apparently have the ability to invoke "service operations" as well.</p>
+
+<p>From what I see, these are addressed in a pretty much identical manner to actual resources like so</p>
+
+<pre><code>/ProductsByColor?color='red'
+</code></pre>
+
+<p>Or</p>
+
+<pre><code>/ProductsByColor(3)/Category/Name?color='red'
+</code></pre>
+
+<p>The invocation on the server is the same in each of these cases, however in the second case we're addressing into the collection returned by the invocation.</p>
+
+<p>Now, a simple solution to this will be to carry on using the existing parser, and supply these custom params as part of the overall model:</p>
+
+<p>So, with the following test:</p>
+
+<pre><code>test("/method(1)/child?foo=bar", function(result) {
+  it("should have the resource specified", function() {
+     assert.equal(result.resource, 'method')
+  })
+  it("The result should be addressed", function() {
+     assert.equal(result.key, '1')
+  })
+
+  it("should have the path specified", function() {
+     assert.equal(result.next.resource, 'Child')
+  })
+
+  it("should have the argument specified", function() {
+     assert.equal(result.args.foo, 'bar')
+  })
+})
+</code></pre>
+
+<p>I might then solve it by simply adding this to the end of my main expression</p>
+
+<pre><code>OData = (
+  (
+    PathSegment:model 
+    (
+      '?'
+      OperationParam:param
+    )?
+</code></pre>
+
+<p>Where</p>
+
+<pre><code>OperationParam = 
+  Text:name '=' Text:value -&gt; { name: name, value: value }
+,
+</code></pre>
+
+<p>(Text is a hack so I'm not putting that here until I've defined what it actually is - similar to my kerfuffle over resource names earlier)</p>
+
+<p>To build up the model we can do some inline code like so:</p>
+
+<pre><code>OData = (
+  (
+    PathSegment:model 
+    (
+      '?'
+      OperationParam:param
+    )?
+  ) -&gt; { 
+          if(param) {
+           model.args = {}
+           model.args[param.name] = param.value;
+          }
+         return model
+       }
+  | '/'
+) 
+</code></pre>
+
+<p>This will have the desired effect to an extent, of course it won't pass this test:</p>
+
+<pre><code>test("/method(1)/child?foo=bar&amp;foz=baz", function(result) {
+  it("should have 'foo' specified", function() {
+     assert.equal(result.args.foo, 'bar')
+  })
+  it("should have 'foz' specified", function() {
+     assert.equal(result.args.foz, 'baz')
+  })
+})
+</code></pre>
+
+<p>This is where the built-in 'listOf' comes in useful:</p>
+
+<pre><code>OData = (
+  (
+    PathSegment:model 
+    (
+      '?'
+      listOf(`OperationParam, '&amp;'):params
+    )?
+</code></pre>
+
+<p>With an appropriate loop to build up the list</p>
+
+<pre><code>OData = (
+  (
+    PathSegment:model 
+    (
+      '?'
+      listOf(`OperationParam, '&amp;'):params
+    )?
+  ) -&gt; { 
+          if(params) {
+           model.args = {}
+           for(var i in params)
+             model.args[params[i].name] = params[i].value;
+          }
+         return model
+       }
+  | '/'
+) 
+</code></pre>
+
+<p>Now, a few things getting wrong with this whole implementation</p>
+
+<ul>
+<li>There is a semantic difference between a Service Operation and a Resource look-up, I'm not expressing this in the model</li>
+<li>The code to build up the model is getting a bit mixed into my parsing expressions, I'll watch to see if this  gets un-manageable</li>
+<li>I've not done 'Text' implementation properly</li>
+<li>I've not done 'ResourceName' implementation properly</li>
+</ul>
+
+<p>I can live most of this for now - but I've made a note that they're making me uncomfortable so when my progress is at a suitable point I can deal with them.</p></div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="http://twitter.com/robashton">Follow me</a>
+      </div>
+      <div id="inqob_job_postings"></div> 
+      <script type="text/javascript" charset="utf-8">
+        var __inqob_settings = {
+          email_address:  'robashton@codeofrob.com', 
+          token:          '',
+          debug: false,
+          items: [{
+            keyword: 'codeofrob', 
+            price: 100 
+          }]
+        };
+
+        (function(is) {
+          var sc = document.createElement('script'); sc.type = 'text/javascript'; sc.async = true;
+          var src = (document.location.protocol == 'https:' ? 'https://' : 'http://') + 'inqob.com/get/script';
+          var q = [];
+          q.push('?t='+ new Date().getTime()); 
+          q.push('token=' + is.token); 
+          q.push('email_address=' + is.email_address); 
+          q.push('href=' + encodeURIComponent(window.location.href));
+          sc.src = src + q.join('&');
+          var s = document.getElementsByTagName('script')[0]; 
+          s.parentNode.insertBefore(sc, s);
+        })(__inqob_settings);      
+      </script>
+      <div id="disqus">
+        <div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+      </div>
+    </div>
+    <div id="post-comments">
+
+    </div>
+  </body>
+</html>

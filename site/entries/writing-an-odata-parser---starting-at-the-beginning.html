@@ -87,12 +87,12 @@ test("/model(1)", "OData", function(result) {
   Number = &lt;digit+&gt;:d -&gt; parseInt(d, 10),
 
   OData = (
-      ResourceUri()
+      PathSegment
     | '/'
   ) 
   ,
 
-  ResourceUri = 
+  PathSegment = 
       '/'
         ResourceName:resource
         (
@@ -119,9 +119,9 @@ test("/model(1)", "OData", function(result) {
 <p>Things of note</p>
 
 <ul>
-<li>I'm currently returning the model from ResourceUri as { resource: resource, key: key }, I'll end up making something else for this I think</li>
+<li>I'm currently returning the model from PathSegment as { resource: resource, key: key }, I'll end up making something else for this I think</li>
 <li>The "key" is optional, if it's not there then it will simply be undefined, this is what that question mark is for after those braces</li>
-<li>The ResourcePart and ResourceName are copied from the old code and simply convert underscores into spaces, I haven't bothered writing tests for this as I've not checked what ODatas rules are for entity names yet (bite me)</li>
+<li>The ResourcePart and ResourceName are copied from the old code and simply convert underscores into spaces, I haven't bothered writing tests for this as I've not checked what ODatas rules are for entity names yet (It's likely to be a bit more complicated than "any text at all")</li>
 </ul>
 
 <p>This is all very rudimentary, now - looking at the URI conventions, they seem to support arbitrary paths into object relationships like so:</p>
@@ -132,9 +132,6 @@ test("/model(1)", "OData", function(result) {
 <p>This suggests I probably want to recurse in order to build up this sequence</p>
 
 <pre><code>test("/model(1)/child", "OData", function(result) {
-  it("should have the resource specified", function() {
-     assert.equal(result.resource, 'model')
-  })
   it("should have the resource specified", function() {
      assert.equal(result.resource, 'model')
   })
