@@ -47,7 +47,7 @@ To the test..
 
 This is actually the same test as in our [Arithmetic Operators](/entries/adding-arithmetic-operators-to-our-odata-parser.html) post, only we've surrounded the div expression because we want that to happen all by itself.
 
-Well, Braces actually have the *highest* precedence, so they'll need to go at the very end of our parser.
+Well, Brackets actually have the *highest* precedence, so they'll need to go at the very end of our parser.
 
     FilterByValue = 
       FilterNegateExpression
