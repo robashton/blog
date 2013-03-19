@@ -1,0 +1,181 @@
+<html>
+  <head>
+    <title id="title">These are NOT the results you are looking for - OData parser</title>
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+
+    </script>
+  </head>
+  <body>
+    <a class="subscribe" href="http://feed.codeofrob.com/RobAshton">Subscribe to my blog</a>
+    <div id="blog-entry">
+      <h1 id="post-title">These are NOT the results you are looking for - OData parser</h1>
+      <h6>Published on <span class="date">2013-4-15</span></h6>
+      <div id="post"><p>A quick re-cap of where we are so far in our OData OMeta Adventure.</p>
+
+<ul>
+<li><a href="/entries/building-a-basic-json-parser-in-ometa.html">Learning OMeta through JSON</a></li>
+<li><a href="/entries/building-an-odata-parser-in-ometa.html">Introduction to the OData Parser</a></li>
+<li><a href="/entries/writing-an-odata-parser---starting-at-the-beginning.html">First steps in writing the OData Parser</a></li>
+<li><a href="/entries/parsing-odata---nested-resource-paths.html">Nested resource paths in OData</a></li>
+<li><a href="/entries/parsing-odata---service-operations.html">Service operations in OData</a></li>
+<li><a href="/entries/the-odata-parser---applying-modifiers-to-our-query.html">Query options in OData</a></li>
+<li><a href="/entries/paging-support-in-our-odata-parser.html">Paging support in OData</a></li>
+<li><a href="/entries/our-odata-parser---looking-at-filterby.html">Filtering support in OData</a></li>
+<li><a href="/entries/recursive-expression-parsing-in-our-odata-filter-parser.html">Recursive query support in OData</a></li>
+</ul>
+
+<p>Before we get onto some more fuzzy stuff, it would be good to deal with 'not'</p>
+
+<p>Not is an interesting case because it's not really  the same as the rest of the expressions so far</p>
+
+<pre><code>Not  Logical negation  /Products?$filter=not endswith(Description,'milk')
+</code></pre>
+
+<p>It can't apply in situations like this however</p>
+
+<pre><code>/Products?$filter=not Product eq 5
+</code></pre>
+
+<p>But it can probably apply in situations like this</p>
+
+<pre><code>/Products?$filter=not Published
+</code></pre>
+
+<p>This tells us something, which is that not isn't going to be expecting an expression unless it's in braces, otherwise it's going to be looking for a value.</p>
+
+<p>I'm not supporting methods yet, so I'll ignore that requirement for now.</p>
+
+<pre><code>test("/some/resource?$filterby=not Published", "OData", function(result) {
+
+  it("A filter should be present", function() {
+     assert.notEqual(result.options.$filterby, null)
+  })
+  it("Filter should be an instance of 'not'", function() {
+     assert.equal(result.options.$filterby[0], "not")
+  })
+
+  it("value should be 'Published'", function() {
+    assert.equal(result.options.$filterby[1].name, "Published")
+  })
+})
+</code></pre>
+
+<p>First off, this one</p>
+
+<pre><code>FilterByValue = 
+  FilterNegateExpression
+|  Number
+| QuotedText
+| PropertyPath
+,
+
+FilterNegateExpression = 
+  spaces
+  seq("not")
+  spaces
+  FilterByValue:value       -&gt;  [ "not", value ]
+,
+</code></pre>
+
+<p>Quite simple, if we get as far as checking for a value, it means we haven't found an expression, so we'll check for "Not" - I guess this is where we'll probably stick methods later too. </p>
+
+<p>A "NegateExpression" is simply a "not" followed by a value, we'll allow double negatives too because there is no harm in this.</p>
+
+<p>Next up, we'll check for braces, and inside braces we'll allow further expressions (recurse recurse recurse)</p>
+
+<pre><code>test("/some/resource?$filterby=not (Price gt 5)", "OData", function(result) {
+
+  it("A filter should be present", function() {
+     assert.notEqual(result.options.$filterby, null)
+  })
+  it("Filter should be an instance of 'not'", function() {
+     assert.equal(result.options.$filterby[0], "not")
+  })
+  it("Value should be Price gt 5", function() {
+     var rhs = result.options.$filterby[1] 
+     assert.equal(rhs[0], "gt")
+     assert.equal(rhs[1].name, "Price")
+     assert.equal(rhs[2], 5)
+  })
+})
+</code></pre>
+
+<p>Solved by</p>
+
+<pre><code>FilterNegateExpression = 
+  spaces
+  seq("not")
+  spaces
+  (
+    FilterByValue
+  | '(' spaces FilterByExpression:expr spaces ')' -&gt; expr
+  ):value -&gt;  [ "not", value ]
+,
+</code></pre>
+
+<p>Dead easy, now it's time to get our heads stuck into Arithmetic Operators.</p></div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="http://twitter.com/robashton">Follow me</a>
+      </div>
+      <div id="inqob_job_postings"></div> 
+      <script type="text/javascript" charset="utf-8">
+        var __inqob_settings = {
+          email_address:  'robashton@codeofrob.com', 
+          token:          '',
+          debug: false,
+          items: [{
+            keyword: 'codeofrob', 
+            price: 100 
+          }]
+        };
+
+        (function(is) {
+          var sc = document.createElement('script'); sc.type = 'text/javascript'; sc.async = true;
+          var src = (document.location.protocol == 'https:' ? 'https://' : 'http://') + 'inqob.com/get/script';
+          var q = [];
+          q.push('?t='+ new Date().getTime()); 
+          q.push('token=' + is.token); 
+          q.push('email_address=' + is.email_address); 
+          q.push('href=' + encodeURIComponent(window.location.href));
+          sc.src = src + q.join('&');
+          var s = document.getElementsByTagName('script')[0]; 
+          s.parentNode.insertBefore(sc, s);
+        })(__inqob_settings);      
+      </script>
+      <div id="disqus">
+        <div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+      </div>
+    </div>
+    <div id="post-comments">
+
+    </div>
+  </body>
+</html>
