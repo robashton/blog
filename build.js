@@ -8,8 +8,23 @@ var RSS = require('rss');
 var markdown = require('node-markdown').Markdown;
 
 console.log('Rebuilding site')
- 
 
+
+function compileStatics(cb) {
+  var statictemplate = fs.readFileSync('./input/source/statictemplate.html', 'utf8');
+  fs.readdir('input/static', function(err, files) {
+    for(var i = 0; i < files.length; i++) {
+      var file = files[i]
+      var fullpath = path.join('input/static', files[i])
+      var htmlfilename = path.join('site', file.substr(0, file.length-"markdown".length) + 'html')
+      var mdcontent = fs.readFileSync(fullpath, 'utf8'); 
+      var html = markdown(mdcontent);
+      var statichtml = plates.bind(statictemplate, { body: html });
+      fs.writeFileSync(htmlfilename, statichtml , 'utf8');
+    }
+    cb()
+  })
+}
 
 var compilePosts = function(posts) {
 
@@ -110,5 +125,7 @@ common.getAllPostsInfo(function(posts) {
   fs.writeFileSync('./site/index.html', indexHtml, 'utf8');
   fs.writeFileSync('./site/allposts.txt', allEntries, 'utf8')
   compilePosts(newposts);
-  process.exit()
+  compileStatics(function() {
+    process.exit()
+  })
 });

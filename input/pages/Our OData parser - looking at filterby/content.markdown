@@ -6,7 +6,7 @@ A quick re-cap of where we are so far:
 - [Nested resource paths in OData](/entries/parsing-odata---nested-resource-paths.html)
 - [Service operations in OData](/entries/parsing-odata---service-operations.html)
 - [Query options in OData](/entries/the-odata-parser---applying-modifiers-to-our-query.html)
-- [Paging support in OData](entries/paging-support-in-our-odata-parser.html)
+- [Paging support in OData](/entries/paging-support-in-our-odata-parser.html)
 
 Now I need to tackle $filterby, which is bit of a mammoth, as can be seen from the description from the OData Uri conventions
 

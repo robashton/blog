@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title id="title">Build an ASP.NET MVC application with me - Kickoff</title>
+    <title id="title">Adding arithmetic operators to our OData filterby parser</title>
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
     <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
     <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
@@ -21,25 +21,55 @@
   <body>
     <a class="subscribe" href="http://feed.codeofrob.com/RobAshton">Subscribe to my blog</a>
     <div id="blog-entry">
-      <h1 id="post-title">Build an ASP.NET MVC application with me - Kickoff</h1>
-      <h6>Published on <span class="date">2013-5-1</span></h6>
-      <div id="post"><p>Putting my keyboard where my... er keyboard is, I'm going to build an application until I get bored and I'm going to do it on top of the ASP.NET MVC stack using my common patterns and <a href="/entries/uncle-bobs-viewpoint-considered-harmful.html">personal brand of pragmatism</a>.</p>
+      <h1 id="post-title">Adding arithmetic operators to our OData filterby parser</h1>
+      <h6>Published on <span class="date">2013-4-12</span></h6>
+      <div id="post"><p>A quick re-cap of where we are so far in our OData OMeta Adventure.</p>
 
-<p>Why ASP.NET MVC? Because like it or lump it, it's what most companies expect you to be building .NET web apps with if you're in that space, and while it might be annoying to a small subset of people because using it is like forced to undergo death by a thousand cuts, it is possible to build things in it if you leave your opinions at the door, as seen in my week <a href="/entries/this-week,-lets-create-a-start-up---day-5.html">helping Sam build his start-up with it.</a>.</p>
+<ul>
+<li><a href="/entries/building-a-basic-json-parser-in-ometa.html">Learning OMeta through JSON</a></li>
+<li><a href="/entries/building-an-odata-parser-in-ometa.html">Introduction to the OData Parser</a></li>
+<li><a href="/entries/writing-an-odata-parser---starting-at-the-beginning.html">First steps in writing the OData Parser</a></li>
+<li><a href="/entries/parsing-odata---nested-resource-paths.html">Nested resource paths in OData</a></li>
+<li><a href="/entries/parsing-odata---service-operations.html">Service operations in OData</a></li>
+<li><a href="/entries/the-odata-parser---applying-modifiers-to-our-query.html">Query options in OData</a></li>
+<li><a href="/entries/paging-support-in-our-odata-parser.html">Paging support in OData</a></li>
+<li><a href="/entries/our-odata-parser---looking-at-filterby.html">Filtering support in OData</a></li>
+</ul>
 
-<p>I was asked on Twitter by a few people what the compromises I felt I had made were, and I found it hard to articulate after the fact, I'm hoping by doing this I can document them as I go and and get feedback on my style as we do this.</p>
+<p><strong>CRIKEY</strong></p>
 
-<h2>So, the domain</h2>
+<p>Never thought I'd be writing this much about OMeta, but I've taken quite the shine to it.</p>
 
-<p>I want to build a web app which allows small hotel owners to define their hotel, define what they have available, and then embed a booking form into their static website so that they don't have to be on the phone all the time or miss out of bookings.</p>
+<p>I want to add this stuff to my $filterby parser now.</p>
 
-<p>I could do this commercially, but a) It has been done before b) There isn't a huge return on this sort of thing for the effort, so I may as well do it open source.</p>
+<pre><code>Add        Addition                /Products?$filter=Price add 5 gt 10
+Sub        Subtraction             /Products?$filter=Price sub 5 gt 10
+Mul        Multiplication          /Products?$filter=Price mul 2 gt 2000
+Div        Division                /Products?$filter=Price div 2 gt 4
+Mod        Modulo                  /Products?$filter=Price mod 2 eq 0
+</code></pre>
 
-<h2>The technology</h2>
+<p>Now here's the thing, the way we look at this <em>actually</em>, is that we have two expressions in each of these, and there is a precedence here too which needs respecting.</p>
 
-<p>I'll be using RavenDB for persistence, and Zombify for my functional testing (I'll cover the reasons for these choices in the next couple of blog entries)</p>
+<p>Anyway, what do we expect to see when we do this?</p>
 
-<p>I've made those decisions up front because this is the kind of project where I feel I can do that, it's going to be a rapid development project where I try to put the thing together quickly, and outline what I feel to be steps I've skipped in order to go faster and what their repercussions will be.</p></div>
+<pre><code>test("/some/resource?$filter=Price add 5 gt 10", "OData", function(result) {
+  it("A filter should be present", function() {
+     assert.notEqual(result.options.$filterby, null)
+  })
+  it("Filter should be an instance of 'add'", function() {
+     assert.equal(result.options.$filterby[0], "add")
+  })
+
+  it("lhr should be Price", function() {
+     assert.equal(result.options.$filterby[1].name, "Price")
+  })
+
+  it("rhr should be lhs ", function() {
+     assert.equal(result.options.$filterby[2], 2)
+  })
+})
+</code></pre></div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
