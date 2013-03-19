@@ -16,10 +16,9 @@ Professional history
 
 I am currently travelling around the world and working for clients on an ad-hoc basis, taking the work in which I have a lot to learn for free and sustaining my travels by continuing to execute paid-for consultancy roles in areas where I already have a track record of expertise.
 
-The goal of this is to vastly accelerate my learning and exposure to the many different ways of building software, this work has so far included building a start-up in a week, working on a database engine and placing myself in several diverse start-ups across Europe.
+The goal of this is to vastly accelerate my learning and exposure to the many different ways of building software, this work has so far included building a start-up in a week, working on a database engine and placing myself in several diverse start-ups across the world.
 
-Alongside this, I am blogging what I have learned at [codeofrob.com](http://codeofrob.com) and carrying on my speaking engagements across Europe.
-
+Alongside this, I am blogging what I have learned at [codeofrob.com](http://codeofrob.com) and carrying on my speaking engagements in Europe.
 
 **March 2011 – December 2012 - Freelance**
 
@@ -93,9 +92,9 @@ The experience gained here has been invaluble in the more real world of software
 
 **Public speaking and workshops**
 
-Over the past few years, I have been a regular speaker at events such as [NDC](http://ndcoslo.com), and [Oredev](http://oredev.org), travelling across Europe and speaking on a subject such as pragmatic software testing, web development in .NET, effective JS development and NoSQL.
+Over the past few years, I have been a regular speaker at events such as [NDC](http://ndcoslo.com), and [Oredev](http://oredev.org), travelling across Europe and speaking on subjects such as pragmatic software testing, web development in .NET, effective JS development and NoSQL.
 
-I also provide workshops on a number of topics, primarily RavenDB and ASP.NET MVC.
+I also provide workshops for a number of topics, primarily RavenDB and ASP.NET MVC.
 
 **Blog**
 
