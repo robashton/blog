@@ -1,0 +1,378 @@
+<html>
+  <head>
+    <title id="title">Adding arithmetic operators to our OData parser</title>
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+
+    </script>
+  </head>
+  <body>
+    <a class="subscribe" href="http://feed.codeofrob.com/RobAshton">Subscribe to my blog</a>
+    <div id="blog-entry">
+      <h1 id="post-title">Adding arithmetic operators to our OData parser</h1>
+      <h6>Published on <span class="date">2013-4-16</span></h6>
+      <div id="post"><p>I'm finally reaching the point where I can parse most of the OData conventions for Uris, which is nice!</p>
+
+<p>A re-cap of where we are so far.</p>
+
+<ul>
+<li><a href="/entries/building-a-basic-json-parser-in-ometa.html">Learning OMeta through JSON</a></li>
+<li><a href="/entries/building-an-odata-parser-in-ometa.html">Introduction to the OData Parser</a></li>
+<li><a href="/entries/writing-an-odata-parser---starting-at-the-beginning.html">First steps in writing the OData Parser</a></li>
+<li><a href="/entries/parsing-odata---nested-resource-paths.html">Nested resource paths in OData</a></li>
+<li><a href="/entries/parsing-odata---service-operations.html">Service operations in OData</a></li>
+<li><a href="/entries/the-odata-parser---applying-modifiers-to-our-query.html">Query options in OData</a></li>
+<li><a href="/entries/paging-support-in-our-odata-parser.html">Paging support in OData</a></li>
+<li><a href="/entries/our-odata-parser---looking-at-filterby.html">Filtering support in OData</a></li>
+<li><a href="/entries/recursive-expression-parsing-in-our-odata-filter-parser.html">Recursive query support in OData</a></li>
+<li><a href="/entries/these-are-not-the-results-you-are-looking-for---odata-parser.html">'Not' support for OData</a></li>
+</ul>
+
+<p>Wowsers, talk about an accidental blog series...</p>
+
+<p><strong>Arithmetic operators</strong></p>
+
+<p>What were they again?</p>
+
+<pre><code>Add        Addition                /Products?$filter=Price add 5 gt 10
+Sub        Subtraction             /Products?$filter=Price sub 5 gt 10
+Mul        Multiplication          /Products?$filter=Price mul 2 gt 2000
+Div        Division                /Products?$filter=Price div 2 gt 4
+Mod        Modulo                  /Products?$filter=Price mod 2 eq 0
+</code></pre>
+
+<p>Ah yes,</p>
+
+<p>Now, these are all the same, but operator precedence is important so the order in which we want to go through them is:</p>
+
+<ul>
+<li>Add/Sub</li>
+<li>Mul/Div/Mod</li>
+</ul>
+
+<p>This is very similar to how we implemented And/Or although I'll write a few tests to make sure I get it right.</p>
+
+<pre><code>test("/some/resource?$filterby=Price add 5 gt 10", "OData", function(result) {
+
+  it("A filter should be present", function() {
+     assert.notEqual(result.options.$filterby, null)
+  })
+  it("Filter should be an instance of 'gt'", function() {
+     assert.equal(result.options.$filterby[0], "gt")
+  })
+  it("lhr should be Price add 5", function() {
+     var rhs = result.options.$filterby[1] 
+     assert.equal(rhs[0], "add")
+     assert.equal(rhs[1].name, "Price")
+     assert.equal(rhs[2], 5)
+  })
+  it("rhr should be 10", function() {
+     assert.equal(result.options.$filterby[2], 10)
+  })
+})
+</code></pre>
+
+<p>This tells us that our 'add' operator has higher precedence than the comparisons (which makes sense). This'll mean we want to sneak it in somewhere after those comparisons. (Assuming in this scheme that And/Or have a higher precedence than add, and it seems to be that way)</p>
+
+<pre><code>FilterLogicalExpression =
+  FilterLogicalExpression:lhs
+  FilterByOperand:op
+  FilterAddExpression:rhs -&gt; [op, lhs, rhs ]
+| FilterAddExpression
+,
+
+FilterAddExpression =
+  FilterAddExpression:lhs
+  FilterAddOperand:op
+  FilterByValue:rhs -&gt; [ op, lhs, rhs ]
+| FilterByValue
+,
+FilterAddOperand =
+  spaces
+  (
+    seq("add")
+  | seq("sub")
+  ):op 
+  spaces -&gt; op
+,
+</code></pre>
+
+<p>Simples, we insert it in the pipeline between "LogicalExpression" and "Checking the value" (Literal values have the highest precedence because they don't require any work)</p>
+
+<p>And because Mul/etc have a higher precedence than Add, this exactly the same</p>
+
+<pre><code>test("/some/resource?$filterby=Price mul 5 gt 10", "OData", function(result) {
+
+  it("A filter should be present", function() {
+     assert.notEqual(result.options.$filterby, null)
+  })
+  it("Filter should be an instance of 'gt'", function() {
+     assert.equal(result.options.$filterby[0], "gt")
+  })
+  it("lhr should be Price add 5", function() {
+     var lhs = result.options.$filterby[1] 
+     assert.equal(lhs[0], "mul")
+     assert.equal(lhs[1].name, "Price")
+     assert.equal(lhs[2], 5)
+  })
+  it("rhr should be 10", function() {
+     assert.equal(result.options.$filterby[2], 10)
+  })
+})
+</code></pre>
+
+<p>Like so</p>
+
+<pre><code>FilterAddExpression =
+  FilterAddExpression:lhs
+  FilterAddOperand:op
+  FilterMulExpression:rhs -&gt; [ op, lhs, rhs ]
+| FilterMulExpression
+,
+
+FilterMulExpression =
+  FilterMulExpression:lhs
+  FilterMulOperand:op
+  FilterByValue:rhs -&gt; [ op, lhs, rhs ]
+| FilterByValue
+,
+</code></pre>
+
+<p>Now what I actually have to do is define operator precedence for mul/div etc independently. So I can't actually cheat and do</p>
+
+<pre><code>FilterMulOperand =
+  spaces
+  (
+    seq("mul")
+  | seq("div")
+  | seq("mod")
+  ):op 
+  spaces -&gt; op
+,
+</code></pre>
+
+<p>Like I have been doing, or when I write the following test, it will fail.</p>
+
+<pre><code>test("/some/resource?$filterby=Price div Price mul 5 gt 10", "OData", function(result) {
+    console.log(JSON.stringify(result))
+
+  it("A filter should be present", function() {
+     assert.notEqual(result.options.$filterby, null)
+  })
+  it("Filter should be an instance of 'gt'", function() {
+     assert.equal(result.options.$filterby[0], "gt")
+  })
+  var lexpr = result.options.$filterby[1] 
+
+  it("should be Price div {expr}", function() {
+    assert.equal(lexpr[0], "div")
+    assert.equal(lexpr[1].name, "Price")
+  })
+
+  it("should be Price mul 5", function() {
+    assert.equal(lexpr[2][0], "mul")
+    assert.equal(lexpr[2][1].name, "Price")
+    assert.equal(lexpr[2][2], 5)
+  })
+
+  it("rhr should be 10", function() {
+     assert.equal(result.options.$filterby[2], 10)
+  })
+})
+</code></pre>
+
+<p>What will happen here is we'll get</p>
+
+<pre><code>[
+  'gt',
+  [
+    'mul',
+    [
+      'div', 'Price', 'Price'
+    ],
+    5
+  ],
+  10
+]
+</code></pre>
+
+<p>When what we clearly want is</p>
+
+<pre><code>[
+  'gt',
+  [
+    'div',
+    'Price',
+    [
+      'mul', 'Price', '5'
+    ]
+  ],
+  10
+]
+</code></pre>
+
+<p>Or if you like</p>
+
+<pre><code>( (price / price) * 5 ) &gt; 10
+</code></pre>
+
+<p>Instead of</p>
+
+<pre><code>( Price / (price * 5)  ) &gt; 10
+</code></pre>
+
+<p>Which is a little bit different to say the least!</p>
+
+<p>So, explicit operation order is what we want, and here is how get it:</p>
+
+<p><strong>One massively explicit set of operator precedences...</strong></p>
+
+<pre><code>FilterByOption = 
+  seq("$filterby=")
+  FilterByExpression:expr -&gt; { name: "$filterby", value: expr }
+,
+
+FilterByExpression =
+  FilterAndExpression
+,
+</code></pre>
+
+<p><em>And is the least important in our hierarchy</em></p>
+
+<pre><code>FilterAndExpression =
+  FilterAndExpression:lhs
+  FilterAndOperand:op
+  FilterLogicalExpression:rhs -&gt; [ op, lhs, rhs ]
+| FilterLogicalExpression
+,
+</code></pre>
+
+<p><em>Followed by any logical expression</em></p>
+
+<pre><code>FilterLogicalExpression =
+  FilterLogicalExpression:lhs
+  FilterByOperand:op
+  FilterAddExpression:rhs -&gt; [op, lhs, rhs ]
+| FilterAddExpression
+,
+</code></pre>
+
+<p><em>Then we descend through our mathematical operators in reverse precedence order</em></p>
+
+<pre><code>FilterSubExpression =
+  FilterSubExpression:lhs
+  spaces seq("sub") spaces
+  FilterAddExpression:rhs -&gt; [ "sub", lhs, rhs ]
+| FilterAddExpression
+,
+
+FilterAddExpression =
+  FilterAddExpression:lhs
+  spaces seq("add") spaces
+  FilterModExpression:rhs -&gt; [ "add", lhs, rhs ]
+| FilterModExpression
+,
+
+FilterModExpression =
+  FilterModExpression:lhs
+  spaces seq("mod") spaces
+  FilterDivExpression:rhs -&gt; [ "mod", lhs, rhs ]
+| FilterDivExpression
+,
+FilterDivExpression =
+  FilterDivExpression:lhs
+  spaces seq("div") spaces
+  FilterMulExpression:rhs -&gt; [ "div", lhs, rhs ]
+| FilterMulExpression
+,
+
+FilterMulExpression =
+  FilterMulExpression:lhs
+  spaces seq("mul") spaces
+  FilterByValue:rhs -&gt; [ "mul", lhs, rhs ]
+| FilterByValue
+,
+
+FilterByValue = 
+  FilterNegateExpression
+| Number
+| QuotedText
+| PropertyPath
+,
+
+FilterNegateExpression = 
+  spaces
+  seq("not")
+  spaces
+  (
+    FilterByValue
+  | '(' spaces FilterByExpression:expr spaces ')' -&gt; expr
+  ):value -&gt;  [ "not", value ]
+,
+</code></pre>
+
+<p>How cool is that??!!? That's pretty much the whole shebang wrapped up as far as expressing parsing goes, and now I can go trigger mad with nested and/or/sub/mul/etc - with the exception of the precedence operators which I'll add next!</p></div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="http://twitter.com/robashton">Follow me</a>
+      </div>
+      <div id="inqob_job_postings"></div> 
+      <script type="text/javascript" charset="utf-8">
+        var __inqob_settings = {
+          email_address:  'robashton@codeofrob.com', 
+          token:          '',
+          debug: false,
+          items: [{
+            keyword: 'codeofrob', 
+            price: 100 
+          }]
+        };
+
+        (function(is) {
+          var sc = document.createElement('script'); sc.type = 'text/javascript'; sc.async = true;
+          var src = (document.location.protocol == 'https:' ? 'https://' : 'http://') + 'inqob.com/get/script';
+          var q = [];
+          q.push('?t='+ new Date().getTime()); 
+          q.push('token=' + is.token); 
+          q.push('email_address=' + is.email_address); 
+          q.push('href=' + encodeURIComponent(window.location.href));
+          sc.src = src + q.join('&');
+          var s = document.getElementsByTagName('script')[0]; 
+          s.parentNode.insertBefore(sc, s);
+        })(__inqob_settings);      
+      </script>
+      <div id="disqus">
+        <div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+      </div>
+    </div>
+    <div id="post-comments">
+
+    </div>
+  </body>
+</html>
