@@ -1,0 +1,148 @@
+<html>
+  <head>
+    <title id="title">Precedence grouping, you first.. no you (Odata parser)</title>
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+
+    </script>
+  </head>
+  <body>
+    <a class="subscribe" href="http://feed.codeofrob.com/RobAshton">Subscribe to my blog</a>
+    <div id="blog-entry">
+      <h1 id="post-title">Precedence grouping, you first.. no you (Odata parser)</h1>
+      <h6>Published on <span class="date">2013-4-17</span></h6>
+      <div id="post"><p>With expression parsing out of the way, there are just a few complications remaining, </p>
+
+<ul>
+<li><a href="/entries/building-a-basic-json-parser-in-ometa.html">Learning OMeta through JSON</a></li>
+<li><a href="/entries/building-an-odata-parser-in-ometa.html">Introduction to the OData Parser</a></li>
+<li><a href="/entries/writing-an-odata-parser---starting-at-the-beginning.html">First steps in writing the OData Parser</a></li>
+<li><a href="/entries/parsing-odata---nested-resource-paths.html">Nested resource paths in OData</a></li>
+<li><a href="/entries/parsing-odata---service-operations.html">Service operations in OData</a></li>
+<li><a href="/entries/the-odata-parser---applying-modifiers-to-our-query.html">Query options in OData</a></li>
+<li><a href="/entries/paging-support-in-our-odata-parser.html">Paging support in OData</a></li>
+<li><a href="/entries/our-odata-parser---looking-at-filterby.html">Filtering support in OData</a></li>
+<li><a href="/entries/recursive-expression-parsing-in-our-odata-filter-parser.html">Recursive query support in OData</a></li>
+<li><a href="/entries/these-are-not-the-results-you-are-looking-for---odata-parser.html">'Not' support for OData</a></li>
+<li><a href="/entries/adding-arithmetic-operators-to-our-odata-parser.html">Arithmetic operator support in OData</a></li>
+</ul>
+
+<p>I'm still missing a few key parts of this $filter feature, the next one is precedence grouping.</p>
+
+<p><strong>Do all this stuff before you do the other stuff</strong></p>
+
+<p>I don't think this will be too hard to parse given our already built-up knowledge of how to do precedence.</p>
+
+<p>To the test..</p>
+
+<pre><code>test("/some/resource?$filterby=(Price div Price) mul 5 gt 10", "OData", function(result) {
+  it("A filter should be present", function() {
+     assert.notEqual(result.options.$filterby, null)
+  })
+  it("Filter should be an instance of 'gt'", function() {
+     assert.equal(result.options.$filterby[0], "gt")
+  })
+  var lexpr = result.options.$filterby[1] 
+
+  it("should be {expr} mul 5", function() {
+    assert.equal(lexpr[0], "mul")
+    assert.equal(lexpr[2], 5)
+  })
+
+  it("should be {Price div Price}", function() {
+    assert.equal(lexpr[1][0], "div")
+    assert.equal(lexpr[1][1].name, "Price")
+    assert.equal(lexpr[1][2].name, "Price" )
+  })
+
+  it("rhr should be 10", function() {
+     assert.equal(result.options.$filterby[2], 10)
+  })
+})
+</code></pre>
+
+<p>This is actually the same test as in our <a href="/entries/adding-arithmetic-operators-to-our-odata-parser.html">Arithmetic Operators</a> post, only we've surrounded the div expression because we want that to happen all by itself.</p>
+
+<p>Well, Braces actually have the <em>highest</em> precedence, so they'll need to go at the very end of our parser.</p>
+
+<pre><code>FilterByValue = 
+  FilterNegateExpression
+| Number
+| QuotedText
+| PropertyPath
+| GroupedPrecedenceExpression
+,
+
+GroupedPrecedenceExpression = 
+  "(" spaces FilterByExpression:expr spaces ")" -&gt; expr
+
+,
+</code></pre>
+
+<p>Yes, it really is that simple. This is what comes of building up the definition of a parse-target out of little building blocks and then making a sequence of them.</p>
+
+<p>If only all programs worked like this.</p></div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="http://twitter.com/robashton">Follow me</a>
+      </div>
+      <div id="inqob_job_postings"></div> 
+      <script type="text/javascript" charset="utf-8">
+        var __inqob_settings = {
+          email_address:  'robashton@codeofrob.com', 
+          token:          '',
+          debug: false,
+          items: [{
+            keyword: 'codeofrob', 
+            price: 100 
+          }]
+        };
+
+        (function(is) {
+          var sc = document.createElement('script'); sc.type = 'text/javascript'; sc.async = true;
+          var src = (document.location.protocol == 'https:' ? 'https://' : 'http://') + 'inqob.com/get/script';
+          var q = [];
+          q.push('?t='+ new Date().getTime()); 
+          q.push('token=' + is.token); 
+          q.push('email_address=' + is.email_address); 
+          q.push('href=' + encodeURIComponent(window.location.href));
+          sc.src = src + q.join('&');
+          var s = document.getElementsByTagName('script')[0]; 
+          s.parentNode.insertBefore(sc, s);
+        })(__inqob_settings);      
+      </script>
+      <div id="disqus">
+        <div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+      </div>
+    </div>
+    <div id="post-comments">
+
+    </div>
+  </body>
+</html>
