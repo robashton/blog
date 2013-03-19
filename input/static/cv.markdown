@@ -5,7 +5,7 @@ A freelance software consultant focused on being a polyglot and sharing with oth
 
 Currently travelling Europe helping various clients deliver software either through review or hands-on fixing of problems. Also to be found speaking at international developer-focused conferences about automated testing, .NET web development, JavaScript and polyglot persistence. 
 
-I have a *lot* of experience in the .NET space, especially in ASP.NET and ASP.NET MVC, but I seek to balance that by drawing in external influences such as the NodeJS and Ruby communities.
+I have a *lot* of experience in the .NET space, especially in ASP.NET and ASP.NET MVC, but I seek to balance that by drawing in external influences from other communities as NodeJS and Ruby.
 
 I am an effective deliverer of software, and can provide references from a number of sources if asked.
 
