@@ -119,13 +119,21 @@ Can now do the same for
 
 Like so
 
-    FilterByOperand =
-      seq(" eq ") -> "eq"
-    | seq(" ne ") -> "ne"
-    | seq(" gt ") -> "gt"
-    | seq(" lt ") -> "lt"
-    | seq(" le ") -> "le"
+  FilterByOperand =
+    spaces
+    (
+      seq("eq")
+    | seq("ne")
+    | seq("gt")
+    | seq("ge")
+    | seq("lt")
+    | seq("le")
+    ):op 
+    spaces -> op
+    ,
 
+
+Note that I tidied it up, and allowed any white space either side and got rid of my own strings (the last return result is automatically assigned to 'op'
 
 And I'll parameterise the test to get this covered easily and document my progress
 
@@ -148,6 +156,7 @@ And I'll parameterise the test to get this covered easily and document my progre
     operandTest("eq")
     operandTest("ne")
     operandTest("gt")
+    operandTest("ge")
     operandTest("lt")
     operandTest("le")
 
