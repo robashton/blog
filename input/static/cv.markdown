@@ -14,7 +14,7 @@ Professional history
 
 **Present - Software Nomad**
 
-I am currently travelling around the world and working for clients on an ad-hoc basis, taking the work in which I have a lot to learn for free and sustaining my travels by carrying paid-for consultancy roles in areas where I already have a track record of expertise.
+I am currently travelling around the world and working for clients on an ad-hoc basis, taking the work in which I have a lot to learn for free and sustaining my travels by continuing to execute paid-for consultancy roles in areas where I already have a track record of expertise.
 
 The goal of this is to vastly accelerate my learning and exposure to the many different ways of building software, this work has so far included building a start-up in a week, working on a database engine and placing myself in several diverse start-ups across Europe.
 
