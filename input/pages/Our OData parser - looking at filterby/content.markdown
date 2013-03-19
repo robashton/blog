@@ -119,18 +119,18 @@ Can now do the same for
 
 Like so
 
-  FilterByOperand =
-    spaces
-    (
-      seq("eq")
-    | seq("ne")
-    | seq("gt")
-    | seq("ge")
-    | seq("lt")
-    | seq("le")
-    ):op 
-    spaces -> op
-    ,
+    FilterByOperand =
+      spaces
+      (
+        seq("eq")
+      | seq("ne")
+      | seq("gt")
+      | seq("ge")
+      | seq("lt")
+      | seq("le")
+      ):op 
+      spaces -> op
+      ,
 
 
 Note that I tidied it up, and allowed any white space either side and got rid of my own strings (the last return result is automatically assigned to 'op'
