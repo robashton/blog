@@ -1,0 +1,527 @@
+<html>
+  <head>
+    <title id="title">OMeta OData ODear - polishing it off</title>
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+
+    </script>
+  </head>
+  <body>
+    <a class="subscribe" href="http://feed.codeofrob.com/RobAshton">Subscribe to my blog</a>
+    <div id="blog-entry">
+      <h1 id="post-title">OMeta OData ODear - polishing it off</h1>
+      <h6>Published on <span class="date">2013-4-22</span></h6>
+      <div id="post"><p>Now I've gotten most of this work done, I left a few pieces of work outstanding and after review, I can make some of the OMeta cleaner and nicer. I also need to be a bit better about interpreting the various primitives in OData.</p>
+
+<p>I've also got a more <a href="https://github.com/Page-/">qualified person</a> to review my OMeta as I go along and give me feedback on my work, so this is where I integrate a lot of that.</p>
+
+<ul>
+<li><a href="/entries/building-a-basic-json-parser-in-ometa.html">Learning OMeta through JSON</a></li>
+<li><a href="/entries/building-an-odata-parser-in-ometa.html">Introduction to the OData Parser</a></li>
+<li><a href="/entries/writing-an-odata-parser---starting-at-the-beginning.html">First steps in writing the OData Parser</a></li>
+<li><a href="/entries/parsing-odata---nested-resource-paths.html">Nested resource paths in OData</a></li>
+<li><a href="/entries/parsing-odata---service-operations.html">Service operations in OData</a></li>
+<li><a href="/entries/the-odata-parser---applying-modifiers-to-our-query.html">Query options in OData</a></li>
+<li><a href="/entries/paging-support-in-our-odata-parser.html">Paging support in OData</a></li>
+<li><a href="/entries/our-odata-parser---looking-at-filterby.html">Filtering support in OData</a></li>
+<li><a href="/entries/recursive-expression-parsing-in-our-odata-filter-parser.html">Recursive query support in OData</a></li>
+<li><a href="/entries/these-are-not-the-results-you-are-looking-for---odata-parser.html">'Not' support for OData</a></li>
+<li><a href="/entries/adding-arithmetic-operators-to-our-odata-parser.html">Arithmetic operator support in OData</a></li>
+<li><a href="/entries/precedence-grouping,-you-first..-no-you-odata-parser.html">Precedence grouping in OData</a></li>
+<li><a href="/entries/parsing-those-pesky-filtering-functions-in-odata.html">Filter query methods in OData</a></li>
+<li><a href="/entries/the-final-odata-query-bits,-yes-were-nearly-there.html">The rest of OData</a></li>
+</ul>
+
+<h2>OMeta</h2>
+
+<p><strong>Un-needed semantic actions</strong></p>
+
+<p>In a few places in my OMeta I have expressions that look like this:</p>
+
+<pre><code>(
+  seq("allpages") -&gt; "allpages"
+| seq("none") -&gt; "none"
+)
+</code></pre>
+
+<p>This is quite wasteful and can be written much more simply as </p>
+
+<pre><code>(
+  seq("allpages") 
+| seq("none")
+)
+</code></pre>
+
+<p>This is because by default the last expression will be returned anyway</p>
+
+<p>The same goes for this (ignoring that the Text primitive still needs some work)</p>
+
+<pre><code>Text =
+  &lt;    (   ~'\''
+      (    '\\' anything
+      |    letter
+      )
+    )*
+  &gt;:text
+  -&gt; text
+</code></pre>
+
+<p>Is much tidier if we get rid of the un-need semantic action because text will be returned anyway</p>
+
+<pre><code>Text =
+  &lt;    (   ~'\''
+      (    '\\' anything
+      |    letter
+      )
+    )*
+  &gt;:text
+</code></pre>
+
+<p>And</p>
+
+<pre><code>SelectOption =
+  seq("$select=")
+  (
+    "*"                                 -&gt; '*' 
+  | listOf(`PropertyPath, ','):properties  -&gt; { properties: properties }
+  ):value -&gt; { name: "$select", value: value }
+</code></pre>
+
+<p>Is much better off without too</p>
+
+<pre><code>SelectOption =
+  seq("$select=")
+  (
+    "*"
+  | listOf(`PropertyPath, ','):properties  -&gt; { properties: properties }
+  ):value -&gt; { name: "$select", value: value }
+</code></pre>
+
+<p><strong>Stop repeating yourself!</strong></p>
+
+<p>OMeta uses memoisation so this isn't a big deal, but repeating yourself is annoying anyway and we can be far more expressive if we think about commonly matches constructs in our code.</p>
+
+<pre><code>(
+  seq(" asc") -&gt; "asc"
+| seq(" desc") -&gt; "desc"
+)?:order
+</code></pre>
+
+<p>Here I'm looking for a sequence of characters with 'space' 'asc' 'space' and this would be far better written as</p>
+
+<pre><code>spaces
+(
+  seq("asc")
+| seq("desc")
+| -&gt; 'desc'
+)?:order
+</code></pre>
+
+<p>And to boot I've added in the default, which is 'desc'</p>
+
+<p>And how about this little one?</p>
+
+<pre><code>listOf(`PropertyPath, ',')
+</code></pre>
+
+<p>I use that in quite a few places in the code, better split it off into its own rule</p>
+
+<pre><code>PropertyPathList = 
+  listOf(`PropertyPath, ',')
+</code></pre>
+
+<p>And use that around the place instead!</p>
+
+<p><strong>Un-needed brackets</strong></p>
+
+<pre><code>  PathSegment:model 
+  (
+    '?'
+    ( listOf(`QueryOption, '&amp;'):options
+    )
+  )?
+</code></pre>
+
+<p>I do this in a few places, and while it causes no harm, OMeta is hard enough to read to the un-initiated without throwing brackets in all of the place</p>
+
+<pre><code>  PathSegment:model 
+  (
+    '?'
+    listOf(`QueryOption, '&amp;'):options
+  )?
+</code></pre>
+
+<p>Not rocket science!</p>
+
+<p><strong>Custom matching methods</strong></p>
+
+<p>Admittedly I hacked this together in a rum-bar at 10pm, but I have this floating around in the code for dealing with <a href="/entries/parsing-those-pesky-filtering-functions-in-odata.html">filter methods</a></p>
+
+<pre><code>SingleArgMethodCall :name =
+  seq(name) 
+  '(' 
+  spaces 
+  FilterByExpression:one 
+  spaces
+  ')' -&gt; { args: [ one ], method: name }
+,
+
+TwoArgMethodCall :name = 
+  seq(name)
+  '(' 
+  spaces 
+  FilterByExpression:one 
+  spaces 
+  ',' 
+  spaces 
+  FilterByExpression:two 
+  spaces 
+  ')' -&gt; { args: [ one, two ], method: name }
+, 
+
+ThreeArgMethodCall :name = 
+  seq(name)
+  '(' 
+  spaces 
+  FilterByExpression:one 
+  spaces 
+  ',' 
+  spaces 
+  FilterByExpression:two 
+  spaces 
+  ','
+  spaces
+  FilterByExpression:three 
+  spaces 
+  ')' -&gt; { args: [ one, two, three ], method: name }
+, 
+</code></pre>
+
+<p>This is still better than doing the above individually for <em>every single supported method</em>, but it would be nice if we could do</p>
+
+<pre><code>MethodCall(name, arity)
+</code></pre>
+
+<p>Instead of having three different expressions in a non-expandable manner</p>
+
+<p>Well, first off - the beginning of this will looke lik</p>
+
+<pre><code>MethodCall :name :arity =
+  seq(name)
+  '('
+    numberOf(`FilterByExpression, arity):args
+  ')' -&gt; { args: args, method: name }
+,
+</code></pre>
+
+<p>Except there is no function called numberOf.</p>
+
+<p>Extending our OMeta parser with custom functions is really easy though.</p>
+
+<pre><code>ODataParser.numberOf = function(rule, count, seperator) {
+  var ret = [];
+  for(var i = 1; i &lt; count; i++) {
+    ret.push(this._apply(rule));
+    this._apply("spaces");
+    this._applyWithArgs('exactly', seperator)
+    this._apply("spaces");
+  }
+  ret.push(this._apply(rule));
+  return ret;
+}
+</code></pre>
+
+<p>These '_apply' methods are simply what the rules are converted into when the OMeta is transpiled into JS, and we're skipping that bit and patching our parser with the raw JS. Simples!</p>
+
+<h2>OData, ODear</h2>
+
+<p>Well, I skipped a few steps here certainly - especially with regard to the following rules:</p>
+
+<pre><code>Number = &lt;digit+&gt;:d -&gt; parseInt(d, 10),
+  Number = &lt;digit+&gt;:d -&gt; parseInt(d, 10),
+  Text =
+    &lt;    (   ~'\''
+        (    '\\' anything
+        |    letter
+        )
+      )*
+    &gt;:text
+  ,
+
+  QuotedText =
+    '\''
+    Text:t 
+    '\'' -&gt; t
+  ,
+Text =
+  &lt;    (   ~'\''
+      (    '\\' anything
+      |    letter
+      )
+    )*
+  &gt;:text
+,
+</code></pre>
+
+<p>and</p>
+
+<pre><code>ResourcePart =
+  &lt;    (   letter
+    |    '_'
+    )+
+  &gt;:resourcePart
+  -&gt; resourcePart.replace(new RegExp('_', 'g'), ' ')
+,
+
+ResourceName =
+  &lt;    ResourcePart
+    (    '-'
+      ResourcePart
+    )*
+  &gt;
+</code></pre>
+
+<p>These are our primitives in the OData space, everything else is built up off of them and I've been a bad person and not done them properly. (If anybody has bothered reading all the way up to here, you probably thought this at the time and maybe even commented about it)</p>
+
+<p><strong>Text and QuotedText</strong></p>
+
+<p>Just what <em>is</em> Text? </p>
+
+<p><em>As part of the query string</em></p>
+
+<pre><code>OperationParam = 
+  Text:name '=' Text:value -&gt; { name: name, value: value }
+</code></pre>
+
+<p><em>And inside quotes as a string literal</em></p>
+
+<pre><code>QuotedText =
+  '\''
+  Text:t 
+  '\'' -&gt; t
+,
+</code></pre>
+
+<p><em>What are the rules?</em></p>
+
+<p>Well, if it's part of the query string, let's say it's the name of a parameter, it can be anything at all (except reserved characters from the Uri - these should be encoded). To solve this we need to read the <a href="http://tools.ietf.org/html/rfc3986">RFC</a></p>
+
+<pre><code> reserved    = gen-delims / sub-delims
+ gen-delims  = ":" / "/" / "?" / "#" / "[" / "]" / "@"
+ sub-delims  = "!" / "$" / "&amp;" / "'" / "(" / ")"
+                         / "*" / "+" / "," / ";" / "="
+</code></pre>
+
+<p>We should recognise most of these, although some of these are explicitly allowed in some uri schemes and according to this RFC that's okay. </p>
+
+<p>Still, an implementation of this can look something like:</p>
+
+<pre><code>ReservedUriComponent  =
+  GenDelim
+| SubDelim
+,
+
+GenDelim = 
+  ":" | "/" | "?" | "#" | "[" | "]" | "@"
+,
+
+SubDelim = 
+  "!" | '$' | '*' | "'" | "&amp;" | "(" | ")" | "+" | "," | ";" | "="
+,
+
+Text =
+  &lt;
+    ~ReservedUriComponent*
+  &gt;:text
+,
+</code></pre>
+
+<p>What I'll do, is explicitly deny all of these characters except in cases where I explicitly allow them (for example, the dollar symbol is allowed in built-in query params, brackets are allowed in expressions, quotes are allowed to denote string literals, etc)</p>
+
+<p>I can use this rule safely for quoted text as that rule explicitly allows quoted text:</p>
+
+<pre><code>QuotedText =
+  '\''
+  Text:t 
+  '\'' -&gt; t
+</code></pre>
+
+<p><strong>Resource paths</strong></p>
+
+<p>Same thing now goes here, and I can say that each part of a resource path is a UriComponent, explicitly disallowing spaces, separated by a '/', so</p>
+
+<pre><code>ResourceName =
+  &lt;(    
+    ~(ReservedUriComponent | ' ')
+    anything
+  )+
+  &gt;:resourceName
+</code></pre>
+
+<p>Much happier about all of this.</p>
+
+<p><strong>Decoding as we go</strong></p>
+
+<p>If somebody does give us some text that looks like this</p>
+
+<pre><code>foo='hello%20world'
+</code></pre>
+
+<p>It would be nice if it was decoded for output</p>
+
+<pre><code>Text =
+  &lt;
+   (~ReservedUriComponent
+   anything)*
+  &gt;:text -&gt; decodeURIComponent(text)
+,
+</code></pre>
+
+<p>We can indeed call arbitrary JS methods in our semantic output, good for us.</p>
+
+<p>We'll do the same for resource names too</p>
+
+<pre><code>ResourceName =
+  &lt;(    
+    ~(ReservedUriComponent | ' ')
+    anything
+  )+
+  &gt;:resourceName -&gt; decodeURIComponent(resourceName)
+</code></pre>
+
+<p>I think if I was to go and do some of this again, I'd have been explicit about Uri conformance from the start, but it hasn't caused too much damage so we're okay.</p>
+
+<p><strong>Supporting further primitives</strong></p>
+
+<p>At the moment we can parse integers with</p>
+
+<pre><code>Number = &lt;digit+&gt;:d -&gt; parseInt(d, 10)
+</code></pre>
+
+<p>But this is only half the story, we actually need to explicitly support decimals too</p>
+
+<pre><code>Number = Decimal | Integer
+,
+
+Decimal = 
+  &lt;
+    digit+
+    '.'
+    digit+
+  &gt;:d     -&gt; new Number(d)
+, 
+
+Integer = &lt;digit+&gt;:d -&gt; parseInt(d, 10)
+,
+</code></pre>
+
+<p><strong>Semantic output</strong></p>
+
+<p>I'm now much happier that we have our bases covered with the types that we support, and that I'm not doing anything nefarious with OMeta, that leaves me with a final tidy-up task.</p>
+
+<p>In some cases, we're outputting to an array that states 'this is what you have, so now you know how to interpret it', this is quite a standard way of doing things in OMeta and particularly in the expression parsing space.</p>
+
+<p>By outputting to an array in this manner, it becomes very easy to write a further OMeta processing step to convert the output of the OMeta parsing step into another format (compilation).</p>
+
+<p>This is useful for say, generating SQL based on the model that these chaps have defined in SBVR.</p>
+
+<p>Let's look at a tangible example where I've gotten this weird:</p>
+
+<pre><code>SelectOption =
+  seq("$select=")
+  (
+    "*"                                 -&gt; '*' 
+  | PropertyPathList:properties  -&gt; { properties: properties }
+  ):value -&gt; { name: "$select", value: value }
+,
+</code></pre>
+
+<p>In one case, our semantic action is to return a string containing a single character *, and other case I return an object literal with a list of properties in it.</p>
+
+<p>I kinda want to go through and sort this out, but without using it in anger (say, for generating SQL), it's hard to say what a useful model will look like.</p>
+
+<p>I've also made some mistakes in that I didn't refactor my tests as I went to eliminate duplication, so they're a bit coupled to the structure of the model.</p>
+
+<p>I've decided that as I only have a day left at the client, that the best thing I can do at this point is raise my hands in the air and point out very publicly that:</p>
+
+<ul>
+<li>The tests are brittle <em>because</em> and this is how you'd improve them</li>
+<li>The model probably isn't that easy to consume, and will need changing, which will mean the tests need changing, <em>sorry</em></li>
+</ul>
+
+<p>With this said and done, I've decided the final bit of work I can do is to run some fuzzy testing against the parser and start trying to make it <em>really</em> complete, as this is a harder problem. (and maybe I can refactor the tests as I do this, so I only leave one problem..):w
+o</p>
+
+<p><strong>Fuzzy testing</strong></p>
+
+<p>So I found a great tool (or at least something that sounds like a great tool), which <a href="http://www.quut.com/abnfgen/">generates output based on an ABNF</a>, and OData conveniently has an <a href="http://www.odata.org/media/30002/OData%20ABNF.html">ABNF specified for it</a> so let's go!</p>
+
+<p>What I'll do to get started is download and compile the abnfgen package, and run a single test case to make sure that this crazy idea is going to work, then I'll automate it and tell it to dump failed cases to a list so I can re-run them and work out why they've failed.</p>
+
+<p><em>edit</em></p>
+
+<p>Scratch that, the ABNF is incomplete and buggy and crap, what is the actual point - this concludes the end of my series.</p></div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="http://twitter.com/robashton">Follow me</a>
+      </div>
+      <div id="inqob_job_postings"></div> 
+      <script type="text/javascript" charset="utf-8">
+        var __inqob_settings = {
+          email_address:  'robashton@codeofrob.com', 
+          token:          '',
+          debug: false,
+          items: [{
+            keyword: 'codeofrob', 
+            price: 100 
+          }]
+        };
+
+        (function(is) {
+          var sc = document.createElement('script'); sc.type = 'text/javascript'; sc.async = true;
+          var src = (document.location.protocol == 'https:' ? 'https://' : 'http://') + 'inqob.com/get/script';
+          var q = [];
+          q.push('?t='+ new Date().getTime()); 
+          q.push('token=' + is.token); 
+          q.push('email_address=' + is.email_address); 
+          q.push('href=' + encodeURIComponent(window.location.href));
+          sc.src = src + q.join('&');
+          var s = document.getElementsByTagName('script')[0]; 
+          s.parentNode.insertBefore(sc, s);
+        })(__inqob_settings);      
+      </script>
+      <div id="disqus">
+        <div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+      </div>
+    </div>
+    <div id="post-comments">
+
+    </div>
+  </body>
+</html>
