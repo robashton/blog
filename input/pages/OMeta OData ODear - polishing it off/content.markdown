@@ -51,7 +51,7 @@ The same goes for this (ignoring that the Text primitive still needs some work)
       >:text
       -> text
 
-Is much tidier if we get rid of the un-need semantic action because text will be returned anyway
+Is much tidier if we get rid of the un-need semantic action because text will be returned anyway, and we can drop that named 'text' variable too.
 
     Text =
       <	(	~'\''
@@ -59,7 +59,7 @@ Is much tidier if we get rid of the un-need semantic action because text will be
           |	letter
           )
         )*
-      >:text
+      >
 
 And
 
@@ -96,9 +96,9 @@ Here I'm looking for a sequence of characters with 'space' 'asc' 'space' and thi
       seq("asc")
     | seq("desc")
     | -> 'desc'
-    )?:order
+    ):order
 
-And to boot I've added in the default, which is 'desc'
+And to boot I've added in the default, which is 'desc' so I don't need that optional '?' anymore.
 
 
 And how about this little one?
@@ -304,7 +304,8 @@ Still, an implementation of this can look something like:
     Text =
       <
         ~ReservedUriComponent*
-      >:text
+        anything
+      >
     ,
 
 What I'll do, is explicitly deny all of these characters except in cases where I explicitly allow them (for example, the dollar symbol is allowed in built-in query params, brackets are allowed in expressions, quotes are allowed to denote string literals, etc)
