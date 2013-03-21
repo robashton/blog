@@ -15,7 +15,7 @@ I advise you pop back and read those if you're just tuning in, as I've had to as
 
 **Improving my workflow**
 
-I'm writing this after I've learned a lot about managing my workflow to keep myself interested in tasks, and I'm writing this after writing a silly number of posts about writing an [OData parser in OMeta](/entries/ometa-odata-odear---polishing-it-off.html), which reminded me an awful of doing functional programming.
+I'm writing this after I've learned a lot about managing my workflow to keep myself interested in tasks, and I'm writing this after writing a silly number of posts about writing an [OData parser in OMeta](/entries/ometa-odata-odear---polishing-it-off.html), which reminded me an awful lot of what functional programming was like, so I came back here.
 
 So, what have I done to make my life easier with this Clojure malarkey?
 
