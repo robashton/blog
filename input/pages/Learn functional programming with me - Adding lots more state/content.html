@@ -1,0 +1,87 @@
+<p>I've got a single moving square and a small pile of Clojure written so far, but now what I want to do is have a collection of moving squares because no game of Space Invaders is complete without aliens, and last I checked there was more than one of them.</p>
+
+<ul>
+<li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Missing statement</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---moving-the-square.html">Moving the square</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---attributes-and-vectors.html">Attributes and vectors</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---improving-my-workflow.html">Improving my workflow</a></li>
+</ul>
+
+<p>Well, if I want lots of squares I'm going to have to look at some means of representing collections in Clojure and my searches take me to <a href="http://clojuredocs.org/clojure_core/clojure.core/seq">Sequences</a></p>
+
+<p>To create a sequence, I can do something like this</p>
+
+<pre><code>(defn createSeq []
+  (for [x [0 1 2 3]]
+    x
+  )
+)
+</code></pre>
+
+<p>Which returns me a sequence containing 0 1 2 3, an important point here is (at least I think), is that this sequence is <em>lazy</em>, it has not been executed yet. </p>
+
+<p>Now, my collection of invaders will actually be 2D, so what I can actually do is</p>
+
+<pre><code>(defn createSeq []
+  (for [x [0 1 2 3] y [0 1 2 3]]
+    [x y]
+  )
+)
+</code></pre>
+
+<p>Which returns me a sequence containing lots of [x y] pairs, so [0 0] [0 1] [0 2] etc.</p>
+
+<p>Of course, there are functions for me here, so I can make a range</p>
+
+<pre><code>(defn createSeq []
+  (for [x (range 0 100 10) 
+        y (range 0 100 10)]
+    [x y]
+  )
+)
+</code></pre>
+
+<p>Pretty nifty if I do say so myself, so what I can start with if I want to draw a grid of yellow squares is something like</p>
+
+<pre><code>(defn initState []
+ (for [x (range 0 100 10)
+       y (range 0 100 10)]
+   [x y]
+ )
+)
+</code></pre>
+
+<p>And I can call my initial tick method, passing in this state</p>
+
+<pre><code>(defn ^:export init []
+  (tick (initState)) 
+)
+</code></pre>
+
+<p>And then loop through this</p>
+
+<pre><code>(defn tick [enemies]
+  (let [ctx (context)] 
+    (clearScreen ctx) 
+    (doseq [[x y] enemies] (drawSquare ctx x y 5 5))
+    (js/setTimeout (fn []
+      (tick enemies) 
+    ) 33  )
+  )
+)
+</code></pre>
+
+<p>Note that I'm able to expand the content of this sequence as part of the doseq call</p>
+
+<pre><code>  (doseq [[x y] enemies] (drawSquare ctx x y 5 5))
+</code></pre>
+
+<p>Gotta like that at least a little bit!</p>
+
+<p>About this doseq, this doseq is <em>explicitly</em> created to allow for side effects, I could have done</p>
+
+<pre><code>  (for [[x y] enemies] (drawSquare ctx x y 5 5))
+</code></pre>
+
+<p>But nothing would happen because this is lazy too - had my head scratching for a while on that one...</p>
