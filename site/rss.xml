@@ -1,5 +1,114 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Thu, 21 Mar 2013 08:33:18 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Stop using relative paths in your JavaScripts]]></title><description><![CDATA[<p>I saw a post to the NodeJS mailing list the other day which went along the lines of </p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Thu, 21 Mar 2013 12:03:36 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Why I stopped using AMD]]></title><description><![CDATA[<p>I've been asked a few times why I've stopped using AMD as I move around and folk see my use of Browserify, here-in I try to write down my thoughts on why AMD doesn't make any sense to me any more.</p>
+
+<hr />
+
+<p>When I wrote a blog entry <a href="http://codebetter.com/robashton/2012/09/03/keeping-js-sane/">about 9 months ago</a>, I made the statement:</p>
+
+<p><blockquote>
+    The synchronous manner in which files are included in CommonJS-ish systems doesn’t lend itself to the web very well.
+  </blockquote></p>
+
+<p>I was wrong. I changed my mind, and as I've said before I am now a <a href="/entries/lots-of-small-things.html">Browserify Convert</a>.</p>
+
+<p>What I didn't explain was what turned me off <a href="https://github.com/amdjs/amdjs-api/wiki/AMD">AMD</a> and in particular, <a href="http://requirejs.org/">RequireJS</a>.</p>
+
+<p><strong>The list of things I want my module loader to help me with</strong></p>
+
+<ul>
+<li>I don't want to write all my code in a single file</li>
+<li>I want to write my code across many files</li>
+<li>I want to write my code across many modules</li>
+<li>I want to be able to easily debug these once in the browser (it's unusual I need to debug, but when I do...)</li>
+<li>I want the time between editing a file and seeing feedback in the application to be -- >&lt; -- this big</li>
+</ul>
+
+<p>In other words, yes - I do want the moon on a stick.</p>
+
+<p><strong>RequireJS</strong></p>
+
+<p>Seemed to help with these things, I didn't use the hideous ceremony-ridden version of AMD that looks like somebody vomitted in my Javascripts (that alone would have been enough to put me off) </p>
+
+<p><em>The ceremonial way</em></p>
+
+<pre><code>define([
+  '../foo', 
+  './lib/bar', 
+  'boo'], 
+  function(foo, bar, boo) {
+
+})
+</code></pre>
+
+<p><em>The less-ceremony way</em></p>
+
+<pre><code>define(function(require) {
+  var foo = require('../foo')
+    , bar = require('./lib/bar')
+    , boo = require('boo')
+})
+</code></pre>
+
+<p>So it was tolerable for a while because I didn't have to, however I would then run into the following road-blocks:</p>
+
+<ul>
+<li>What about Library X, does it support AMD?</li>
+<li>If it doesn't support AMD, I have to add a shim? Should I patch the library?</li>
+<li>What if it supports AMD, I'll want to load it from a libs directory</li>
+<li>Where is the root of my application? What about sharing code client/server</li>
+<li>What if I want to use CoffeeScript (or more recently for me, OMeta)</li>
+</ul>
+
+<p><strong>For every question, RequireJS had an answer</strong></p>
+
+<p>And AMD's answer for <em>nearly every one of them</em> is to <em>add some configuration directives</em> or <em>write a r.js plug-in</em></p>
+
+<p>And this is what put me off.</p>
+
+<p>In no time at all, every project would have a configuration file many lines long of obscure directives (and I mean obscure directives, have you <a href="http://requirejs.org/docs/api.html">read the documentation?</a> - this is not intuitive and requires a hella lot of investment if we are to make effective use of it.</p>
+
+<p>Then we'd want to write tests against the code, and we'd have to either attempt to re-use this configuration or duplicate it over into our tests directory. 
+Then we'd run into problems with that configuration, and waste hours trying to work out a compromise to keep RequireJS happy.</p>
+
+<p><strong>Most of those questions were the wrong question</strong></p>
+
+<p>First off, using <a href="/entries/stop-using-relative-paths-in-your-javascripts.html">actual modules</a> has massive advantages over relative paths anyway, and while the build step of RequireJS will support these, this isn't going to work if we're using the A of AMD in development.</p>
+
+<p>Secondly, if we want to compile our .coffee to JS, we should be using the coffeescript compiler to do this. If we want to compile our Typescript to JS likewise, if we want to import static files for templates then this should be part of our build process.</p>
+
+<p>Trying to do everything as a long sequence of plug-ins meant to support the A/MD actually makes things a lot <em>slower</em> in my experience, because we're not trying to do it only when specific files change but instead trying to do it as part of the request pipeline (unless we go to lengths to work around the r.js plug-in system)</p>
+
+<p><strong>The future of JS modules is not async anyway</strong></p>
+
+<p>If yo look at the specifications and where they're going, (while last I checked they weren't perfect yet), the module system that is coming for JS isn't going to be asynchronous - and this is because our program <em>can't run until it's loaded anyway</em> - it actually makes little sense to add the overhead of asynchronous management to this process.</p>
+
+<p>Building up an entire codebase around tooling that isn't compatible with how the future-web is going to work doesn't make an awful lot of sense, building up an entire tool-chain around this tooling makes even less sense.</p>
+
+<p><strong>I switched to Browserify</strong></p>
+
+<p>As I've said, I'm not particularly sold on using node_modules for  client-side code, but the module system in node <em>does</em> work, and <em>does</em> encourage us to package things up in a neat re-usable manner (I'm not sold on component.js yet either).</p>
+
+<p>However, the code we write doesn't care what module system is being used if we're just doing CommonJS - it just knows that they come from <em>somewhere</em>. The tools we use to convert CS into JS don't care that we're using Browserify to package the end-result. The tools we use to embed templates in the downloadables don't care that we're using Browserify to do this. </p>
+
+<p>In a nut-shell, Browserify is allowing me to hedge my bets by not coupling my workflow too closely to it. It doesn't come with pages of obsuse documentation and every time I pump out a new module into my little eco-system I am ever so thankful for this.</p>
+
+<p>It has enabled me to be liberal with my module creation and not care how people are going to actually consume these packages (apart from 'through npm' somehow), and I've not had to debug or diagnose issues with it in the whole time I've been using it.</p>
+
+<p>Let's look at the list of things I want:</p>
+
+<ul>
+<li>I don't want to write all my code in a single file</li>
+<li>I want to write my code across many files</li>
+<li>I want to write my code across many modules</li>
+<li>I want to be able to easily debug these once in the browser (it's unusual I need to debug, but when I do...)</li>
+<li>I want the time between editing a file and seeing feedback in the application to be -- >&lt; -- this big</li>
+</ul>
+
+<p>I'm able to do all of these - yes I need a build step now, but you know what? We need a build-step anyway if we're going to take advantage of the module system properly - even in RequireJS so this isn't a big deal. </p>
+
+<p>We get debugging support through source maps (and this even tells us which module we're debugging) and as I said yesterday, I no longer really <a href="/entries/stop-using-relative-paths-in-your-javascripts.html">use relative paths</a> so I'm a great deal happier about my JS.</p>
+
+<p>Happiness and productivity, good reasons for doing most things really.</p>]]></description><link>http://codeofrob.com/entries/why-i-stopped-using-amd.html</link><guid isPermaLink="true">http://codeofrob.com/entries/why-i-stopped-using-amd.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 21 Mar 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Stop using relative paths in your JavaScripts]]></title><description><![CDATA[<p>I saw a post to the NodeJS mailing list the other day which went along the lines of </p>
 
 <p><blockquote>
     I've created a simple prototype tool for re-factoring and re-organization of projects which heavily use require("./relativePath") .
@@ -575,84 +684,4 @@ return result;
 
 <p>Thankfully we need about 10% of the exposed functionality in LevelDB so our job isn't as hard as "writing a set of managed bindings for LevelDB", but this means that I won't have time to do this before I leave Israel.</p>
 
-<p>I put my sad face on and get to work on something more manageable for my final day of work :-(</p>]]></description><link>http://codeofrob.com/entries/the-price-of-abstraction---using-leveldb-in-ravendb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/the-price-of-abstraction---using-leveldb-in-ravendb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 08 Mar 2013 09:00:00 GMT</pubDate></item><item><title><![CDATA[Secondary indexes on top of LevelDB]]></title><description><![CDATA[<p>Got <a href="/entries/basic-operations-with-leveldb.htm">atomic writes</a>, <a href="/entries/transactional-guarantees-on-top-of-leveldb.html">consistent reads</a>, <a href="/entries/writing-a-transaction-manager-on-top-of-leveldb.html">transactions</a> and we can <a href="/entries/streaming-large-values-from-leveldb.html">do streaming</a> if we need to - now if we can do secondary indexes we can move forwards with creating a storage implementation for RavenDB.</p>
-
-<p>An example of a couple of indexes we need in RavenDB is:</p>
-
-<ul>
-<li>The document itself stored by key (primary index)</li>
-<li>The document key stored by etag (secondary index)</li>
-</ul>
-
-<p>Whenever we write a document in RavenDB, we want to</p>
-
-<ul>
-<li>Remove the old Etag (or at least update it)</li>
-<li>Write the document against its key</li>
-<li>Write a new etag for the document</li>
-</ul>
-
-<p>(Actually, a bit more goes on than this as we store meta data for headers etc, but this will do for now)</p>
-
-<p>The operation we want to do when indexing is</p>
-
-<ul>
-<li>What are all the new etags since last we indexed?</li>
-<li>Loop through each of these, load the document and index it</li>
-</ul>
-
-<p>Etags are sortable by design, in my rough and ready document database the etag is just an integer that I increase every time I add a new document.</p>
-
-<p>Now, when writing and reading from the database, we need to be able to differentiate between types of key in the database, and ordering for each of these types is set by the key.</p>
-
-<p><em>For example, reading a document</em></p>
-
-<pre><code>#define DOCPREFIX "/docs/"
-#define ETAGPREFIX "/etags/"
-
-
-void Get(std::string id, std::string* doc) {
-  std::stringstream st;
-  st &lt;&lt; DOCPREFIX;
-  st &lt;&lt; id;
-  std::string key = st.str();
-  this-&gt;lastStatus = this-&gt;db-&gt;Get(leveldb::ReadOptions(), key, doc);
-}
-</code></pre>
-
-<p>So I'm sticking a prefix in front of each key to denote what sort of key it is, yay.</p>
-
-<p>That means that my secondary index of etags will end up looking like this</p>
-
-<pre><code>/etags/0 -&gt; /docs/1
-/etags/1 -&gt; /docs/5
-/etags/2 -&gt; /docs/4
-/etags/3 -&gt; /docs/6
-/etags/4 -&gt; /docs/3
-/etags/6 -&gt; /docs/7
-/etags/8 -&gt; /docs/12
-/etags/9 -&gt; /docs/5
-</code></pre>
-
-<p>When I want to index documents newer than /etags/5, I can do</p>
-
-<pre><code>int IndexNewDocumentsNewerThan(int etag) {
-  std::stringstream st;
-  st &lt;&lt; ETAGPREFIX;
-  st &lt;&lt; etag;
-  std::string startkey = st.str();
-
-  leveldb::Iterator* it = this-&gt;db-&gt;NewIterator(leveldb::ReadOptions());
-  for (it-&gt;Seek(startkey); it-&gt;Valid() &amp;&amp; this-&gt;IsEtagKey(it-&gt;key().ToString()); it-&gt;Next()) {
-    std::string document = it-&gt;value().ToString();
-    IndexDocument(value);
-  }
-  delete it;
-}
-</code></pre>
-
-<p>Building up other indexes is a trivial matter of making sure we have a suitable ordering in place, and queries are simply a matter of building up these keys appropriately.</p>
-
-<p>With all of this, I think we have enough information to go and build persistence for RavenDB on top of LevelDB (and then test test test, performance performance performance etc).</p>
-
-<p>If you want to check out the spikes and playarounds with LevelDB, you can find them on my <a href="https://github.com/robashton/leveldb-play">Github</a></p>]]></description><link>http://codeofrob.com/entries/secondary-indexes-on-top-of-leveldb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/secondary-indexes-on-top-of-leveldb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 07 Mar 2013 09:00:00 GMT</pubDate></item></channel></rss>
+<p>I put my sad face on and get to work on something more manageable for my final day of work :-(</p>]]></description><link>http://codeofrob.com/entries/the-price-of-abstraction---using-leveldb-in-ravendb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/the-price-of-abstraction---using-leveldb-in-ravendb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 08 Mar 2013 09:00:00 GMT</pubDate></item></channel></rss>

@@ -412,8 +412,7 @@ I've decided that as I only have a day left at the client, that the best thing I
 - The tests are brittle *because* and this is how you'd improve them
 - The model probably isn't that easy to consume, and will need changing, which will mean the tests need changing, *sorry*
 
-With this said and done, I've decided the final bit of work I can do is to run some fuzzy testing against the parser and start trying to make it *really* complete, as this is a harder problem. (and maybe I can refactor the tests as I do this, so I only leave one problem..):w
-o
+With this said and done, I've decided the final bit of work I can do is to run some fuzzy testing against the parser and start trying to make it *really* complete, as this is a harder problem. (and maybe I can refactor the tests as I do this, so I only leave one problem for them to sort out)
 
 **Fuzzy testing**
 
@@ -423,9 +422,39 @@ What I'll do to get started is download and compile the abnfgen package, and run
 
 *edit*
 
-Scratch that, the ABNF is incomplete and buggy and crap, what is the actual point - this concludes the end of my series.
+Scratch that, the ABNF is incomplete and buggy and crap, what is the actual point, onto making something pretty instead...
+
+**Hooking it up to the editor**
+
+Because one of the main reasons for using OMeta (other than "it's what they use for most parsing already"), is the support for it in the editor that they use across the organisation.
+
+Hooking it up was a simple matter of grabbing some code already written to run OMeta against a third party editor, and adding support to the parser for this.
+
+To do this, I just have to add a method to my parser like so:
+
+    ODataParser._enableTokens = function() {
+      OMeta._enableTokens.call(this, ['Text', 'ResourceName', 'Number', 'RecognisedOption', 'FilterAndOperand', 'FilterByOperand', 'FilterRecognisedMathOperand']);
+    };
+
+You'll notice if you're observant, that I've added a few more named types here, that's because otherwise I had no way of matching key words and therefore colouring them separately.
+
+Instead of
+
+    seq("add")
+
+I now have
+
+    FilterRecognisedMathOperand("add")
+    ,
+
+    FilterRecognisedMathOperand :name = 
+      seq(name)
+
+That's about the only type of change I had to make to support the following glory:
+
+<img src="/img/parse_output.png" alt="Highlighted output in a text area from OData input" title="Parse output"/>
 
 
-
+Mission accomplished, now onto my next client...
 
 

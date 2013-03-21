@@ -436,8 +436,7 @@ Integer = &lt;digit+&gt;:d -&gt; parseInt(d, 10)
 <li>The model probably isn't that easy to consume, and will need changing, which will mean the tests need changing, <em>sorry</em></li>
 </ul>
 
-<p>With this said and done, I've decided the final bit of work I can do is to run some fuzzy testing against the parser and start trying to make it <em>really</em> complete, as this is a harder problem. (and maybe I can refactor the tests as I do this, so I only leave one problem..):w
-o</p>
+<p>With this said and done, I've decided the final bit of work I can do is to run some fuzzy testing against the parser and start trying to make it <em>really</em> complete, as this is a harder problem. (and maybe I can refactor the tests as I do this, so I only leave one problem for them to sort out)</p>
 
 <p><strong>Fuzzy testing</strong></p>
 
@@ -447,4 +446,39 @@ o</p>
 
 <p><em>edit</em></p>
 
-<p>Scratch that, the ABNF is incomplete and buggy and crap, what is the actual point - this concludes the end of my series.</p>
+<p>Scratch that, the ABNF is incomplete and buggy and crap, what is the actual point, onto making something pretty instead...</p>
+
+<p><strong>Hooking it up to the editor</strong></p>
+
+<p>Because one of the main reasons for using OMeta (other than "it's what they use for most parsing already"), is the support for it in the editor that they use across the organisation.</p>
+
+<p>Hooking it up was a simple matter of grabbing some code already written to run OMeta against a third party editor, and adding support to the parser for this.</p>
+
+<p>To do this, I just have to add a method to my parser like so:</p>
+
+<pre><code>ODataParser._enableTokens = function() {
+  OMeta._enableTokens.call(this, ['Text', 'ResourceName', 'Number', 'RecognisedOption', 'FilterAndOperand', 'FilterByOperand', 'FilterRecognisedMathOperand']);
+};
+</code></pre>
+
+<p>You'll notice if you're observant, that I've added a few more named types here, that's because otherwise I had no way of matching key words and therefore colouring them separately.</p>
+
+<p>Instead of</p>
+
+<pre><code>seq("add")
+</code></pre>
+
+<p>I now have</p>
+
+<pre><code>FilterRecognisedMathOperand("add")
+,
+
+FilterRecognisedMathOperand :name = 
+  seq(name)
+</code></pre>
+
+<p>That's about the only type of change I had to make to support the following glory:</p>
+
+<p><img src="/img/parse_output.png" alt="Highlighted output in a text area from OData input" title="Parse output"/></p>
+
+<p>Mission accomplished, now onto my next client...</p>
