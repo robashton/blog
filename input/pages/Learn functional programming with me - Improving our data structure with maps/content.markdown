@@ -224,4 +224,4 @@ Success.
 
 I'm slightly happier with maps, as it means the order in which I put data into these structures becomes irrelevant, my OO self is crying out though because I'm passing around effectively property bags on which I'm performing decisions and logic from.
 
-It feels as if I'm going to be repeating myself a lot if I have to keep addressing state this way, and hopefully I'll discover a better way as I progress.
+It feels as if I'm going to be repeating myself a lot if I have to keep addressing state this way, and hopefully I'll discover a better way as I progress, as this just feels like procedural code written in Clojure.
