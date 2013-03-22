@@ -1,0 +1,247 @@
+<p>Carrying on..</p>
+
+<ul>
+<li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Missing statement</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---moving-the-square.html">Moving the square</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---attributes-and-vectors.html">Attributes and vectors</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---improving-my-workflow.html">Improving my workflow</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---adding-lots-more-state.html">Creating lots of state</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---mutating-lots-of-state.html">Mutating lots of state</a></li>
+</ul>
+
+<p>I mentioned in the <a href="/entries/learn-functional-programming-with-me---mutating-lots-of-state.html">last entry</a> that I was uncomfortable passing vectors around the place, because it means all of the functions that take in these vectors dependent on the <em>order</em> of information in these vectors and it's not at all clear what we're passing around.</p>
+
+<p>I've been pointed in the direction of Maps and Records, and for now I'll start with Maps as they seem the most lightweight way of improving this situation.</p>
+
+<p>Let's look at where we create our initial state first, as we'll refactor our way up from there.</p>
+
+<pre><code>(defn initState []
+ [
+   1
+   (for [x (range 0 16 2)
+         y (range 0 8 2)]
+     [(* x 30) (* y 30) 20 20]
+   )
+ ]
+)
+</code></pre>
+
+<p>What I'm doing here is creating a vector that looks like this</p>
+
+<pre><code>[ 1 [0 0] ]
+</code></pre>
+
+<p>What is 1? What is the second vector? What is this nonsense?</p>
+
+<p>How about returning a map instead of a vector from initState?</p>
+
+<pre><code>(defn initState []
+ { 
+   :direction 1
+   :enemies (for [x (range 0 16 2)
+                  y (range 0 8 2)]
+               [(* x 30) (* y 30) 20 20]
+   )
+ } 
+)
+</code></pre>
+
+<p>So the difference is we're now using curly braces, and specifying key-value pairs for our values. (Bear in mind that this returned map is for all intents and purposes going to be immutable, so we haven't got to worry too much about exposing this state (I think)</p>
+
+<p>Well actually, the rest of this is bit opaque as well, why not split out the enemy constructor into its own function?</p>
+
+<pre><code>(defn initEnemy [x y w h]
+ [(* x 30) (* y 30) 20 20]
+)
+
+(defn initState []
+ { 
+   :direction 1
+   :enemies (for [x (range 0 16 2)
+                  y (range 0 8 2)]
+              (initEnemy x y 20 20)
+   )
+ } 
+)
+</code></pre>
+
+<p>And if we've gone that far, why not go further and make that a map as well?</p>
+
+<pre><code>(defn initEnemy [x y w h]
+ {
+  :x (* x 30)
+  :y (* y 30)
+  :w w
+  :h h
+ }
+)
+</code></pre>
+
+<p>Now my data structure looks like this</p>
+
+<pre><code>{
+  direction: 1
+  enemies: [
+    { x: 0, y: 0, w: 0, h: 0 },
+    { x: 0, y: 0, w: 0, h: 0 },
+    { x: 0, y: 0, w: 0, h: 0 },
+    { x: 0, y: 0, w: 0, h: 0 },
+    // etc
+
+  ]
+}
+</code></pre>
+
+<p>Bloomin' marvellous. Now, this all still builds - although if I run it it'll fall over in disaster. This is because of mis-matched function calls, as I'm passing these maps around and the functions are expecting vectors.</p>
+
+<p>Type safety was mentioned in relation to Maps and Records and perhaps Records give me some of that, I'll look at those later if it becomes a burden.</p>
+
+<p>I need to update functions where I'm using these data structures (which is everywhere), so let's have a look how I'll do that:</p>
+
+<pre><code>(defn tick [ctx state]
+  (let [[dir enemies] state]
+</code></pre>
+
+<p>Well, here is my first change, I'm passing in 'state' to 'tick', but the de-structuring assignment assumes that state is a vector and un-packs it accordingly, this is a valid operation against a map but is junk to my code so nothing happens.</p>
+
+<p>Instead what I want to do is unpack the state I need from the map so I can use it.</p>
+
+<pre><code>(defn tick [ctx state]
+  (let [enemies (:enemies state)]
+</code></pre>
+
+<p>Now, this is going to say, let 'enemies' equal the result of the value found at the key :enemies, so this is how we access maps.</p>
+
+<p>'<em>enemies</em>' is now a sequence of maps, and in order to render I'll have to un-pack that too if we're taking a direct approach to getting this code working again.</p>
+
+<pre><code>(doseq [enemy enemies] 
+  (let [{:keys [x y w h]} enemy]
+    (drawSquare ctx x y w h)
+  )
+)
+</code></pre>
+
+<p>In this case, I'm unpacking several keys from enemy at the same time using the special form ":keys", that's kinda cool.</p>
+
+<p>Our call to doLogic remains unchanged, as we merely pass in the state and expect the new state back in the same form.</p>
+
+<pre><code>(js/setTimeout (fn []
+  (tick ctx (doLogic state))
+) 33  )
+</code></pre>
+
+<p>However, the doLogic function expects a vector and does things with more vectors, so it'll need changing as well.</p>
+
+<pre><code>(defn doLogic [[direction enemies]]
+  [
+    (getNextDirection direction enemies)
+    (for [[x y w h] enemies]
+      (if(= direction 1)
+        [(inc x) y w h]
+        [(dec x) y w h]
+      )
+    )
+  ]
+)
+</code></pre>
+
+<p>I'll not bother un-packing here, at the moment everything needs all of the state, but I will split out the enemy logic into its own function for easier comprehension.</p>
+
+<pre><code>(defn doLogic [state]
+  {
+    :direction (directionLogic state)
+    :enemies (enemiesLogic state)
+  }
+)
+</code></pre>
+
+<p><em>Now this is the old directionLogic</em>, we'll need to pull our enemies and direction out of our map.</p>
+
+<pre><code>(defn directionLogic [direction enemies]
+  (if (= direction 1)
+    (let [right (apply max (map (fn [[x y w h] e] x) enemies))]
+      (if(&gt; right 600) -1 1)
+    )
+    (let [left (apply min (map (fn [[x y w h] e] x) enemies))]
+      (if(&lt; left 0) 1 -1)
+    )
+  )
+)
+</code></pre>
+
+<p>So step by step</p>
+
+<p><em>Our new signature and un-packing statement</em></p>
+
+<pre><code>(defn directionLogic [state]
+  (let [{:keys [direction enemies]} state]
+</code></pre>
+
+<p><em>We can pass in :x as the function to invoke (in this case the 'map' operation will take :x out of each enemy)</em></p>
+
+<pre><code>(if (= direction 1)
+  (let [right (apply max (map :x enemies))]
+    (if(&gt; right 600) -1 1)
+  )
+</code></pre>
+
+<p><em>And the same for the other direction</em></p>
+
+<pre><code>  (let [left (apply min (map :x enemies))]
+    (if(&lt; left 0) 1 -1)
+  )
+</code></pre>
+
+<p>I'll look at tidying this up in a moment, but first I want to sort out my enemiesLogic function and check that my code still works
+and I still have moving yellow squares in my browser.</p>
+
+<p><em>Our old enemies logic</em></p>
+
+<pre><code>(for [[x y w h] enemies]
+  (if(= direction 1)
+    [(inc x) y w h]
+    [(dec x) y w h]
+  )
+)
+</code></pre>
+
+<p><em>Well first off, we now have a function for this, so that looks like this</em></p>
+
+<pre><code>(defn enemiesLogic [state]
+  (let [{:keys [direction enemies]} state
+</code></pre>
+
+<p><em>But I'm going to do something different here</em></p>
+
+<pre><code>    func (if(= direction 1) inc dec)
+   ]
+</code></pre>
+
+<p>Rather than the old if statement, I'm going to choose a function (called 'func') based on direction to create the new x with.</p>
+
+<p><em>Creating the new list of enemies</em></p>
+
+<pre><code>(for [enemy enemies]
+  {
+    :x (func (:x enemy))
+    :y (:y enemy)
+    :w (:w enemy)
+    :h (:h enemy)
+  }
+)
+</code></pre>
+
+<p>So here I copy the old state out of the old enemy, and make the new state with a modified x.</p>
+
+<p>Hitting F5 in my browser</p>
+
+<p><img src="/img/yellow_squares.png" alt="A load of yellow squares" title="Space invaders"></p>
+
+<p>Success.</p>
+
+<p><strong>Summary</strong></p>
+
+<p>I'm slightly happier with maps, as it means the order in which I put data into these structures becomes irrelevant, my OO self is crying out though because I'm passing around effectively property bags on which I'm performing decisions and logic from.</p>
+
+<p>It feels as if I'm going to be repeating myself a lot if I have to keep addressing state this way, and hopefully I'll discover a better way as I progress.</p>

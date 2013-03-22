@@ -5,7 +5,7 @@ It's all very well and good being able to render a load of squares based on a se
 - [Moving the square](/entries/learn-functional-programming-with-me---moving-the-square.html)
 - [Attributes and vectors](/entries/learn-functional-programming-with-me---attributes-and-vectors.html)
 - [Improving my workflow](/entries/learn-functional-programming-with-me---improving-my-workflow.html)
-- [Creating lots of sate](/entries/learn-functional-programming-with-me---adding-lots-more-state.html)
+- [Creating lots of state](/entries/learn-functional-programming-with-me---adding-lots-more-state.html)
 
 
 **Mutating lots of state**
@@ -163,6 +163,8 @@ I can implement getNextDirection like so, taking in current and enemies
 I can say, if we're going right, check out what the max x position is, and change direction if it's greater than 600, and vice versa if it's not.
 
 This all works, my squares go from left to right and back again and keep bouncing around.
+
+<img src="/img/yellow_squares.png" alt="A load of yellow squares" title="Space invaders">
 
 I have another question at this point, which is "how many times is this list being iterated, should I be optimising this some how?"
 
