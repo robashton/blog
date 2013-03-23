@@ -118,7 +118,7 @@
 
 <p><strong>Handling those input events</strong></p>
 
-<p>Now I want to move it though, and this is where things are going to get fun, from what I can <em>imagine</em> off the top of my head (I'm currently sat on a plane at 10,000ft with no internet so I can't look anything up), my options are:</p>
+<p>Now I want to move it though, and this is where things are going to get fun, from what I can <em>imagine</em> off the top of my head (I'm currently sat on a plane at 35,000ft with no internet so I can't look anything up), my options are:</p>
 
 <ul>
 <li>Attempt to mutate player state directly as input events happen</li>
@@ -134,7 +134,183 @@
   tick applyLogic(state, inputs)
 </code></pre>
 
-<p>I don't have to care that behind that getCurrentInputs is some horrible interop with the browser and piles of mutability, and if I work out how to do it better later it should limit the area of change needing to be applied.</p></div>
+<p>I don't have to care that behind that getCurrentInputs is some horrible interop with the browser and piles of mutability, and if I work out how to do it better later it should limit the area of change needing to be applied.</p>
+
+<p>I can hook the events using the standard js interop, which looks like this</p>
+
+<pre><code>(defn hookInputEvents []
+  (.addEventListener js/document "keydown" 
+   (fn [e]
+    (setKeyState e.KeyCode true)
+   )
+  )
+  (.addEventListener js/document "keyup" 
+   (fn [e]
+
+   )
+  )
+)
+</code></pre>
+
+<p>Okay, so what now? I need to get this information to the game somehow, and actually - the information I want is "Is the key currently down", which is state I need to build up off those events.</p>
+
+<p><strong>Up and Atom</strong></p>
+
+<p>So I had to a bit of trawling to get this right, there is a notion of an "atom", in Clojure which is effectively a mutable object with some synchronisation over the top of it.</p>
+
+<p>I've tried to avoid having any of this trickery yet, but this is somewhere I think going to need it.</p>
+
+<p>So, an atom - I'm putting this into my 'global' scope (actually, it's namespaced into (ns game))</p>
+
+<p><em>Define some state called keyStates, assign to it an atom (initial value is an empty map)</em></p>
+
+<pre><code>(def keyStates (atom {}))
+</code></pre>
+
+<p>Now, if I want to access the value of keyStates, I can de-rererence it thusly</p>
+
+<p><em>De-reference an atom</em></p>
+
+<pre><code>@keystates
+</code></pre>
+
+<p>I also wanted to know how to "modify a single value of a map", for reasons that are about to become clear, the way to do this is</p>
+
+<p><em>Create a new map, with a single property changed</em></p>
+
+<pre><code>(assoc myMap :name newValue)
+</code></pre>
+
+<p>This function returns a new map which is the same as the old one, but with that value changed (Hey, this is quite useful!)</p>
+
+<p>The final piece of my jigsaw is the ability to change the value of this mutable atom, to do this I can use 'swap'</p>
+
+<pre><code>(swap! myAtom (fn [oldValue] newValue))
+</code></pre>
+
+<p>So how about that setKeyState function?</p>
+
+<p><em>Set the new keyStates to be the same as the old keyStates, but with a new value for the current keycode</em></p>
+
+<pre><code>(defn setKeyState [code, value]
+  (swap! keyStates assoc code value)
+)
+</code></pre>
+
+<p>Swap will call assoc, passing in the old state and the other args specified (hey, this is quite functional!)</p>
+
+<p>Now I have a global state for my current input, which means I can ask questions of it and apply those answers to my state.</p>
+
+<p><strong>Applying input to my square</strong></p>
+
+<p>Well, I'll make a function whose job it is to take in the old state and return the new state and that seems to be working well for me so far.</p>
+
+<pre><code>(defn playerLogic [state]
+
+)
+
+(defn doLogic [state]
+  {
+    :direction (directionLogic state)
+    :enemies (enemiesLogic state)
+    :player (playerLogic state)
+  }
+)
+</code></pre>
+
+<p>And in this, I'll work out from the input what to do to my state</p>
+
+<pre><code>(defn playerLogic [state]
+  (let [player (:player state)  
+        left (@keyStates 37)
+        right (@keyStates 39)
+       ]
+    (cond (= left true) (assoc player :x (dec (:x player)))
+          (= right true) (assoc player :x (inc (:x player)))
+          :else player
+    )
+  )
+)
+</code></pre>
+
+<p>There is a whole lot to take where, but it boils down to</p>
+
+<ul>
+<li>Extract player from the state</li>
+<li>Extract 'left' from the de-referenced keyStates (37)</li>
+<li>Extract 'right' from the de-referenced keyStates (39)</li>
+<li>Decide what new state to return based on this value</li>
+</ul>
+
+<p>Let's look at that last bit closer:</p>
+
+<pre><code>(cond (= left true) (assoc player :x (dec (:x player)))
+      (= right true) (assoc player :x (inc (:x player)))
+      :else player
+</code></pre>
+
+<p>This is kinda equivalent to</p>
+
+<pre><code>if(left) { }
+else if(right) {}
+else {}
+</code></pre>
+
+<p>The expressions on the RHS will be evaluated and returned if the LHS is true.</p>
+
+<p>We've already looked at assoc, we recognise dec/inc and basically all I'm doing is saying, 'return a new player with x changed, here is the new value of x, it's a modification of the current x'</p>
+
+<p>I bet there is a tidier way of doing this actually, maybe a built-in but I came up with</p>
+
+<p><em>Please apply the specified function to the specified key in this map and return the result</em></p>
+
+<pre><code>(defn applyMod [m k func]
+  (assoc m k (func (m k)))
+)
+</code></pre>
+
+<p><em>And in usage:</em></p>
+
+<pre><code>(cond (= left true) (applyMod player :x dec)
+      (= right true) (applyMod player :x inc)
+      :else player
+</code></pre>
+
+<p><strong>Paint our player Red</strong></p>
+
+<p>I said red square, and so far it's yellow, let's fix this problem.</p>
+
+<pre><code>(defn drawSquare [[ctx width height] x y w h c]
+  (set! (. ctx -fillStyle) c)
+  (.fillRect ctx x y w h) 
+)
+
+(defn enemiesRender [ctx state]
+  (let [enemies (:enemies state)]
+    (doseq [enemy enemies] 
+      (let [{:keys [x y w h]} enemy]
+        (drawSquare ctx x y w h "#FF0")
+      )
+    )
+  )
+)
+
+(defn playerRender [ctx state]
+  (let [player (:player state)]
+    (let [{:keys [x y w h]} player]
+      (drawSquare ctx x y w h "#F00")
+    )
+  )
+)
+</code></pre>
+
+<p>The drawing square function and repetition across my two types of entity still bugs me, but I figure I'll yet manage to tidy this up.</p>
+
+<p><strong>The result</strong></p>
+
+<p>See, it's <em>almost</em> Space Invaders already.</p>
+
+<p><img src="/img/red_player.png" alt="Yellow invaders, red player" title="Red player"></p></div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
