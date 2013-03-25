@@ -103,7 +103,58 @@ Now, all of this achieves the square root of diddly squat, although if I run the
 
 **Hooking up some input events**
 
-Well okay, for now what I'll do is say "everytime the space bar is pressed it'll be time for fire a bullet.
+Well okay, for now what I'll do is say is "if the spacebar is pressed we'll fire a bullet", so we can do this in a similar manner to everything else thus far...
 
+
+    (defn bulletsLogic [state]
+
+
+*Get the player out, and update the bullets into a seq called 'existingBullets'*
+
+
+      (let [player (:player state)
+            existingBullets 
+            (for [bullet (:bullets state)]
+              {
+                :x (:x bullet)
+                :y (dec (:y bullet))
+                :w (:w bullet)
+                :h (:h bullet)
+              }
+            )
+          ]
+
+*If the space bar is down, then create a new sequence with a new bullet and the existing bullets*
+
+        (if (@keyStates 32)
+          (cons 
+            {
+             :x (:x (:player state))
+             :y (:y (:player state))
+             :w 5
+             :h 5
+            }
+            existingBullets
+          )
+
+*Else just return the existing bullets*
+
+          existingBullets
+        )
+      )
+    )
+
+
+This is pretty messy, although it's my first iteration at this so that's okay, I suspect I can be a bit cleverer about this and probably will end up being so!
+
+What we can see though, is that I don't "add the new bullet to the sequence", I instead "create a new sequence out of the old one plus the new items".
+
+This is counter-intuitive to those of us used to our mutable collections, but apparently Clojure is quite clever about this stuff and I should trust that this is okay. (Just like so far I'm trusting that everything else is going to be okay too).
+
+At some point soon I'll start reading about thse sequences, collections, maps etc and see how they're implemented - now I have some "real" examples of their usage.
+
+**The result**
+
+<img src="/img/constant_flow.png">
 
 
