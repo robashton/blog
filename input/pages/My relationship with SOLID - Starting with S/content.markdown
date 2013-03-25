@@ -42,7 +42,7 @@ The problem is that most of the time the abstractions people come up with to lim
 
 Perhaps this is because they're easier to conceptualise, and easy to write frameworks and patterns for so we can feel productive in our day job - but this is really not as it should be.
 
-What do I mean by horizontal? "I'm going to have a layer of controllers, a layer of validation, a layer of services, a layer of business logic,and a layer of data access"
+What do I mean by horizontal? "I'm going to have a layer of controllers, a layer of validation, a layer of services, a layer of business logic,and a layer of data access". "If I put it behind an interface then I'll be alright".
 
 What do I mean by vertical? "I'm going to write a feature to to manage the availability of books in this library"
 
