@@ -1,5 +1,93 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Sat, 23 Mar 2013 15:43:44 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[A note on working hours and working at home]]></title><description><![CDATA[<p>Yes yes yes, that whole <a href="http://www.huffingtonpost.com/2013/02/23/yahoo-working-remote_n_2750698.html">Yahoo thing</a>, whatever - there is more context to that story than "Banning working at home", although whether that is a solution to the problems is certainly up for debate.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Mon, 25 Mar 2013 11:31:03 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[My relationship with SOLID - Starting with S]]></title><description><![CDATA[<p>I saw a tweet by <a href="http://twitter.com/jonskeet">@jonskeet</a> the other day which caught my eye:</p>
+
+<p><blockquote class="twitter-tweet"><p>(I know that doubting things like OCP is pretty close to heresy, but it's just <em>never</em> made sense to me.)</p>&mdash; Jon Skeet (@jonskeet) <a href="https://twitter.com/jonskeet/status/309911260701552640">March 8, 2013</a></blockquote>
+  <script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script></p>
+
+<p><em>Well okay then</em></p>
+
+<p>Well, obviously I kinda agree with this sentiment if you go and hit up the <a href="http://blog.8thlight.com/uncle-bob/2013/03/08/AnOpenAndClosedCase.html">"Immature" 43 year old Uncle Bob's</a> statement which is as written:</p>
+
+<p><blockquote>
+    They are “Closed for Modiﬁcation”. The source code of such a module is inviolate. No one is allowed to make source code changes to it.
+  </blockquote></p>
+
+<p>But this got me thinking more widely on my relationship with SOLID as a whole and how that has changed over the years. It reminded me how many times (like the GoF patterns) I've seen an over-zealous and misunderstanding of these concepts <a href="/entries/the-fallacy-of-the-dreyfus-model-in-software-development.html">wreak havoc in codebases</a>.</p>
+
+<p>I've been able to quote the "rules" from SOLID word for word this past half-decade quite easily, but my relationship and understanding of how these seemingly innocuous statements impact my code has changed over time much like <a href="/entries/uncle-bobs-viewpoint-considered-harmful.html">my relationship and understanding of TDD</a></p>
+
+<p>So, for the next 5 entries, I will jot down my current relationship with SOLID without too much thought or proof-reading (<em>Okay, I lied, I got a few people to read these because I wanted to avoid pedantry</em> - thanks folk)</p>
+
+<p><strong><a href="http://en.wikipedia.org/wiki/Single_responsibility_principle">The single responsibility principle</a></strong></p>
+
+<p><blockquote>
+    In object-oriented programming, the single responsibility principle states that every class should have a single responsibility, and that responsibility should be entirely encapsulated by the class. 
+  </blockquote></p>
+
+<p>This is the kind of statement that leads to <a href="http://ayende.com/blog/154177/limit-your-abstractions-so-what-is-the-whole-big-deal-about">this sort of mess</a>, </p>
+
+<p><blockquote>
+    "but omg my controller should only be routing and my service should only be servicing and my data layer should only be data-ing."
+  </blockquote></p>
+
+<p>And this is unfair, and yet the confusion continues because people see several parts to the whole idea that</p>
+
+<p><blockquote>
+    a class should only have one reason to change <br/>
+    a  class should only have one responsibility
+  </blockquote></p>
+
+<p>The problem is that most of the time the abstractions people come up with to limit a classes responsibility are <em>horizontal</em> in nature. The true power of single responsibility however, lies in the vertical.</p>
+
+<p>Perhaps this is because they're easier to conceptualise, and easy to write frameworks and patterns for so we can feel productive in our day job - but this is really not as it should be.</p>
+
+<p>What do I mean by horizontal? "I'm going to have a layer of controllers, a layer of validation, a layer of services, a layer of business logic,and a layer of data access"</p>
+
+<p>What do I mean by vertical? "I'm going to write a feature to to manage the availability of books in this library"</p>
+
+<p>Frameworks like ASP.NET MVC don't help us with this and their by-default grouping of horizontal concerns across a project, it makes it too easy to carry on grouping the horizontal concerns across a large project and pretend we have a nice clean architecture because we have folders to put things on.</p>
+
+<p><em>Your relationship with state</em></p>
+
+<p>A lot of the time it boils down to state, OO and state have a bit of a confusing relationship, and most of our efforts should be devoted to minimising the amount of mutable state that is exposed to concerns that aren't directly related to each other.</p>
+
+<p>Funnily enough, despite the confusion this is actually pretty easy to conceptualise via tooling and metrics, if your classes are cohesive, most of the methods on that class will touch most of the state in that object. </p>
+
+<ul>
+<li>If half of the methods touch half of the state, and the other half of the methods touch the other half of the state then there are clearly two classes.</li>
+<li>If you're constantly having to pass visitors around the place to get at private state, or expose state through getters, then you should probably be looking at merging code because you've spread responsibility too thin</li>
+<li>If you're constantly passing state around in bags to be mutated by several other things, then you likely have the responsibilties spread out over several layers and you should likely be deleting those layers and putting the code in an object that looks to protect access to that state.</li>
+<li>If you haven't got a lot of directly mutable state, then something somewhere probably is being mutated (such as in the database) and following that chain to the source will yield in answers similar to the above.</li>
+<li>If you have to jump through more than a couple of classes to find the state that your behaviour is trying to modify, you've gone too far - keeping your mutable state close to the actual behaviour being enacted on it is the road to success</li>
+</ul>
+
+<p>Having a horizontal layer whose responsibility is "modifying state in the database" is nonsensical and vague.</p>
+
+<p>Having several objects whose responsibility is looking after the state for a particular feature and then persisting it (perhaps via another facillitiating object) has a lot more sense in terms of understandability and traceability.</p>
+
+<p><em>A note note on orthoganal concerns</em></p>
+
+<p>State based data persistence is not (usually) an orthogonal concern, neither is the workflow/routing sat in front of your MVC application - logging on the other hand can be, and authentication/authorisation can be too. </p>
+
+<p>Clearly, you shouldn't be constantly modifying these vertical slices because of a change to your authentication scheme or logging system. Trying to classify too many things as being orthogonal to your core functionality however is what leads to layer soup, and care should always be taken not to do this.</p>
+
+<p>You can discover these as you go, there is nothing wrong with littering your code with these concerns to begin with, and then as things get repetitive, pulling them out to make life easier. Premature attempts at trying to isolate these concerns is often the path to layer soup.</p>
+
+<p><em>Upwards from the class level</em></p>
+
+<p>Trying to make classes whose concerns are limited, whose reason to change are limited is all very well and good, but it's no good looking at things under a microscope and saying <em>Hey, things look okay</em>, when you sit back and have to go <em>what is this crap?</em> </p>
+
+<p>Let me invoke the <a href="http://codeofrob.com/entries/lots-of-small-things.html">NodeConf drinking game</a>, a lot of the time it is much more valuable to think of your codebase as a collection of modules which are independently versioned and have clear boundaries set up between them.</p>
+
+<p>Any of these small modules can start off by being a complete and utter mess, and if further work is required in that area you can either re-write the module in a few hours, or refactor it as you go (did you say <em>spike and stabilise</em> again Rob? I think I did)</p>
+
+<p><em>That</em> is where single responsibility really means something, and you can save a lot of time in development by building these disposable building blocks when you're rapidly iterating on a product.</p>
+
+<p><em>Summary</em></p>
+
+<p>I seem to have started with the least controversial and one of the most harmful of rules, oh well...</p>
+
+<p>Thus ends my brain dump on responsibility and the many routes to layer soup. Tomorrow I'll go the heart of the matter on OCP, and then wind down the rest of the week through the rest of the set.</p>]]></description><link>http://codeofrob.com/entries/my-relationship-with-solid---starting-with-s.html</link><guid isPermaLink="true">http://codeofrob.com/entries/my-relationship-with-solid---starting-with-s.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 25 Mar 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[A note on working hours and working at home]]></title><description><![CDATA[<p>Yes yes yes, that whole <a href="http://www.huffingtonpost.com/2013/02/23/yahoo-working-remote_n_2750698.html">Yahoo thing</a>, whatever - there is more context to that story than "Banning working at home", although whether that is a solution to the problems is certainly up for debate.</p>
 
 <p>I don't care about that, but it's what prompted Hadi to write <a href="http://hadihariri.com/2013/03/16/freedom-to-work/">this lovely article</a></p>
 
@@ -559,83 +647,4 @@ public ActionResult Edit(EditViewModel input) {
 <li>Sam wants to do something about helping churches get sermons online</li>
 </ul>
 
-<p>That's about it, I look forward to seeing what the problem is, and how he wants it solved.</p>]]></description><link>http://codeofrob.com/entries/this-week,-lets-create-a-start-up.html</link><guid isPermaLink="true">http://codeofrob.com/entries/this-week,-lets-create-a-start-up.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 12 Mar 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[The fallacy of the Dreyfus model in software development]]></title><description><![CDATA[<p>Not <a href="/entries/uncle-bobs-viewpoint-considered-harmful.html">another</a> <a href="http://blog.markrendle.net/2013/03/09/dont-unit-test-trivial-code/">post</a> <a href="http://blog.ploeh.dk/2013/03/08/test-trivial-code/">about</a> <a href="http://blog.8thlight.com/uncle-bob/2013/03/05/TheStartUpTrap.html">TDD</a> Rob, please no!</p>
-
-<p>Okay, so I'll reply on a tangent because I've had enough of talking about TDD and want to talk about software development as a learned "craft" and why pimping out magic software development strategies to "newbies" is harmful to the overall quality of software development.</p>
-
-<p>First off, I want to make an opening statement so you know where I'm coming from. This is based on various jobs and contracts I have been a part of and various code bases I have been asked to look at over the years.</p>
-
-<p><blockquote>
-    Badly applied software patterns and methodologies often cause bigger problems than not applying them at all
-  </blockquote></p>
-
-<p>This is obvious to most people (I hope), we <em>know</em> this - so why am I saying it again?</p>
-
-<p>I read <a href="http://programmers.stackexchange.com/questions/185719/how-should-you-tdd-a-yahtzee-game/188188#188188">this response</a> to a question on TDD on StackExchange and the sentiment being expressed is:</p>
-
-<p><blockquote>
-    Flexibility isn't for novices
-  </blockquote></p>
-
-<p>This hearkens back to the <a href="http://en.wikipedia.org/wiki/Dreyfus_model_of_skill_acquisition">Dreyfus model of skill acquisition</a> and the idea that beginners and novices shouldn't be left alone to fend for themselves; that they should be strictly adhering to the recognised rules during this development phase.</p>
-
-<p>Let me start off by saying that this premise is something that I agree with across any industry where experience is more important than qualifications or badges next to your name. </p>
-
-<p><strong>However...</strong></p>
-
-<p>Software development is definitely one of these industries, so what's my beef/horse with applying this model in reality?</p>
-
-<p><blockquote>
-    The statement that beginners should be strictly following the rules makes the assumption that they have access to somebody who isn't a beginner and can tell them that they're doing it wrong.
-  </blockquote></p>
-
-<p>The problem is that software development is <em>still</em> an immature and confusing trade. Access to these experts is limited to 1-2 week consultancy stints where they come in, spout a pile of "truths" and then leave the team to fend for themselves (if this even happens at all).</p>
-
-<p>What we actually have out here in the field is thousands of software teams with no experience of these things. They also have no real access to anybody with these skills.</p>
-
-<p>When they hear advice from the so-called Master Craftsmen in the field that:</p>
-
-<p><blockquote>
-    You should be testing all trivial code
-  </blockquote></p>
-
-<p>They take that as a gospel and get to work creating literally thousands of brittle unit tests (it's likely they're not even doing TDD "properly"). The end result is that their code is worse off then had they just felt their way through the problem with direct solutions and applied evidence-based solutions to the pain points.</p>
-
-<p>The same problem happened 10 years ago with all that rubbish N-Tier advice that the Enterprise Consultants were doling out.</p>
-
-<p><blockquote>
-    The problem is that we're encouraging thousands of new developers to follow the rules and not think for themselves.
-  </blockquote></p>
-
-<p><em>All of this has happened before and will happen again.</em></p>
-
-<p><strong>The ideal world</strong></p>
-
-<p>In the ideal world where we all have access to mentors with vast experience in this "more professional world" that our master craftsmen <a href="http://blog.8thlight.com/uncle-bob/2013/03/05/TheStartUpTrap.html">aspire to create</a> then we can afford to spend time bringing up our "novices" with:</p>
-
-<ul>
-<li>rigid adherence to taught rules or plans</li>
-<li>no exercise of discretionary judgement</li>
-</ul>
-
-<p>This sounds absolutely wonderful and when we have a few hundred thousand people with 20 years of experience trying TDD and failing at it. When those few hundred thousand people have found the balance and come to their form of pragmatism these people will make <em>wonderful</em> mentors.</p>
-
-<p><strong>The reality</strong></p>
-
-<p>In reality, the mentors that our novices have access to are the ones who still think that SQL Server is the only safe place to put data. You know - the ones who still think that every app needs a <a href="/entries/cqrs-is-too-complicated.html">BLL, DAL, BOLL,ETC</a>, and that if you write your code properly the first time you shouldn't need tests.</p>
-
-<p>In reality, a lot of these developers have decided that TDD is the greatest thing without really trying it out, or that every piece of code should have a Single Responsibility, and Never Be Touched Once Written (it's an interpretation I've seen). This is  because that is <em>how it's written on the internet</em> and because of this they're "engineering" <em>monsters</em> which while financially great for consultants like me are costing the companies that own those monsters dear.</p>
-
-<p>The reality is that new software developers aren't going to spend their first two years being spoon-fed "the correct way of doing things" (whatever that is, because we're still not sure). </p>
-
-<p>The reality is that they might get a couple of months of "help" when starting software development at their first company (where the help is "this is how you use Enterprise Framework X").</p>
-
-<p>The "people on the internet" spouting TDD and associated methods like sermons do not count as mentors to these people. You cannot apply the Dreyfus model to this sort of learning relationship. These people are not there for these novices and trying to reason about software craftmanship as if they are is what is causing the <em>new</em> problems.</p>
-
-<p>The reality is that to every question the answer is <em>it depends</em> and we should be arming our "novices" with the tools to work out what the real answer is instead of handing them a single hammer with a bag of nails. (That's a metaphor for "writing blog entries which state that <em>you're doing it wrong unless...</em>")</p>
-
-<p><strong>Getting a grip</strong></p>
-
-<p>Spouting dogma at people on the internet and at conferences is self-defeating, (Unless you make your living off consultancy in these matters) it either puts people who know better into defensive mode because they recognise the dogma and rightfully fear it, or encourages people to follow your rules without looking at the wider context which causes substantial problems in software products.</p>
-
-<p>Quit it.</p>]]></description><link>http://codeofrob.com/entries/the-fallacy-of-the-dreyfus-model-in-software-development.html</link><guid isPermaLink="true">http://codeofrob.com/entries/the-fallacy-of-the-dreyfus-model-in-software-development.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 11 Mar 2013 09:30:00 GMT</pubDate></item></channel></rss>
+<p>That's about it, I look forward to seeing what the problem is, and how he wants it solved.</p>]]></description><link>http://codeofrob.com/entries/this-week,-lets-create-a-start-up.html</link><guid isPermaLink="true">http://codeofrob.com/entries/this-week,-lets-create-a-start-up.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 12 Mar 2013 09:30:00 GMT</pubDate></item></channel></rss>

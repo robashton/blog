@@ -1,6 +1,6 @@
 What good is Space Invaders if you can't shoot anyone?
 
-- [Missing statement](/entries/learn-functional-programming-with-me---a-mission-statement.html)
+- [Mission statement](/entries/learn-functional-programming-with-me---a-mission-statement.html)
 - [Drawing a square](/entries/learn-functional-programming-with-me---drawing-a-square.html)
 - [Moving the square](/entries/learn-functional-programming-with-me---moving-the-square.html)
 - [Attributes and vectors](/entries/learn-functional-programming-with-me---attributes-and-vectors.html)
@@ -63,7 +63,7 @@ There is nothing special or new about the above, although I've dropped the 'let'
 
 My bullets to begin with?
 
-*Create an empty list (sequence)*
+*Create an empty list*
 
     (defn initState []
      { 
@@ -78,6 +78,8 @@ My bullets to begin with?
     )
 
 I found out how to do that on Google so I think it's right.
+
+I also found out that apparently an empty list is not a sequence, although it is sequenceable which means I can safely do the above (I think)
 
 *Calling the appropriate methods*
 
@@ -100,4 +102,8 @@ I found out how to do that on Google so I think it's right.
 Now, all of this achieves the square root of diddly squat, although if I run the program it doesn't fall over in a heap pile of flames so that's pretty good going for all of this code.
 
 **Hooking up some input events**
+
+Well okay, for now what I'll do is say "everytime the space bar is pressed it'll be time for fire a bullet.
+
+
 

@@ -42,7 +42,11 @@ The problem is that most of the time the abstractions people come up with to lim
 
 Perhaps this is because they're easier to conceptualise, and easy to write frameworks and patterns for so we can feel productive in our day job - but this is really not as it should be.
 
-Frameworks like ASP.NET MVC don't help us with this and their by-default grouping of horizontal concerns across a project, it makes it too easy to muddle the verticals and separate the horizontals.
+What do I mean by horizontal? "I'm going to have a layer of controllers, a layer of validation, a layer of services, a layer of business logic,and a layer of data access"
+
+What do I mean by vertical? "I'm going to write a feature to to manage the availability of books in this library"
+
+Frameworks like ASP.NET MVC don't help us with this and their by-default grouping of horizontal concerns across a project, it makes it too easy to carry on grouping the horizontal concerns across a large project and pretend we have a nice clean architecture because we have folders to put things on.
 
 *Your relationship with state*
 
