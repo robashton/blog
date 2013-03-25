@@ -144,14 +144,15 @@ Well okay, for now what I'll do is say is "if the spacebar is pressed we'll fire
       )
     )
 
-
 This is pretty messy, although it's my first iteration at this so that's okay, I suspect I can be a bit cleverer about this and probably will end up being so!
 
-What we can see though, is that I don't "add the new bullet to the sequence", I instead "create a new sequence out of the old one plus the new items".
+**Don't change the collection, create a new one**
+
+What we can see though, is that I don't "add the new bullet to the sequence", I instead "create a new sequence out of the old one plus the new items". That's what *cons* does according to the Clojure docs.
 
 This is counter-intuitive to those of us used to our mutable collections, but apparently Clojure is quite clever about this stuff and I should trust that this is okay. (Just like so far I'm trusting that everything else is going to be okay too).
 
-At some point soon I'll start reading about thse sequences, collections, maps etc and see how they're implemented - now I have some "real" examples of their usage.
+At some point soon I'll start reading about these sequences, collections, maps etc and see how they're implemented - now I have some "real" examples of their usage.
 
 **The result**
 
