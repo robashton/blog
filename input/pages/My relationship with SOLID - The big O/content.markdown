@@ -17,7 +17,7 @@ Yikes
   </blockquote>
 
 
-Thanks [Uncle Bob](https://docs.google.com/file/d/0BwhCYaYDn8EgN2M5MTkwM2EtNWFkZC00ZTI3LWFjZTUtNTFhZGZiYmUzODc1/edit?hl=en), you're right, this *is* [over-stated](http://blog.8thlight.com/uncle-bob/2013/03/08/AnOpenAndClosedCase.html), and because it's so over stated, I believe it to be the cause of so many of the over-designed pieces of crap I've had to deal with so far in my career...
+Thanks [Uncle Bob](https://docs.google.com/file/d/0BwhCYaYDn8EgN2M5MTkwM2EtNWFkZC00ZTI3LWFjZTUtNTFhZGZiYmUzODc1/edit?hl=en), you're right, this *is* [over-stated](http://blog.8thlight.com/uncle-bob/2013/03/08/AnOpenAndClosedCase.html), and because it's so over stated, I believe it to be the cause of so many of the over-designed pieces of crap I've had to deal with in my career :-)
 
 This is the conversation I imagine developers having with themselves when writing this stuff, I don't have to imagine too hard because I've been there too:
 
@@ -29,7 +29,9 @@ And on it goes until suddenly what was a couple of classes behind a controller o
 
 Now, I'm sure this wasn't the intent behind these statements, and it sure isn't now - but you know what?
 
-I don't *care* what the original sentiment was behind Uncle Bob's statement, and I don't *care* what it is actually supposed to mean. What I do *care* about is the practical implications of this and what I *do* care about is what I consider to be code that is open to extension.
+- I don't really care what the original sentiment was behind Uncle Bob's statement.
+- I don't really care what it is actually supposed to mean. 
+- I *do* care that code that I come into contact with doesn't get in my way when I want to add a feature
 
 Here is my current thinking on the Big O. Let's make it stand for "Open", and remove the CP.
 
@@ -37,11 +39,9 @@ Here is my current thinking on the Big O. Let's make it stand for "Open", and re
     Good code is code that another developer can change the behaviour of easily and clearly see the consequences of that change.
   </blockquote>
 
-At this point in the road, we can go in one of two directions - that is to say, agree with [@jonskeet](http://twitter.com/jonskeet)'s well publicised opinion that all code should be immutable by default (in that classes should all be sealed by default, methods should all be sealed by default etc), or go in the other direction and say that the monkey patching ability in Ruby and JS help us do this just fine.
+The decisions made when designing a language can have implications on how we satiate this need.
 
-I hate to say this, but I lean towards [@jonskeet](http://twitter.com)'s opinion at this point in my line of thought, which is to say that any extension points built into your code should be an explicit decision that is obvious to the consumer, and protects them against the dangers of screwing with state they don't understand.
-
-Let's look at how my mind can easily be changed on that matter though...
+We can look to [@jonskeet](http://twitter.com/jonskeet)'s perfect language where "all classes are sealed by default, all methods are sealed by default, all extensibility points are explicitly defined", or we can look at any of the no-holds barred dynamic languages that let us get away with pretty much anything.
 
 **Let's take option one**
 
@@ -53,19 +53,21 @@ Woah! No!!! Stop right there. This is how we end up with the kind of code where 
 
 **Let's take option two**
 
-We're in dynamic land now, and we can just screw over any object by fiddling with its prototype, the rules have gone out of the window. This is the *land of possibility* people, and we have the *power to change things*.
+Now we're in the magical happy land of dynamic languages, and we can just screw over any object by fiddling with its prototype, the rules have gone out of the window. This is the *land of possibility* people, and we have the *power to change things*.
 
 Does this mean we haven't got to worry about OCP? Nay - this is not so. Having the ability to change anything is *fantastic*, people *don't* know everything when putting together a module, and having everything open by default means that while you wait for the project you're using to have an appropriate extension point you can hack around it and get on building your product.
 
+However, explicitly defined extension points have clearly defined behaviours and are predictable - so are clearly desireable.
+
 **Wait a second**
 
-This glosses over one of the over-looked part of OCP, which is how our programming culture can have an impact on it. These two options are all very well and good if you have access to the source code and can change it, this is not the case though!
+Getting off the subject of how languages can affect our decisions, we can look at how our programming culture can have an impact on it. 
 
 I find it intensely irritating that the languages that lean towards the "closed by default" design also seem to live in the environment where the code itself is also "closed by default", which means that either the framework authors have to build in extension points for everything imaginable or the users of that framework code have to suffer for it.
 
 I find it intensely amusing that the languages that lean towards the "open by default" design also live in the environment where the code itself is open by default (this is the age of Github), which means that the people with the problem can come in, make the desired change and move on with their projects with barely any thought to it at all.
 
-And this is where I go back on what I said in all the statements above, *this* is where OCP is now, times have changed since the original sentiment was uttered, the ideal and where we're heading is:
+And this is where I go back on what I said in all the statements above, *this* is where OCP is now, times have changed since the original sentiment was uttered, we have a lot more open source now and the ideal is:
 
 - Building small disposable modules that live in package systems and on Github/etc
 - Primarily building products out of these open source building blocks
@@ -74,8 +76,9 @@ And this is where I go back on what I said in all the statements above, *this* i
 
 This changes the very face of things, this changes how we build software - and it means that a strict adherence to OCP becomes largely a thing restricted to stodgy enterprise environments that are slow moving, uncompetitive and slow to get things done (and they're welcome to it)
 
-The true future of OCP is in building these open source little packages that are easily changed or forked, and in that we can find an elegance and simplicity that I find quite happy-making.
+The true future of OCP is in building these open source little packages that are easily changed or forked, and in that we can find an elegance and simplicity that I find quite pleasing.
 
+If we're forking a module and sticking a new version on it, we're saying that it is no longer the same as the old module, it is new code and the old code still exists too.
 
 **Where OCP makes sense**
 
@@ -85,15 +88,8 @@ The true future of OCP is in building these open source little packages that are
 
 - Repetition actually has the key, if you're constantly touching  the same piece of code again and again over time, then that piece of code is probably, as [@gregyoung](http://twitter.com/gregyoung) puts it, a "bug hive". If you have this sort of pattern in your source control then that code is likely brittle because it hasn't been refactored over time towards making it easier to extend without breaking stuff.
 
+- Coupled with a practical application of the single responsibility principle, we can say that if we're changing a piece of code too much either our requirements are just changing a lot (at which point you're not changing code you're throwing old code away and replacing it), or our code is trying to do too much.
+
 **Summary**
 
 So, in the age of tiny disposable modules that do just one thing, OCP is dead (*wink*) - who'd have thunk it. */dramatic oversimplification*
-
-
-
-
-
-
-
-
-
