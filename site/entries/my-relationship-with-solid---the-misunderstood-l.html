@@ -47,11 +47,7 @@
 
 <p><em>The oft-quoted Stream example</em></p>
 
-<p>First off - I don't believe Stream <em>is</em> a violation, why not? Because its behaviour is very clearly described and doesn't change across derived instances.</p>
-
-<p>It's a little bit opaque, but it's not a violation (and if you look at the design principles that produced it, the reasoning is quite clear about the balanced simplicity and "good" software design)</p>
-
-<p>Let's clarify, and use a simplified version of the Stream class</p>
+<p>Looking at the design principles that produced it, the reasoning is quite clear about why the .NET team went in the direction they did with this one, let's expand and use a simplified version of the Stream class.</p>
 
 <pre><code>public class Stream {
   public virtual void Read(Byte[] buffer, int offset, int amount) {}
@@ -74,7 +70,7 @@
 <pre><code>public class HttpStream : Stream {
   public override void Read(Byte[] buffer, int offset, int amount) { // Read from the file }
   public override void Write(Byte[] buffer) { throw new NotSupportedException(); }
-  public override void Seek(int offset){  throew new NotSupportedException(); }
+  public override void Seek(int offset){  throw new NotSupportedException(); }
 }
 </code></pre>
 
@@ -83,12 +79,14 @@
 <pre><code>public void ReadStreamIntoFile(string filename, Stream stream);
 </code></pre>
 
-<p>We'd be demonstrating a violation of liskov, because the base class thows an exception on Read and the derived classes change this behaviour to actually do something, similarly if I was to have a method such as </p>
+<p>Then our two streams would work just fine. </p>
+
+<p>However, if we were to pass the stream object into this method:</p>
 
 <pre><code>public void WriteFileIntoStream(string filename, Stream stream);
 </code></pre>
 
-<p>The FileStream would function correctly, and the HttpStream would throw a NotSupportedException (and the base class would throw a NotSupportedException - another violation)</p>
+<p>The FileStream would function correctly, and the HttpStream would throw a NotSupportedException.</p>
 
 <p>This is why the Stream class is often quoted as an example, the derived instances change the behaviour in program-breaking ways.</p>
 
@@ -107,7 +105,7 @@
 
 <p>The behaviour as described, is that if those properties return true, then the methods are safe to call, if they return false, they're not safe to call.</p>
 
-<p>It's Opaque, and feels a bit wrong - but suddenly we don't have a violation of Liskov and we're happy on this front. This is a good example of where the pragmatics of developer usage have overidden the following of arbitrary software-design "rules".</p>
+<p>It's opaque, and feels a bit wrong - but we don't necessarily have a violation of Liskov and we're happy on this front. This is a good example of where the pragmatics of developer usage have overidden the following of arbitrary software-design "rules".</p>
 
 <p><strong>Back to my relationship with Liskov</strong></p>
 
