@@ -1,5 +1,180 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Wed, 27 Mar 2013 06:19:50 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[My relationship with SOLID - The big O]]></title><description><![CDATA[<p><strong>Open closed is dead, long live Open closed</strong></p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Fri, 29 Mar 2013 08:59:56 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[My relationship with SOLID - Seeing I to I]]></title><description><![CDATA[<p>The <a href="http://en.wikipedia.org/wiki/Interface_segregation_principle">interface segregation principle</a> is slightly more relevant to the code that I write day to day than <a href="/entries/my-relationship-with-solid---the-misunderstood-l.html">Liskov</a>.</p>
+
+<p><blockquote>
+  The interface-segregation principle (ISP) states that no client should be forced to depend on methods it does not use. 
+  </blockquote></p>
+
+<p>I talked <a href="/entries/my-relationship-with-solid---the-misunderstood-l.html">yesterday</a> about the Stream class, and showed how</p>
+
+<pre><code>public class Stream {
+  public virtual bool CanRead { get; }
+  public virtual bool CanWrite { get; }
+  public virtual bool CanSeek { get; }
+
+  public virtual void Read(Byte[] buffer, int offset, int amount) {}
+  public virtual void Write(Byte[] buffer) {}
+  public virtual void Seek(int offset){}
+}
+</code></pre>
+
+<p>Wasn't necessarily a violation of Liskov because the variations in its behaviour were well described by those slightly uncomfortable properties.</p>
+
+<p>However, those awkward properties definitely point towards a violation of the ISP. Why? Because we have an interface - (in this case, an implicit one dictated by the Stream base class) which looks like this:</p>
+
+<pre><code>interface Stream {
+  void Read(Byte[] buffer, int offset, int amount);
+  void Write(Byte[] buffer);
+  void Seek(int offset);
+}
+</code></pre>
+
+<p>And yet not all Streams can do all of those things, hence we resort to those rather opaque properties.</p>
+
+<p>Perhaps another way we'll often see violations of this in code (let's say we didn't have those properties) is the checking for specific types in methods that use the interface such as:</p>
+
+<pre><code>if(stream is FileStream)
+  stream.Write(bytes, 0, bytes.Length)
+</code></pre>
+
+<p><em>shudder</em>, this stuff be bad as not only do we open up ourselves for runtime crashes when a consumer passes in something we don't recognise but we're writing opaque behaviour into our code that'll confuse consumers of that code.</p>
+
+<p><strong>Interface segregation to the rescue</strong></p>
+
+<pre><code>public interface IRead {
+  void Read(Byte[] buffer, int offset, int amount);
+}
+
+public interface IWrite {
+  void Write(Byte[] buffer);
+}
+
+public interface ISeek {
+  void Seek(int offset);
+}
+</code></pre>
+
+<p>When we have methods that require something that Reads, we can pass in IRead, when we have methods that require something that Writes can pass in IWrite, and this is great, what if we need something that Reads <em>and</em> Writes</p>
+
+<pre><code>public interface IReadAndWrite : IRead, IWrite {}
+</code></pre>
+
+<p>Okay, maybe we can do this, but what about something that Reads Writes and Seeks?</p>
+
+<pre><code>public interface IReadAndWriteAndSeek : IRead, IWrite, ISeek {}
+</code></pre>
+
+<p>Now this is a bit contrived, but this is one of the reasons the .NET team made the decision to go with the CanRead/CanWrite approach beacuse otherwise we'd either simply revert to checks like</p>
+
+<pre><code>if(Stream is IRead)
+</code></pre>
+
+<p>or have to do stuff with generics like</p>
+
+<pre><code>void WriteToFile&lt;T&gt;(T stream, string filename) where T : IRead, IWrite, ISeek
+</code></pre>
+
+<p><em>shudder</em></p>
+
+<p><strong>Framework Engineering</strong></p>
+
+<p>If you're writing a framework, first off stop and don't do that... but okay, if you're writing a framework these are the compromises that you'll sometimes have to make - and that's okay.</p>
+
+<p>Well described behaviour that's a little bit awkward is better than having a pile of interfaces that we have to dance around if we want to achieve something meaningful.</p>
+
+<p>As mentioned yesterday, I actually don't mind the .NET teams decision to break ISP here because the usage of these streams would be much harder with the number of variations in behaviour a stream can actually have.</p>
+
+<p>Tomorrow we'll look at why ISP is irrelevant in the grand scheme of things however, as we reach the final entry in this little brain-dump and talk about DI and how it encourages the use of role interfaces.</p>]]></description><link>http://codeofrob.com/entries/my-relationship-with-solid---seeing-i-to-i.html</link><guid isPermaLink="true">http://codeofrob.com/entries/my-relationship-with-solid---seeing-i-to-i.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 28 Mar 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[My relationship with SOLID - The misunderstood L]]></title><description><![CDATA[<p>I imagine my statement yesterday that OCP is "dead" will be the big bomb out of all of these blog entries, but nevertheless we push forward and look at the <a href="http://en.wikipedia.org/wiki/Liskov_substitution_principle">Liskov substitution principle</a></p>
+
+<p><blockquote>
+   If S is a subtype of T, then objects of type T may be replaced with objects of type S (i.e., objects of type S may be substituted for objects of type T) without altering any of the desirable properties of that program (correctness, task performed, etc.)
+  </blockquote></p>
+
+<p>This is one of those cases where things <em>just make sense</em>, and yet people always have a hard time describing exactly what it is. I'm probably not going to spend much time on it in this blog entry because it's really boring and I doubt I can do a better job of explaining it than anybody else.</p>
+
+<p><em>Instead, my relationship with it..</em></p>
+
+<p>Well, I'll start off by saying that day to day that Liskov means nothing to me, it's almost a rule that strictly applies itself to inheritance situations and because I'm primarily these days working in langauges that don't have any real native inheritance mechamisms (prototype chaining doesn't really count), this isn't something that affects me.</p>
+
+<p>Hell, you know what? When I'm working in C# it is something that I don't run into because inheritance is generally something I don't use or take advantage of (because composition is usually simpler etc etc). You can't change the behaviour of an object through inheritance if you never use it.. right? :-)</p>
+
+<p>Nevertheless, I want an example anyway, and I want one we're all familiar with so I'll hit up the .NET framework, and while I can remember vague instances of being annoyed about violations in UI frameworks like WinForms those days a long behind me and I can't remember any of them.</p>
+
+<p>Indeed it's actually hard to think of any examples of this in the .NET framework which aren't actually a violation of our next guideline ("interface segregation"),  and throughout the "SOLID years" if you look at other people's writing on this subject, most writings about Liskov are actually about Interface Segregation.</p>
+
+<p>So let's hit up a commonly quoted example that is almost a violation and talk about it a little bit.</p>
+
+<p><em>The oft-quoted Stream example</em></p>
+
+<p>Looking at the design principles that produced it, the reasoning is quite clear about why the .NET team went in the direction they did with this one, let's expand and use a simplified version of the Stream class.</p>
+
+<pre><code>public class Stream {
+  public virtual void Read(Byte[] buffer, int offset, int amount) {}
+  public virtual void Write(Byte[] buffer) {}
+  public virtual void Seek(int offset){}
+}
+</code></pre>
+
+<p>Now, the default behaviour of this is to throw an exception on any of those methods, and derived instances can do proper implementations of these, like so</p>
+
+<pre><code>public class FileStream : Stream {
+  public override void Read(Byte[] buffer, int offset, int amount) { // Read from the file }
+  public override void Write(Byte[] buffer) { // Write to the file }
+  public override void Seek(int offset){ // Seek to a position within the file }
+}
+</code></pre>
+
+<p>And maybe an implementation that reads from a HTTP request</p>
+
+<pre><code>public class HttpStream : Stream {
+  public override void Read(Byte[] buffer, int offset, int amount) { // Read from the file }
+  public override void Write(Byte[] buffer) { throw new NotSupportedException(); }
+  public override void Seek(int offset){  throw new NotSupportedException(); }
+}
+</code></pre>
+
+<p>Now, at this point if we were to pass around the Stream object to a method like this</p>
+
+<pre><code>public void ReadStreamIntoFile(string filename, Stream stream);
+</code></pre>
+
+<p>Then our two streams would work just fine. </p>
+
+<p>However, if we were to pass the stream object into this method:</p>
+
+<pre><code>public void WriteFileIntoStream(string filename, Stream stream);
+</code></pre>
+
+<p>The FileStream would function correctly, and the HttpStream would throw a NotSupportedException.</p>
+
+<p>This is why the Stream class is often quoted as an example, the derived instances change the behaviour in program-breaking ways.</p>
+
+<p><em>However</em></p>
+
+<pre><code>public class Stream {
+  public virtual bool CanRead { get; }
+  public virtual bool CanWrite { get; }
+  public virtual bool CanSeek { get; }
+
+  public virtual void Read(Byte[] buffer, int offset, int amount) {}
+  public virtual void Write(Byte[] buffer) {}
+  public virtual void Seek(int offset){}
+}
+</code></pre>
+
+<p>The behaviour as described, is that if those properties return true, then the methods are safe to call, if they return false, they're not safe to call.</p>
+
+<p>It's opaque, and feels a bit wrong - but we don't necessarily have a violation of Liskov and we're happy on this front. This is a good example of where the pragmatics of developer usage have overidden the following of arbitrary software-design "rules".</p>
+
+<p><strong>Back to my relationship with Liskov</strong></p>
+
+<p>I do not have a relationship with the Liskov substitution principle because I don't generally write code that has any sort of inheritance chain within it, but if I did - sometimes I guess I'd end up in the situation like the above and that would be okay. I'm okay with that for the most part.</p>
+
+<p><strong>Summary</strong></p>
+
+<p>Liskov is ultimately pretty boring, and unless you're writing code with lots of inheritance it isn't really a problem. Don't write code with lots of inheritance and keep this problem away from you. Winning.</p>
+
+<p>As a design principle, I totally agree with it - changing derived classes behaviour is annoying, don't do it. Okay, sorted.</p>]]></description><link>http://codeofrob.com/entries/my-relationship-with-solid---the-misunderstood-l.html</link><guid isPermaLink="true">http://codeofrob.com/entries/my-relationship-with-solid---the-misunderstood-l.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 27 Mar 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[My relationship with SOLID - The big O]]></title><description><![CDATA[<p><strong>Open closed is dead, long live Open closed</strong></p>
 
 <p>I'm blogging about <a href="/entries/my-relationship-with-solid---starting-with-s.html">SOLID</a> for some reason, and now we're onto the beast that set me off:</p>
 
@@ -589,145 +764,4 @@ var series = session.Load&lt;Series&gt;(sermon.SeriesId)
 
 <p>The next two days are about adding data partitions per church, getting the desktop client to use the API properly and adding search/navigation functionality for the viewing public and hopefully even some profile pages for the different preachers along with their sermons. I'll probably nail some pegs into the ground and write some stabilising tests around this stuff so Sam can carry on moving forwards without me keeping the code in a reasonable shape. We'll see how much time we have.</p>
 
-<p>I'm pumped - I <em>love</em> building stuff.</p>]]></description><link>http://codeofrob.com/entries/this-week,-lets-create-a-start-up---day-3.html</link><guid isPermaLink="true">http://codeofrob.com/entries/this-week,-lets-create-a-start-up---day-3.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 15 Mar 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[This week, let's create a start-up - Day 2]]></title><description><![CDATA[<p><strong>This post was written on Tuesday</strong></p>
-
-<p>Yesterday <a href="/entries/this-week,-lets-create-a-start-up---day-1.html">I pretty much put together the admin side of the project</a>, and today I decided to focus on the other side of the project - dumping content into a third party site as if it was on the site itelf.</p>
-
-<p>Carrying on from yesterday, this was actually pretty simple</p>
-
-<ul>
-<li>Create a JS file for inclusion on the third party site</li>
-<li>When imported, it looks for !#/this-stuff-after-the-hash-bang</li>
-<li>It then loads the appropriate content from the main truthvine site based on the path after the hashbang</li>
-</ul>
-
-<p>We have to use a hashbang because we can't rely on the site we're being embedded on to be able to do server-side redirects but we want back-forward buttons to work.</p>
-
-<p>What we ended up doing was splitting up the system so we have a solution that looks like this:</p>
-
-<ul>
-<li>TruthVineAdmin (ASP.NET MVC)</li>
-<li>TruthVinePublic (ASP.NET MVC)</li>
-<li>TruthVine (RavenDB/Infrastructure)</li>
-<li>TestThirdPartyWebsite (Static files only with the script tag in them)</li>
-</ul>
-
-<p>I'd normally not like to have a "common" assembly in a solution as the tendency of developers is to shuffle lots of needless 'shared' code to this place (where they'd be better off writing the code separately in the web projects), but I trust that Sam won't do this and the only things that go in this shared assembly are:</p>
-
-<ul>
-<li>RavenDB models</li>
-<li>Common ASP.NET MVC infrastructure (session-per-request)</li>
-<li>The paging code</li>
-</ul>
-
-<p>There is little point trying to share view models or play around trying to re-use views and hide and show admin functionality on content pages (that stuff is always horrible to do unless you have time to build up some decent conventions), so this separation makes sense.</p>
-
-<p>As for my happiness rating with ASP.NET MVC today, well - it stayed out of my way because I did everything the way it wanted me to - because of this I ended up building the third party JS content-embedding system to the point where it had pretty much reached feature parity with the system we were basing this off in the first place. (Hurrah)</p>
-
-<p>I'm pretty much doing things the way I've <a href="http://codebetter.com/robashton/2011/06/13/finding-a-balance-with-asp-net-mvc/">Described previously on CodeBetter</a> without any of the feature-based grouping (haven't got time to set it up)</p>
-
-<p>Controller actions all pretty much look like this across the site</p>
-
-<pre><code>[HttpGet]
-public ActionResult Edit(int id) {
-   var doc = this.Documents().Load&lt;ThatDocument&gt;(id)
-   if(doc == null) return new Error404Result()
-   return View(new EditViewModel(doc))
-}
-
-[HttpPost]
-public ActionResult Edit(EditViewModel input) {
-   var doc = this.Documents().Load&lt;ThatDocument&gt;(model.Id)
-   if(doc == null) return new Error404Result()
-
-   if(ModelState.IsValid) {
-    input.SaveTo(doc);
-    return RedirectToAction("View", new { Id = model.Id })
-   }
-   input.CopyFrom(doc);
-   return View(input);
-}
-</code></pre>
-
-<p>Straight down to earth and simple. Coupled with all of those helper methods and Razor it's pretty easy to throw up new forms and use redirects to create a workflow over the site.</p>
-
-<p>My happiness rating with RavenDB is as ever, it stays out the way and handled persistence for me - lovely.</p>
-
-<p>With a working admin portal and a working content embedding system, that's pretty much the end-to-end product written in two days, leaving us three days to mop up the rest of the tasks. </p>
-
-<p>The good thing about all the work so far is that the domain has been very well understood and communicated (thanks to the previous incarnation of the system) so we've not had to spend too long discussing or debating things, I've been showing the work to Sam on a feature by feature basis to get feedback (he is my customer after all) and adopting his feedback every hour or so. </p>
-
-<p>Tomorrow we'll look at getting these three sites deployed on EC2, and throwing the audio files up to S3, because that'll put us in a good place.</p>]]></description><link>http://codeofrob.com/entries/this-week,-lets-create-a-start-up---day-2.html</link><guid isPermaLink="true">http://codeofrob.com/entries/this-week,-lets-create-a-start-up---day-2.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 14 Mar 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[This week, let's create a start-up - Day 1]]></title><description><![CDATA[<p><strong>This post was written on Monday</strong></p>
-
-<p>I've finished my <a href="/entries/this-week,-lets-create-a-start-up.html">first day</a> of the build a start-up in a week challenge, and now I know a little more about the project.</p>
-
-<ul>
-<li>Sam has already built a codebase that his local church uses to put sermons online</li>
-<li>His target audience is non-technical churches that have managed to get a website up there (even if it's just static code)</li>
-<li>He wants to be able to embed a single line of code in one of their pages and give them all the functionality</li>
-<li>The functionality isn't too complex, but it has to be dead easy</li>
-</ul>
-
-<p>Okay, so what the heck are sermons and what's the deal about getting them online</p>
-
-<ul>
-<li>Churches have sermons</li>
-<li>A sermon is just an audio file (encoded to a variety of formats)</li>
-<li>Each sermon can belong to a series of sermons (perhaps on a topic of some sort)</li>
-<li>Sermons have meta data associated with them, as do the series</li>
-<li>Each church needs their own subset of this data</li>
-<li>Each church can have multiple users who can add sermons and series</li>
-</ul>
-
-<p>Not that complicated, and my first suggestion is</p>
-
-<p><em>Can't we just use Wordpress/Drupal/Etc and have this done in a few hours?</em></p>
-
-<p>If I was building an MVP, that's pretty much what I'd do, but Sam is pretty insistent that he wants it done in .NET (<em>long time no see</em>) and RavenDB (<em>I was doing this last week!</em>), so I guess I need to get out my Windows laptop and once more work my way around the perils of .NET and ASP.NET MVC)</p>
-
-<p>Why ASP.NET MVC? Because I actually remember quite a lot of it from the last time I did .NET and I'm not going to waste time trying to learn another .NET web framework when I have to start building stuff <em>now</em> - when building something with such a short time-frame, you should be using something you know to make the most of the time.</p>
-
-<p>Anyway, after trying to create a few "empty sites" in Visual Studio, I finally find a configuration that is "emptier" than the other ones and get to work (this is still confusing Microsoft!)</p>
-
-<p>Turns out it's not only "mediocre" these days, but I'm actually able to get most of the basic CRUD operations and workflow done in a few hours, highlights of this experience being:</p>
-
-<ul>
-<li>The Razor View Engine</li>
-<li>Html.EditorForModel</li>
-<li>Html.EditorFor</li>
-<li>Data Validation Attributes for the ViewModels (sorry guys, but they work quite well)</li>
-<li>Global action filters</li>
-</ul>
-
-<p>The default model binding seems to work out of the box for everything, and RavenDB is being managed via global action filters so I only have to do</p>
-
-<pre><code>this.Documents()
-</code></pre>
-
-<p>In any controller to get the document session (yay for extension methods), no I'm not bothering wiring up a container, the only objects in play are the input/view models and RavenDB and the state model that is being persisted in it, and it's unlikely to get much more complicated than that (so end-to-end tests will suffice with an in-memory RavenDB for now)</p>
-
-<p>I even wrote a little bit of magic to do paging in a standard way across any view that needs them in RavenDB</p>
-
-<pre><code>pagedResults = session.Query&lt;Whatever&gt;()
-       .Where(x=&gt; SomeCondition(x))
-       .PerformPaging(inputModel)
-</code></pre>
-
-<p>Yay again for extension methods.</p>
-
-<p>I also set up OAuth - I used DotNetOpenAuth, which worked once I'd written a pile of code in a controller action - it's <em>much</em> better than the previous incarnations I used last time I did .NET, but it's still not quite as good as say, passport in NodeJS (and I'll hazard a guess it doesn't quite meet the standards of whatever RoR provides for this either).</p>
-
-<p>I guess that's because with node, we usually have control over the entry point and everything can be done with connect middleware in a standardised fashion, whereas ASP.NET MVC is an opinionated framework which doesn't know what its opinions are and still suffers from a sad-mix of xml configuration and confusion, still - I guess once you know about this stuff you can copy and paste these bits of infrastructure around so it's not too awful.</p>
-
-<p>Anyway, today I achieved with ASP.NET MVC and RavenDB</p>
-
-<ul>
-<li>All the basic CRUD forms + workflow around sermons and series (about 10 dynamic pages in all)</li>
-<li>Basic paging/filtering controls for anything that needs them</li>
-<li>Audio upload (alhough not going to S3 yet)</li>
-<li>Authentication with credentials</li>
-<li>Authentication via OAuth</li>
-<li>Theming using the bootstrap theme Sam has already provided</li>
-</ul>
-
-<p>Tomorrow I'll hook up the script to embed content in third party websites, and get the MVP finished - that'll leave three days to do all the value-adds, I'm fairly happy with this progress and feel that <em>this</em> is still how we build software, even if it's not in the technology I'd have chosen.</p>]]></description><link>http://codeofrob.com/entries/this-week,-lets-create-a-start-up---day-1.html</link><guid isPermaLink="true">http://codeofrob.com/entries/this-week,-lets-create-a-start-up---day-1.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 13 Mar 2013 09:30:00 GMT</pubDate></item></channel></rss>
+<p>I'm pumped - I <em>love</em> building stuff.</p>]]></description><link>http://codeofrob.com/entries/this-week,-lets-create-a-start-up---day-3.html</link><guid isPermaLink="true">http://codeofrob.com/entries/this-week,-lets-create-a-start-up---day-3.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 15 Mar 2013 09:30:00 GMT</pubDate></item></channel></rss>

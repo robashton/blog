@@ -1,9 +1,9 @@
 My week of SOLID: so far:
 
-- [S]()ingle responsibility
-- [O]()Open closed
-- [L]()iskov substitution
-- [I]()nterface segregation
+- [S](/entries/my-relationship-with-solid---starting-with-s.html)ingle responsibility
+- [O](/entries/my-relationship-with-solid---the-big-o.html)pen closed
+- [L](/entries/my-relationship-with-solid---the-misunderstood-l.html)iskov substitution
+- [I](/entries/my-relationship-with-solid---seeing-i-to-i.html)nterface segregation
 - [D](#)ependency inversion
 
 We've reached D, and that's where the wave we started with L finally hits the shore and materialises into something we can use.
