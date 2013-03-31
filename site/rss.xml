@@ -1,5 +1,124 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Fri, 29 Mar 2013 08:59:56 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[My relationship with SOLID - Seeing I to I]]></title><description><![CDATA[<p>The <a href="http://en.wikipedia.org/wiki/Interface_segregation_principle">interface segregation principle</a> is slightly more relevant to the code that I write day to day than <a href="/entries/my-relationship-with-solid---the-misunderstood-l.html">Liskov</a>.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Sun, 31 Mar 2013 13:58:58 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[My relationship with SOLID - The overloaded D]]></title><description><![CDATA[<p>My week of SOLID: so far:</p>
+
+<ul>
+<li><a href="/entries/my-relationship-with-solid---starting-with-s.html">S</a>ingle responsibility</li>
+<li><a href="/entries/my-relationship-with-solid---the-big-o.html">O</a>pen closed</li>
+<li><a href="/entries/my-relationship-with-solid---the-misunderstood-l.html">L</a>iskov substitution</li>
+<li><a href="/entries/my-relationship-with-solid---seeing-i-to-i.html">I</a>nterface segregation</li>
+<li><a href="#">D</a>ependency inversion</li>
+</ul>
+
+<p>We've reached D, and that's where the wave we started with L finally hits the shore and materialises into something we can use.</p>
+
+<p><blockquote>
+A. High-level modules should not depend on low-level modules. Both should depend on abstractions.
+  </blockquote></p>
+
+<p><blockquote>
+B. Abstractions should not depend upon details. Details should depend upon abstractions.
+  </blockquote></p>
+
+<p>We've been using that Stream example for the last couple of blog entries and we'll pull that out one last time as an example:</p>
+
+<p>Stream is an example of a <em>low level module</em>, and we can consider IStream to be an abstraction of that, which <em>high level modules</em> can consume</p>
+
+<pre><code>public interface IStream {
+  void Read();
+  void Write();
+  void Seek();
+}
+
+public class Stream : IStream { etc }
+</code></pre>
+
+<p>However, this is still not really an abstraction, the abstraction is a lie because it is an exact mirroring of the actual Stream object. (this is okay sometimes as we'll see below)</p>
+
+<p><strong>How I like to code sometimes</strong></p>
+
+<p>I'm writing a high level module, let's say it's a Controller, and it needs to construct a view model for return to the outside world for rendering in a View of some sort. </p>
+
+<p>Let's mix it up a little bit and do it in NodeJS like I'm pretty much doing everywhere at the moment.</p>
+
+<pre><code>app.get('/ponies', function(req, res) {
+
+})
+</code></pre>
+
+<p>I don't like to typically make decisions in a long-term project about persistence until I know more about my use cases, and indeed in this case I don't even want to care that persistence is even happening - instead, what I'll usually do is say to the outside world, <em>I need something that houses ponies</em></p>
+
+<pre><code>module.exports = function(app, stable) {
+    app.get('/ponies', function(req, res) {
+      var ponies = stable.availablePonies(req.params.count, req.params.pagesize, req.params.page)
+      res.send(ponies)
+    })
+}
+</code></pre>
+
+<p>What is stable? Well, stable was instantiated by the Application Root and I don't care what stable is, a basic implementation (and indeed the one I start off with is)</p>
+
+<pre><code>stable = new InMemoryStable()
+</code></pre>
+
+<p>This allows me to write features quickly, allows me to write functional tests that are relatively fast and allows me to iterate on these things quickly and defer the decision about persistence until it becomes necessary to deal with it (if it does at all)</p>
+
+<p>The important point here is that implicit interface being defined here (I'm in JS, we haven't got a real interface), let's call it "IHousePonies" has been dictated by the high level module and it doesn't care what the low level code behind that interface does.</p>
+
+<p>That's an inversion of responsibility and it's a good one too because it means I'm unlikely to run into violations of <a href="/entries/my-relationship-with-solid---seeing-i-to-i.html">ISP</a> because the high level module <em>requires</em> that the functionality on that interface be present on all implementations of that interface.</p>
+
+<p>This is close-ish to what some people would describe as using <a href="http://martinfowler.com/bliki/RoleInterface.html">role interfaces</a> which are worth reading up on. Certainly when I'm putting my software-engineering hat on and I'm working on a project where things are likely to be complex, there are likely to be quite a few moving parts and code quality is important I'll lean in this direction.</p>
+
+<p><strong>How I like to code other times</strong></p>
+
+<p>If I'm in .NET helping build the standard ASP.NET MVC application that clients tend to want, I'll pull out RavenDB which has an in-memory mode and use its interfaces directly across my application. They are an abstraction already and that abstraction hides</p>
+
+<ul>
+<li>The use of RavenDB as an embedded database</li>
+<li>The use of RavenDB as a remote HTTP database</li>
+<li>The use of RavenDB as an in-memory database (for testing)</li>
+</ul>
+
+<p>Sticking our own abstraction around this makes very little sense, although if we have complicated domain logic we might end up with some coordinators between the controller and RavenDB.</p>
+
+<p>In most cases the effort of building up abstractions over time from our high level controllers won't really have much of a pay off.</p>
+
+<p>Of course, if elsewhere in that project I have the need to do something that isn't CRUD, then the use of my own abstractions will come into things because hiding the low level details from the high level consumers is still important. These abstractions can be built up over time as needed, rather than defining them all up front.</p>
+
+<p><em>Insert any other similar technologies into the above scenarios and it's pretty much the same</em></p>
+
+<p><strong>How any of this can relate to testing</strong></p>
+
+<p>Well, if we're describing our dependencies on other modules as interfaces that we own, we can create in memory representations of those dependencies in the form of mocks, stubs or full-blown in-memory implementations (the latter being my personal preference in most cases)</p>
+
+<p>Having ownership of the interfaces that we rely on means we can dictate the desired behaviour via tests (or in some languages code contracts), and it means that the tests we write for our module can make assumptions about how the code behind that abstraction is going to work.</p>
+
+<p>Coupling this design principal with techniques such as <a href="http://en.wikipedia.org/wiki/Dependency_injection">Dependency Injection</a> means that we can make it very clear to the outside world from our module what abstractions we rely on, and allow the outside world to make decisions about what it is we are going to actually get.</p>
+
+<p><strong>How it can all go wrong - attack of the killer interfaces</strong></p>
+
+<p>What happens in a lot of projects is that we decide that the reason for DI is for testing, and isolation is really important so we need to have abstractions for everything, and almost everywhere we end up with</p>
+
+<pre><code>public class Something
+public interface ISomething
+</code></pre>
+
+<p>Because every class needs an interface in order to be mockable - we forget to apply the inversion part of dependency inversion and instead we just focus on dependencies for our tests.</p>
+
+<p>This isn't helped by most popular IOC frameworks and their default convention that it'll automatically bind instances like the above for us.</p>
+
+<p>This is awful, when we think about inverting the relationship between our high level modules and low level modules, we should be thinking about it in terms of pay-off and not dancing around for the sake of writing pointless low level tests for code with little real behaviour.</p>
+
+<p>We should be limiting our abstractions to the tune of rather than thinking about everything at the class level, thinking about things at the module level (which could be a collection of classes that talk to each other and require some external data/input)</p>
+
+<p><strong>SOLID - where did it all go wrong?</strong></p>
+
+<p>I could go on about this till the cows come home, but I don't want to because I've got some stuff to build, so I'll leave it here with a final note:</p>
+
+<p><strong>ALL</strong> of the SOLID principles are <em>great</em>, as a guideline for thinking about code as we write it, I'm not disagreeing with that at all. What I disagree with are statements that say "MUST" or "NOT ALLOWED" etc - because most developers are not master craftsmen (or whatever you call yourselves these days) and trying to make them write code as if they are is what leads to disaster.</p>
+
+<p>Most code should be allowed to grow organically, and caution should be exercised in making sure that we don't end up with that big ball of mud that everybody fears - absolutely. Trying to avoid that big ball of mud by blindly following the SOLID principles leads to the creation of a big haystack where the actual functionality is a needle hidden somewhere underneath.</p>
+
+<p><strong>fin</strong></p>]]></description><link>http://codeofrob.com/entries/my-relationship-with-solid---the-overloaded-d.html</link><guid isPermaLink="true">http://codeofrob.com/entries/my-relationship-with-solid---the-overloaded-d.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 29 Mar 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[My relationship with SOLID - Seeing I to I]]></title><description><![CDATA[<p>The <a href="http://en.wikipedia.org/wiki/Interface_segregation_principle">interface segregation principle</a> is slightly more relevant to the code that I write day to day than <a href="/entries/my-relationship-with-solid---the-misunderstood-l.html">Liskov</a>.</p>
 
 <p><blockquote>
   The interface-segregation principle (ISP) states that no client should be forced to depend on methods it does not use. 
@@ -715,53 +834,4 @@ var series = session.Load&lt;Series&gt;(sermon.SeriesId)
 
 <p>I guess browser compatability is always gonna be one of those things, but it only took an hour or so and leaving with all of the above achieved in a single day made us feel pretty good :)</p>
 
-<p>Tomorrow time for some more features before I head back off to London and have a couple of days rest before heading to Greece for another coding adventure...</p>]]></description><link>http://codeofrob.com/entries/this-week,-lets-create-a-start-up---day-4.html</link><guid isPermaLink="true">http://codeofrob.com/entries/this-week,-lets-create-a-start-up---day-4.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 18 Mar 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[This week, let's create a start-up - Day 3]]></title><description><![CDATA[<p><strong>This post was written on Wednesday</strong></p>
-
-<p>Now we have the <a href="/entries/this-week,-lets-create-a-start-up---day-1.html">Admin functionality</a> and the <a href="/entries/this-week,-lets-create-a-start-up---day-2.html">Public functionality</a> spiked properly into, it's time to look at file uploads properly.</p>
-
-<p>Sam has a tool which will (client-side) be used to process audio files for upload in a very simple and stripped down manner (built specifically for his target demographic) - I quite like that.</p>
-
-<p>I also have admin forms for this task and this is where our first bit of feature-confusion happens.</p>
-
-<p><em>Rob: Okay, so you have audio files attached to sermons, I've implemented that as a list of value types with a URI and display name</em></p>
-
-<p>Sam: "We probably want to have specific buckets for "High quality audio", "Low quality audio" and "Sermon notes"</p>
-
-<p><em>Rob: Wait what? Sermon notes, we can upload arbitrary files?</em></p>
-
-<p>Sam: "Not arbitrary, we have two types of audio file and often a PDF for the sermon notes"</p>
-
-<p><em>Rob: Okay, seems like these are going to be explicit UI concepts so I'll bake that into the actual domain</em></p>
-
-<p>Sam: "Yeah, that'll work... oh except sometimes they upload the entire sermon as well as pieces from the sermon"</p>
-
-<p><em>Rob: So we have explicit files to be uploaded and arbitrary files, I don't mind handling that, although the UI could be complicated</em></p>
-
-<p>Sam: "Hmm, I really want them to be told what to upload as that's user friendly, but I also want the flexibility of anything"</p>
-
-<p>There was also the matter of workflow and how to expose this functionality to the uploading client he was building.</p>
-
-<p>This was a bit of an ongoing conversation, and over the day I actually tried a few workflows out to see what would be easier, and we settled for being able to upload any files at all, but the server would work out what the files were and categorise them when displaying them to either the admin or the public. (Iterating has the advantage of fast feedback)</p>
-
-<p>As for the workflow, I decided I'd use plain old HTML forms with re-directs and links for workflow, done in such a manner that his client can use the same API as the user does through the browser. I can't quite do it with the routes I'd want because I couldn't get ASP.NET MVC to play ball without a bit of faffing around- and I haven't got time to do that. The concepts are there and if we want to be purists later we can change the server without risk of the client breaking so there's that.</p>
-
-<p>With regards to S3, I was surprised how easy this was, I pulled the Amazon SDK NuGet package, and in less than 10 minutes had files being sent to S3, using the Task libraries to manage multiple uploads at the same time. +1 point to the .NET eco-system at this point - definitely better than it used to be.</p>
-
-<p>My experience with ASP.NET MVC is even happier today, making peace with it seems to be paying off, my most pleasing find today was the support for arrays:</p>
-
-<pre><code>for(var i = 0; i &lt; Model.Items.Length; i++ ) {
-  Html.EditorFor(x=&gt; x.Items[i].Title)
-}
-</code></pre>
-
-<p>That made me a happy person. (I last used MVC to build a full product in the days of MVC1 and this was not available)</p>
-
-<p>I spent a bit of time making all the workflows consistent across the admin site and the public site, and polishing the styling and data being displayed across all the pages so I could "mark those features as being done" (After using them a bit and getting feedback they weren't going to change substantially so it was worth investing that time now so I didn't have to later).</p>
-
-<p>We also get everything up onto Amazon so it worked, and verified all the admin functionality and public functionality existed in the way desired.</p>
-
-<p>So that's that, in three days we have built a working product and gotten it deployed into the cloud - and on top of the .NET framework too, which is probably my biggest surprise.</p>
-
-<p>The next two days are about adding data partitions per church, getting the desktop client to use the API properly and adding search/navigation functionality for the viewing public and hopefully even some profile pages for the different preachers along with their sermons. I'll probably nail some pegs into the ground and write some stabilising tests around this stuff so Sam can carry on moving forwards without me keeping the code in a reasonable shape. We'll see how much time we have.</p>
-
-<p>I'm pumped - I <em>love</em> building stuff.</p>]]></description><link>http://codeofrob.com/entries/this-week,-lets-create-a-start-up---day-3.html</link><guid isPermaLink="true">http://codeofrob.com/entries/this-week,-lets-create-a-start-up---day-3.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 15 Mar 2013 09:30:00 GMT</pubDate></item></channel></rss>
+<p>Tomorrow time for some more features before I head back off to London and have a couple of days rest before heading to Greece for another coding adventure...</p>]]></description><link>http://codeofrob.com/entries/this-week,-lets-create-a-start-up---day-4.html</link><guid isPermaLink="true">http://codeofrob.com/entries/this-week,-lets-create-a-start-up---day-4.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 18 Mar 2013 09:30:00 GMT</pubDate></item></channel></rss>
