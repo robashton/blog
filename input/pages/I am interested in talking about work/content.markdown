@@ -6,7 +6,7 @@ So, from July I'll need to start earning a regular or semi-regular income once m
 
 **Who am I?**
 
-I have spent the past decade delivering software primarily in the Microsoft space with a focus on C# and JS. I mostly end up in charge of the software projects I'm involve with and have a focus on keeping the team's options open and able to react to change.
+I have spent the past decade delivering software primarily in the Microsoft space with a focus on C# and JS. I mostly end up in charge of the software projects I'm involved with and have a focus on keeping the team's options open and able to react to change.
 
 I am a regular on the conference circuit and tend to talk about testing, javascripts and pragmatic development in .NET.
 

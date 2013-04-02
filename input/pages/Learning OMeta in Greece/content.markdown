@@ -1,4 +1,4 @@
-This week I'm in Athens, working for [Rulemotion](http://rulemotion.com/) who use these technologies amongst others:
+This week I'm in Athens (well, probably a month or so ago now there is a massive blog post queue), working for [Rulemotion](http://rulemotion.com/) who use these technologies amongst others:
 
 - OMeta
 - SVRB
@@ -7,10 +7,10 @@ This week I'm in Athens, working for [Rulemotion](http://rulemotion.com/) who us
 - NodeJS
 - OData
 
-My job in Athens is two fold::::
+My job in Athens is two fold:
 
 - Write some OMeta stuff somewhere (They have a specific project/task - don't worry)
-- Look at the overal project and give my honest feedback
+- Look at the overall project and give my honest feedback
 
 Well, giving honest feedback is something I can do - however my relationship with OMeta and SVRB is that I've never heard of them.
 
