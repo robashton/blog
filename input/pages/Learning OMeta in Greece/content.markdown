@@ -12,7 +12,7 @@ My job in Athens is two fold:
 - Write some OMeta stuff somewhere (They have a specific project/task - don't worry)
 - Look at the overall project and give my honest feedback
 
-Well, giving honest feedback is something I can do - however my relationship with OMeta and SVRB is that I've never heard of them.
+Well, giving honest feedback is something I can do - however my relationship with OMeta and SBVR is that I've never heard of them.
 
 **It looks like I have some learning to do**
 
