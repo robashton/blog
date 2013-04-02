@@ -1,5 +1,112 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Tue, 02 Apr 2013 09:14:03 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[I am interested in talking about work]]></title><description><![CDATA[<p>By the time July rolls around, I will have spent half a year travelling around <a href="/entries/i-am-not-looking-for-a-job.html">working for free</a>, learning new technologies, picking up new skills and in general becoming a <a href="/entries/a-note-on-working-hours-and-working-at-home.html">happier person</a>.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Tue, 02 Apr 2013 09:32:46 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Learning OMeta in Greece]]></title><description><![CDATA[<p>This week I'm in Athens (well, probably a month or so ago now there is a massive blog post queue), working for <a href="http://rulemotion.com/">Rulemotion</a> who use these technologies amongst others:</p>
+
+<ul>
+<li>OMeta</li>
+<li>SVRB</li>
+<li>JS</li>
+<li>CoffeeScript</li>
+<li>NodeJS</li>
+<li>OData</li>
+</ul>
+
+<p>My job in Athens is two fold:</p>
+
+<ul>
+<li>Write some OMeta stuff somewhere (They have a specific project/task - don't worry)</li>
+<li>Look at the overall project and give my honest feedback</li>
+</ul>
+
+<p>Well, giving honest feedback is something I can do - however my relationship with OMeta and SVRB is that I've never heard of them.</p>
+
+<p><strong>It looks like I have some learning to do</strong></p>
+
+<p>So what IS OMeta? It turns out that I do have a little experience in this area because OMeta is a expression parsing language, and like most people I've written a few parsers and compilers in my few years as a software developer.</p>
+
+<p>OMeta is a bit different in that it had a specific goal - chiefly that of making it fast to prototype new languages/parsing constructs, and indeed it can be used to do pretty much the whole chain in the compilation process (parsing, intepreting and compilation).</p>
+
+<p>You can read the <a href="http://www.vpri.org/pdf/tr2008003_experimenting.pdf">original paper</a>, it's the best source of information apart from just reading the implementation.</p>
+
+<p><em>I'm not going to do a blog series on this, just wanted to throw up some stuff as I learned it :)</em></p>
+
+<p><strong>What I'm using</strong></p>
+
+<p>I have <a href="https://github.com/Page-/ometa-js">OMeta-JS</a>, and I'm doing most of my playing in the web browser with <a href="https://github.com/Page-/ometa-js/tree/highlighting/examples/highlighting">An OMeta parsing Ometa demo</a>.</p>
+
+<p>If I make some OMeta in the textbox and then go to the other textbox, I can copy and paste the JS into a repl and play around, it's not the most super effective way of working but I suspect this demo will be improved on to make it easier.</p>
+
+<p><strong>So again, what is OMeta?</strong></p>
+
+<p>I told you, it's a parsing language, check out the following:</p>
+
+<pre><code>ometa MyParser {
+  greeting = "Hello"
+}
+</code></pre>
+
+<p>If I compile this, I'll get the following:</p>
+
+<pre><code>var MyParser = OMeta._extend({
+  greeting: function() {
+      var $elf = this, _fromIdx = this.input.idx;
+      return this._applyWithArgs("token", "Hello");
+  }
+});
+</code></pre>
+
+<p>Which I can use in some code</p>
+
+<pre><code>MyParser.matchAll("Hello", "greeting")    : Success
+MyParser.matchAll("Goodbye", "greeting")  : Failure
+</code></pre>
+
+<p>What I can also do is transform these expressions into other expressions</p>
+
+<pre><code>ometa MyParser {
+  greeting = "Hello" -&gt; "Howdy"
+}
+
+MyParser.matchAll("Hello", "greeting")    : "Howdy"
+</code></pre>
+
+<p>And I can also build up matches out of other matches</p>
+
+<pre><code>ometa MyParser {
+  greeting = "Hello",
+  bob      = "Bob",
+  sentence = greeting bob
+}
+
+MyParser.matchAll("Hello Bob", "sentence")  : Success
+MyParser.matchAll("Hello James", "sentence")  : Failure
+MyParser.matchAll("Bob", "bob")  : Success
+</code></pre>
+
+<p>And this means I can build up transformations from simple expressions:</p>
+
+<pre><code>ometa MyParser {
+  greeting = "Hello" -&gt; "Howdy ",
+  bob      = "Bob"   -&gt; "Bobby"
+  sentence = greeting:g bob:b -&gt; (g + b)
+}
+
+MyParser.matchAll("Hello Bob", "sentence")  : "Howdy Bobby"
+MyParser.matchAll("Hello James", "sentence")  : Failure
+</code></pre>
+
+<p>Now obviously we don't use this language for parsing daft sentences like the above, what we do is use it to build up expectations around structures such as program code.</p>
+
+<pre><code>ometa CParser {
+  type    = identifier,
+  argList = listOf(arg, ","),
+  methodBody = "{" statementList "}"
+  program = type "main("  argList ")" methodBody
+}
+</code></pre>
+
+<p>And so on...</p>
+
+<p>Now this is getting ahead of myself, let me write about how I got to grips with OMeta by writing a JSON parser...</p>]]></description><link>http://codeofrob.com/entries/learning-ometa-in-greece.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learning-ometa-in-greece.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 02 Apr 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[I am interested in talking about work]]></title><description><![CDATA[<p>By the time July rolls around, I will have spent half a year travelling around <a href="/entries/i-am-not-looking-for-a-job.html">working for free</a>, learning new technologies, picking up new skills and in general becoming a <a href="/entries/a-note-on-working-hours-and-working-at-home.html">happier person</a>.</p>
 
 <p>I can't keep doing this forever, aside from the slow drip of money out of my bank accounts I already miss having a permanent base to go back to.</p>
 
@@ -710,90 +817,4 @@ Then we'd run into problems with that configuration, and waste hours trying to w
 
 <p><strong>So please, stop</strong></p>
 
-<p>If you're not using some sort of package system to help you with your JavaScripts, then please start doing so. Preferably use NPM because it is one of the best designed package managers out there, but feel free to use Bower or something like that too, just stop presenting me with large codebases with piles of JS in them, it's costing you money to hire me and you don't want that money to be spent with me trying to work out how your folder structure works.</p>]]></description><link>http://codeofrob.com/entries/stop-using-relative-paths-in-your-javascripts.html</link><guid isPermaLink="true">http://codeofrob.com/entries/stop-using-relative-paths-in-your-javascripts.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 20 Mar 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[This week, let's create a start-up - Day 5]]></title><description><![CDATA[<p><strong>This post was written on Friday</strong></p>
-
-<p>Final day of "<a href="entries/this-week,-lets-create-a-start-up.html">Build a start-up in a week</a>", how did we do?</p>
-
-<p>Well, we deployed all assets to Amazon and ported across Sam's first customer from his original single-tenant system and everything works as expected. This work included lots of tidy up and "making nice jobs", very little faffing :)</p>
-
-<ul>
-<li>Sticking jPlayer into an iFrame so Sam could skin it </li>
-<li>Write a migration script to take data from the original system and create an org for it in the new system</li>
-<li>Setting up autoplay from the home page (so pressing play on a sermon would re-direct to the sermon page and play the sermon via jPlayer)</li>
-<li>Fulltext search functionality on both the public site and the admin site through sermons</li>
-<li>Adding the series info on the sermon viewing page</li>
-<li>Styling</li>
-</ul>
-
-<p>Not very exciting, but all very trivial (even full text search)</p>
-
-<p><em>Migration script</em></p>
-
-<p>This just loaded the original data into memory as a string, de-serialized it into the old data types, copied it across into new data types, re-wrote ids across references and then called SaveChanges.</p>
-
-<p>Didn't even bother using any of the bulk support in RavenDB as the amount of data was trivial, the dumb solution is sometimes the best- <em>next</em></p>
-
-<p><em>Full text search</em></p>
-
-<p>YAY RAVENDB</p>
-
-<pre><code>    public class SermonSearchIndex : AbstractIndexCreationTask&lt;Sermon&gt;
-    {
-        public SermonSearchIndex()
-        {
-            Map = docs =&gt; from doc in docs
-                          select new
-                              {
-                                  doc.OrganisationId,
-                                  doc.ServiceType,
-                                  doc.Title,
-                                  doc.SpeakerName,
-                                  doc.BibleReference,
-                                  doc.SermonDate,
-                                  doc.IsPublished
-                              };
-
-            Index(x =&gt; x.ServiceType, FieldIndexing.Analyzed);
-            Index(x =&gt; x.Title, FieldIndexing.Analyzed);
-            Index(x =&gt; x.SpeakerName, FieldIndexing.Analyzed);
-            Index(x =&gt; x.BibleReference, FieldIndexing.Analyzed);
-
-        }
-    }
-}
-
-
-if (!string.IsNullOrEmpty(input.Search))
-{
-    query = query.Where(x =&gt; x.Title == input.Search || x.SpeakerName == input.Search || x.BibleReference == input.Search || x.ServiceType == input.Search);
-}
-</code></pre>
-
-<p>Can't argue with how easy that was, and it still all works with that original paging stuff I wrote on the first day.</p>
-
-<p><em>Adding the series info for a sermon</em></p>
-
-<pre><code>var sermon = session.Load&lt;Sermon&gt;(id)
-// if null etc
-var series = session.Load&lt;Series&gt;(sermon.SeriesId)
-</code></pre>
-
-<p>Remember that ISecureDocumentSession <a href="/entries/this-week,-lets-create-a-start-up---day-4.html">I wrote yesterday</a>? That made the Include stuff hard to cater for on a Load, so I just do two load calls instead - in a more evolved system we'd have to do this better somehow because it isn't going to scale across all the other usages that IDocumentSession can give us.</p>
-
-<p>Instead I'd look at hooking into RavenDB properly to do this security (either using its server-side security bundle, or adding appropriate extension points for this sort of filtering job on the client)</p>
-
-<p>For this sort of thing though, it's two remote calls rather than one on a fairly low traffic system so it should be okay for now.</p>
-
-<p><em>Deploying</em></p>
-
-<p>Took 10 minutes to get onto Amazon thanks to Sam's efforts earlier in the week, and 5 minutes to replace the content on the old system with the script tag to import data from the new Truthvine system. (That's what the customer would have to do to use it)</p>
-
-<p>If that's not easy I don't know what is. </p>
-
-<p><em>Summary</em></p>
-
-<p>ASP.NET MVC is surprisingly tolerable if you leave your opinions and a bit of brain-matter at the door on your way in, certainly it's pretty fine at throwing together a quick cruddy application on top of something simple like RavenDB.  Oh, and Razor is a thing of beauty - well done Microsoft for getting at least one thing right this past few years (Aww, just kidding, you know I love you really)</p>
-
-<p>Mission accomplished and nothing in the solution is messy at all thanks to the no-crap atttitude of throwing things together that work in the simplest way possible.</p>
-
-<p>I wish Sam luck on his start-up adventure and hope he finds enough clients to make the effort worthwhile, he's got a good project on his hands and I hope I've given him the boost he needed to get going.</p>]]></description><link>http://codeofrob.com/entries/this-week,-lets-create-a-start-up---day-5.html</link><guid isPermaLink="true">http://codeofrob.com/entries/this-week,-lets-create-a-start-up---day-5.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 19 Mar 2013 09:30:00 GMT</pubDate></item></channel></rss>
+<p>If you're not using some sort of package system to help you with your JavaScripts, then please start doing so. Preferably use NPM because it is one of the best designed package managers out there, but feel free to use Bower or something like that too, just stop presenting me with large codebases with piles of JS in them, it's costing you money to hire me and you don't want that money to be spent with me trying to work out how your folder structure works.</p>]]></description><link>http://codeofrob.com/entries/stop-using-relative-paths-in-your-javascripts.html</link><guid isPermaLink="true">http://codeofrob.com/entries/stop-using-relative-paths-in-your-javascripts.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 20 Mar 2013 09:30:00 GMT</pubDate></item></channel></rss>
