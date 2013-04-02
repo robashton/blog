@@ -1,7 +1,7 @@
 This week I'm in Athens (well, probably a month or so ago now there is a massive blog post queue), working for [Rulemotion](http://rulemotion.com/) who use these technologies amongst others:
 
 - OMeta
-- SVRB
+- SBVR
 - JS
 - CoffeeScript
 - NodeJS
