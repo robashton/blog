@@ -73,7 +73,7 @@ My bullets to begin with?
                   (initEnemy x y 20 20)
        )
        :player (initPlayer 200 430 20 20)
-       :bullets '()
+       :bullets ()
      } 
     )
 

@@ -1,5 +1,526 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Tue, 02 Apr 2013 10:36:49 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Learning OMeta in Greece]]></title><description><![CDATA[<p>This week I'm in Athens (well, probably a month or so ago now there is a massive blog post queue), working for <a href="http://rulemotion.com/">Rulemotion</a> who use these technologies amongst others:</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Fri, 05 Apr 2013 12:12:06 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Writing an OData parser - starting at the beginning]]></title><description><![CDATA[<p>I'm going off what is specified in both the OData spec and the OData URI conventions document.</p>
+
+<p>This is a bit annoying, because it seems like URI conventions are just that, conventions - and people are free to do what they want (I haven't looked at the metadata spec yet so I'm not sure how discoverable this customisability is, I guess I'll get there during my time on this task)</p>
+
+<p>What I think I can start with, is parsing the following basics</p>
+
+<ul>
+<li>The service root itself (http://example.com/service/odata.svc for example)</li>
+<li>An entity at this root ( /model )</li>
+<li>An entity with a key ( /model(1) )</li>
+</ul>
+
+<p><strong>How I'll develop this</strong></p>
+
+<p>This is yet another task I'll probably write tests for as I go so I can document how far I've gotten and have a safety net as I no doubt make lots of mistakes.</p>
+
+<p>I'll copy and paste code from the old OData parser as I need it and as I write the tests to support it, in this even the legacy code will end up with coverage.</p>
+
+<p>In this way, I hope to be able to hand this over to Rulemotion in its semi-complete state but with a nice document (the tests) explaining what is covered so far.</p>
+
+<p><strong>My first few tests</strong></p>
+
+<p>I'll not bother covering the order in which I do this, as it's pretty similar to how I did the JSON parser, except I can make a few more assumptions because I know a but more about how OMeta works.</p>
+
+<pre><code>function test(input, entry, expectation) {
+  describe("Parsing " + input, function() {
+    var parser = ODataParser.createInstance()
+    var result = parser.matchAll(input, entry)
+    expectation(result)
+  });
+}
+
+test("/", "OData", function(result) {
+  it("Service root should have no model", function() {
+     assert.equal(result.resource, null)
+  })
+})
+
+test("/model", "OData", function(result) {
+  it("should have the resource specified", function() {
+     assert.equal(result.resource, 'model')
+  })
+})
+
+test("/model(1)", "OData", function(result) {
+  it("should have the resource specified", function() {
+     assert.equal(result.resource, 'model')
+  })
+  it("should have the key specified for the source", function() {
+     assert.equal(result.key, '1')
+  })
+})
+</code></pre>
+
+<p>After the first couple of tests, setting up the parser etc was a ball-ache so I fixed it.</p>
+
+<p>I'm missing out the bit where I specify what the service root is, I'll come back to it later as I'm more interested in parsing the path itself.</p>
+
+<p>This is what I wrote to support the above tests:</p>
+
+<pre><code>ometa ODataParser 
+  Number = &lt;digit+&gt;:d -&gt; parseInt(d, 10),
+
+  OData = (
+      PathSegment
+    | '/'
+  ) 
+  ,
+
+  PathSegment = 
+      '/'
+        ResourceName:resource
+        (
+          ("(" Number:key ")")?
+        ) -&gt; { resource: resource, key: key }
+      ,
+
+  ResourcePart =
+    &lt;    (   letter
+      |    '_'
+      )+
+    &gt;:resourcePart
+    -&gt; resourcePart.replace(new RegExp('_', 'g'), ' '),
+
+  ResourceName =
+    &lt;    ResourcePart
+      (    '-'
+        ResourcePart
+      )*
+    &gt;
+}
+</code></pre>
+
+<p>Things of note</p>
+
+<ul>
+<li>I'm currently returning the model from PathSegment as { resource: resource, key: key }, I'll end up making something else for this I think</li>
+<li>The "key" is optional, if it's not there then it will simply be undefined, this is what that question mark is for after those braces</li>
+<li>The ResourcePart and ResourceName are copied from the old code and simply convert underscores into spaces, I haven't bothered writing tests for this as I've not checked what ODatas rules are for entity names yet (It's likely to be a bit more complicated than "any text at all")</li>
+</ul>
+
+<p>This is all very rudimentary, now - looking at the URI conventions, they seem to support arbitrary paths into object relationships like so:</p>
+
+<pre><code>/model(1)/children(1)/otherchildren(1)/field
+</code></pre>
+
+<p>This suggests I probably want to recurse in order to build up this sequence</p>
+
+<pre><code>test("/model(1)/child", "OData", function(result) {
+  it("should have the resource specified", function() {
+     assert.equal(result.resource, 'model')
+  })
+  it("should have the key specified for the resource", function() {
+     assert.equal(result.key, '1')
+  })
+  it("should have the child specified", function() {
+     assert.equal(result.resource.next, 'child')
+  })
+})
+</code></pre>
+
+<p>Not sure if this is an appropriate representation, but it'll do for now until I find out how we're going to be consuming this model.</p>
+
+<p>Having just arrived at the hotel and written this all on the boat, I'll defer having a look at how to do this until tomorrow, I've already passed the balmers peak.</p>]]></description><link>http://codeofrob.com/entries/writing-an-odata-parser---starting-at-the-beginning.html</link><guid isPermaLink="true">http://codeofrob.com/entries/writing-an-odata-parser---starting-at-the-beginning.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 05 Apr 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Building an OData parser in OMeta]]></title><description><![CDATA[<p>Now I've got myself up to speed in OMeta (which took me an embarassingly difficult couple of days!), I can begin work on a "programming task" for the rest of my stay at Rulemotion's office in Athens.</p>
+
+<p><strong>First off, the context</strong></p>
+
+<p>Rulemotion is doing some pretty cool stuff with SBVR relating to Model First Development. It goes a little bit like this:</p>
+
+<ul>
+<li>Write about your system in SBVR</li>
+<li>Use OMeta to parse this information</li>
+<li>Generate a database with validation/constraints</li>
+<li>Generate an OData API over the top of this system</li>
+</ul>
+
+<p>It's a little <em>more</em> than that, but the discussion of "what the products are" would take a few blog posts in themselves and the task of going over this topic is more related to the other half of my job whilst here at Rulemotion (plus, I'm neither employed or qualified to write marketing materials!).</p>
+
+<p>What I <em>can</em> say is that the general trend at Rulemotion seems to be "Use OMeta for parsing things", and in doing this they automatically get a lot of things for free (chiefly, the editor that they're using/creating for supporting development gets its auto-completion and highlighting from OMeta, which is pretty super.)</p>
+
+<p>What we actually have at the moment is a situation that has evolved like so:</p>
+
+<ul>
+<li>There was a custom HTTP API</li>
+<li>They moved to OData</li>
+<li>They wrote a partial OData parser on top of a lot of their other code</li>
+<li>This OData parser is dependent on the underlying model generated by SBVR</li>
+<li>It would be preferable if the OData parser was independent and more complete in itself</li>
+<li>Then the model generated by the parser can be consumed by their code and related to the model</li>
+</ul>
+
+<p>There is also hope to open source the OData parser too, which is also super cool.</p>
+
+<p><strong>Where do I come in?</strong></p>
+
+<ul>
+<li>Well, my first task was to get up to speed on OMeta, I can tick that one off well enough!</li>
+<li>My next task is to add some features to the existing OData parser, I manage this after stepping through the generated JS to understand more about what is going on and writing some tests around what seems to be desired</li>
+<li>At this point there is a decision to make about how to proceed</li>
+</ul>
+
+<p>It is going to start being annoying building up a pile of OData parsing code that is coupled to the underlying model, so I'm going to give writing the OData parser a go, and at least try to reach feature parity with what they have now (I can re-use quite a lot of the code).</p>
+
+<p>There is a little bit of discussion based around a semi-facetious remark I made about using OMeta to parse the ABNF for OData into OMeta, but while this would provide a more "complete" solution, would still involve having to write the semantic output code and might not necessarily be the best use of time given they only need a subset of OData.</p>
+
+<p>So I've decided to give writing an OData parser a go over the weekend and see how far I get, I'll be holidaying it up on a Greek island off the coast of Athens and applying Mojito Driven Development so I make no promises about productivity...</p>]]></description><link>http://codeofrob.com/entries/building-an-odata-parser-in-ometa.html</link><guid isPermaLink="true">http://codeofrob.com/entries/building-an-odata-parser-in-ometa.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 04 Apr 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Building a basic JSON parser in OMeta]]></title><description><![CDATA[<p>I learn by doing, not by reading books, this is bit of a disability when first encountering something <em>completely</em> new because it's hard to start until you know something but learning something when you can't learn by reading is a real pain!</p>
+
+<p>Nevertheless, I decided the best way to crack the nut of OMeta would be to write something to read JSON (it has already been done so I've got something to refer to if I get stuck), and I don't need to make it complete - just functional enough to say "okay, I can do something more real in OMeta now"</p>
+
+<p>Oh, and because this is something new and different, my spike into it will involve feeling my way through the problem with tests. I can't do it all in-line hardcore TDD-style in the test functions and extract because of the OMeta compilation phase - but it should be good enough for fast feedback while learning.</p>
+
+<p>So first off, I want to know how to match an empty object</p>
+
+<pre><code>{}
+</code></pre>
+
+<p>That's my empty object there, the simplest possible blob of JSON I can come up with :-)</p>
+
+<pre><code>describe("matching an empty object", function() {
+  var input = "{}"
+  var result = JsonReader.matchAll(input, "obj")
+  assert.deepEqual(result, {})
+})
+</code></pre>
+
+<p>So how do I match it?</p>
+
+<pre><code>ometa JsonReader {
+  obj = "{}" -&gt; {}
+}
+</code></pre>
+
+<p>How about matching a single numerical value?</p>
+
+<pre><code>describe("matching a single numerical value", function() {
+  var input = "400"
+  var result = jsonreader.matchall(input, "num")
+  assert.equal(result, 400)
+})
+</code></pre>
+
+<p>This won't work for long, but it's the easiest solution - match <em>anything</em> over and over again, then parse the result as an integer</p>
+
+<pre><code>ometa JsonReader {
+  num = anything+:x -&gt; parseInt(x.join(''), 10),
+  obj = "{}" -&gt; {}
+}
+</code></pre>
+
+<p>How about matching some text? we need to match quoted text as it can be both a value or a key.</p>
+
+<pre><code>describe("Matching a single string value", function() {
+  var input = '"hello"'
+  var result = JsonReader.matchAll(input, "str")
+  assert.equal(result, "hello")
+})
+</code></pre>
+
+<p>Opting for the simplest I can think of, <em>match anything and them remove the quotes.</em></p>
+
+<pre><code>ometa JsonReader {
+  str = anything+:x -&gt; x.join('').replace(/\"/g, ''),
+  num = anything+:x -&gt; parseInt(x.join(''), 10),
+  obj = "{}" -&gt; {}
+}
+</code></pre>
+
+<p>This will come back to bite me I'm sure - how about matching a basic key value pair?</p>
+
+<pre><code>describe("Matching a key value pair with a numerical value", function() {
+  var input = '"foo":1337'
+  var result = JsonReader.matchAll(input, "kvp")
+  assert.deepEqual(result, [ "foo", 1337 ])
+})
+</code></pre>
+
+<p>Can we try this? <em>Match a string, then a colon, then a number</em></p>
+
+<pre><code>ometa JsonReader {
+  kvp = str:k ":" num:v -&gt; [ k, v ],
+  str = anything+:x -&gt; x.join('').replace(/\"/g, ''),
+  num = anything+:x -&gt; parseInt(x.join(''), 10),
+  obj = "{}" -&gt; {}
+}
+</code></pre>
+
+<p>Well we can, but it won't pass because we're being lazy and matching "anything" for both strings and numbers. (We're being greedy and it'll try and match quotes and braces and then fail) </p>
+
+<p>Back to the drawing board, can we specify what we mean by an expected character in a string?</p>
+
+<pre><code>describe("Matching the character 'a'", function() {
+  var input = 'a'
+  var result = JsonReader.matchAll(input, "char")
+  assert.deepEqual('a', result)
+})
+</code></pre>
+
+<p>Well yes, there is only one! So I'll cheat and just match <em>anything</em> again :P</p>
+
+<pre><code>ometa JsonReader {
+  char = anything:x -&gt; x,
+  kvp = str:k ":" num:v -&gt; [ k, v ],
+  str = anything+:x -&gt; x.join('').replace(/\"/g, ''),
+  num = anything+:x -&gt; parseInt(x.join(''), 10),
+  obj = "{}" -&gt; {}
+}
+</code></pre>
+
+<p>How about not managing to map something that isn't a character? <em>anything</em> isn't going to work remember!</p>
+
+<pre><code>describe("Character matching doesn't match quotes", function() {
+  var input = '"'
+    , thrown = null
+  try {
+    JsonReader.matchAll(input, "char")
+  } catch(ex) {
+    thrown = ex
+  }
+  assert.notEqual(thrown, null)
+})
+</code></pre>
+
+<p>Not too hard, just <em>check that we haven't got a double quote and then match anything else</em>:</p>
+
+<pre><code>ometa JsonReader {
+  char =  (
+            ~'"'
+            anything
+          ):x -&gt; x,
+  kvp = str:k ":" num:v -&gt; [ k, v ],
+  str = anything+:x -&gt; x.join('').replace(/\"/g, ''),
+  num = anything+:x -&gt; parseInt(x.join(''), 10),
+  obj = "{}" -&gt; {}
+}
+</code></pre>
+
+<p>How about going back to that original test with the string matching?</p>
+
+<pre><code>describe("Matching a single string value", function() {
+  var input = '"hello"'
+  var result = JsonReader.matchAll(input, "str")
+  assert.equal(result, "hello")
+})
+</code></pre>
+
+<p>What happens if we come to a quote in the middle of the data?</p>
+
+<pre><code>describe("Matching a string value with pre-mature quote", function() {
+  var input = '"hel"lo"'
+  var result = JsonReader.matchAll(input, "str")
+  assert.equal(result, "hel")
+})
+</code></pre>
+
+<p>If we say that rather than matching "anything" for str, we want to match <em>only a collection of "char" with quotes around it</em> then..</p>
+
+<pre><code>ometa JsonReader {
+  char =  (
+            ~'"'
+            anything
+          ):x -&gt; x,
+  kvp = str:k ":" num:v -&gt; [ k, v ],
+  str = '"' char+:x '"' -&gt; x.join(''),
+  num = anything+:x -&gt; parseInt(x.join(''), 10),
+  obj = "{}" -&gt; {}
+}
+</code></pre>
+
+<p>Now can we run that key-value one again?</p>
+
+<pre><code>describe("Matching a key value pair with a numerical value", function() {
+  var input = '"foo":1337'
+  var result = JsonReader.matchAll(input, "kvp")
+  assert.deepEqual(result, [ "foo", 1337 ])
+})
+</code></pre>
+
+<p>Huzzah. Functional.</p>
+
+<p>How about a key-value with a string value?</p>
+
+<pre><code>describe("Matching a key value pair with a string value", function() {
+  var input = '"foo":"bar"'
+  var result = JsonReader.matchAll(input, "kvp")
+  assert.deepEqual(result, [ "foo", "bar" ])
+})
+</code></pre>
+
+<p>Well this is where the our parsing language shines, as we can specify <em>"any valid value", where "value -> num | str"</em></p>
+
+<pre><code>ometa JsonReader {
+  char =  (
+            ~'"'
+            anything
+          ):x -&gt; x,
+  value = (
+            num
+          | str
+          ):x -&gt; x,
+  kvp = str:k ":" value:v -&gt; [ k, v ],
+  str = '"' char+:x '"' -&gt; x.join(''),
+  num = anything+:x -&gt; parseInt(x.join(''), 10),
+  obj = "{}" -&gt; {}
+}
+</code></pre>
+
+<p>Actually, this probably means that matching objects shouldn't be too hard.</p>
+
+<pre><code>describe("Matching a key value pair with an object value", function() {
+  var input = '"foo":{}'
+  var result = JsonReader.matchAll(input, "kvp")
+  assert.deepEqual(result, [ "foo", {}])
+}) 
+</code></pre>
+
+<p>Just add the obj to the list of possible values expected (<em>note it comes before number because number is still really greedy!</em>)</p>
+
+<pre><code>ometa JsonReader {
+  char =  (
+            ~'"'
+            anything
+          ):x -&gt; x,
+  value = (
+            str
+          | obj
+          | num
+          ):x -&gt; x,
+  kvp = str:k ":" value:v -&gt; [ k, v ],
+  str = '"' char+:x '"' -&gt; x.join(''),
+  num = anything+:x -&gt; parseInt(x.join(''), 10),
+  obj = "{}" -&gt; {}
+}
+</code></pre>
+
+<p>Now, this obj definition isn't actually correct - because objects contain one or more key value pairs.</p>
+
+<pre><code>describe("Matching an object with a single key value pair", function() {
+  var input = '{"foo":1337}'
+  var result = JsonReader.matchAll(input, "obj")
+  assert.deepEqual(result, { foo: 1337 })
+})
+</code></pre>
+
+<p>This won't actually work because as mentioned above, 'num' is still greedy and needs changing so it only matches numerical digits.</p>
+
+<pre><code>describe("Matching a number with an early termination", function() {
+  var input = '133"7'
+  var result = JsonReader.matchAll(input, "num")
+  assert.equal(result, 133)
+})
+</code></pre>
+
+<p>Turns out that there is a built-in called 'digit' to help us with this ( there is probably a built-in for strings too, but documentation for OMeta is not very good and I didn't see it)</p>
+
+<pre><code>ometa JsonReader {
+  char =  (
+            ~'"'
+            anything
+          ):x -&gt; x,
+  value = (
+            str
+          | obj
+          | num
+          ):x -&gt; x,
+  kvp = str:k ":" value:v -&gt; [ k, v ],
+  str = '"' char+:x '"' -&gt; x.join(''),
+  num = &lt;digit+&gt;:x -&gt; parseInt(x, 10),
+  obj = "{}" -&gt; {}
+}
+</code></pre>
+
+<p>Groovy, now perhaps we can try that test again:</p>
+
+<pre><code>describe("Matching an object with a single key value pair", function() {
+  var input = '{"foo":1337}'
+  var result = JsonReader.matchAll(input, "obj")
+  assert.deepEqual(result, { foo: 1337 })
+})
+</code></pre>
+
+<p>I decide to call an external function to help build up the object which has key/value pairs - that's the <em>makeObject(args):output</em> bit:</p>
+
+<pre><code>ometa JsonReader {
+  char =  (
+            ~'"'
+            anything
+          ):x -&gt; x,
+  value = (
+            str
+          | obj
+          | num
+          ):x -&gt; x,
+  kvp = str:k ":" value:v -&gt; [ k, v ],
+  str = '"' char+:x '"' -&gt; x.join(''),
+  num = &lt;digit+&gt;:x -&gt; parseInt(x, 10),
+  obj = "{}" -&gt; {}
+      | "{" (
+              kvp:kv 
+              makeObject(kv):output
+            ):output
+        "}" -&gt; output
+}
+
+JsonReader.makeObject = function(kv) {
+  var obj = {}
+  obj[kv[0]] = kv[1]
+  return obj
+}
+</code></pre>
+
+<p>Finally, how about lists of arguments?</p>
+
+<pre><code>describe("Matching an object with multiple key value pairs", function() {
+  var input = '{"foo":43,"bar":343}'
+  var result = JsonReader.matchAll(input, "obj")
+  assert.deepEqual(result, { foo: 1337, bar: 343 })
+})
+</code></pre>
+
+<p>Turns out that there is another construct in OMeta for this scenario (The best way to find these constructs is to read the ometa-js source - sorry.) <em>listOf</em></p>
+
+<pre><code>ometa JsonReader {
+  char =  (
+            ~'"'
+            anything
+          ):x -&gt; x,
+  value = (
+            str
+          | obj
+          | num
+          ):x -&gt; x,
+  kvp = str:k ":" value:v -&gt; [ k, v ],
+  str = '"' char+:x '"' -&gt; x.join(''),
+  num = &lt;digit+&gt;:x -&gt; parseInt(x, 10),
+  obj = "{}" -&gt; {}
+      | "{" (
+              listOf(`kvp, ','):kvs
+              makeObject(kvs):output
+            )
+        "}" -&gt; output
+}
+
+JsonReader.makeObject = function(kvs) {
+  var obj = {}
+  for(var i = 0 ; i &lt; kvs.length; i++) {
+    var kv = kvs[i]
+    obj[kv[0]] = kv[1]
+  }
+  return obj
+}
+</code></pre>
+
+<p><strong>Summary</strong></p>
+
+<p>It's pretty trivial to build up a parser for something if you built up a test suite as you go and have some way of</p>
+
+<ul>
+<li>Seeing examples for the syntax that OMeta supports</li>
+<li>Seeing examples for the built-ins inside OMeta</li>
+</ul>
+
+<p>With this behind me, I can actually go and look at the source code of this company and see about doing something useful from this learning!</p>]]></description><link>http://codeofrob.com/entries/building-a-basic-json-parser-in-ometa.html</link><guid isPermaLink="true">http://codeofrob.com/entries/building-a-basic-json-parser-in-ometa.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 03 Apr 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Learning OMeta in Greece]]></title><description><![CDATA[<p>This week I'm in Athens (well, probably a month or so ago now there is a massive blog post queue), working for <a href="http://rulemotion.com/">Rulemotion</a> who use these technologies amongst others:</p>
 
 <ul>
 <li>OMeta</li>
@@ -625,196 +1146,4 @@ public interface ISeek {
 
 <p>I seem to have started with the least controversial and one of the most harmful of rules, oh well...</p>
 
-<p>Thus ends my brain dump on responsibility and the many routes to layer soup. Tomorrow I'll go the heart of the matter on OCP, and then wind down the rest of the week through the rest of the set.</p>]]></description><link>http://codeofrob.com/entries/my-relationship-with-solid---starting-with-s.html</link><guid isPermaLink="true">http://codeofrob.com/entries/my-relationship-with-solid---starting-with-s.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 25 Mar 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[A note on working hours and working at home]]></title><description><![CDATA[<p>Yes yes yes, that whole <a href="http://www.huffingtonpost.com/2013/02/23/yahoo-working-remote_n_2750698.html">Yahoo thing</a>, whatever - there is more context to that story than "Banning working at home", although whether that is a solution to the problems is certainly up for debate.</p>
-
-<p>I don't care about that, but it's what prompted Hadi to write <a href="http://hadihariri.com/2013/03/16/freedom-to-work/">this lovely article</a></p>
-
-<p>I've been thinking about this a lot since <a href="/entries/i-am-not-looking-for-a-job.html">quitting my job</a> last December, as I've been travelling around and working for various people I've also found myself being given a lot of freedom as to how I apply my hours.</p>
-
-<p>I've come to realise a certain "maturity" when it comes to my working hours, I passionately disagree with <a href="http://zachholman.com/posts/how-github-works-hours/">Zach Holman</a> where he describes being addicted to work and the line between work/life being heavily blurred as being a <em>good thing</em>(tm). That's total bullshit, and while you might have caught me doing that when I first started my career you will not find me doing it now.</p>
-
-<p>Why not? Because there are <em>so many cool things to do</em> that aren't work - that's why.</p>
-
-<p><strong>How I've found myself working when given freedom</strong></p>
-
-<p>I've been rolling in at around 10am and then leaving once fatigue sets in and I feel that I'm no longer being <em>effective</em>. That can be any time between 4pm and 7pm on most days.</p>
-
-<p>Yikes- that means on some days I've been working only 5 hours if you factor in lunch!!</p>
-
-<p>However:</p>
-
-<ul>
-<li>Those five hours have been me dedicated to my task</li>
-<li>Those five hours have been the most awake five hours of my working day</li>
-<li>Coming in at 10am (ish) simply means I've woken up naturally rather than forced myself up at 7am</li>
-<li>Leaving when I'm fatigued means I dont burn myself out so I can maintain a productive pace throughout this</li>
-<li>I found myself doing a few hours on days off, presumable because I wasn't burned out from a week of pushing too hard</li>
-</ul>
-
-<p>It's hard to imagine that any of my clients these past four months would have any difficulty in <a href="http://ayende.com/blog/161185/robs-ravendb-sprint">describing</a> my output as "effective" or "productive"!</p>
-
-<p><strong>Working together</strong></p>
-
-<p>That said, core hours <em>are</em> useful, face time is useful, conversations are useful, communication is vital.</p>
-
-<p>This is one of those matters in which good tooling <em>can</em> seriously help, enabling a combination of async communication such as Campfire, Flowdock, e-mail or IRC is vital in these circumstances. If your employees are working at home <em>and</em> they're not pulling their weight - then pulling them in isn't going to solve that problem. </p>
-
-<p>Creating an environment in which your employees feel valued and free to apply their efforts how they see fit is not wasted effort, and I wish more companies would do that.</p>
-
-<p>When I decide what I'm doing with regards to work (when summer hits), I find it hard to believe I'll be working at any company who is enforcing 9-5, or have some rigidly described "flexi-time" as part of their contract in an effort to seem cool. </p>
-
-<p>I've had it with that sort of thing, this I know for sure. I love being an effective member of a team too much to put myself in a position where I feel obliged to sit in a seat for an no apparent reason ever again. (Future employers take note please)</p>]]></description><link>http://codeofrob.com/entries/a-note-on-working-hours-and-working-at-home.html</link><guid isPermaLink="true">http://codeofrob.com/entries/a-note-on-working-hours-and-working-at-home.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 22 Mar 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Why I stopped using AMD]]></title><description><![CDATA[<p>I've been asked a few times why I've stopped using AMD as I move around and folk see my use of Browserify, here-in I try to write down my thoughts on why AMD doesn't make any sense to me any more.</p>
-
-<hr />
-
-<p>When I wrote a blog entry <a href="http://codebetter.com/robashton/2012/09/03/keeping-js-sane/">about 9 months ago</a>, I made the statement:</p>
-
-<p><blockquote>
-    The synchronous manner in which files are included in CommonJS-ish systems doesn’t lend itself to the web very well.
-  </blockquote></p>
-
-<p>I was wrong. I changed my mind, and as I've said before I am now a <a href="/entries/lots-of-small-things.html">Browserify Convert</a>.</p>
-
-<p>What I didn't explain was what turned me off <a href="https://github.com/amdjs/amdjs-api/wiki/AMD">AMD</a> and in particular, <a href="http://requirejs.org/">RequireJS</a>.</p>
-
-<p><strong>The list of things I want my module loader to help me with</strong></p>
-
-<ul>
-<li>I don't want to write all my code in a single file</li>
-<li>I want to write my code across many files</li>
-<li>I want to write my code across many modules</li>
-<li>I want to be able to easily debug these once in the browser (it's unusual I need to debug, but when I do...)</li>
-<li>I want the time between editing a file and seeing feedback in the application to be -- >&lt; -- this big</li>
-</ul>
-
-<p>In other words, yes - I do want the moon on a stick.</p>
-
-<p><strong>RequireJS</strong></p>
-
-<p>Seemed to help with these things, I didn't use the hideous ceremony-ridden version of AMD that looks like somebody vomitted in my Javascripts (that alone would have been enough to put me off) </p>
-
-<p><em>The ceremonial way</em></p>
-
-<pre><code>define([
-  '../foo', 
-  './lib/bar', 
-  'boo'], 
-  function(foo, bar, boo) {
-
-})
-</code></pre>
-
-<p><em>The less-ceremony way</em></p>
-
-<pre><code>define(function(require) {
-  var foo = require('../foo')
-    , bar = require('./lib/bar')
-    , boo = require('boo')
-})
-</code></pre>
-
-<p>So it was tolerable for a while because I didn't have to, however I would then run into the following road-blocks:</p>
-
-<ul>
-<li>What about Library X, does it support AMD?</li>
-<li>If it doesn't support AMD, I have to add a shim? Should I patch the library?</li>
-<li>What if it supports AMD, I'll want to load it from a libs directory</li>
-<li>Where is the root of my application? What about sharing code client/server</li>
-<li>What if I want to use CoffeeScript (or more recently for me, OMeta)</li>
-</ul>
-
-<p><strong>For every question, RequireJS had an answer</strong></p>
-
-<p>And AMD's answer for <em>nearly every one of them</em> is to <em>add some configuration directives</em> or <em>write a r.js plug-in</em></p>
-
-<p>And this is what put me off.</p>
-
-<p>In no time at all, every project would have a configuration file many lines long of obscure directives (and I mean obscure directives, have you <a href="http://requirejs.org/docs/api.html">read the documentation?</a> - this is not intuitive and requires a hella lot of investment if we are to make effective use of it.</p>
-
-<p>Then we'd want to write tests against the code, and we'd have to either attempt to re-use this configuration or duplicate it over into our tests directory. 
-Then we'd run into problems with that configuration, and waste hours trying to work out a compromise to keep RequireJS happy.</p>
-
-<p><strong>Most of those questions were the wrong question</strong></p>
-
-<p>First off, using <a href="/entries/stop-using-relative-paths-in-your-javascripts.html">actual modules</a> has massive advantages over relative paths anyway, and while the build step of RequireJS will support these, this isn't going to work if we're using the A of AMD in development.</p>
-
-<p>Secondly, if we want to compile our .coffee to JS, we should be using the coffeescript compiler to do this. If we want to compile our Typescript to JS likewise, if we want to import static files for templates then this should be part of our build process.</p>
-
-<p>Trying to do everything as a long sequence of plug-ins meant to support the A/MD actually makes things a lot <em>slower</em> in my experience, because we're not trying to do it only when specific files change but instead trying to do it as part of the request pipeline (unless we go to lengths to work around the r.js plug-in system)</p>
-
-<p><strong>The future of JS modules is not async anyway</strong></p>
-
-<p>If yo look at the specifications and where they're going, (while last I checked they weren't perfect yet), the module system that is coming for JS isn't going to be asynchronous - and this is because our program <em>can't run until it's loaded anyway</em> - it actually makes little sense to add the overhead of asynchronous management to this process.</p>
-
-<p>Building up an entire codebase around tooling that isn't compatible with how the future-web is going to work doesn't make an awful lot of sense, building up an entire tool-chain around this tooling makes even less sense.</p>
-
-<p><strong>I switched to Browserify</strong></p>
-
-<p>As I've said, I'm not particularly sold on using node_modules for  client-side code, but the module system in node <em>does</em> work, and <em>does</em> encourage us to package things up in a neat re-usable manner (I'm not sold on component.js yet either).</p>
-
-<p>However, the code we write doesn't care what module system is being used if we're just doing CommonJS - it just knows that they come from <em>somewhere</em>. The tools we use to convert CS into JS don't care that we're using Browserify to package the end-result. The tools we use to embed templates in the downloadables don't care that we're using Browserify to do this. </p>
-
-<p>In a nut-shell, Browserify is allowing me to hedge my bets by not coupling my workflow too closely to it. It doesn't come with pages of obsuse documentation and every time I pump out a new module into my little eco-system I am ever so thankful for this.</p>
-
-<p>It has enabled me to be liberal with my module creation and not care how people are going to actually consume these packages (apart from 'through npm' somehow), and I've not had to debug or diagnose issues with it in the whole time I've been using it.</p>
-
-<p>Let's look at the list of things I want:</p>
-
-<ul>
-<li>I don't want to write all my code in a single file</li>
-<li>I want to write my code across many files</li>
-<li>I want to write my code across many modules</li>
-<li>I want to be able to easily debug these once in the browser (it's unusual I need to debug, but when I do...)</li>
-<li>I want the time between editing a file and seeing feedback in the application to be -- >&lt; -- this big</li>
-</ul>
-
-<p>I'm able to do all of these - yes I need a build step now, but you know what? We need a build-step anyway if we're going to take advantage of the module system properly - even in RequireJS so this isn't a big deal. </p>
-
-<p>We get debugging support through source maps (and this even tells us which module we're debugging) and as I said yesterday, I no longer really <a href="/entries/stop-using-relative-paths-in-your-javascripts.html">use relative paths</a> so I'm a great deal happier about my JS.</p>
-
-<p>Happiness and productivity, good reasons for doing most things really.</p>]]></description><link>http://codeofrob.com/entries/why-i-stopped-using-amd.html</link><guid isPermaLink="true">http://codeofrob.com/entries/why-i-stopped-using-amd.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 21 Mar 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Stop using relative paths in your JavaScripts]]></title><description><![CDATA[<p>I saw a post to the NodeJS mailing list the other day which went along the lines of </p>
-
-<p><blockquote>
-    I've created a simple prototype tool for re-factoring and re-organization of projects which heavily use require("./relativePath") .
-  </blockquote></p>
-
-<p>Without wishing to put the chap off from releasing OSS efforts (because this is nearly <em>always</em> an excellent idea) I responded with a sentence explaining why I thought this kind of thing was a bad idea. </p>
-
-<p>I promised myself I'd write a blog entry with some loose thoughts in it too.</p>
-
-<p>This is the classic example of a "tooling oriented fix" for a "problem of our own creation", after primarily making my living in the enterprise space where this sort of thing is rife I'm quite sensitive to such things when they arise when there is a better solution available.</p>
-
-<p><em>If using relative paths in your JS project is painful, stop using relative paths in your JS projects</em></p>
-
-<p><strong>Relative paths require cognitive effort</strong></p>
-
-<p>When opening a project for the first time and encountering a large folder structure, I don't know where to begin. </p>
-
-<p>Even when I'm told where to go, I then have to trawl through the dependencies manually to find the code I want to change. When I want to write tests, it's hard to work out where the files are that I want/need to bring in. </p>
-
-<p>Compare this to a project which is comprised of modules, where each has a package.json which clearly describes where its git repo is, what its purpose is - and more importantly its dependencies. This is easy to understand and traverse and requires minimum new understanding.</p>
-
-<p><strong>Relative paths lead to brittle coupling decisions</strong></p>
-
-<p>If you're changing that code file, how do you know what is going to be impacted by that change? You don't - and this is why we get badly researched articles like <a href="http://techcrunch.com/2013/03/15/the-future-of-javascript/">this one</a> written about how hard JS is to maintain.</p>
-
-<p>Better to make these dependencies explicit, and version them seperately so that upgrading to new versions of these dependencies is a conscious decision. Better still, applying <a href="http://semver.org/">a versioning strategy</a> so that breaking changes become obvious will make life much easier.</p>
-
-<p><strong>Relative paths make tests harder to write</strong></p>
-
-<pre><code>var sut = require('../src/company/lib/server/helpers/util.js')
-</code></pre>
-
-<p>Having a test suite that looks like the above over and over again is monstrous, you'll find yourself copying and pasting relative paths all over the suite and that'll in turn make you un-willing to re-factor or move things around for fear of breaking all the tests.</p>
-
-<p>Compare this to instead a module-based approach where the tests we write for a module are simply covering that module. The effort required when decide to move things around is much smaller and we're not having to be dependenent on the organisation of files on your spinny disk or solid state storage.</p>
-
-<p><strong>Relative paths are indicative of modules wanting to get out</strong></p>
-
-<p>Take a look at your relative paths, look at commonly accessed files and consider that perhaps there is a module. Can you describe to me what that shared file does? What its purpose is? If so - you've passed the module test -get it in there.</p>
-
-<p>If you can't tell me what that shared file does, then why does it exist? Is it just a "bag of stuff"? Don't create "bags of stuff", create "modules" with clearly defined purpose so the rest of us can have a clue of what is going on.</p>
-
-<p><strong>So please, stop</strong></p>
-
-<p>If you're not using some sort of package system to help you with your JavaScripts, then please start doing so. Preferably use NPM because it is one of the best designed package managers out there, but feel free to use Bower or something like that too, just stop presenting me with large codebases with piles of JS in them, it's costing you money to hire me and you don't want that money to be spent with me trying to work out how your folder structure works.</p>]]></description><link>http://codeofrob.com/entries/stop-using-relative-paths-in-your-javascripts.html</link><guid isPermaLink="true">http://codeofrob.com/entries/stop-using-relative-paths-in-your-javascripts.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 20 Mar 2013 09:30:00 GMT</pubDate></item></channel></rss>
+<p>Thus ends my brain dump on responsibility and the many routes to layer soup. Tomorrow I'll go the heart of the matter on OCP, and then wind down the rest of the week through the rest of the set.</p>]]></description><link>http://codeofrob.com/entries/my-relationship-with-solid---starting-with-s.html</link><guid isPermaLink="true">http://codeofrob.com/entries/my-relationship-with-solid---starting-with-s.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 25 Mar 2013 09:30:00 GMT</pubDate></item></channel></rss>

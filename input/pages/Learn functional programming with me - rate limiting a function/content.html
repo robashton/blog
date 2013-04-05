@@ -1,0 +1,324 @@
+<p>I'm able to stream out a load of bullets in a long fish-poo like line, but what I need to do is rate limit these somehow...</p>
+
+<ul>
+<li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Mission statement</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---moving-the-square.html">Moving the square</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---attributes-and-vectors.html">Attributes and vectors</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---improving-my-workflow.html">Improving my workflow</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---adding-lots-more-state.html">Creating lots of state</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---mutating-lots-of-state.html">Mutating lots of state</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---improving-our-data-structure-with-maps.html">Improving our data structure with maps</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---keyboard-input-for-our-red-square.html">Moving our red square with keyboard input</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---adding-items-to-a-sequence.html">Adding items to a sequence and firing bullets</a></li>
+</ul>
+
+<p><strong>My state is... in a state</strong></p>
+
+<p>My bullets subsystem is just a list of bullets, and I actually need more state to represent this.</p>
+
+<p>So I had a little change to create a map which represented</p>
+
+<ul>
+<li>The bullets active within the scene</li>
+<li>The time since we last fired a bullet</li>
+</ul>
+
+<p>Not too complicated:</p>
+
+<pre><code>(defn initBullets []
+  {
+    :lastFiringTicks 0
+    :active ()
+  }
+)
+</code></pre>
+
+<p>Of course, this has made a bit of a mockery out of my bullets logic...</p>
+
+<pre><code>(defn bulletsLogic [state]
+  (let [player (:player state)
+        bullets (:bullets state)
+        existingBullets 
+        (for [bullet (:active bullets)]
+          {
+            :x (:x bullet)
+            :y (dec (:y bullet))
+            :w (:w bullet)
+            :h (:h bullet)
+          }
+        )
+      ]
+    (if (@keyStates 32)
+      {
+        :lastFiringTicks (:lastFiringTicks bullets)
+        :active (cons 
+                {
+                 :x (:x (:player state))
+                 :y (:y (:player state))
+                 :w 5
+                 :h 5
+                }
+                existingBullets
+                )
+      }
+      {
+        :lastFiringTicks (:lastFiringTicks bullets)
+        :active existingBullets
+      }
+    )
+  )
+)
+</code></pre>
+
+<p>So much for that statement about Functional Programming forcing you to write code that is easy to reason about, a fool will write foolish code in whatever language ;-)</p>
+
+<p><strong>Refactoring away from pain</strong></p>
+
+<p>I can refactor this of course - now I know that there is an ability to 'modify' a single field within a map with 'assoc', I can create functions that don't need to know about the whole state and have little sub-functions for handling the logic of my bullets system.</p>
+
+<pre><code>(defn bulletsLogic [state]
+  (tryAndFire
+    (moveBullets state)
+  )
+)
+</code></pre>
+
+<p>How about moving the bullets, and then passing whatever the state is after that point to the tryAndFire function, and then returning the state of that to the outside world?</p>
+
+<p>Moving the bullets becomes a matter of calling assoc on each bullet with a modified y, this is much nicer than having to copy across each property of the bullet.</p>
+
+<pre><code>(defn moveBullets [state]
+  (let [bullets (:bullets state)
+        active (:active bullets)]
+    (assoc state :bullets 
+      (assoc bullets :active
+        (for [bullet active]
+          (assoc bullet :y (dec (:y bullet)))
+        )
+      )
+    )
+  )
+)
+</code></pre>
+
+<p>And trying to fire becomes a matter of adding an item to the list, or just returning original state</p>
+
+<pre><code>(defn tryAndFire [state]
+  (let [bullets (:bullets state)
+        active (:active bullets)
+        player (:player state)]
+    (if (@keyStates 32)
+      (assoc state :bullets 
+        (assoc bullets :active
+          (cons 
+            {
+             :x (:x player)
+             :y (:y player)
+             :w 5
+             :h 5
+            }
+            active
+          )
+        )
+      )
+      state
+    )
+  )
+)
+</code></pre>
+
+<p><strong>Refactoring towards readability</strong></p>
+
+<p>Of course this can be re-factored a bit further for readability by pulling out another function</p>
+
+<pre><code>(defn tryAndFire [state]
+  (if (@keyStates 32)
+    (fire state)
+    state
+  )
+)
+</code></pre>
+
+<p>Keeping the activity of firing to its own little function</p>
+
+<pre><code>(defn fire [state]
+  (let [bullets (:bullets state)
+        active (:active bullets)
+        player (:player state)]
+    (assoc state :bullets 
+      (assoc bullets :active
+        (cons 
+          (initBullet (:x player) (:y player) 5 5)
+          active
+        )
+       )
+     )
+  )
+)
+</code></pre>
+
+<p>And yes, I also pulled out the code for creating a new bullet to make it even more obvious what is going on.</p>
+
+<p>Now, actually because of my main logic function looking like this:</p>
+
+<pre><code>(defn doLogic [state]
+  {
+    :direction (directionLogic state)
+    :enemies (enemiesLogic state)
+    :player (playerLogic state)
+    :bullets (bulletsLogic state)
+  }
+)
+</code></pre>
+
+<p>I've got to do some contortions to return 'just the bullets' from my bullets logic</p>
+
+<pre><code>(defn bulletsLogic [state]
+  (:bullets (tryAndFire
+    (moveBullets state)
+  ))
+)
+</code></pre>
+
+<p><strong>Refactoring away from the acrobatics</strong></p>
+
+<p>But how about taking my new pattern further and applying each sub-system's changes to the state as a sequence of modifications to the state</p>
+
+<pre><code>(defn doLogic [state]
+  (bulletsLogic
+    (playerLogic
+      (enemiesLogic
+        (directionLogic state)
+      )
+    )
+  )
+)
+</code></pre>
+
+<p>Overall I think I like this approach better than trying to make each system return its own state, and as most of the logic seems to require sections of state from all over the show having the state all readily accessible seems to make sense.</p>
+
+<p>That said, I'd normally shy away from this sort of approach in an OO language/manner because shared data implies coupling. </p>
+
+<p>Of course my normal solution is often the duplication of state via events or some other in-direct means and the reason for this tends to be to avoid accidental mutation which isn't going to be such a problem here where it's such an explicit decision.</p>
+
+<p>I'll see how that plays out as I roll forwards, but now I've applied this refactoring step I'm in a much better position to get in the feature I wanted in the first place. </p>
+
+<p>If I end up not liking the current mutation capabilities, I can always change how I update the state from the outside-most part of my program by doing my assoc there. That mutation is such a visible decision in my code seems to be one of the bonuses of FP.</p>
+
+<p><strong>Updating nested data with assoc-in</strong></p>
+
+<p>I don't like all the nested assocs, so I hit up the Clojure docs now I'm not on a plane and discover 'assoc-in' and 'get-in', which do pretty much what you'd expect.</p>
+
+<p>Instead of</p>
+
+<pre><code>(defn fire [state]
+  (let [bullets (:bullets state)
+        active (:active bullets)
+        player (:player state)]
+    (assoc state :bullets 
+      (assoc bullets :active
+        (cons 
+          (initBullet (:x player) (:y player) 5 5)
+          active
+        )
+       )
+     )
+  )
+)
+</code></pre>
+
+<p>I can actually do</p>
+
+<pre><code>(defn addBulletInPlayerLocation [state]
+  (let [player (:player state)]
+    (assoc-in state [:bullets :active]
+      (cons 
+        (initBullet (:x player) (:y player) 5 5)
+        (get-in state [:bullets :active])
+      )
+    )
+  )
+)
+</code></pre>
+
+<p>So I've done that everywhere it makes sense to as it makes the code more readable.</p>
+
+<p><strong>Applying that time limiter</strong></p>
+
+<p>So, what kicked off my re-factoring efforts was the addition of a little bit of state to my map ala</p>
+
+<pre><code>(defn initBullets []
+  {
+    :lastFiringTicks 0
+    :active ()
+  }
+)
+</code></pre>
+
+<p>How to use this? Well, the algorithm goes something like this</p>
+
+<pre><code>Is lastTicks nonZero? 
+  Increase lastTicks
+  is lastTicks equal to firing rate?
+    Set lastTicks to Zero
+
+Are we trying to fire? 
+  Yes? Is lastTicks 0?
+    Yes? Fire, increase lastTicks
+</code></pre>
+
+<p>So we have two steps</p>
+
+<ul>
+<li>UpdateFiringTicks</li>
+<li>TryAndFire</li>
+</ul>
+
+<p><strong>Managing the firing ticks</strong></p>
+
+<p>Well first off, let's add this to the chain of logics we want to execute for our bullet logic</p>
+
+<pre><code>(defn bulletsLogic [state]
+  (tryAndFire
+    (updateFiringTicks
+      (moveBullets state)
+    )
+  )
+)
+</code></pre>
+
+<p>And we can simply execute the logic described above here</p>
+
+<pre><code>(defn updateFiringTicks [state]
+  (let [bullets (:bullets state)
+        ticks (:lastFiringTicks bullets)]
+    (if (= ticks 0) 
+      state
+      (if (= (rem ticks 30) 0)
+        (assoc-in state [:bullets :lastFiringTicks] 0)
+        (assoc-in state [:bullets :lastFiringTicks] (inc ticks))
+      )
+    )
+  )
+)
+</code></pre>
+
+<p>And firing just needs to update this value now so...</p>
+
+<pre><code>(defn fire [state]
+  (incrementFiringTicks
+    (addBulletInPlayerLocation state)
+  )
+)
+
+(defn incrementFiringTicks [state]
+  (assoc-in state [:bullets :lastFiringTicks] 1)
+)
+</code></pre>
+
+<p>Now my little craft only fires about once a second, mission accomplished.</p>
+
+<p><strong>Summary</strong></p>
+
+<p>This was quite a lengthy process to add a simple feature, I got side-tracked by what I hope was useful learning. I'm left a little uncomfortable with how I'm dealing with state and I feel like there is something more elegant I could be doing. Maybe I'll discover this as I continue through.</p>
