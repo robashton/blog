@@ -1,0 +1,297 @@
+<html>
+  <head>
+    <title id="title">Learn functional programming with me - now the space invaders fight back</title>
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link href='http://fonts.googleapis.com/css?family=Libre+Baskerville' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+    <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+
+    </script>
+  </head>
+  <body>
+    <a class="subscribe" href="http://feed.codeofrob.com/RobAshton">Subscribe to my blog</a>
+    <div id="blog-entry">
+      <h1 id="post-title">Learn functional programming with me - now the space invaders fight back</h1>
+      <h6>Published on <span class="date">2013-5-24</span></h6>
+      <div id="post"><p>It's time to accelerate my efforts in getting the space invaders game have some sort of end-to-end story. Part of this is having the space invaders dropping down and firing back at our hero.</p>
+
+<ul>
+<li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Mission statement</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---moving-the-square.html">Moving the square</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---attributes-and-vectors.html">Attributes and vectors</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---improving-my-workflow.html">Improving my workflow</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---adding-lots-more-state.html">Creating lots of state</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---mutating-lots-of-state.html">Mutating lots of state</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---improving-our-data-structure-with-maps.html">Improving our data structure with maps</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---keyboard-input-for-our-red-square.html">Moving our red square with keyboard input</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---adding-items-to-a-sequence.html">Adding items to a sequence and firing bullets</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---refactoring-my-state-transitions.html">Refactoring my state transitions</a></li>
+<li><a href="/learn-functional-programming-with-me---more-idiomatic-clojure.html">More idiomatic clojure</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---adding-collision-detection-to-the-game.html">Adding collision detection</a></li>
+</ul>
+
+<p><strong>I did a tidy up</strong></p>
+
+<p>I got rid of my stupid nested structures, and put the data for bullets into the top-level map, instead of</p>
+
+<pre><code>[:bullets :active]
+[:bullets :lastFiringTicks]
+</code></pre>
+
+<p>I now have</p>
+
+<pre><code>[:bullets]
+[:last-firing-ticks]
+</code></pre>
+
+<p>It makes things much simpler, the code at the start of this entry can be found <a href="https://github.com/robashton/clojure-spaceinvaders/blob/085c0249e54c19d189dfba6e006205c90914fc56/game.cljs">here</a>.</p>
+
+<p><strong>The space invaders need to invade some space</strong></p>
+
+<p>When the invaders reach the end of the row, their direction changes - they also need to drop down by a certain amount of space and thus attack the earth.</p>
+
+<pre><code>(defn update-direction [state]
+  (let [{:keys [direction enemies]} state]
+    (if (= direction 1)
+      (let [right (apply max (map :x enemies))]
+        (if(&gt; right 600) (assoc state :direction -1) state))
+      (let [left (apply min (map :x enemies))]
+        (if(&lt; left 0) (assoc state :direction 1) state)))))
+</code></pre>
+
+<p>I guess what I'll do here is break this up a bit (which I'm okay with anyway because the above is quite hard to read)</p>
+
+<pre><code>(defn rects-max-x [rects]
+  (apply max (map :x rects)))
+
+(defn rects-min-x [rects]
+  (apply min (map :x rects)))
+
+(defn enemies-reached-edge [enemies direction]
+  (cond (and (= direction 1) (&gt; (rects-max-x enemies) 600)) true
+        (and (= direction -1) (&gt; (rects-min-x enemies) 0)) true
+        :else false))
+
+(defn invert-enemies-direction [state]
+  (assoc state :direction (* (:direction state) -1)))
+
+(defn update-direction [state]
+  (if (enemies-reached-edge (:enemies state) (:direction state))
+    (invert-enemies-direction state) state))
+</code></pre>
+
+<p>Now I've done this, it should be fairly easy to update their y positions as part of that invert direction call.</p>
+
+<pre><code>(defn invert-enemies-direction [state]
+  (assoc state 
+         :direction (* (:direction state) -1)
+         :enemies (map 
+                    (fn [enemy] (assoc enemy :y (+ (:y enemy) 50)))
+                      (:enemies state))))
+</code></pre>
+
+<p>Fairly sure there are some tricks I'm missing here for making that sort of thing prettier, but it does the job pretty well and my invaders come to say hello. </p>
+
+<ul>
+<li>Associate this expression with the enemies field in the map</li>
+<li>The expression is a map of the current enemies field</li>
+<li>The map associates a modified 'y' with each enemy</li>
+</ul>
+
+<p><strong>Ending conditions</strong></p>
+
+<p>Two basic conditions now present themselves for victory or defeat</p>
+
+<ul>
+<li>Enemies reach the bottom of the screen</li>
+<li>Enemies are all destroyed</li>
+</ul>
+
+<p>Taking the easiest approach here, I'll just perform a page re-direct on failure, and start the next level on success.</p>
+
+<pre><code>(defn update-state [state]
+  (validate-end-conditions
+    (update-bullets
+      (update-player
+        (update-enemies
+          (update-direction state))))))
+</code></pre>
+
+<p>and</p>
+
+<pre><code>(defn validate-end-conditions [state]
+  (cond (enemies-are-all-dead (:enemies state)) (start-next-level)
+        (enemies-are-at-the-gate (:enemies state)) (show-game-over)
+        :else state))
+</code></pre>
+
+<p>Now obviously <em>show-game-over</em> isn't going to actually return any state, but we'll be on a different page then so that's no big deal. <em>start-next-level</em> will have an opportunity to create completely new state for our next level so that works out nicely too.</p>
+
+<p><strong>Game over dude</strong></p>
+
+<pre><code>(defn enemies-are-at-the-gate [enemies]
+  (&gt; (apply max (map :y enemies)) 400))
+
+(defn show-game-over []
+  (set! (. js/document -location) "gameover.html"))
+</code></pre>
+
+<p>This is another example of how delightfully terse Clojure can be at times :)</p>
+
+<p><strong>The enemies are dead, long live the enemies</strong></p>
+
+<pre><code>(defn enemies-are-all-dead [enemies]
+  (not (first enemies)))
+</code></pre>
+
+<p>Apparently nil and false in Clojure are our only falsy values, so the above will work (first returns nil if the sequence is empty).</p>
+
+<pre><code>(defn start-next-level []
+  (create-state))
+</code></pre>
+
+<p>For now, let's just go with a re-start of the whole thing when we've killed all the enemies so everything starts from the beginning once more.</p>
+
+<p><strong>Difficulty levels</strong></p>
+
+<p>Now we have game over and next level, let's look at next level and what it means.</p>
+
+<p>Currently I have a few hard-coded values lying around</p>
+
+<ul>
+<li>How far do enemies drop down each pass</li>
+<li>How fast do enemies move from left to right?</li>
+<li>How frequently do our bullets fire?</li>
+<li>How fast are our bullets?</li>
+<li>How fast does our defender move?</li>
+</ul>
+
+<p>A lot of the time in my JS games, this is all modelled as state local to my entities and this is quite awkward. I can probably do better here.</p>
+
+<p>The only piece of state I need for any of this is "current level", so I'mma go ahead and stick that around</p>
+
+<pre><code>(defn create-state [level]
+{ :direction 1
+ :level level
+ :enemies (for [x (range 0 480 60)
+                y (range 0 240 60)]
+            (create-rect x y 20 20))
+ :player (create-rect 200 430 20 20)
+ :bullets () 
+ :last-firing-ticks 0})
+
+(defn start-next-level [state]
+  (create-state (inc (:level state))))
+
+(defn ^:export init []
+  (hook-input-events)
+  (let [ctx (context 640 480)] 
+    (tick ctx (create-state 1))))
+</code></pre>
+
+<p>We'll start at level 1, and then when creating the new state for the new level, we'll pass in level+1.</p>
+
+<p>Now then, how to use this for firing rate?</p>
+
+<pre><code>(if (= (rem (:last-firing-ticks state) (firing-rate state)) 0)
+</code></pre>
+
+<p>and enemy movement</p>
+
+<pre><code>func (if(= direction 1) #(+ % (enemy-speed state)) #(- (enemy-speed state))
+</code></pre>
+
+<p>and bullet speed</p>
+
+<pre><code>(update-in bullet [:y] #(- % (bullet-speed state))))))
+</code></pre>
+
+<p>and for the player movement?</p>
+
+<pre><code>(defn update-player [state]
+  (let [left (@key-states 37)
+        right (@key-states 39)]
+    (cond (= left true) (update-in state [:player :x] #(- % (player-speed state)))
+          (= right true) (update-in state [:player :x] #(+ % (player-speed state)))
+          :else state)))
+</code></pre>
+
+<p>And the implementation (for now) </p>
+
+<pre><code>(defn firing-rate [state] (min 15 (- 30 (* 2 (:level state)))))
+(defn enemy-speed [state] (:level state))
+(defn bullet-speed [state](:level state))
+(defn player-speed [state] (* 2 (:level state)))
+(defn enemy-descent-speed [state] 25)
+</code></pre>
+
+<p>This is quite tidy and gives me the ability to adjust these values easily when experimenting with the game. </p>
+
+<p>I'm not so happy with passing the complete 'state' into each of these methods, but pulling out the level at the point of invocation seems a greater evil in this case.</p>
+
+<p>Next up, I'll look at scoring as a side effect of enemy destruction, and re-visit how I manage the logic and state around that.</p></div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="http://twitter.com/robashton">Follow me</a>
+      </div>
+      <div id="inqob_job_postings"></div> 
+      <script type="text/javascript" charset="utf-8">
+        var __inqob_settings = {
+          email_address:  'robashton@codeofrob.com', 
+          token:          '',
+          debug: false,
+          items: [{
+            keyword: 'codeofrob', 
+            price: 100 
+          }]
+        };
+
+        (function(is) {
+          var sc = document.createElement('script'); sc.type = 'text/javascript'; sc.async = true;
+          var src = (document.location.protocol == 'https:' ? 'https://' : 'http://') + 'inqob.com/get/script';
+          var q = [];
+          q.push('?t='+ new Date().getTime()); 
+          q.push('token=' + is.token); 
+          q.push('email_address=' + is.email_address); 
+          q.push('href=' + encodeURIComponent(window.location.href));
+          sc.src = src + q.join('&');
+          var s = document.getElementsByTagName('script')[0]; 
+          s.parentNode.insertBefore(sc, s);
+        })(__inqob_settings);      
+      </script>
+      <div id="disqus">
+        <div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+      </div>
+    </div>
+    <div id="post-comments">
+
+    </div>
+  </body>
+</html>
