@@ -28,23 +28,7 @@ That leaves us with
 
 For each stream in the category "pony", please run this projection code!
 
-**Better way**
-
-There is actually a better way of doing this though, where rather than re-partition and then apply a partition per projection, we can do it all in one go
-
-    fromStream('ponies')
-      .partitionBy(function(ev) {
-        if(ev.body && ev.body.PonyName)
-          return ev.body.PonyName
-      })
-      .when({
-        "$init": function(state, ev) {
-          return { count: 0 }
-        },
-        "PonyJumped": function(state, ev) {
-          state.count++
-        }
-      })
+**Reading back the state**
 
 We can now look at the state per pony by visiting the /state and passing in the partition we care about in the query string
 
@@ -68,6 +52,8 @@ We can now look at the state per pony by visiting the /state and passing in the 
 
 **NOTE**
 
-It's at this point, people usually ask "How about giving me a list of ponies", this is *not* what you use the EventStore for, the list of ponies is something that should exist in your domain and be stored in a database (whether this be a document or relationaldatabase), and then used to look up values in the event store.
+It's at this point, people usually ask "How about giving me a list of ponies so I can look up the state for each of them", this is *not* what you use the EventStore for. 
 
-This could either be a fixed list in one of those stores, or you could run through the streams in the EventStore and build up that list as a read model in that external store. This is the only time I'm going to mention this in this series!!
+The list of ponies is something that should exist in your domain and be stored in a database (whether this be a document or relational database), and then used to look up values in the event store.
+
+This could either be a fixed list in one of those stores, or you could run through the streams in the EventStore and build up that list as a read model in that external store. *This is the only time I'm going to mention this in this series :)*

@@ -16,7 +16,7 @@ Let's start with a basic projection over our ponies stream that doesn't do anyth
 
 To re-iterate what we learned last time, this projection says "From the stream 'ponies', please invoke this callback for every event in the stream regardless of what the EventType is"
 
-Well actually, what I want to do is push these events into an appropriate stream *per pony* as I process them, and I do that with the wonderful method "linkTo"
+What we can actually do is create a new stream per pony, but link back to the original events from those new streams. 
 
     fromStream('ponies')
     .whenAny(function(state, ev) {
@@ -74,7 +74,3 @@ If I look through the list of all streams, I can see that I now have a stream fo
 - /streams/pony-derpyhooves
 
 Now what I want to do is create a projection for each of these streams, so I can ask "how far has each of these ponies jumped", that's next :)
-
-
-
-

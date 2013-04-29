@@ -1,5 +1,254 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Wed, 24 Apr 2013 07:30:08 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[OMeta OData ODear - polishing it off]]></title><description><![CDATA[<p>Now I've gotten most of this work done, I left a few pieces of work outstanding and after review, I can make some of the OMeta cleaner and nicer. I also need to be a bit better about interpreting the various primitives in OData.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Mon, 29 Apr 2013 05:10:22 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Pushing data into streams in the EventStore]]></title><description><![CDATA[<p>I'm <a href="/entries/playing-with-the-eventstore.html">playing with the EventStore</a> and I need to push some data into it in the form of streams.</p>
+
+<p>What does this look like? Well I'm using NodeJS, and naturally that means using JSON and object literals:</p>
+
+<p>So, if I have an event</p>
+
+<pre><code>// An Event
+{
+  Data: {
+    PonyName: "Rainbow Dash",
+    TrampStamp: "Rainbow",
+    Date: "January 2013"
+  },
+  EventType: "PonyBorn"
+}
+</code></pre>
+
+<p>And I want to get this into a stream, well first I want to package it up</p>
+
+<pre><code>// A package with the event in it
+{
+  CorrelationId: "something-i-know",
+  ExpectedVersion: "last-version-i-knew-about",
+  Events: [ ev ]
+}
+</code></pre>
+
+<p>And serialise it</p>
+
+<pre><code>var body = JSON.stringify(package)
+</code></pre>
+
+<p>I can POST it to the event store with the following code</p>
+
+<pre><code>var req = http.request({
+  host: "127.0.0.1",
+  port: 2113,
+  path: "/streams/ponies",
+  method: "POST",
+  headers: {
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+    "Content-Length": body.length
+  }
+}, function(res) {
+  // Handle this
+})
+
+req.write(body)
+req.end()
+</code></pre>
+
+<p>What do we notice about the data?</p>
+
+<ul>
+<li>We can supply a correlation id for our own convenience</li>
+<li>We supply an expected version so our event can be rejected if things are not as they should be</li>
+<li>We can send a collection of events to be committed all as one</li>
+<li>EventType can be sent in alongside the event data</li>
+</ul>
+
+<p>And what do we notice about the request?</p>
+
+<ul>
+<li>We choose which stream to post to as part of the URL</li>
+<li>We specify the content types we expect and are sending (because it can accept XML etc)</li>
+</ul>
+
+<p>What happens once I've done this?</p>
+
+<p>Well, we'll see that I have a ponies stream</p>
+
+<p><em>/streams</em></p>
+
+<pre><code>{
+  title: "ponies",
+  uri: "http://127.0.0.1:2113/streams/ponies",
+  accepts: [
+    {
+      type: "text/xml"
+    },
+    {
+      type: "application/atom+xml"
+    },
+    {
+      type: "application/json"
+    },
+    {
+      type: "application/atom+x.json"
+    }
+  ]
+},
+</code></pre>
+
+<p>And that if we go to this ponies stream via the URI specified we'll see</p>
+
+<p><em>/streams/ponies</em></p>
+
+<pre><code>[
+  {
+    title: "ponies #1",
+    id: "http://127.0.0.1:2113/streams/ponies/1",
+    updated: "2013-03-01T22:30:11.790066Z",
+    author: {
+      name: "EventStore"
+    },
+    summary: "Entry #1",
+    links: [
+      {
+        uri: "http://127.0.0.1:2113/streams/ponies/1",
+        relation: "edit"
+      },
+      {
+        uri: "http://127.0.0.1:2113/streams/ponies/event/1?format=text",
+        type: "text/plain"
+      },
+      {
+        uri: "http://127.0.0.1:2113/streams/ponies/event/1?format=json",
+        relation: "alternate",
+        type: "application/json"
+      },
+      {
+        uri: "http://127.0.0.1:2113/streams/ponies/event/1?format=xml",
+        relation: "alternate",
+        type: "text/xml"
+      }
+    ]
+  },
+  {
+    title: "ponies #0",
+    id: "http://127.0.0.1:2113/streams/ponies/0",
+    updated: "2013-03-01T22:30:11.79004Z",
+    author: {
+      name: "EventStore"
+    },
+    summary: "Entry #0",
+    links: [
+      {
+        uri: "http://127.0.0.1:2113/streams/ponies/0",
+        relation: "edit"
+      },
+      {
+        uri: "http://127.0.0.1:2113/streams/ponies/event/0?format=text",
+        type: "text/plain"
+      },
+      {
+        uri: "http://127.0.0.1:2113/streams/ponies/event/0?format=json",
+        relation: "alternate",
+        type: "application/json"
+      },
+      {
+        uri: "http://127.0.0.1:2113/streams/ponies/event/0?format=xml",
+        relation: "alternate",
+        type: "text/xml"
+      }
+    ]
+  }
+]
+</code></pre>
+
+<p>We have two events, navigating to them we can see that one of them is for the creation of the stream</p>
+
+<p><em>/streams/ponies/event/0?format=json</em></p>
+
+<pre><code>{
+  eventStreamId: "ponies",
+  eventNumber: 0,
+  eventType: "$stream-created-implicit",
+  data: "",
+  metadata: ""
+}
+</code></pre>
+
+<p>And the other one is the event we pushed</p>
+
+<p><em>/streams/ponies/event/1?format=json</em></p>
+
+<pre><code>{
+  eventStreamId: "ponies",
+  eventNumber: 1,
+  eventType: "PonyBorn",
+  data: {
+    PonyName: "Rainbow Dash",
+    TrampStamp: "Rainbow",
+    Date: "January 2013"
+  },
+  metadata: ""
+}
+</code></pre>
+
+<p>Neato, I guess we notice a few things here then</p>
+
+<ul>
+<li>The stream doesn't contain the actual events, just links to the events</li>
+<li>The stream is pageable, and contains the links to the pages (well, it's AtomPub)</li>
+<li>Each event has its own unique uri, because events are immutable these can be cached by any intermdiate proxy</li>
+</ul>
+
+<p>And indeed, if we look at the header on a HTTP request for one of these events we'll see</p>
+
+<pre><code>Cache-Control:max-age=31556926
+</code></pre>
+
+<p>That's cool, we've discovered that</p>
+
+<ul>
+<li>We can throw events into the event store with a default partitioning (the stream name specified)</li>
+<li>We can get them back out again by paging through the links in that stream</li>
+<li>Events are infinitely cacheable</li>
+<li>Everything is AtomPub</li>
+<li>Everything is easily navigable</li>
+</ul>
+
+<p>Now, if we were building a standard event sourced model we'd be able to page through these streams to build up our snapshots/viewmodels and that's all very neat and tidy and that would be the end of our story.</p>
+
+<p>Next up however, it's more interesting to go and have a look at projections now, and see what questions we can ask of those streams in the event store itself.</p>]]></description><link>http://codeofrob.com/entries/pushing-data-into-streams-in-the-eventstore.html</link><guid isPermaLink="true">http://codeofrob.com/entries/pushing-data-into-streams-in-the-eventstore.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 26 Apr 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Playing with the EventStore]]></title><description><![CDATA[<p>I pulled the <a href="http://geteventstore.com/">EventStore</a> out a while ago to play with, with the intention of making a cool Github InfoGraph type thing, it never quite materialised thanks to the rate limits imposed by Github, and then other stuff came up (like I've got a game engine I'm working on and I want to blog about!)</p>
+
+<p>That said, I had some downtime this week in between engagements and decided to bring it up again and blog about some of the things I did with it and some of the questions we're able to ask with the projections feature (which is hitting a point of maturity now which it didn't have before).</p>
+
+<p>Anyway, setting up the EventStore on my Debian install sorta looked like this</p>
+
+<ul>
+<li>Do a fresh build of Mono 3.0.5 (it won't work on the 2.10 that ships out of the box)</li>
+<li>git clone the event store</li>
+<li>checkout the projections branch (not out yet)</li>
+<li>xbuild EventStore.sln</li>
+<li>Build the v8 stuff</li>
+<li>Set up LD<em>LIBRARY</em>PATH so the v8 stuff can be loaded from the .NET exe</li>
+</ul>
+
+<p>Coolio, so we'll assume that this is running throughout my little experiment and that I can access it on http://127.0.0.1:2113</p>
+
+<p>Browsing to that URL, we can see a veritable playground of shinies, the most important for me are</p>
+
+<ul>
+<li>See All Streams</li>
+<li>Projections</li>
+</ul>
+
+<p>Popping into the "See all Streams", we can see a big pile of json, what's cool about this is </p>
+
+<ul>
+<li>It's a pile of links</li>
+<li>The links tell us what types are accepted</li>
+<li>I can request this in various types as well (see the ?format=json) in this URL</li>
+</ul>
+
+<p>Basically, it's AtomPub, and AtomPub is used across the EventStore for interactions - which means no faffing around with custom formats or any of the crap associated with a lot of proprietary systems.</p>
+
+<p>Anwyay, I haven't currently got any info in my event store so I guess I'll look at that next...</p>]]></description><link>http://codeofrob.com/entries/playing-with-the-eventstore.html</link><guid isPermaLink="true">http://codeofrob.com/entries/playing-with-the-eventstore.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 25 Apr 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[OMeta OData ODear - polishing it off]]></title><description><![CDATA[<p>Now I've gotten most of this work done, I left a few pieces of work outstanding and after review, I can make some of the OMeta cleaner and nicer. I also need to be a bit better about interpreting the various primitives in OData.</p>
 
 <p>I've also got a more <a href="https://github.com/Page-/">qualified person</a> to review my OMeta as I go along and give me feedback on my work, so this is where I integrate a lot of that.</p>
 
@@ -1511,427 +1760,4 @@ operandTest("le")
 
 <p>Imaginative.</p>
 
-<p>Next up we'll have to think about what else we can expect to see in our expressions - thinking about the Arithmetic operators and grouping operators. <em>shudder</em></p>]]></description><link>http://codeofrob.com/entries/our-odata-parser---looking-at-filterby.html</link><guid isPermaLink="true">http://codeofrob.com/entries/our-odata-parser---looking-at-filterby.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 12 Apr 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Paging support in our OData parser]]></title><description><![CDATA[<p>As a reminder as to where we've gotten to so far, these are the tests that are currently passing:</p>
-
-<pre><code>Parsing /
-  ✓ Service root should have no model 
-
-Parsing /model
-  ✓ should have the resource specified 
-
-Parsing /model(1)
-  ✓ should have the resource specified 
-  ✓ should have the key specified for the source 
-
-Parsing /model(1)/child
-  ✓ should have the resource specified 
-  ✓ should have the key specified for the resource 
-  ✓ should have the child specified 
-
-Parsing /model(1)/$links/Child
-  ✓ should have the resource specified 
-  ✓ should have the key specified for the resource 
-  ✓ should have the link specified 
-
-Parsing /method(1)/child?foo=bar
-  ✓ should have the resource specified 
-  ✓ The result should be addressed 
-  ✓ should have the path specified 
-  ✓ should have the argument specified 
-
-Parsing /resource?$orderby=Property
-  ✓ sort options are present on the result 
-  ✓ sort options have the property specified 
-
-Parsing /resource?$orderby=PropertyOne,PropertyTwo
-  ✓ sort options are present on the result 
-  ✓ sort options have the first property specified 
-  ✓ sort options have the second property specified 
-
-Parsing /resource?$orderby=PropertyOne desc
-  ✓ sort options are present on the result 
-  ✓ sort options have the property specified 
-  ✓ sort options have the property ordering specified 
-
-Parsing /resource?$orderby=PropertyOne asc
-  ✓ sort options are present on the result 
-  ✓ sort options have the property specified 
-  ✓ sort options have the property ordering specified 
-
-Parsing /resource?$orderby=PropertyOne asc,PropertyTwo desc
-  ✓ sort options are present on the result 
-  ✓ sort options have property one name specified 
-  ✓ sort options have property one ordering specified 
-  ✓ sort options have the property two name specified 
-  ✓ sort options have the property two ordering specified 
-
-Parsing /resource?$orderby=PropertyOne/SubProperty
-  ✓ sort options are present on the result 
-  ✓ sort options have property one name specified 
-  ✓ sort options have property one's sub property specified 
-</code></pre>
-
-<p>Which is nice. Now I want to add paging support in the form of </p>
-
-<p>$top and $skip, while I'm at it I may as well add support for $inlinecount because it's pretty much the same thing.</p>
-
-<p>This should be fairly easy, this is what I want to support:</p>
-
-<pre><code>/some/path?$top=5&amp;limit=skip=100
-/some/path?$inlinecount=allpages
-</code></pre>
-
-<p><strong>Top and Skip</strong></p>
-
-<p>These are quite simple, just text and a number, let's write a couple of tests</p>
-
-<pre><code>test("/some/resource?$top=5&amp;$skip=100", "OData", function(result) {
-  it("top should be specified", function() {
-     assert.equal(result.options.$top, 5)
-  })
-  it("skip should be specified", function() {
-     assert.equal(result.options.$skip, 100)
-  })
-})
-</code></pre>
-
-<p>I just need to add these to the list of recognised query options</p>
-
-<pre><code>QueryOption = 
-    SortOption
-  | TopOption
-  | SkipOption
-  | OperationParam
-,
-</code></pre>
-
-<p>This is where the elegance of OMeta makes me really happy, being able to easily say what the options for something are in this way is really pretty.</p>
-
-<p>So, TopOption</p>
-
-<pre><code>TopOption = 
-  seq("$top=") Number:value -&gt; { name: "$top", value: value }
-,
-</code></pre>
-
-<p>and SkipOption</p>
-
-<pre><code>SkipOption = 
-  seq("$skip=") Number:value -&gt; { name: "$skip", value: value }
-,
-</code></pre>
-
-<p>Can't say fairer than that!</p>
-
-<p><strong>inlinecount</strong></p>
-
-<p>This one is a bit more interesting, the only valid options are <em>none</em> and <em>allpages</em>, and we're supposed to return a 404 if we don't match. We're not currently doing anything with HTTP in this parser so what I'll actually do is accept "any text" and leave it up to the consumer to do this job for us. (Rather than throw a generic <em>I can't parse this</em> exception)</p>
-
-<pre><code>test("/some/resource?$inlinecount=allpages", "OData", function(result) {
-  it("inline should be specified", function() {
-     assert.equal(result.options.$inlinecount, "allpages")
-  })
-})
-
-test("/some/resource?$inlinecount=none", "OData", function(result) {
-  it("inline should be specified", function() {
-     assert.equal(result.options.$inlinecount, "none")
-  })
-})
-
-test("/some/resource?$inlinecount=flibble", "OData", function(result) {
-  it("inline should be specified", function() {
-     assert.equal(result.options.$inlinecount, "")
-  })
-})
-</code></pre>
-
-<p>I want explicit handling for this because it'll help with the highlighting efforts in the editor that  this will be used in.</p>
-
-<p>We can add it like so</p>
-
-<pre><code>QueryOption = 
-    SortOption
-  | TopOption
-  | SkipOption
-  | InlineCountOption
-  | OperationParam
-,
-</code></pre>
-
-<p>And handle our explcit decisions like so</p>
-
-<pre><code>InlineCountOption =
-  seq("$inlinecount=") 
-  (
-    seq("allpages") -&gt; "allpages"
-  | seq("none") -&gt; "none"
-  | Text -&gt; ""
-  ):value -&gt; { name: "$inlinecount", value: value }
-,
-</code></pre>
-
-<p><strong>Et voila</strong></p>
-
-<p>So that's paging done and dusted, incredibly simple when you know how. Next up we'll explore the murky world of OData filtering.</p>]]></description><link>http://codeofrob.com/entries/paging-support-in-our-odata-parser.html</link><guid isPermaLink="true">http://codeofrob.com/entries/paging-support-in-our-odata-parser.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 11 Apr 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[The OData parser - applying modifiers to our query]]></title><description><![CDATA[<p>I've got <a href="/entries/writing-an-odata-parser---starting-at-the-beginning.html">basic resource parsing</a>, <a href="/entries/parsing-odata---nested-resource-paths.html">path parsing</a>, and <a href="/entries/parsing-odata---service-operations.html">service operations</a> sussed, now I need to begin the grand delving into parsing all of the query options that can be applied to an OData request.</p>
-
-<p>There is quite the myriad of query string options that can be applied in a conventional OData request, and they all begin with $ and have some sort of expression after it.</p>
-
-<ul>
-<li>$orderby (order by some sort of field)</li>
-<li>$top (paging support)</li>
-<li>$skip (paging support)</li>
-<li>$filter (expressions passed in to do filtering - basically LINQ support and SQL server support &lt;/cynicism&gt;)</li>
-</ul>
-
-<p>These all appear at the very end of the query string like so</p>
-
-<pre><code>/resource/child?$orderby=Rating asc
-/resource?$top=10
-/resource?$orderby=Rating,Category/Name desc
-/resource?$filter=Rating eq 5
-</code></pre>
-
-<p>As can be seen, the complexity of these can grow quite easily but in reality they're pretty much a combination of</p>
-
-<ul>
-<li>the query option itself</li>
-<li>an expression that is unique to that query option</li>
-</ul>
-
-<p>Also, we can re-use any rules we already have about parsing resource names (except we don't want to allow id specification, etc)
-I imagine when trying to re-use those rules I'll probably sort out some of the niggles I've overlooked so far too!</p>
-
-<p>So I guess what we need to do is parse the resource path and then apply any of these modifiers to it. There is actually a fair amount of support for this already in the Rulemotion code that I'm looking to replace so I'll likely be able to copy most of it out as I write the tests for it.</p>
-
-<p><strong>$orderby</strong></p>
-
-<p>OrderBy seems quite trivial so we'll start with that</p>
-
-<pre><code>test("/resource?$orderby=Property", "OData", function(result) {
-  it("sort options are present on the result", function() {
-     assert.notEqual(result.options.$orderby, null)
-  })
-  it("sort options have the property specified", function() {
-     assert.equal(result.options.$orderby.property, "Property")
-  })
-})
-</code></pre>
-
-<p>I'm quite excited about this as how this model presents itself will probably help me sort out the main model I'm creating to support the OData request.</p>
-
-<p>I'll start off with:</p>
-
-<pre><code>OData = (
-  (
-    PathSegment:model 
-    (
-      '?'
-      ( listOf(`QueryOption, '&amp;'):options
-      )
-    )?
-  ) -&gt; { 
-          if(options) {
-           model.options = {}
-           for(var i in options)
-             model.options[options[i].name] = options[i].value;
-          }
-         return model
-       }
-  | '/'
-) 
-</code></pre>
-
-<p>I'll simply look for a list of query options, and actually merge the notion of service parameters and known query options (and in fact, custom options too - which are simply any unrecognised options - without a dollar sign in front of them)</p>
-
-<p>What does this look like? </p>
-
-<pre><code>QueryOption = 
-  SortOption
-| OperationParam
-,
-
-SortOption = 
-  seq("$orderby=")
-  ResourceName:property -&gt; { name: '$orderby', value = { property: property }}
-</code></pre>
-
-<p>Well we'll start off with the simplest one, which is just supporting a single property and no options. I don't want to get too ahead of myself after all.</p>
-
-<p>This works but of course I've broken my tests for service parameters now, so I'll fix those</p>
-
-<pre><code>test("/method(1)/child?foo=bar", "OData", function(result) {
-    console.log(result)
-  it("should have the resource specified", function() {
-     assert.equal(result.resource, 'method')
-  })
-  it("The result should be addressed", function() {
-     assert.equal(result.key, '1')
-  })
-
-  it("should have the path specified", function() {
-     assert.equal(result.property.resource, 'child')
-  })
-
-  it("should have the argument specified", function() {
-     assert.equal(result.options.foo, 'bar')
-  })
-})
-</code></pre>
-
-<p><strong>A bit more $orderby</strong></p>
-
-<p>Not done by a long-shot, we have several aspects to $orderby</p>
-
-<ul>
-<li>We can order by a single property</li>
-<li>We can order by several properties</li>
-<li>A property can be specified by a path to that property</li>
-<li>We can order ASC or DESC</li>
-</ul>
-
-<p>First off, let's deal with multiple properties - it seems this will be easiest</p>
-
-<pre><code>test("/resource?$orderby=PropertyOne,PropertyTwo", "OData", function(result) {
-  it("sort options are present on the result", function() {
-     assert.notEqual(result.options.$orderby, null)
-  })
-  it("sort options have the first property specified", function() {
-     assert.equal(result.options.$orderby.properties[0].name, "PropertyOne")
-  })
-  it("sort options have the second property specified", function() {
-     assert.equal(result.options.$orderby.properties[1].name, "PropertyTwo")
-  })
-})
-</code></pre>
-
-<p>Yeugh, our data model is getting quite convoluted - I'll be working on that for sure.</p>
-
-<p>But first...</p>
-
-<pre><code>SortOption = 
-  seq("$orderby=")
-  listOf(`SortProperty, ','):properties -&gt; { name: '$orderby', value: { properties: properties }  }
-,
-
-SortProperty = 
-  ResourceName:property -&gt; { name: property }
-
-,
-</code></pre>
-
-<p>Pretty tidy, and this opens up the avenue of being able to specify ASC or DESC very easily</p>
-
-<p><em>DESC</em></p>
-
-<pre><code>test("/resource?$orderby=PropertyOne desc", "OData", function(result) {
-  it("sort options are present on the result", function() {
-     assert.notEqual(result.options.$orderby, null)
-  })
-  it("sort options have the property specified", function() {
-     assert.equal(result.options.$orderby.properties[0].name, "PropertyOne")
-  })
-  it("sort options have the property ordering specified", function() {
-     assert.equal(result.options.$orderby.properties[0].order, "desc")
-  })
-})
-</code></pre>
-
-<p><em>ASC</em></p>
-
-<pre><code>test("/resource?$orderby=PropertyOne asc", "OData", function(result) {
-  it("sort options are present on the result", function() {
-     assert.notEqual(result.options.$orderby, null)
-  })
-  it("sort options have the property specified", function() {
-     assert.equal(result.options.$orderby.properties[0].name, "PropertyOne")
-  })
-  it("sort options have the property ordering specified", function() {
-     assert.equal(result.options.$orderby.properties[0].order, "asc")
-  })
-})
-</code></pre>
-
-<p><em>Double trouble</em></p>
-
-<pre><code>test("/resource?$orderby=PropertyOne asc,PropertyTwo desc", "OData", function(result) {
-  it("sort options are present on the result", function() {
-     assert.notEqual(result.options.$orderby, null)
-  })
-  it("sort options have property one name specified", function() {
-     assert.equal(result.options.$orderby.properties[0].name, "PropertyOne")
-  })
-  it("sort options have property one ordering specified", function() {
-     assert.equal(result.options.$orderby.properties[0].order, "asc")
-  })
-  it("sort options have the property two name specified", function() {
-     assert.equal(result.options.$orderby.properties[1].name, "PropertyTwo")
-  })
-  it("sort options have the property two ordering specified", function() {
-     assert.equal(result.options.$orderby.properties[1].order, "desc")
-  })
-})
-</code></pre>
-
-<p>Adding this is <em>super</em> easy</p>
-
-<pre><code>SortProperty = 
-  ResourceName:property
-  (
-    seq(" asc") -&gt; "asc"
-  | seq(" desc") -&gt; "desc"
-  )?:order
-  -&gt; { name: property, order: order }
-</code></pre>
-
-<p>Simply check for the resource name, then optionally check for an "asc" or a "desc", before bundling this into an object.</p>
-
-<p><strong>And the final bit - property paths</strong></p>
-
-<p>I already technically have this written in the form of the expression "PathSegment", but that's a bit too coupled to the main query path, and un-coupling it would be tricky - so it's better off just to write a new expression for matching paths within query options.</p>
-
-<p>First off, the test I want to pass</p>
-
-<p><em>Reminder: This is the PathSegment I put together last time</em></p>
-
-<pre><code>PathSegment = 
-      '/'
-      ResourceName:resource
-      (
-        ("(" Number:key ")")?
-        (
-          (seq("/$links") PathSegment:link)
-        | PathSegment: next
-        )?
-      ) -&gt; { resource: resource, key: key, link: link, property: next }
-,
-</code></pre>
-
-<p>We just need a subset of this, let's call it PropertyPath</p>
-
-<pre><code>PropertyPath = 
-      ResourceName:resource
-      (
-        '/'
-        PropertyPath: next
-      )? -&gt; { name: resource, property: next}
-,
-</code></pre>
-
-<p>And with a slight modification to our SortOptions to use this new expression:</p>
-
-<pre><code>SortProperty = 
-  PropertyPath:property
-  (
-    seq(" asc") -&gt; "asc"
-  | seq(" desc") -&gt; "desc"
-  )?:order
-  -&gt; {
-       property.order = order;
-       return property;
-     }
-</code></pre>
-
-<p>And we're done.</p>
-
-<p>Next up, I'll tackle the paging stuffs, as that should be simple.</p>]]></description><link>http://codeofrob.com/entries/the-odata-parser---applying-modifiers-to-our-query.html</link><guid isPermaLink="true">http://codeofrob.com/entries/the-odata-parser---applying-modifiers-to-our-query.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 10 Apr 2013 09:30:00 GMT</pubDate></item></channel></rss>
+<p>Next up we'll have to think about what else we can expect to see in our expressions - thinking about the Arithmetic operators and grouping operators. <em>shudder</em></p>]]></description><link>http://codeofrob.com/entries/our-odata-parser---looking-at-filterby.html</link><guid isPermaLink="true">http://codeofrob.com/entries/our-odata-parser---looking-at-filterby.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 12 Apr 2013 09:30:00 GMT</pubDate></item></channel></rss>

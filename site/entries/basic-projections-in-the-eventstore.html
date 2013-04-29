@@ -24,7 +24,7 @@
     <a class="subscribe" href="http://feed.codeofrob.com/RobAshton">Subscribe to my blog</a>
     <div id="blog-entry">
       <h1 id="post-title">Basic projections in the EventStore</h1>
-      <h6>Published on <span class="date">2013-4-28</span></h6>
+      <h6>Published on <span class="date">2013-4-29</span></h6>
       <div id="post"><p>Being able to <a href="/entries/pushing-data-into-streams-in-the-eventstore.html">shove events in and out</a> is great for our event sourced apps, but actually - if we have these streams, it's really useful to be able to consistently manipulate the events as they come in and either query those events or re-organise them so they can be queried.</p>
 
 <p>To do this, we have the notion of projections, which are chunks of code that can be executed over a stream (with persisted state) as events are added to it. Now, in reality this isn't actually too different to what we'd be doing outside the event store when building up view models, and I foresee lots of bad things being done by people are the line between these different ways of reading streams are blurred and fought over.</p>
@@ -58,14 +58,15 @@
 
 <p>Let's say that I've thrown a few hundred thousand of these events through the event store and I want to know something really basic, like how many times the ponies in my world have jumped since time began.</p>
 
-<p>If I go to the "New Projection" tab in the Admin UI, I basically have a few options to choose from which I'm going to gloss over for the most part (as they're likely to change anyway)</p>
+<p>There is a Web UI available for managing projections in the event store (by default available at 127.0.0.1:2113). This is still subject to change though so I'll just be describing the ideas behind this concept.</p>
+
+<p>There are some attributes of a projection that we can choose when creating a projection via HTTP or the UI</p>
 
 <ul>
 <li>Name: This is the name of the projection, I'll use this to look up the state</li>
 <li>Source: This is the code to be executed</li>
-<li>Emit Enabled: Projections can emit new events if this is enabled</li>
+<li>Emit Enabled: Projections can emit (or link) events if this is enabled</li>
 <li>Enabled: Is this projection going to run?</li>
-<li>Mode: Continuous vs One-Time: Will this projection always be running or am I just running it to get some results now</li>
 </ul>
 
 <p>My options</p>
@@ -73,16 +74,15 @@
 <ul>
 <li>Name: "PonyJumpCount"</li>
 <li>Source: TBC</li>
-<li>Emit Enabled: Leaving this false</li>
+<li>Emit Enabled: Leaving this false (we'll cover usage of this later)</li>
 <li>Enabled: Yes please!</li>
-<li>Mode: Continous, I want to always know how many times ponies have jumped in my world</li>
 </ul>
 
-<p>Now for the source, by default we're shown this as something to start from</p>
+<p>Now for the source, we'll start with the most basic projection which looks like this:</p>
 
 <pre><code>fromAll()
   .whenAny(function(state,event) { 
-     return state; 
+     return null; 
   });
 </code></pre>
 
@@ -90,18 +90,18 @@
 
 <pre><code>fromStream("ponies")
   .whenAny(function(state,event) { 
-     return state; 
+     return null; 
   });
 </code></pre>
 
 <p>How about that next bit "whenAny", well we've already matched which stream we want events from, well this is the bit we get to use to select which events from that stream we're interested in - "whenAny" just means "all the events in the stream".</p>
 
-<p>I'm going to go ahead and change that to a when, which takes in a map of the events we're interested in and the callback to process the event with, so..</p>
+<p>I'm going to go ahead and change that to a when, which takes in a map of the events we're interested in and the callback to process the event with (pattern-matching on the EventType)</p>
 
 <pre><code>fromStream("ponies")
-  .when(
+  .when({
     "PonyJumped": function(state, event) {
-      return state
+      return null;
     })
 </code></pre>
 
