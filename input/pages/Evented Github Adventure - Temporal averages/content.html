@@ -1,41 +1,27 @@
 <p>If we can <a href="/entries/evented-github-adventure---temporal-queries,-who-doesnt-trust-their-hardware.html">emit temporal events</a> by partitioning streams and building up state over time, then we can probably go a bit further and build up averages over "How long things usually take", let's have a look at the temporal projection we used to emit time-based events:</p>
 
-<pre><code>fromStream('github')
-  .partitionBy(function(ev) {
-    if(ev.body.repo) {
-      return ev.body.repo.full_name
-    }
-  })
-  .when({
-    $init: function(state, ev) {
-      return {}
-    },
-    "PushEvent": function(state, ev) {
-      if(state.lastPush) {
-        var newDate = new Date(ev.body.created_at)
-          , lastDate = new Date(state.lastPush.body.created_at)
-          , difference = (newDate.getTime() - lastDate.getTime()) / 1000
+<pre><code>"PushEvent": function(state, ev) {
+  if(state.lastPush) {
+    var newDate = new Date(ev.body.created_at)
+      , lastDate = new Date(state.lastPush.body.created_at)
+      , difference = (newDate.getTime() - lastDate.getTime()) / 1000
 
-        if(difference &lt; 120) {
-          emit('github-paranoidpushes', "ParanoidPush", {
-            first: state.lastPush,
-            next: ev
-          })
-        }
-      }
-      state.lastPush = ev
+    if(difference &lt; 120) {
+      emit('paranoidpushes', "ParanoidPush", {
+        first: state.lastPush,
+        next: ev
+      })
     }
-  })
+  }
+  state.lastPush = ev
+  return state
+}
 </code></pre>
 
 <p>What we can actually do here is instead of checking for a difference, simply emit an event for every time we receive a PushEvent notification which happened after another one we already saw:</p>
 
-<pre><code>fromStream('github')
-  .partitionBy(function(ev) {
-    if(ev.body.repo) {
-      return ev.body.repo.full_name
-    }
-  })
+<pre><code>fromCategory('pushesbyrepo')
+  foreachStream()
   .when({
     $init: function(state, ev) {
       return {}
@@ -46,15 +32,14 @@
           , lastDate = new Date(state.lastPush.body.created_at)
           , difference = (newDate.getTime() - lastDate.getTime()) / 1000
 
-        if(difference &lt; 120) {
-          emit('github-successivepushes', "SuccessivePush", {
-            first: state.lastPush,
-            next: ev,
-            difference: difference
-          })
-        }
+        emit('successivepushes', "SuccessivePush", {
+          first: state.lastPush,
+          next: ev,
+          difference: difference
+        })
       }
       state.lastPush = ev
+      return state
     }
   })
 </code></pre>
@@ -65,229 +50,40 @@
 
 <p>So, this time we'll partition by language and work out an average time between pushes per language</p>
 
-<pre><code>fromStream('github-successivepushes')
-   .partitionBy(function(ev) {
-    if(ev.body.first.body.repo) {
-      return ev.body.first.body.repo.language
-    }
-   })
-   .when({
-     "$init": function(state, ev) {
-       return { total: 0, totaltime: 0 }
-     },
-     "SuccessivePush": function(state, ev) {
-       state.total++
-       state.totaltime += ev.body.difference
-     }
-   })
+<pre><code>fromStream('successivepushes')
+  .when({
+   "$init": function() {
+     return {}
+   },
+   "SuccessivePush": function(state, ev) {
+     var langState = getPerLanguageState(state, ev)
+     langState.total++
+     langState.totaltime += ev.body.difference
+     return state
+   }
+  })
 </code></pre>
+
+<p>Now how I got to re-use that per-repo stream I created earlier.</p>
 
 <div id="scaled"></div>
 
-<p>And there we can see that C# developers take the longest between pushes on average, pretty neat!</p>
+<p>And there we can see that C# developers take the longest between pushes on average, pretty neat! (Presumably this is because they're waiting for their builds to finish)</p>
 
 <script type="text/javascript" src="/d3.v2.js"></script>
 <script type="text/javascript">
-  var data = [
-  {
-    key: "Go",
-    state: {
-      total: 2,
-      totaltime: 144
-    }
-  },
-  {
-    key: "R",
-    state: {
-      total: 2,
-      totaltime: 114
-    }
-  },
-  {
-    key: "Common Lisp",
-    state: {
-      total: 2,
-      totaltime: 1
-    }
-  },
-  {
-    key: "Clojure",
-    state: {
-      total: 1,
-      totaltime: 35
-    }
-  },
-  {
-    key: "Rust",
-    state: {
-      total: 3,
-      totaltime: 120
-    }
-  },
-  {
-    key: "Groovy",
-    state: {
-      total: 4,
-      totaltime: 16
-    }
-  },
-  {
-    key: "Objective-C",
-    state: {
-      total: 5,
-      totaltime: 299
-    }
-  },
-  {
-    key: "OpenEdge ABL",
-    state: {
-      total: 3,
-      totaltime: 224
-    }
-  },
-  {
-    key: "F#",
-    state: {
-      total: 2,
-      totaltime: 216
-    }
-  },
-  {
-    key: "Haskell",
-    state: {
-      total: 2,
-      totaltime: 46
-    }
-  },
-  {
-    key: "ActionScript",
-    state: {
-      total: 1,
-      totaltime: 98
-    }
-  },
-  {
-    key: "Perl",
-    state: {
-      total: 8,
-      totaltime: 452
-    }
-  },
-  {
-    key: "CoffeeScript",
-    state: {
-      total: 3,
-      totaltime: 124
-    }
-  },
-  {
-    key: "Erlang",
-    state: {
-      total: 2,
-      totaltime: 143
-    }
-  },
-  {
-    key: "VimL",
-    state: {
-      total: 4,
-      totaltime: 256
-    }
-  },
-  {
-    key: "PHP",
-    state: {
-      total: 41,
-      totaltime: 2133
-    }
-  },
-  {
-    key: "C#",
-    state: {
-      total: 13,
-      totaltime: 1052
-    }
-  },
-  {
-    key: "C++",
-    state: {
-      total: 15,
-      totaltime: 363
-    }
-  },
-  {
-    key: "Emacs Lisp",
-    state: {
-      total: 4,
-      totaltime: 32
-    }
-  },
-  {
-    key: "Python",
-    state: {
-      total: 54,
-      totaltime: 2870
-    }
-  },
-  {
-    key: "JavaScript",
-    state: {
-      total: 158,
-      totaltime: 9350
-    }
-  },
-  {
-    key: "Lua",
-    state: {
-      total: 5,
-      totaltime: 209
-    }
-  },
-  {
-    key: "Matlab",
-    state: {
-      total: 8,
-      totaltime: 538
-    }
-  },
-  {
-    key: "C",
-    state: {
-      total: 45,
-      totaltime: 1821
-    }
-  },
-  {
-    key: "Java",
-    state: {
-      total: 103,
-      totaltime: 3214
-    }
-  },
-  {
-    key: "Shell",
-    state: {
-      total: 25,
-      totaltime: 1123
-    }
-  },
-  {
-    key: "Ruby",
-    state: {
-      total: 39,
-      totaltime: 1704
-    }
-  }
-  ]
+  var data = {"Processing":{"totaltime":0,"total":1},"C":{"totaltime":8517,"total":31},"Shell":{"totaltime":2276,"total":7},"Ruby":{"totaltime":15029,"total":28},"Java":{"totaltime":8214,"total":28},"Python":{"totaltime":11622,"total":30},"Scala":{"totaltime":37,"total":1},"C++":{"totaltime":7968,"total":41},"null":{"totaltime":22123,"total":39},"JavaScript":{"totaltime":28994,"total":72},"Objective-C":{"totaltime":4185,"total":6},"PHP":{"totaltime":9349,"total":25},"Emacs Lisp":{"totaltime":410,"total":2},"C#":{"totaltime":4968,"total":7},"Rust":{"totaltime":1079,"total":2},"Clojure":{"totaltime":798,"total":3},"Haskell":{"totaltime":0,"total":2},"ASP":{"totaltime":919,"total":1},"R":{"totaltime":3744,"total":3},"Erlang":{"totaltime":489,"total":2},"CoffeeScript":{"totaltime":435,"total":1},"Dart":{"totaltime":210,"total":1},"VimL":{"totaltime":884,"total":2},"Visual Basic":{"totaltime":1571,"total":2},"ActionScript":{"totaltime":1504,"total":1},"OCaml":{"totaltime":0,"total":1},"Matlab":{"totaltime":2181,"total":3}}
 </script>
 
 <script type="text/javascript">
 
    var filteredData = []
-   for(var i =0 ; i < data.length; i++) {
-     if(data[i].state.total >= 10) {
+   for(var i in data) {
+     if(data[i].total >= 10) {
        var datum = data[i]
+       datum.state = datum
        datum.state.average = Math.floor(datum.state.totaltime / datum.state.total)
+c
        filteredData.push(datum)
      }
    }

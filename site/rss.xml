@@ -1,5 +1,468 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Mon, 29 Apr 2013 05:10:22 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Pushing data into streams in the EventStore]]></title><description><![CDATA[<p>I'm <a href="/entries/playing-with-the-eventstore.html">playing with the EventStore</a> and I need to push some data into it in the form of streams.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Sat, 04 May 2013 12:01:29 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Evented Github Adventure - Emitting Commits as their own events]]></title><description><![CDATA[<p>I'm <a href="/entries/less-abstract,-pumping-data-from-github-into-the-eventstore.html">ploughing all the events from Github into the EventStore</a> as is, but that doesn't mean they're instantly available for querying.</p>
+
+<p>Lets say I want to write a few projections analysing the commits made across Github and performing some correlations off the back of that.</p>
+
+<p>Well, currently there is no such thing as a CommitEvent - what we actually have is a PushEvent which contains a list of Commits in the payload like so</p>
+
+<pre><code>{
+   type: "PushEvent",
+   repo: { // repo info },
+   payload: {
+     commits: [
+      {
+        sha: "etc",
+        author: { //etc },
+        message: "I am a banana"
+      },
+      {
+        sha: "etc",
+        author: { //etc },
+        message: "My spoon is too big"
+      },
+      {
+        sha: "etc",
+        author: { //etc },
+        message: "Tuesday's coming, did you bring your coat?"
+      }
+     ]
+   }
+}
+</code></pre>
+
+<p>Let's say I want to build up projections off the the stream of commits, in each of my projections I'd have to write the following code</p>
+
+<pre><code>fromStream("github")
+  .when({
+    "$init": function(state, ev) {
+      return {}
+    },
+    "PushEvent": function(state, ev) {
+      for(var i = 0 ; i &lt; ev.body.payload.commits.length; i++) {
+        var commit = ev.body.payload.commits[i]
+        var repo = ev.body.repo
+
+        // do stuff
+      }
+    }
+  })
+</code></pre>
+
+<p>This doesn't cause a huge problem, but it is irritating having to do this for every projection and if I particularly cared about CPU it's also unnecessary work to be doing.</p>
+
+<p>It would be much better if I could just have a stream of commits to read from when creating these projections.</p>
+
+<pre><code>fromStream("github-commits")
+  .when({
+    "$init": function(state, ev) {
+
+    },
+    "Commit": function(state, ev) {
+      var commit = ev.body.commit
+      var repo = ev.body.repo
+
+      // Do stuff
+    }
+  })
+</code></pre>
+
+<p>Well in fact we can, and that's a good place to use the 'emit' function. Let's say we have our original projection which loops over those commits:</p>
+
+<pre><code>fromStream("github")
+  .when({
+    "$init": function(state, ev) {
+      return {}
+    },
+    "PushEvent": function(state, ev) {
+      for(var i = 0 ; i &lt; ev.body.payload.commits.length; i++) {
+        var commit = ev.body.payload.commits[i]
+        var repo = ev.body.repo
+        emit("github-commits", "Commit", {
+          commit: commit,
+          repo: repo
+        })
+      }
+    }
+  })
+</code></pre>
+
+<p>And lo, we now have a new stream caled "github-commits", with a pile of "Commit" events with the commit and the repo information for that commit.</p>
+
+<p><em>/streams/github-commits</em></p>
+
+<pre><code>{
+  title: "github-commits #2266",
+  id: "http://127.0.0.1:2113/streams/github-commits/2266",
+  updated: "2013-03-02T15:20:04.207363Z",
+  author: {
+    name: "EventStore"
+  },
+  summary: "Entry #2266",
+  links: [
+  {
+    uri: "http://127.0.0.1:2113/streams/github-commits/2266",
+    relation: "edit"
+  },
+  {
+    uri: "http://127.0.0.1:2113/streams/github-commits/event/2266?format=text",
+    type: "text/plain"
+  },
+  {
+    uri: "http://127.0.0.1:2113/streams/github-commits/event/2266?format=json",
+    relation: "alternate",
+    type: "application/json"
+  },
+  {
+    uri: "http://127.0.0.1:2113/streams/github-commits/event/2266?format=xml",
+    relation: "alternate",
+    type: "text/xml"
+  }
+  ]
+},
+</code></pre>
+
+<p>Now, unlike "linkTo", this actually creates new events - as can be seen by the URIs in the above sample, and this decision comes with its own considerations but this is what I'll roll with for now and see where it gets me.</p>]]></description><link>http://codeofrob.com/entries/evented-github-adventure---emitting-commits-as-their-own-events.html</link><guid isPermaLink="true">http://codeofrob.com/entries/evented-github-adventure---emitting-commits-as-their-own-events.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 03 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Less abstract, pumping data from Github into the EventStore]]></title><description><![CDATA[<p>It's all very well and good <a href="/entries/playing-with-the-eventstore.html">talking</a> <a href="/entries/pushing-data-into-streams-in-the-eventstore.html">events</a> <a href="/entries/basic-projections-in-the-eventstore.html">in</a> <a href="/entries/re-partitioning-streams-in-the-event-store-for-better-projections.html">the</a> <a href="/entries/creating-a-projection-per-stream-in-the-eventstore.html">abstract</a>, but there is only so long I can blather about ponies before I run out of the kind of data I can ask interesting questions about.</p>
+
+<p>We turn to the <a href="http://developer.github.com/v3/activity/events/#list-public-events">Github Events API</a>, something I have a <a href="/entries/github-live.html">bit of experience</a> with for inspiration and start dumping all the events into the event store.</p>
+
+<p>What does this look like?</p>
+
+<p>Well, I'm interested in the public events stream, which can be polled up to 5000 times an hour (at current rates, it needs polling about every 10 seconds in order to keep up, so I'll not be able to get them all)</p>
+
+<p>What this looks like</p>
+
+<pre><code> var request = https.get(
+ { host: 'api.github.com', path: '/events' + auth }, 
+ function(res) {
+    var data = ''
+    res.on('data', function (chunk) {
+      data += chunk
+    });
+    res.on('end', function() {
+      processData(data)
+    })
+  })
+  .on('error', function(e) {
+    console.error(e)
+  }).end()
+
+  var processData = function(data) {
+    var eventArray = JSON.parse(data)
+    for(var i = eventArray.length-1 ; i &gt;= 0; i--) {
+      processEvent(eventArray[i])
+    }
+  }
+</code></pre>
+
+<p>An event looks like this</p>
+
+<pre><code>{
+  id: "somelongid",
+  type: "PushEvent",
+  actor: { // info about the user },
+  repo: { // info about the repo }
+  payload: { // the event itself }
+}
+</code></pre>
+
+<p>I'm going to be shoving these events 'as is' into the EventStore, and using their ids 'as is' too, this means I don't need to do any de-duping or anything like that.</p>
+
+<p>Now, because of the kind of question I want to ask, it isn't enough for me to have the scant info about a repo that the event stream gives me (it looks like this)</p>
+
+<pre><code>{
+ "id": 3,
+ "name": "octocat/Hello-World",
+ "url": "https://api.github.com/repos/octocat/Hello-World"
+}
+</code></pre>
+
+<p>So I'm going to augment each event with repo information (this is quite common in the eventing world, augmenting events with useful information for query purposes), and therefore my processEvent method looks something like this:</p>
+
+<pre><code>function processEvent(ev) {
+  if(ev.repo) {
+    fetchRepoInfo(ev.repo.name, function(repo) {
+      ev.repo = repo
+      pushEventIntoEventStore(ev)
+    })
+  } else {
+    pushEventIntoEventStore(ev)
+  }
+}
+</code></pre>
+
+<p>So, I'm not altering any of the events in any way, except by adding repo information to them, therefore if you're interested in the structure of any of the events I'm using you can easily look them up in the API.</p>
+
+<p>By the time the code is readable there'll be some rate management code in there because I can't go looking up repo information for every single event and not go over the rate limit, but it's safe to say we'll be getting ~50% of the events from Github and that's a reasonable amount.</p>
+
+<p>My script simply sits there running in the background and throws events into the event store and this little experiment is going to be about creating projections and asking questions of those events as we go along. Capiche? :)</p>]]></description><link>http://codeofrob.com/entries/less-abstract,-pumping-data-from-github-into-the-eventstore.html</link><guid isPermaLink="true">http://codeofrob.com/entries/less-abstract,-pumping-data-from-github-into-the-eventstore.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 02 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Creating a projection per stream in the EventStore]]></title><description><![CDATA[<p><a href="/entries/re-partitioning-streams-in-the-event-store-for-better-projections.html">Now I have a stream per pony</a>, I want to create a projection per pony, but how do we do this?</p>
+
+<p>Well, so far we've seen these two methods to get the events for our projection</p>
+
+<ul>
+<li>fromAny: Give us the events from all the streams</li>
+<li>fromStream: Give us the event from a specific stream</li>
+</ul>
+
+<p>Well, now is the time to introduct another method we have at our disposal</p>
+
+<ul>
+<li>fromCategory: Run this for each "category"</li>
+</ul>
+
+<p>Well, what on earth IS a category? Turns out that the EventStore is quite clever and one of the default projections is hard at work looking at streams and categorising them.</p>
+
+<p>I called my streams pony-PONYNAME for good reason, because this default projection will have gone "Hey, there is a dash in that stream, I'm going to create a category called pony, and each entry in that category is going to be a PONYNAME"</p>
+
+<p>That leaves us with</p>
+
+<pre><code>fromCategory('pony')
+  .foreachStream()
+  .when({
+    "$init": function(state, ev) {
+      return { count: 0 }
+    },
+    "PonyJumped": function(state, ev) {
+      state.count++
+    }
+  })
+</code></pre>
+
+<p>For each stream in the category "pony", please run this projection code!</p>
+
+<p><strong>Reading back the state</strong></p>
+
+<p>We can now look at the state per pony by visiting the /state and passing in the partition we care about in the query string</p>
+
+<p><em>/projection/jumpingponies2/state?partition=rainbowdash</em></p>
+
+<pre><code>{
+  count: 2000
+}
+</code></pre>
+
+<p><em>/projection/jumpingponies2/state?partition=pinkiepie</em></p>
+
+<pre><code>{
+  count: 300
+}
+</code></pre>
+
+<p><em>/projection/jumpingponies2/state?partition=derpy</em></p>
+
+<pre><code>{
+  count: 10
+}
+</code></pre>
+
+<p><strong>NOTE</strong></p>
+
+<p>It's at this point, people usually ask "How about giving me a list of ponies so I can look up the state for each of them", this is <em>not</em> what you use the EventStore for. </p>
+
+<p>The list of ponies is something that should exist in your domain and be stored in a database (whether this be a document or relational database), and then used to look up values in the event store.</p>
+
+<p>This could either be a fixed list in one of those stores, or you could run through the streams in the EventStore and build up that list as a read model in that external store. <em>This is the only time I'm going to mention this in this series :)</em></p>]]></description><link>http://codeofrob.com/entries/creating-a-projection-per-stream-in-the-eventstore.html</link><guid isPermaLink="true">http://codeofrob.com/entries/creating-a-projection-per-stream-in-the-eventstore.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 01 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Re-partitioning streams in the Event Store for better projections]]></title><description><![CDATA[<p>We're able to do <a href="/entries/basic-projections-in-the-eventstore.html">aggregations of a stream's content by writing a projection</a>, and that's great - if we want to know about every jump every pony has performed over the entire stream. This is unlikely to be what we actually want though, people are narccisstic and ponies are no different, Rainbow Dash probably wants to know about just her jumping activity and Pinkie Pie wants to know about her own too, Derpy Hooves is probably too busy eating muffins to care, but we'll include her anyway.</p>
+
+<ul>
+<li>We've got a stream, which we have "all events for all ponies", we called it "ponies" because we're imaginative.</li>
+<li>We've got a projection that can run over that stream and give us a total jump count for that stream</li>
+<li>We want a projection for each pony that gives us the total jump count for that pony</li>
+<li>We therefore want a stream for each pony, so we can generate a projection for that pony</li>
+</ul>
+
+<p>It turns out that this isn't too hard, let's look at how we do this:</p>
+
+<p>Let's start with a basic projection over our ponies stream that doesn't do anything:</p>
+
+<pre><code>fromStream('ponies')
+.whenAny(function(state, ev) {
+
+})
+</code></pre>
+
+<p>To re-iterate what we learned last time, this projection says "From the stream 'ponies', please invoke this callback for every event in the stream regardless of what the EventType is"</p>
+
+<p>What we can actually do is create a new stream per pony, but link back to the original events from those new streams. </p>
+
+<pre><code>fromStream('ponies')
+.whenAny(function(state, ev) {
+  linkTo('pony-' + ev.data.PonyName, ev)
+})
+</code></pre>
+
+<p>linkTo takes two arguments</p>
+
+<ul>
+<li>The name of the stream to link the event to</li>
+<li>The event itself</li>
+</ul>
+
+<p>For this projection, I "enable emits" beacuse that's what we're doing here</p>
+
+<p>In our case, we're going to have a stream created for each pony, called pony-PONYNAME (so pony-rainbowdash, pony-derpyhooves, pony-pinkiepie), let's look at this to verify</p>
+
+<p><em>/streams/pony-rainbowdash</em></p>
+
+<pre><code>{
+  title: "ponies #5502",
+  id: "http://127.0.0.1:2113/streams/ponies/5502",
+  updated: "2013-03-02T12:39:12.322785Z",
+  author: {
+    name: "EventStore"
+  },
+  summary: "Entry #5502",
+  links: [
+    {
+      uri: "http://127.0.0.1:2113/streams/ponies/5502",
+      relation: "edit"
+    },
+    {
+      uri: "http://127.0.0.1:2113/streams/ponies/event/5502?format=text",
+      type: "text/plain"
+    },
+    {
+      uri: "http://127.0.0.1:2113/streams/ponies/event/5502?format=json",
+      relation: "alternate",
+      type: "application/json"
+    },
+    {
+      uri: "http://127.0.0.1:2113/streams/ponies/event/5502?format=xml",
+      relation: "alternate",
+      type: "text/xml"
+    }
+  ]
+}
+</code></pre>
+
+<p>This is just one of the events in that stream, but we can see an important point here, that <em>a new event was not created, the links are the original events from the original stream</em>. Cool!</p>
+
+<p>If I look through the list of all streams, I can see that I now have a stream for each pony (in my case this is)</p>
+
+<ul>
+<li>/streams/pony-rainbowdash</li>
+<li>/streams/pony-pinkiepie</li>
+<li>/streams/pony-derpyhooves</li>
+</ul>
+
+<p>Now what I want to do is create a projection for each of these streams, so I can ask "how far has each of these ponies jumped", that's next :)</p>]]></description><link>http://codeofrob.com/entries/re-partitioning-streams-in-the-event-store-for-better-projections.html</link><guid isPermaLink="true">http://codeofrob.com/entries/re-partitioning-streams-in-the-event-store-for-better-projections.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 30 Apr 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Basic projections in the EventStore]]></title><description><![CDATA[<p>Being able to <a href="/entries/pushing-data-into-streams-in-the-eventstore.html">shove events in and out</a> is great for our event sourced apps, but actually - if we have these streams, it's really useful to be able to consistently manipulate the events as they come in and either query those events or re-organise them so they can be queried.</p>
+
+<p>To do this, we have the notion of projections, which are chunks of code that can be executed over a stream (with persisted state) as events are added to it. Now, in reality this isn't actually too different to what we'd be doing outside the event store when building up view models, and I foresee lots of bad things being done by people are the line between these different ways of reading streams are blurred and fought over.</p>
+
+<p>I'm actually quite interested in these projections as a way of building up state for reports/charts, or re-partitioning into streams for different consumers - let's have a look how the most basic of these could work. </p>
+
+<p>Let's say I've got a few events in the general structure of</p>
+
+<pre><code>{
+  EventType: "PonyJumped",
+  Data: {
+    Pony: "Derpy Hooves",
+    Height: 10,
+    Distance: 13
+  }
+}
+</code></pre>
+
+<p>and</p>
+
+<pre><code>{
+  EventType: "PonySpoke",
+  Data: {
+    Sentence: "This is the best day ever",
+    Pony: "Pinkie Pie"
+  }
+}
+</code></pre>
+
+<p>And I'm putting all of these events into a single stream <em>ponies</em></p>
+
+<p>Let's say that I've thrown a few hundred thousand of these events through the event store and I want to know something really basic, like how many times the ponies in my world have jumped since time began.</p>
+
+<p>There is a Web UI available for managing projections in the event store (by default available at 127.0.0.1:2113). This is still subject to change though so I'll just be describing the ideas behind this concept.</p>
+
+<p>There are some attributes of a projection that we can choose when creating a projection via HTTP or the UI</p>
+
+<ul>
+<li>Name: This is the name of the projection, I'll use this to look up the state</li>
+<li>Source: This is the code to be executed</li>
+<li>Emit Enabled: Projections can emit (or link) events if this is enabled</li>
+<li>Enabled: Is this projection going to run?</li>
+</ul>
+
+<p>My options</p>
+
+<ul>
+<li>Name: "PonyJumpCount"</li>
+<li>Source: TBC</li>
+<li>Emit Enabled: Leaving this false (we'll cover usage of this later)</li>
+<li>Enabled: Yes please!</li>
+</ul>
+
+<p>Now for the source, we'll start with the most basic projection which looks like this:</p>
+
+<pre><code>fromAll()
+  .whenAny(function(state,event) { 
+     return null; 
+  });
+</code></pre>
+
+<p>Basically, we have to select which streams we're going to be reading our events from, that "fromAll" bit means we're going to be reading from all of the streams, I'm going to go ahead and change that to "fromStream" and select our "ponies" stream.</p>
+
+<pre><code>fromStream("ponies")
+  .whenAny(function(state,event) { 
+     return null; 
+  });
+</code></pre>
+
+<p>How about that next bit "whenAny", well we've already matched which stream we want events from, well this is the bit we get to use to select which events from that stream we're interested in - "whenAny" just means "all the events in the stream".</p>
+
+<p>I'm going to go ahead and change that to a when, which takes in a map of the events we're interested in and the callback to process the event with (pattern-matching on the EventType)</p>
+
+<pre><code>fromStream("ponies")
+  .when({
+    "PonyJumped": function(state, event) {
+      return null;
+    })
+</code></pre>
+
+<p>Now for that callback - we have "state" and "event", the former being the state we're building up for this projection, and the latter being the event we're going to be adding to that state.</p>
+
+<p>To begin with, we haven't actually got any state, but we can rectify that by chucking in an "$init" handler (anything starting with a dollar is something built in to the event store)</p>
+
+<pre><code>fromStream("ponies")
+  .when({
+    $init: function() {
+      return { count: 0 }
+    },
+    "PonyJumped": function(state, event) {
+      return state
+    }
+  })
+</code></pre>
+
+<p>And now, the actual bit of code for building up our projection</p>
+
+<pre><code>fromStream("ponies")
+   .when({
+        $init: function() {
+           return { count: 0 }
+        },
+        "PonyJumped": function(state, event) {
+          state.count += 1
+        }
+  })
+</code></pre>
+
+<p>If I hit save and navigate to</p>
+
+<p><em>http://127.0.0.1:2113/projection/PonyJumpCount/state</em></p>
+
+<pre><code>{
+  count: 1337
+}
+</code></pre>
+
+<p>I get some wonderful state.</p>
+
+<p>Well, that was very basic, next time we'll look at how we could generate one of these projections for each pony we have in our world.</p>]]></description><link>http://codeofrob.com/entries/basic-projections-in-the-eventstore.html</link><guid isPermaLink="true">http://codeofrob.com/entries/basic-projections-in-the-eventstore.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 29 Apr 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Pushing data into streams in the EventStore]]></title><description><![CDATA[<p>I'm <a href="/entries/playing-with-the-eventstore.html">playing with the EventStore</a> and I need to push some data into it in the form of streams.</p>
 
 <p>What does this look like? Well I'm using NodeJS, and naturally that means using JSON and object literals:</p>
 
@@ -924,840 +1387,4 @@ ContentType =
 
 <p>And they'll all look like that.</p>
 
-<p>With this done, $filter is now fully supported and I can get on with mopping up the final recognised pieces of OData. I'll try and do that all in a single post.</p>]]></description><link>http://codeofrob.com/entries/parsing-those-pesky-filtering-functions-in-odata.html</link><guid isPermaLink="true">http://codeofrob.com/entries/parsing-those-pesky-filtering-functions-in-odata.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 19 Apr 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Precedence grouping, you first.. no you (Odata parser)]]></title><description><![CDATA[<p>With expression parsing out of the way, there are just a few complications remaining, </p>
-
-<ul>
-<li><a href="/entries/building-a-basic-json-parser-in-ometa.html">Learning OMeta through JSON</a></li>
-<li><a href="/entries/building-an-odata-parser-in-ometa.html">Introduction to the OData Parser</a></li>
-<li><a href="/entries/writing-an-odata-parser---starting-at-the-beginning.html">First steps in writing the OData Parser</a></li>
-<li><a href="/entries/parsing-odata---nested-resource-paths.html">Nested resource paths in OData</a></li>
-<li><a href="/entries/parsing-odata---service-operations.html">Service operations in OData</a></li>
-<li><a href="/entries/the-odata-parser---applying-modifiers-to-our-query.html">Query options in OData</a></li>
-<li><a href="/entries/paging-support-in-our-odata-parser.html">Paging support in OData</a></li>
-<li><a href="/entries/our-odata-parser---looking-at-filterby.html">Filtering support in OData</a></li>
-<li><a href="/entries/recursive-expression-parsing-in-our-odata-filter-parser.html">Recursive query support in OData</a></li>
-<li><a href="/entries/these-are-not-the-results-you-are-looking-for---odata-parser.html">'Not' support for OData</a></li>
-<li><a href="/entries/adding-arithmetic-operators-to-our-odata-parser.html">Arithmetic operator support in OData</a></li>
-</ul>
-
-<p>I'm still missing a few key parts of this $filter feature, the next one is precedence grouping.</p>
-
-<p><strong>Do all this stuff before you do the other stuff</strong></p>
-
-<p>I don't think this will be too hard to parse given our already built-up knowledge of how to do precedence.</p>
-
-<p>To the test..</p>
-
-<pre><code>test("/some/resource?$filterby=(Price div Price) mul 5 gt 10", "OData", function(result) {
-  it("A filter should be present", function() {
-     assert.notEqual(result.options.$filterby, null)
-  })
-  it("Filter should be an instance of 'gt'", function() {
-     assert.equal(result.options.$filterby[0], "gt")
-  })
-  var lexpr = result.options.$filterby[1] 
-
-  it("should be {expr} mul 5", function() {
-    assert.equal(lexpr[0], "mul")
-    assert.equal(lexpr[2], 5)
-  })
-
-  it("should be {Price div Price}", function() {
-    assert.equal(lexpr[1][0], "div")
-    assert.equal(lexpr[1][1].name, "Price")
-    assert.equal(lexpr[1][2].name, "Price" )
-  })
-
-  it("rhr should be 10", function() {
-     assert.equal(result.options.$filterby[2], 10)
-  })
-})
-</code></pre>
-
-<p>This is actually the same test as in our <a href="/entries/adding-arithmetic-operators-to-our-odata-parser.html">Arithmetic Operators</a> post, only we've surrounded the div expression because we want that to happen all by itself.</p>
-
-<p>Well, Brackets actually have the <em>highest</em> precedence, so they'll need to go at the very end of our parser.</p>
-
-<pre><code>FilterByValue = 
-  FilterNegateExpression
-| Number
-| QuotedText
-| PropertyPath
-| GroupedPrecedenceExpression
-,
-
-GroupedPrecedenceExpression = 
-  "(" spaces FilterByExpression:expr spaces ")" -&gt; expr
-
-,
-</code></pre>
-
-<p>Yes, it really is that simple. This is what comes of building up the definition of a parse-target out of little building blocks and then making a sequence of them.</p>
-
-<p>If only all programs worked like this.</p>]]></description><link>http://codeofrob.com/entries/precedence-grouping,-you-first..-no-you-odata-parser.html</link><guid isPermaLink="true">http://codeofrob.com/entries/precedence-grouping,-you-first..-no-you-odata-parser.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 18 Apr 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Adding arithmetic operators to our OData parser]]></title><description><![CDATA[<p>I'm finally reaching the point where I can parse most of the OData conventions for Uris, which is nice!</p>
-
-<p>A re-cap of where we are so far.</p>
-
-<ul>
-<li><a href="/entries/building-a-basic-json-parser-in-ometa.html">Learning OMeta through JSON</a></li>
-<li><a href="/entries/building-an-odata-parser-in-ometa.html">Introduction to the OData Parser</a></li>
-<li><a href="/entries/writing-an-odata-parser---starting-at-the-beginning.html">First steps in writing the OData Parser</a></li>
-<li><a href="/entries/parsing-odata---nested-resource-paths.html">Nested resource paths in OData</a></li>
-<li><a href="/entries/parsing-odata---service-operations.html">Service operations in OData</a></li>
-<li><a href="/entries/the-odata-parser---applying-modifiers-to-our-query.html">Query options in OData</a></li>
-<li><a href="/entries/paging-support-in-our-odata-parser.html">Paging support in OData</a></li>
-<li><a href="/entries/our-odata-parser---looking-at-filterby.html">Filtering support in OData</a></li>
-<li><a href="/entries/recursive-expression-parsing-in-our-odata-filter-parser.html">Recursive query support in OData</a></li>
-<li><a href="/entries/these-are-not-the-results-you-are-looking-for---odata-parser.html">'Not' support for OData</a></li>
-</ul>
-
-<p>Wowsers, talk about an accidental blog series...</p>
-
-<p><strong>Arithmetic operators</strong></p>
-
-<p>What were they again?</p>
-
-<pre><code>Add        Addition                /Products?$filter=Price add 5 gt 10
-Sub        Subtraction             /Products?$filter=Price sub 5 gt 10
-Mul        Multiplication          /Products?$filter=Price mul 2 gt 2000
-Div        Division                /Products?$filter=Price div 2 gt 4
-Mod        Modulo                  /Products?$filter=Price mod 2 eq 0
-</code></pre>
-
-<p>Ah yes,</p>
-
-<p>Now, these are all the same, but operator precedence is important so the order in which we want to go through them is:</p>
-
-<ul>
-<li>Add/Sub</li>
-<li>Mul/Div/Mod</li>
-</ul>
-
-<p>This is very similar to how we implemented And/Or although I'll write a few tests to make sure I get it right.</p>
-
-<pre><code>test("/some/resource?$filterby=Price add 5 gt 10", "OData", function(result) {
-
-  it("A filter should be present", function() {
-     assert.notEqual(result.options.$filterby, null)
-  })
-  it("Filter should be an instance of 'gt'", function() {
-     assert.equal(result.options.$filterby[0], "gt")
-  })
-  it("lhr should be Price add 5", function() {
-     var rhs = result.options.$filterby[1] 
-     assert.equal(rhs[0], "add")
-     assert.equal(rhs[1].name, "Price")
-     assert.equal(rhs[2], 5)
-  })
-  it("rhr should be 10", function() {
-     assert.equal(result.options.$filterby[2], 10)
-  })
-})
-</code></pre>
-
-<p>This tells us that our 'add' operator has higher precedence than the comparisons (which makes sense). This'll mean we want to sneak it in somewhere after those comparisons. (Assuming in this scheme that And/Or have a higher precedence than add, and it seems to be that way)</p>
-
-<pre><code>FilterLogicalExpression =
-  FilterLogicalExpression:lhs
-  FilterByOperand:op
-  FilterAddExpression:rhs -&gt; [op, lhs, rhs ]
-| FilterAddExpression
-,
-
-FilterAddExpression =
-  FilterAddExpression:lhs
-  FilterAddOperand:op
-  FilterByValue:rhs -&gt; [ op, lhs, rhs ]
-| FilterByValue
-,
-FilterAddOperand =
-  spaces
-  (
-    seq("add")
-  | seq("sub")
-  ):op 
-  spaces -&gt; op
-,
-</code></pre>
-
-<p>Simples, we insert it in the pipeline between "LogicalExpression" and "Checking the value" (Literal values have the highest precedence because they don't require any work)</p>
-
-<p>And because Mul/etc have a higher precedence than Add, this exactly the same</p>
-
-<pre><code>test("/some/resource?$filterby=Price mul 5 gt 10", "OData", function(result) {
-
-  it("A filter should be present", function() {
-     assert.notEqual(result.options.$filterby, null)
-  })
-  it("Filter should be an instance of 'gt'", function() {
-     assert.equal(result.options.$filterby[0], "gt")
-  })
-  it("lhr should be Price add 5", function() {
-     var lhs = result.options.$filterby[1] 
-     assert.equal(lhs[0], "mul")
-     assert.equal(lhs[1].name, "Price")
-     assert.equal(lhs[2], 5)
-  })
-  it("rhr should be 10", function() {
-     assert.equal(result.options.$filterby[2], 10)
-  })
-})
-</code></pre>
-
-<p>Like so</p>
-
-<pre><code>FilterAddExpression =
-  FilterAddExpression:lhs
-  FilterAddOperand:op
-  FilterMulExpression:rhs -&gt; [ op, lhs, rhs ]
-| FilterMulExpression
-,
-
-FilterMulExpression =
-  FilterMulExpression:lhs
-  FilterMulOperand:op
-  FilterByValue:rhs -&gt; [ op, lhs, rhs ]
-| FilterByValue
-,
-</code></pre>
-
-<p>Now what I actually have to do is define operator precedence for mul/div etc independently. So I can't actually cheat and do</p>
-
-<pre><code>FilterMulOperand =
-  spaces
-  (
-    seq("mul")
-  | seq("div")
-  | seq("mod")
-  ):op 
-  spaces -&gt; op
-,
-</code></pre>
-
-<p>Like I have been doing, or when I write the following test, it will fail.</p>
-
-<pre><code>test("/some/resource?$filterby=Price div Price mul 5 gt 10", "OData", function(result) {
-    console.log(JSON.stringify(result))
-
-  it("A filter should be present", function() {
-     assert.notEqual(result.options.$filterby, null)
-  })
-  it("Filter should be an instance of 'gt'", function() {
-     assert.equal(result.options.$filterby[0], "gt")
-  })
-  var lexpr = result.options.$filterby[1] 
-
-  it("should be Price div {expr}", function() {
-    assert.equal(lexpr[0], "div")
-    assert.equal(lexpr[1].name, "Price")
-  })
-
-  it("should be Price mul 5", function() {
-    assert.equal(lexpr[2][0], "mul")
-    assert.equal(lexpr[2][1].name, "Price")
-    assert.equal(lexpr[2][2], 5)
-  })
-
-  it("rhr should be 10", function() {
-     assert.equal(result.options.$filterby[2], 10)
-  })
-})
-</code></pre>
-
-<p>What will happen here is we'll get</p>
-
-<pre><code>[
-  'gt',
-  [
-    'mul',
-    [
-      'div', 'Price', 'Price'
-    ],
-    5
-  ],
-  10
-]
-</code></pre>
-
-<p>When what we clearly want is</p>
-
-<pre><code>[
-  'gt',
-  [
-    'div',
-    'Price',
-    [
-      'mul', 'Price', '5'
-    ]
-  ],
-  10
-]
-</code></pre>
-
-<p>Or if you like</p>
-
-<pre><code>( (price / price) * 5 ) &gt; 10
-</code></pre>
-
-<p>Instead of</p>
-
-<pre><code>( Price / (price * 5)  ) &gt; 10
-</code></pre>
-
-<p>Which is a little bit different to say the least!</p>
-
-<p>So, explicit operation order is what we want, and here is how get it:</p>
-
-<p><strong>One massively explicit set of operator precedences...</strong></p>
-
-<pre><code>FilterByOption = 
-  seq("$filterby=")
-  FilterByExpression:expr -&gt; { name: "$filterby", value: expr }
-,
-
-FilterByExpression =
-  FilterAndExpression
-,
-</code></pre>
-
-<p><em>And is the least important in our hierarchy</em></p>
-
-<pre><code>FilterAndExpression =
-  FilterAndExpression:lhs
-  FilterAndOperand:op
-  FilterLogicalExpression:rhs -&gt; [ op, lhs, rhs ]
-| FilterLogicalExpression
-,
-</code></pre>
-
-<p><em>Followed by any logical expression</em></p>
-
-<pre><code>FilterLogicalExpression =
-  FilterLogicalExpression:lhs
-  FilterByOperand:op
-  FilterAddExpression:rhs -&gt; [op, lhs, rhs ]
-| FilterAddExpression
-,
-</code></pre>
-
-<p><em>Then we descend through our mathematical operators in reverse precedence order</em></p>
-
-<pre><code>FilterSubExpression =
-  FilterSubExpression:lhs
-  spaces seq("sub") spaces
-  FilterAddExpression:rhs -&gt; [ "sub", lhs, rhs ]
-| FilterAddExpression
-,
-
-FilterAddExpression =
-  FilterAddExpression:lhs
-  spaces seq("add") spaces
-  FilterModExpression:rhs -&gt; [ "add", lhs, rhs ]
-| FilterModExpression
-,
-
-FilterModExpression =
-  FilterModExpression:lhs
-  spaces seq("mod") spaces
-  FilterDivExpression:rhs -&gt; [ "mod", lhs, rhs ]
-| FilterDivExpression
-,
-FilterDivExpression =
-  FilterDivExpression:lhs
-  spaces seq("div") spaces
-  FilterMulExpression:rhs -&gt; [ "div", lhs, rhs ]
-| FilterMulExpression
-,
-
-FilterMulExpression =
-  FilterMulExpression:lhs
-  spaces seq("mul") spaces
-  FilterByValue:rhs -&gt; [ "mul", lhs, rhs ]
-| FilterByValue
-,
-
-FilterByValue = 
-  FilterNegateExpression
-| Number
-| QuotedText
-| PropertyPath
-,
-
-FilterNegateExpression = 
-  spaces
-  seq("not")
-  spaces
-  (
-    FilterByValue
-  | '(' spaces FilterByExpression:expr spaces ')' -&gt; expr
-  ):value -&gt;  [ "not", value ]
-,
-</code></pre>
-
-<p>How cool is that??!!? That's pretty much the whole shebang wrapped up as far as expressing parsing goes, and now I can go trigger mad with nested and/or/sub/mul/etc - with the exception of the precedence operators which I'll add next!</p>]]></description><link>http://codeofrob.com/entries/adding-arithmetic-operators-to-our-odata-parser.html</link><guid isPermaLink="true">http://codeofrob.com/entries/adding-arithmetic-operators-to-our-odata-parser.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 17 Apr 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[These are NOT the results you are looking for - OData parser]]></title><description><![CDATA[<p>A quick re-cap of where we are so far in our OData OMeta Adventure.</p>
-
-<ul>
-<li><a href="/entries/building-a-basic-json-parser-in-ometa.html">Learning OMeta through JSON</a></li>
-<li><a href="/entries/building-an-odata-parser-in-ometa.html">Introduction to the OData Parser</a></li>
-<li><a href="/entries/writing-an-odata-parser---starting-at-the-beginning.html">First steps in writing the OData Parser</a></li>
-<li><a href="/entries/parsing-odata---nested-resource-paths.html">Nested resource paths in OData</a></li>
-<li><a href="/entries/parsing-odata---service-operations.html">Service operations in OData</a></li>
-<li><a href="/entries/the-odata-parser---applying-modifiers-to-our-query.html">Query options in OData</a></li>
-<li><a href="/entries/paging-support-in-our-odata-parser.html">Paging support in OData</a></li>
-<li><a href="/entries/our-odata-parser---looking-at-filterby.html">Filtering support in OData</a></li>
-<li><a href="/entries/recursive-expression-parsing-in-our-odata-filter-parser.html">Recursive query support in OData</a></li>
-</ul>
-
-<p>Before we get onto some more fuzzy stuff, it would be good to deal with 'not'</p>
-
-<p>Not is an interesting case because it's not really  the same as the rest of the expressions so far</p>
-
-<pre><code>Not  Logical negation  /Products?$filter=not endswith(Description,'milk')
-</code></pre>
-
-<p>It can't apply in situations like this however</p>
-
-<pre><code>/Products?$filter=not Product eq 5
-</code></pre>
-
-<p>But it can probably apply in situations like this</p>
-
-<pre><code>/Products?$filter=not Published
-</code></pre>
-
-<p>This tells us something, which is that not isn't going to be expecting an expression unless it's in braces, otherwise it's going to be looking for a value.</p>
-
-<p>I'm not supporting methods yet, so I'll ignore that requirement for now.</p>
-
-<pre><code>test("/some/resource?$filterby=not Published", "OData", function(result) {
-
-  it("A filter should be present", function() {
-     assert.notEqual(result.options.$filterby, null)
-  })
-  it("Filter should be an instance of 'not'", function() {
-     assert.equal(result.options.$filterby[0], "not")
-  })
-
-  it("value should be 'Published'", function() {
-    assert.equal(result.options.$filterby[1].name, "Published")
-  })
-})
-</code></pre>
-
-<p>First off, this one</p>
-
-<pre><code>FilterByValue = 
-  FilterNegateExpression
-|  Number
-| QuotedText
-| PropertyPath
-,
-
-FilterNegateExpression = 
-  spaces
-  seq("not")
-  spaces
-  FilterByValue:value       -&gt;  [ "not", value ]
-,
-</code></pre>
-
-<p>Quite simple, if we get as far as checking for a value, it means we haven't found an expression, so we'll check for "Not" - I guess this is where we'll probably stick methods later too. </p>
-
-<p>A "NegateExpression" is simply a "not" followed by a value, we'll allow double negatives too because there is no harm in this.</p>
-
-<p>Next up, we'll check for braces, and inside braces we'll allow further expressions (recurse recurse recurse)</p>
-
-<pre><code>test("/some/resource?$filterby=not (Price gt 5)", "OData", function(result) {
-
-  it("A filter should be present", function() {
-     assert.notEqual(result.options.$filterby, null)
-  })
-  it("Filter should be an instance of 'not'", function() {
-     assert.equal(result.options.$filterby[0], "not")
-  })
-  it("Value should be Price gt 5", function() {
-     var rhs = result.options.$filterby[1] 
-     assert.equal(rhs[0], "gt")
-     assert.equal(rhs[1].name, "Price")
-     assert.equal(rhs[2], 5)
-  })
-})
-</code></pre>
-
-<p>Solved by</p>
-
-<pre><code>FilterNegateExpression = 
-  spaces
-  seq("not")
-  spaces
-  (
-    FilterByValue
-  | '(' spaces FilterByExpression:expr spaces ')' -&gt; expr
-  ):value -&gt;  [ "not", value ]
-,
-</code></pre>
-
-<p>Dead easy, now it's time to get our heads stuck into Arithmetic Operators.</p>]]></description><link>http://codeofrob.com/entries/these-are-not-the-results-you-are-looking-for---odata-parser.html</link><guid isPermaLink="true">http://codeofrob.com/entries/these-are-not-the-results-you-are-looking-for---odata-parser.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 16 Apr 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Recursive expression parsing in our OData filter parser]]></title><description><![CDATA[<p>A quick re-cap of where we are so far in our OData OMeta Adventure.</p>
-
-<ul>
-<li><a href="/entries/building-a-basic-json-parser-in-ometa.html">Learning OMeta through JSON</a></li>
-<li><a href="/entries/building-an-odata-parser-in-ometa.html">Introduction to the OData Parser</a></li>
-<li><a href="/entries/writing-an-odata-parser---starting-at-the-beginning.html">First steps in writing the OData Parser</a></li>
-<li><a href="/entries/parsing-odata---nested-resource-paths.html">Nested resource paths in OData</a></li>
-<li><a href="/entries/parsing-odata---service-operations.html">Service operations in OData</a></li>
-<li><a href="/entries/the-odata-parser---applying-modifiers-to-our-query.html">Query options in OData</a></li>
-<li><a href="/entries/paging-support-in-our-odata-parser.html">Paging support in OData</a></li>
-<li><a href="/entries/our-odata-parser---looking-at-filterby.html">Filtering support in OData</a></li>
-</ul>
-
-<p><strong>CRIKEY</strong></p>
-
-<p>Never thought I'd be writing this much about OMeta, but I've taken quite the shine to it.</p>
-
-<p>I did basic expressions, but actually expressions can be made up of other expressions so I may as well bite that bullet and get on with it.</p>
-
-<p>Let's look at what we might expect if we use 'and'</p>
-
-<pre><code>test("/some/resource?$filter=Price gt 5 and Price lt 10", "OData", function(result) {
-  it("A filter should be present", function() {
-     assert.notEqual(result.options.$filterby, null)
-  })
-  it("Filter should be an instance of 'and'", function() {
-     assert.equal(result.options.$filterby[0], "and")
-  })
-
-  it("Left hand side should be Price gt 5", function() {
-     var lhs = result.options.$filterby[1] 
-     assert.equal(lhs[0], "gt")
-     assert.equal(lhs[1].name, "Price")
-     assert.equal(lhs[2], 5)
-  })
-
-  it("Right hand side should be less than 10", function() {
-     var rs = result.options.$filterby[2] 
-     assert.equal(rhs[0], "lt")
-     assert.equal(rhs[1].name, "Price")
-     assert.equal(rhs[2], 10)
-  })
-})
-</code></pre>
-
-<p>We have a tree that looks like</p>
-
-<pre><code>[ 'and', 
-  [ 'gt', 'Price', 5 ],
-  [ 'lt', 'Price', 10]
-]
-</code></pre>
-
-<p>Our next step can walk this tree and generate SQL or something similar very easily.</p>
-
-<p><strong>How do we generate such a thing?</strong></p>
-
-<p>Well, 'and' is an operator with the lowest precedence (well, the same as 'or'), and therefore we want it to be first in the tree (it makes senseif you think about it!). </p>
-
-<p>The leaves should be the nodes with the highest precedence because we'll get their results first and them go up to the root node.</p>
-
-<p>This suggests we need to cascade through the preferable options until we find something we like:</p>
-
-<p>There is quite a wall here, so let's break it down</p>
-
-<pre><code>  FilterByOption = 
-    seq("$filterby=")
-    FilterByExpression:expr -&gt; { name: "$filterby", value: expr }
-</code></pre>
-
-<p><em>When we find $filterby, then parse the expression</em></p>
-
-<pre><code>  FilterByExpression =
-    FilterAndExpression
-</code></pre>
-
-<p><em>The first thing we want to find is an 'and' expression</em></p>
-
-<pre><code>  FilterAndExpression =
-    FilterAndExpression:lhs
-    FilterAndOperand:op
-    FilterLogicalExpression:rhs -&gt; [ op, lhs, rhs ]
-  | FilterLogicalExpression
-</code></pre>
-
-<p><em>try and find more AndExpressions</em></p>
-
-<p><em>Else, let the right hand side be the next preferable thing (a plain old logical expression)</em></p>
-
-<p><em>Else, just try to find a logical expression</em></p>
-
-<pre><code>  FilterLogicalExpression =
-    FilterLogicalExpression:lhs
-    FilterByOperand:op
-    FilterByValue:rhs -&gt; [ op, lhs, rhs ]
-  | FilterByValue
-</code></pre>
-
-<p><em>Try to find more LogicalExpressions</em></p>
-
-<p><em>Else, let the right hand side be the next preferable thing (a plain old value)</em></p>
-
-<p><em>Else fall back to finding a value</em></p>
-
-<pre><code>  FilterAndOperand =
-    spaces
-    (
-      seq("and")
-    | seq("or")
-    ):op 
-    spaces -&gt; op
-</code></pre>
-
-<p><em>And/or have the same precedence</em></p>
-
-<pre><code>  FilterByOperand =
-    spaces
-    (
-      seq("eq")
-    | seq("ne")
-    | seq("gt")
-    | seq("ge")
-    | seq("lt")
-    | seq("le")
-    ):op 
-    spaces -&gt; op
-</code></pre>
-
-<p><em>These are unchanged</em></p>
-
-<pre><code>  FilterByValue = 
-    Number
-  | QuotedText
-  | PropertyPath
-</code></pre>
-
-<p><em>As are these</em></p>]]></description><link>http://codeofrob.com/entries/recursive-expression-parsing-in-our-odata-filter-parser.html</link><guid isPermaLink="true">http://codeofrob.com/entries/recursive-expression-parsing-in-our-odata-filter-parser.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 15 Apr 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Our OData parser - looking at filterby]]></title><description><![CDATA[<p>A quick re-cap of where we are so far:</p>
-
-<ul>
-<li><a href="/entries/building-a-basic-json-parser-in-ometa.html">Learning OMeta through JSON</a></li>
-<li><a href="/entries/building-an-odata-parser-in-ometa.html">Introduction to the OData Parser</a></li>
-<li><a href="/entries/writing-an-odata-parser---starting-at-the-beginning.html">First steps in writing the OData Parser</a></li>
-<li><a href="/entries/parsing-odata---nested-resource-paths.html">Nested resource paths in OData</a></li>
-<li><a href="/entries/parsing-odata---service-operations.html">Service operations in OData</a></li>
-<li><a href="/entries/the-odata-parser---applying-modifiers-to-our-query.html">Query options in OData</a></li>
-<li><a href="/entries/paging-support-in-our-odata-parser.html">Paging support in OData</a></li>
-</ul>
-
-<p>Now I need to tackle $filterby, which is bit of a mammoth, as can be seen from the description from the OData Uri conventions</p>
-
-<pre><code>Eq         Equal                   /Suppliers?$filter=Address/City eq 'Redmond'
-Ne         Not equal               /Suppliers?$filter=Address/City ne 'London'
-Gt         Greater than            /Products?$filter=Price gt 20
-Ge         Greater than or equal   /Products?$filter=Price ge 10
-Lt         Less than               /Products?$filter=Price lt 20
-Le         Less than or equal      /Products?$filter=Price le 100
-And        Logical and             /Products?$filter=Price le 200 and Price gt 3.5
-Or         Logical or              /Products?$filter=Price le 3.5 or Price gt 200
-Not        Logical negation        /Products?$filter=not endswith(Description,'milk')
-Add        Addition                /Products?$filter=Price add 5 gt 10
-Sub        Subtraction             /Products?$filter=Price sub 5 gt 10
-Mul        Multiplication          /Products?$filter=Price mul 2 gt 2000
-Div        Division                /Products?$filter=Price div 2 gt 4
-Mod        Modulo                  /Products?$filter=Price mod 2 eq 0
-( )        Precedence grouping     /Products?$filter=(Price sub 5) gt 10
-</code></pre>
-
-<p>And this is before we even have a look at the supported <em>"functions"</em> (we'll leave these until the next entry I think!)</p>
-
-<p>Thankfully this is all pretty much the same deal and boils down to simple recursive expression parsing. </p>
-
-<p><strong>Implementing Eq</strong></p>
-
-<p>I'll not do this for all of them, but you can assume I've just implemented them the same way only with "Ge, etc" substituted for whatever...</p>
-
-<pre><code>test("/some/resource?$filterby=Foo eq 2", "OData", function(result) {
-  it("A filter should be present", function() {
-     assert.notEqual(result.options.$filterby, null)
-  })
-  it("Filter should be an instance of 'eq'", function() {
-     assert.equal(result.options.$filterby[0], "eq")
-  })
-  it("lhr should be Foo", function() {
-     assert.equal(result.options.$filterby[1].name, "Foo")
-  })
-  it("rhr should be 2", function() {
-     assert.equal(result.options.$filterby[2], 2)
-  })
-})
-</code></pre>
-
-<p>The idea for this stuff is that I want to generate an AST for further processing by say, a SQL generator. The easiest way to do this is to generate arrays for consumption. This can be ran through a further OMeta processing step to generate SQL later on.</p>
-
-<p>I'm not so comfortable with the bit where I address the filterby[1].name, it feels as addressing down a path should be dealt with in the same way as the rest of the AST (perhaps everywhere else I should be generating an array instead of those nested objects).</p>
-
-<p>I actually have some other ideas about how I'd do this so I'll park that as well (as I'm having a conversation and review of this code tomorrow in the office)</p>
-
-<p><strong>The implementation</strong></p>
-
-<pre><code>FilterByOption = 
-  seq("$filterby=")
-  FilterByExpression:expr -&gt; { name: "$filterby", value: expr }
-,
-FilterByExpression =
-  PropertyPath:lhs
-  seq(" eq ")
-  Number:rhs           -&gt; [ "eq", lhs, rhs ]
-,
-</code></pre>
-
-<p>So I'm keeping it simple by making some assumptions that'll get proved wrong in a sec</p>
-
-<ul>
-<li>Only accepting number for rhs</li>
-<li>Only accepting 'eq as the operand</li>
-<li>PropertyPath is probably not the way to go for this in its current incarnation as mentioned above</li>
-</ul>
-
-<p><strong>Adding not equals</strong></p>
-
-<pre><code>test("/some/resource?$filterby=Foo ne 2", "OData", function(result) {
-  it("A filter should be present", function() {
-     assert.notEqual(result.options.$filterby, null)
-  })
-  it("Filter should be an instance of 'ne'", function() {
-     assert.equal(result.options.$filterby[0], "ne")
-  })
-  it("lhr should be Foo", function() {
-     assert.equal(result.options.$filterby[1].name, "Foo")
-  })
-  it("rhr should be 2", function() {
-     assert.equal(result.options.$filterby[2], 2)
-  })
-})
-</code></pre>
-
-<p>Can be dealt with by saying that our Operand is a choice</p>
-
-<pre><code>FilterByOption = 
-  seq("$filterby=")
-  FilterByExpression:expr -&gt; { name: "$filterby", value: expr }
-,
-
-FilterByExpression =
-  PropertyPath:lhs
-  FilterByOperand:op
-  Number:rhs           -&gt; [ op, lhs, rhs ]
-,
-
-FilterByOperand =
-  seq(" eq ") -&gt; "eq"
-| seq(" ne ") -&gt; "ne"
-</code></pre>
-
-<p>Can now do the same for </p>
-
-<ul>
-<li>Gt</li>
-<li>Ge</li>
-<li>Lt</li>
-<li>Le</li>
-</ul>
-
-<p>Like so</p>
-
-<pre><code>FilterByOperand =
-  spaces
-  (
-    seq("eq")
-  | seq("ne")
-  | seq("gt")
-  | seq("ge")
-  | seq("lt")
-  | seq("le")
-  ):op 
-  spaces -&gt; op
-  ,
-</code></pre>
-
-<p>Note that I tidied it up, and allowed any white space either side and got rid of my own strings (the last return result is automatically assigned to 'op'</p>
-
-<p>And I'll parameterise the test to get this covered easily and document my progress</p>
-
-<pre><code>function operandTest(op) {
-  test("/some/resource?$filterby=Foo " + op + " 2", "OData", function(result) {
-    it("A filter should be present", function() {
-       assert.notEqual(result.options.$filterby, null)
-    })
-    it("Filter should be an instance of '" + op + "'", function() {
-       assert.equal(result.options.$filterby[0], op)
-    })
-    it("lhr should be Foo", function() {
-       assert.equal(result.options.$filterby[1].name, "Foo")
-    })
-    it("rhr should be 2", function() {
-       assert.equal(result.options.$filterby[2], 2)
-    })
-  })
-}
-operandTest("eq")
-operandTest("ne")
-operandTest("gt")
-operandTest("ge")
-operandTest("lt")
-operandTest("le")
-</code></pre>
-
-<p><strong>Not everything is a number</strong></p>
-
-<p>Now for the next thing, what can we have as that Rhs? Well, let's go with</p>
-
-<ul>
-<li>Number (eg 2, 3, 5 )</li>
-<li>QuotedText (eg 'foo', 'bar')</li>
-</ul>
-
-<p>As that's what I can think of from the docs</p>
-
-<p>Here is a test for the quoted string:</p>
-
-<pre><code>  test("/some/resource?$filterby=Foo eq 'bar'", "OData", function(result) {
-    it("A filter should be present", function() {
-       assert.notEqual(result.options.$filterby, null)
-    })
-    it("Filter should be an instance of 'eq'", function() {
-       assert.equal(result.options.$filterby[0], op)
-    })
-    it("lhr should be Foo", function() {
-       assert.equal(result.options.$filterby[1].name, "Foo")
-    })
-    it("rhr should be 2", function() {
-       assert.equal(result.options.$filterby[2], 'bar')
-    })
-  })
-</code></pre>
-
-<p>Same deal again, let's make this extendable</p>
-
-<pre><code>FilterByExpression =
-  PropertyPath:lhs
-  FilterByOperand:op
-  FilterByValue:rhs           -&gt; [ op, lhs, rhs ]
-,
-</code></pre>
-
-<p>With</p>
-
-<pre><code>FilterByValue = 
-  Number
-| QuotedText
-</code></pre>
-
-<p>Where QuotedText looks something like this:</p>
-
-<pre><code>QuotedText =
-  '\''
-  Text:t 
-  '\'' -&gt; t
-,
-</code></pre>
-
-<p>Imaginative.</p>
-
-<p>Next up we'll have to think about what else we can expect to see in our expressions - thinking about the Arithmetic operators and grouping operators. <em>shudder</em></p>]]></description><link>http://codeofrob.com/entries/our-odata-parser---looking-at-filterby.html</link><guid isPermaLink="true">http://codeofrob.com/entries/our-odata-parser---looking-at-filterby.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 12 Apr 2013 09:30:00 GMT</pubDate></item></channel></rss>
+<p>With this done, $filter is now fully supported and I can get on with mopping up the final recognised pieces of OData. I'll try and do that all in a single post.</p>]]></description><link>http://codeofrob.com/entries/parsing-those-pesky-filtering-functions-in-odata.html</link><guid isPermaLink="true">http://codeofrob.com/entries/parsing-those-pesky-filtering-functions-in-odata.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 19 Apr 2013 09:30:00 GMT</pubDate></item></channel></rss>

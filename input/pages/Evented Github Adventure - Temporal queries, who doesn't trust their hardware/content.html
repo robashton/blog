@@ -20,42 +20,52 @@
 
 <p>First off, the important question is "what is the unique combination we're looking for"</p>
 
-<p>We care about <em>PushEvent</em>s for a unique <em>User</em> and <em>Repo</em>, so it makes sense that what we should do is <em>partition by UserAndRepo</em> and then look at the PushEvents as they happen.</p>
+<p>We care about <em>PushEvent</em>s for a unique <em>User</em> and <em>Repo</em>, so it makes sense that what we should do is <em>partition by UserAndRepo</em>  so we can easily keep state around per repo.</p>
 
 <p><strong>Partition by uniqueness</strong></p>
 
 <p>Here is how that might look:</p>
 
 <pre><code>fromStream('github')
-  .partitionBy(function(ev) {
-    if(ev.body.repo) {
-      return ev.body.repo.full_name
-    }
-  })
   .when({
-    $init: function(state, ev) {
-
-    },
     "PushEvent": function(state, ev) {
-
+      var repo = ev.body.repo.full_name
+      linkTo('pushesbyrepo-' + repo, ev)
     }
   })
 </code></pre>
 
-<p>So far so good, we have per repo a unique projection being run, now all we need to do is work out what kind of state we should be building.</p>
+<p>So far so good, I now have a stream per repo called "pushesbyrepo-{reponame}" - now what?</p>
 
-<p>Well, the key thing I mentioned above was that we're "looking for all the events where", this suggests that perhaps we should be looking to emit an event for any occurences of what we're looking for (which we can then use to do stats on this info)</p>
+<p>Well, the key thing I mentioned above was that we're "looking for all the events where", this suggests that perhaps the thing we are looking for should be considered an event in its own right.</p>
 
-<p>How about simply making a note every time we reach a PushEvent, and then if we get another PushEvent, check how long it has been since the last one, and if it was recent - emit an event?</p>
+<p>We can do this, we can for each of thse streams keep a note of when the last push was, and if we encounter another push within a certain time-frame, emit an event for this find of ours.</p>
 
-<p><strong>Emit the events</strong></p>
+<p><strong>Running a projection per generated stream</strong></p>
 
-<pre><code>fromStream('github')
-  .partitionBy(function(ev) {
-    if(ev.body.repo) {
-      return ev.body.repo.full_name
-    }
+<p>How to run this for each stream? Enter fromCategory</p>
+
+<pre><code>fromCategory('pushesbyrepo')
+  foreachStream()
+  .when({
+    $init: // etc
   })
+</code></pre>
+
+<p>There is a built in projection in the EventStore that will automatically use the character '-' to sort a collection of streams into categories, and if we have</p>
+
+<ul>
+<li>pushesbyrepo-bob</li>
+<li>pushesbyrepo-alice</li>
+<li>pushesbyrepo-derpy</li>
+</ul>
+
+<p>We'll get three categories to iterate through (bob, alice, and derpy)</p>
+
+<p><strong>Emit the events we're looking for</strong></p>
+
+<pre><code>fromCategory('pushesbyrepo')
+  foreachStream()
   .when({
     $init: function(state, ev) {
       return {}
@@ -67,13 +77,14 @@
           , difference = (newDate.getTime() - lastDate.getTime()) / 1000
 
         if(difference &lt; 120) {
-          emit('github-paranoidpushes', "ParanoidPush", {
+          emit('paranoidpushes', "ParanoidPush", {
             first: state.lastPush,
             next: ev
           })
         }
       }
       state.lastPush = ev
+      return state
     }
   })
 </code></pre>
@@ -82,11 +93,11 @@
 
 <p>Running this, I now have a stream at </p>
 
-<p><em>/streams/github-paranoidpushes</em> </p>
+<p><em>/streams/paranoidpushes</em> </p>
 
 <p>So, how many paranoid pushes have I had in the time period I've been sampling over? (roughly three hours at time of writing)</p>
 
-<pre><code>fromStream('github-paranoidpushes')
+<pre><code>fromStream('paranoidpushes')
   .when({
     "$init": function(state, ev) {
       state.count = 0
@@ -102,4 +113,4 @@
 <pre><code>{ count: 1504 }
 </code></pre>
 
-<p>Voila, that's a temporal query that just works - and it's pretty easy too. Now we have this, perhaps we can look at combining this data we have to work out how paranoia works out across different language developers...</p>
+<p>Voila, that's a temporal query that just works - and it's pretty easy too. Now we have this, perhaps we can look at combining this data we have to work out how this strange use of git plays out across different language developers.</p>

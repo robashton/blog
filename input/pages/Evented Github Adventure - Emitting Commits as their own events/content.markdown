@@ -45,7 +45,9 @@ Let's say I want to build up projections off the the stream of commits, in each 
         }
       })
 
-This doesn't cause a huge problem, but it is unwieldy and sub-optimal, if only we could instead for all the analysis we want to do over the commits.
+This doesn't cause a huge problem, but it is irritating having to do this for every projection and if I particularly cared about CPU it's also unnecessary work to be doing.
+
+It would be much better if I could just have a stream of commits to read from when creating these projections.
 
     fromStream("github-commits")
       .when({
@@ -60,7 +62,7 @@ This doesn't cause a huge problem, but it is unwieldy and sub-optimal, if only w
         }
       })
 
-Well in fact we can, and that's where the 'emit' function comes into it, let's say we have our original projection which loops over those commits:
+Well in fact we can, and that's a good place to use the 'emit' function. Let's say we have our original projection which loops over those commits:
 
     fromStream("github")
       .when({
