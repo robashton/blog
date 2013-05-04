@@ -166,7 +166,7 @@ In fact, you know what? What's the difference between a function and an object? 
       }
     }
 
-One of the reasons I quite like Clojure is that everything is just a function, and looking up how to do something is *always* a case of looking up an appropriate function. Simplicityt comes in many forms.
+One of the reasons I quite like Clojure is that everything is just a function, and looking up how to do something is *always* a case of looking up an appropriate function - I've just talked about some basic class functionality and I've already had to go through 5 different key-words.
     
 Reduce towards simplicity and have some opinions, that's all I'm saying, I'm a big fan of JavaScript's lack of features, I'm actually a fan of Java's lack of features too, if we could just fix some problems in those languages then we'd be great.
 
