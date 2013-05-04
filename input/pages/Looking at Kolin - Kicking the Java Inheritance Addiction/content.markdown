@@ -10,7 +10,7 @@ One of the other big problems in Java is that a common way to fix problems with 
 
 This is their version of monkey patching, but in practise ends up being even worse because there is a tendency to use this power for the re-use of re-usable things which need re-using because there are a few lines of code we could re-use if we squinted hard enough at it.
 
-I'm not really a big fan of inheritance systems in any language; I'm all for the notion of bringing in behaviours from other systems I prefer to do it via composition or in JavaScript just copying the methods over with the constructor function state.
+I'm not really a big fan of inheritance systems in any language; I *am* all for the notion of bringing in behaviours from other systems though. I prefer to do it via composition or in JavaScript just copying the methods over with the constructor function state.
 
 **What does inheritance look like in Kotlin?**
 
