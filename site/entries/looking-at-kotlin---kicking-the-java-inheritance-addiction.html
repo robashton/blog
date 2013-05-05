@@ -1,0 +1,188 @@
+<html>
+  <head>
+    <title id="title">Looking at Kotlin - Kicking the Java Inheritance Addiction</title>
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link href='http://fonts.googleapis.com/css?family=Libre+Baskerville' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+    <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+
+    </script>
+  </head>
+  <body>
+    <a class="subscribe" href="http://feed.codeofrob.com/RobAshton">Subscribe to my blog</a>
+    <div id="blog-entry">
+      <h1 id="post-title">Looking at Kotlin - Kicking the Java Inheritance Addiction</h1>
+      <h6>Published on <span class="date">2013-5-16</span></h6>
+      <div id="post"><p>I'm still looking at Kotlin and this is where I'm at so far..</p>
+
+<ul>
+<li><a href="/entries/looking-at-kotlin---a-few-notes-made.html">Looking at Kotlin - getting started</a></li>
+<li><a href="/entries/looking-at-kotlin---classes-and-functions.html">Looking at Kotkin - Classes and Functions</a></li>
+<li>Looking at Kotlin - Inheritance</li>
+</ul>
+
+<p>We've established (at least in my brief foray), that Kotlin doesn't really fix one of the biggest problems in Java (and C#), which is the misuse of classes as mutable data bags being passed around by scripts.</p>
+
+<p>One of the other big problems in Java is that a common way to fix problems with code you don't own is simply "inherit from all the things and override all the things".</p>
+
+<p>This is their version of monkey patching, but in practise ends up being even worse because there is a tendency to use this power for the re-use of re-usable things which need re-using because there are a few lines of code we could re-use if we squinted hard enough at it.</p>
+
+<p>I'm not really a big fan of inheritance systems in any language; I <em>am</em> all for the notion of bringing in behaviours from other systems though. I prefer to do it via composition or in JavaScript just copying the methods over with the constructor function state.</p>
+
+<p><strong>What does inheritance look like in Kotlin?</strong></p>
+
+<p>Well, to begin with it looks just like it does anywhere else, although it allows for multiple inheritance too (which is an inevitable quagmire of complexity, let's see...)</p>
+
+<pre><code>open class Pony(val name: String) {
+
+}
+
+class Unicorn(name: String) : Pony(name) {
+
+}
+</code></pre>
+
+<p>One of the good decisions made here is that at least classes are closed by default, which I know annoys a lot of people but I think if you're making APIs or framework code in this sort of language a closed-by-default approach makes sense.</p>
+
+<p>I'm going to ignore this for now because it's the same old crap you'd expect from any inheritance system.</p>
+
+<p>One of the reasons we sometimes wants to "inherit", isn't necessarily because we want state <em>and</em>behaviour, and in fact the multiple inheritance in Kotlin is only allowed in cases where we only want behaviour.</p>
+
+<p>For this, we have the "trait" keyword, which defines an class which only has behaviour, and in this inheritance system you can inherit from one class and as many traits as you like.</p>
+
+<pre><code>trait Speaker {
+  fun SayHi() {
+    println("This is the best day ever")
+  }
+}
+
+class Unicorn(name: String) : Pony(name), Speaker {
+
+}
+</code></pre>
+
+<p>I can't actually think of many cases where this would be something I'd want to do, you can't give anything to that trait so it's basically a static utility bag at this point.</p>
+
+<p>It gets interesting when we have the ability to create a composition system out of these traits</p>
+
+<p><strong>Composable traits</strong></p>
+
+<p>How about we a trait called Speaker like the above, and ponies and unicorns aren't derived from each other, let's make it look like this for now:</p>
+
+<pre><code>trait Speaker {
+  fun SayHi() {
+    println("This is the best day ever")
+  }
+}
+
+class Pony(val name: String) : Speaker {
+
+}
+
+class Unicorn(val name: String) : Speaker {
+
+}
+</code></pre>
+
+<p>My ponies and unicorns now have a method called "SayHi" and I can invoke these like so</p>
+
+<pre><code>var pony = Pony("Pinkie Pie")
+pony.SayHi()
+</code></pre>
+
+<p>This is great, except actually ponies and unicorns don't say things in quite the same way, and actually they all have different sayings.</p>
+
+<p>Well how about creating a speaker which is pretty much an interface, and an implementation which says stuff based on some state:</p>
+
+<pre><code>trait Speaker {
+    open fun SayHi() {
+        println("herp derp")
+    }
+}
+
+class ConstSpeaker(val saying: String) : Speaker {
+    override fun SayHi() {
+        println(saying)
+    }
+}
+</code></pre>
+
+<p>We can actually pass these in in the constructor of our ponies and unicorns like so</p>
+
+<pre><code>class Pony(val name: String, voice: Speaker) : Speaker  by voice {
+
+}
+
+class Unicorn(val name: String, voice : Speaker) : Speaker by voice {
+
+}
+</code></pre>
+
+<p>Which means we can do</p>
+
+<pre><code>var dash = Pony("Rainbow dash", ConstSpeaker("I run faster than you"))
+var celestia = Unicorn("Princess Celestia", ConstSpeaker("I'm the boss of all the ponies"))
+</code></pre>
+
+<p><strong>Good news everyone</strong></p>
+
+<p><img src="/img/farnsworth.jpg" style="float: left;"></p>
+
+<p>Well, we've found something that in principle I really like about Kotlin.</p>
+
+<p>This is one of the pleasant surprises I had when exploring Kotlin at the workshop, although it caused all of the people in my immediate vicinity (including myself) undergo confusion the first time we came to try and use it.</p>
+
+<p>If we got rid of the crappy legacy inheritance system and forced this composition based approach my <em>word</em>, we'd solve problems, we'd solve a lot of problems.</p>
+
+<p><div style="float: none; clear: both;"></p>
+
+<p>Make the above a little less verbose and we could be onto a winner.</p>
+
+<p>It feels as if the language designers haven't really designed at this point, they've just thrown a load of stuff at the wall because inheritance is something that all Java developers want and given us a few bad ways of doing something as well as something that has the potential to make us write better Java.</p>
+
+<p><strong>My feedback</strong></p>
+
+<p>If I was taking tackling this whole "improve Java" problem, I'd be looking at some of the awful Java being written out there and saying "Hey, inheritance based approaches usually suck, can we make them better?", and I'd still not have come up with that traits system.</p>
+
+<p>The traits system is great, run with it - get rid of the others and you remove a crap load of complexity and show an opinionated way of building composable software.</p>
+
+<p>No doubt there are some problems not immediately obvious with it, but I'm not being paid to be a language designer, the JB guys are so... what are you waiting for? :)</p></div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="http://twitter.com/robashton">Follow me</a>
+      </div>
+      <div id="disqus">
+        <div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+      </div>
+    </div>
+    <div id="post-comments">
+
+    </div>
+  </body>
+</html>

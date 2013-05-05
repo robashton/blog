@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title id="title">Hotelier and RavenDB</title>
+    <title id="title">Looking at Kotlin - Legacy Cruft</title>
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
     <link href='http://fonts.googleapis.com/css?family=Libre+Baskerville' rel='stylesheet' type='text/css'>
     <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
@@ -23,58 +23,65 @@
   <body>
     <a class="subscribe" href="http://feed.codeofrob.com/RobAshton">Subscribe to my blog</a>
     <div id="blog-entry">
-      <h1 id="post-title">Hotelier and RavenDB</h1>
-      <h6>Published on <span class="date">2013-6-6</span></h6>
-      <div id="post"><p>I'm building a hotel booking system aimed towards small hotel/bnb owners who have static websites and want to embed a booking system onto those pages.</p>
-
-<p>I made the assertion I was going to use RavenDB, this is why:</p>
+      <h1 id="post-title">Looking at Kotlin - Legacy Cruft</h1>
+      <h6>Published on <span class="date">2013-5-20</span></h6>
+      <div id="post"><p>I'm nearly done with my brief foray into Kotlin, but first let's look at some Java-riffic holdovers.</p>
 
 <ul>
-<li>I had a sample project written using RavenDB a couple of years ago, it's out dated, I want to bring it forwards</li>
-<li>I haven't written much about RavenDB since those two years, and people are complaining that the blog entries I wrote are out of date</li>
-<li>RavenDB is <em>fantastic</em> for this kind of project, I know from experience that it'll stay out of my way while I put things together</li>
-<li>I want to do functional end-to-end testing, but don't want to write in-memory persistence. RavenDB will do this for me.</li>
+<li><a href="/entries/looking-at-kotlin---a-few-notes-made.html">Looking at Kotlin - getting started</a></li>
+<li><a href="/entries/looking-at-kotlin---classes-and-functions.html">Looking at Kotkin - Classes and Functions</a></li>
+<li><a href="/entries/looking-at-kotlin---kicking-the-java-inheritance-addiction.html">Looking at Kotlin - Inheritance</a></li>
+<li><a href="/entries/looking-at-kotlin---fun-with-functions.html">Looking at Kotlin - Fun with functions</a></li>
+<li>Looking at Kotlin - Java-riffic good times</li>
 </ul>
 
-<p>That's about it. If you haven't used RavenDB yet then perhaps this will show you why you might choose to in a project of this nature.</p>
+<p><strong>Inner classes</strong></p>
 
-<p>As a reminder, I'm able to with RavenDB create basic POCOs and persist them without worrying about it like so</p>
+<p>So, inner classes, a feature that both Java and C# have and each with their own set of issues.</p>
 
-<p><strong>Persisting a new hotel</strong></p>
-
-<pre><code>using(var session = store.OpenSession()) {
-  var hotel = new Hotel("The waterfall Inn");
-  session.Store(hotel);
-  session.SaveChanges();
-}
+<pre><code>class Outer() { 
+  private val bar : Int = 1 
+    class Nested() { 
+      fun foo() = 2 
+    } 
+  } 
 </code></pre>
 
-<p><strong>Loading a hotel, changing something about it</strong></p>
+<p>val demo = Outer.Inner().foo() // == 2</p>
 
-<pre><code>using(var session = store.OpenSession()) {
-  var hotel = session.Load&lt;Hotel&gt;(id);
-  hotel.AddRoom(new Room(5));
-  session.SaveChanges();
-}
+<p>No biggy here, except in Java there is a problem with nested class as explained in <a href="http://blog.jetbrains.com/kotlin/2013/02/kotlin-m5-is-out/">this blog entry</a> </p>
+
+<p><blockquote>
+    An inner class is a non-static nested class, i.e. it holds a reference to an instance of its outer. In Java nested classes are inner by default, and if you don’t want a reference to the outer, you make your class static. Sometimes it leads to memory leaks, when someone is holding a reference to an instance of an inner class without knowing that it also holds an outer instance.
+  </blockquote></p>
+
+<p>Kotlin's solution is to say that you can't do this</p>
+
+<pre><code>class Outer() { 
+  private val bar : Int = 1 
+    class Nested() { 
+      fun doSomething() {
+        println(bar)
+      }
+    } 
+  } 
 </code></pre>
 
-<p>Remember? It has auto change tracking, which means no faffing around remembering to call Save etc</p>
+<p>Instead you have to mark the inner class with 'inner' to make this an explicit decision</p>
 
-<p><strong>Searching for hotels</strong></p>
-
-<pre><code>using(var session = store.OpenSession()) {
-  var hotels = session.Query&lt;Hotel&gt;()
-                      .Where(x=&gt; x.Name == "Waterfall")
-                      .ToList();
-
-}
+<pre><code>class Outer() { 
+  private val bar : Int = 1 
+    inner class Nested() { 
+      fun doSomething() {
+        println(bar)
+      }
+    } 
+  } 
 </code></pre>
 
-<p>Remember? Auto index creation and look-up meas you can very easily do queries etc, kinda neat.</p>
+<p>I have a better solution, <em>get rid of inner classes</em>, they're crap anyway and don't just cause problems in software, but apparently cause problems with language design too. Problem solved.</p>
 
-<p><strong>Basically</strong></p>
-
-<p>RavenDB makes life easy and I want to focus a bit more on my method of building this type of application in general so it's ideal for that :)</p></div>
+<p>**</p></div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>

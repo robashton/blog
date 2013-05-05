@@ -1,0 +1,175 @@
+<p>I'm nearly done with my brief foray into Kotlin, but I've a few more things to cover</p>
+
+<ul>
+<li><a href="/entries/looking-at-kotlin---a-few-notes-made.html">Looking at Kotlin - getting started</a></li>
+<li><a href="/entries/looking-at-kotlin---classes-and-functions.html">Looking at Kotkin - Classes and Functions</a></li>
+<li><a href="/entries/looking-at-kotlin---kicking-the-java-inheritance-addiction.html">Looking at Kotlin - Inheritance</a></li>
+<li><a href="/entries/looking-at-kotlin---fun-with-functions.html">Looking at Kotlin - Fun with functions</a></li>
+<li>Looking at Kotlin - Wrapping it up</li>
+</ul>
+
+<p><strong>Inner classes</strong></p>
+
+<p>So, inner classes, a feature that both Java and C# have and each with their own set of issues.</p>
+
+<pre><code>class Outer() { 
+  private val bar : Int = 1 
+    class Nested() { 
+      fun foo() = 2 
+    } 
+  } 
+</code></pre>
+
+<p>val demo = Outer.Inner().foo() // == 2</p>
+
+<p>No biggy here, except in Java there is a problem with nested class as explained in <a href="http://blog.jetbrains.com/kotlin/2013/02/kotlin-m5-is-out/">this blog entry</a> </p>
+
+<p><blockquote>
+    An inner class is a non-static nested class, i.e. it holds a reference to an instance of its outer. In Java nested classes are inner by default, and if you don’t want a reference to the outer, you make your class static. Sometimes it leads to memory leaks, when someone is holding a reference to an instance of an inner class without knowing that it also holds an outer instance.
+  </blockquote></p>
+
+<p>Kotlin's solution is to say that you can't do this</p>
+
+<pre><code>class Outer() { 
+  private val bar : Int = 1 
+    class Nested() { 
+      fun doSomething() {
+        println(bar)
+      }
+    } 
+  } 
+</code></pre>
+
+<p>Instead you have to mark the inner class with 'inner' to make this an explicit decision</p>
+
+<pre><code>class Outer() { 
+  private val bar : Int = 1 
+    inner class Nested() { 
+      fun doSomething() {
+        println(bar)
+      }
+    } 
+  } 
+</code></pre>
+
+<p>I have a better solution, <em>get rid of inner classes</em>, they're crap anyway and don't just cause problems in software, but apparently cause problems with language design too. Problem solved.</p>
+
+<p><strong>null and elvis</strong></p>
+
+<p>Kotlin operates on the basis of things not being nullable by default, which is something I wholeheartedly support.</p>
+
+<pre><code>var derpy : Pony = null
+</code></pre>
+
+<p>This isn't allowed.</p>
+
+<p>We're allowed to say we <em>want</em> a nullable object, by adding a question mark to things.</p>
+
+<pre><code>var derpy : Pony? = null
+</code></pre>
+
+<p>This is sensible, and can't be faulted.</p>
+
+<p>Most legacy java APIs will return things that <em>can</em> be nullable, and in fact a lot of Java APIs do this in places where they really shouldn't. The compiler will complain about this though, so where I do</p>
+
+<p><em>Compiler error</em></p>
+
+<pre><code> var fileList = files.listFiles()
+ var size = fileList.size
+ println(size)
+</code></pre>
+
+<p><em>Compiler success</em></p>
+
+<pre><code> var fileList = files.listFiles()
+ var size = fileList?.size
+ println(size)
+</code></pre>
+
+<p>The elvis operator gets compiled down into</p>
+
+<pre><code> var fileList = files.listFiles()
+ if(fileList != null) {
+   var size = fileList.size
+   println(size)
+ }
+</code></pre>
+
+<p>This is a case where Kotlin "fixes" Java well, so I'm not complaining.</p>
+
+<p><strong>Ranges</strong></p>
+
+<p>Syntastical sugar, but always a fan of this sort of thing</p>
+
+<pre><code>for (i in (1..4).reversed() step 2) print(i) // prints "42" 
+</code></pre>
+
+<p>I like this sort of thing, although it gets out of hand in languages like Ruby so I'd watch this stuff cautiously.</p>
+
+<p><strong>Pattern matching</strong></p>
+
+<pre><code>when (x) { 
+  1 -&gt; print("x == 1") 
+  2 -&gt; print("x == 2") 
+  else -&gt; { // Note the block 
+    print("x is neither 1 nor 2") 
+  } 
+}
+</code></pre>
+
+<p>or</p>
+
+<pre><code>when (tuple) { 
+  is #(1, 2) -&gt; ... 
+  is #(val a, 3) -&gt; print(a) // binding a to the first element of the tuple 
+  !is #(*, 1100) -&gt; ... 
+  else -&gt; ... 
+}
+</code></pre>
+
+<p>I'm a sucker for pattern matching constructs and I like this implementation because of how easy it is to declare those function literals.</p>
+
+<p>Also, it does intelligent casting for you as well, cutting own on some of the cruft you'd usually get with this sort of thing</p>
+
+<pre><code>function strangeFunction(a : Any) : Any {
+  when(a) {
+    is Int -&gt;
+      return a + 5
+    is String -&gt;
+      return a + "5"
+  }
+}
+</code></pre>
+
+<p>Nice</p>
+
+<p><strong>Round-up</strong></p>
+
+<p>The stated goals of Kotlin of "fixing Java" don't appear to have been met, there are holdovers from the language such as </p>
+
+<ul>
+<li>The same old Java build cruft</li>
+<li>Over-complicated inheritance system</li>
+<li>Inner class madness</li>
+</ul>
+
+<p>And then some new ones</p>
+
+<ul>
+<li>confusing function constructs</li>
+<li>keyword heavy solutions</li>
+</ul>
+
+<p>It does 'fix'</p>
+
+<ul>
+<li>Null</li>
+</ul>
+
+<p>And it does compile to JavaScript which means some interesting library targeting opportunities.</p>
+
+<p>If I were "fixing a problem like Java", it would be by removing features that people shot themselves in the foot with often and by adding a few pieces of sugar to make things more readable in places.</p>
+
+<p>It wouldn't be by adding more key-words and more options for shooting yourself in the foot with, and it wouldn't be by defaulting to mutable and public :)</p>
+
+<p>That's pretty much all I have to say from my day of Kotlin, there are probably more things in there but I've got other stuff to do and not on the JVM!</p>
