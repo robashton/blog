@@ -1,3 +1,16 @@
+Okay, so now I've ran all my projections over all that crazy data
+
+- [Introduction to the EventStore](/entries/playing-with-the-eventstore.html)
+- [Pushing data into the EventStore](/entries/pushing-data-into-streams-in-the-eventstore.html)
+- [Projections in the EventStore](/entries/basic-projections-in-the-eventstore.html)
+- [Re-partitioning streams in the EventStore](/entries/re-partitioning-streams-in-the-event-store-for-better-projections.html)
+- [Creating a projection per stream](/entries/creating-a-projection-per-stream-in-the-eventstore.html)
+- [Pumping data from Github into the EventStore](/entries/less-abstract,-pumping-data-from-github-into-the-eventstore.html)
+- [Emitting new events from a projection](/entries/evented-github-adventure---emitting-commits-as-their-own-events.html)
+- [Event store database storage](/entries/evented-github-adventure---database-storage-and-backing-up.html)
+- Who is the sweariest of them all?
+
+
 We now have a [stream for the commits](/entries/evented-github-adventure---emitting-commits-as-their-own-events.html) inside Github, and we have information about the repos associated with those commits, now how about asking a question about those commits.
 
 *"Oh Github Github, in the cloud, who is the sweariest developer out loud?"*
@@ -169,8 +182,6 @@ Actually, let's normalise this for the lols and see who is actually the swearies
 
 
 So... turns out that C# developers are quite mild-mannered and PHP/Scala developers are fucking angry - and who can blame them?
-
-*note: There isn't really enough data to draw this sort of result, but let's not let that stop us making outrageous statements*
 
 Projections are a great way to analyse streams to generate knowledge about what is going on, of course simply doing aggregations over data over time is something we can achieve in most systems, in the next entry we'll look at something more interesting.
 

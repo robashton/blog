@@ -1,3 +1,17 @@
+Carrying on in the EventStore series...
+
+- [Introduction to the EventStore](/entries/playing-with-the-eventstore.html)
+- [Pushing data into the EventStore](/entries/pushing-data-into-streams-in-the-eventstore.html)
+- [Projections in the EventStore](/entries/basic-projections-in-the-eventstore.html)
+- [Re-partitioning streams in the EventStore](/entries/re-partitioning-streams-in-the-event-store-for-better-projections.html)
+- [Creating a projection per stream](/entries/creating-a-projection-per-stream-in-the-eventstore.html)
+- [Pumping data from Github into the EventStore](/entries/less-abstract,-pumping-data-from-github-into-the-eventstore.html)
+- [Emitting new events from a projection](/entries/evented-github-adventure---emitting-commits-as-their-own-events.html)
+- [Who is the sweariest of them all?](/entries/evented-github-adventure---who-writes-the-sweariest-commit-messages.html)
+- [Temporal queries in the event store](/entries/evented-github-adventure---temporal-queries,-who-doesnt-trust-their-hardware.html)
+- [Projections from multiple streams](/entries/evented-github-adventure---crossing-the-streams-to-gain-real-insights.html)
+- Temporal averages
+
 If we can [emit temporal events](/entries/evented-github-adventure---temporal-queries,-who-doesnt-trust-their-hardware.html) by partitioning streams and building up state over time, then we can probably go a bit further and build up averages over "How long things usually take", let's have a look at the temporal projection we used to emit time-based events:
 
 

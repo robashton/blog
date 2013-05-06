@@ -1,3 +1,15 @@
+Carrying on in the EventStore series...
+
+- [Introduction to the EventStore](/entries/playing-with-the-eventstore.html)
+- [Pushing data into the EventStore](/entries/pushing-data-into-streams-in-the-eventstore.html)
+- [Projections in the EventStore](/entries/basic-projections-in-the-eventstore.html)
+- [Re-partitioning streams in the EventStore](/entries/re-partitioning-streams-in-the-event-store-for-better-projections.html)
+- [Creating a projection per stream](/entries/creating-a-projection-per-stream-in-the-eventstore.html)
+- [Pumping data from Github into the EventStore](/entries/less-abstract,-pumping-data-from-github-into-the-eventstore.html)
+- [Emitting new events from a projection](/entries/evented-github-adventure---emitting-commits-as-their-own-events.html)
+- [Who is the sweariest of them all?](/entries/evented-github-adventure---who-writes-the-sweariest-commit-messages.html)
+- Temporal queries in the event store
+
 Doing [basic aggregations](/entries/evented-github-adventure---who-writes-the-sweariest-commit-messages.html) is fairly easy, but actually one of the great selling points of the projections system inside the EventStore is how easy it is to do temporal queries.
 
 What is a temporal query? Well the example that [Greg Young](http://twitter.com/gregyoung) always uses is "look for all the events in Twitter where somebody mentions starbucks, coffee, and happy within five minutes of each other"
