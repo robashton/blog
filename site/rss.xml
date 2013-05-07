@@ -1,5 +1,57 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Mon, 06 May 2013 14:43:30 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Evented Github Adventure - Emitting Commits as their own events]]></title><description><![CDATA[<p>I'm <a href="/entries/less-abstract,-pumping-data-from-github-into-the-eventstore.html">ploughing all the events from Github into the EventStore</a> as is, but that doesn't mean they're instantly available for querying.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Tue, 07 May 2013 20:41:47 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Evented github adventure - database storage and backing up]]></title><description><![CDATA[<p>If you're joing us after the bank holiday weekend in the UK, then we're on the Event Store and looking at Github data.</p>
+
+<ul>
+<li><a href="/entries/playing-with-the-eventstore.html">Introduction to the EventStore</a></li>
+<li><a href="/entries/pushing-data-into-streams-in-the-eventstore.html">Pushing data into the EventStore</a></li>
+<li><a href="/entries/basic-projections-in-the-eventstore.html">Projections in the EventStore</a></li>
+<li><a href="/entries/re-partitioning-streams-in-the-event-store-for-better-projections.html">Re-partitioning streams in the EventStore</a></li>
+<li><a href="/entries/creating-a-projection-per-stream-in-the-eventstore.html">Creating a projection per stream</a></li>
+<li><a href="/entries/less-abstract,-pumping-data-from-github-into-the-eventstore.html">Pumping data from Github into the EventStore</a></li>
+<li><a href="/entries/evented-github-adventure---emitting-commits-as-their-own-events.html">Emitting new events from a projection</a></li>
+</ul>
+
+<p>I actually wrote all of these blog entries several months ago, and then queued them up because I wanted to get some real data before running my projections.</p>
+
+<p><em>Problem: I ran the events into the store on my EC2 "small" instance and now have 25gb of data sat there to run projections over.</em></p>
+
+<p>I can't actually run my projections on that much data on that small instance without either waiting for a bazillion years or taking everthing else down on that box.</p>
+
+<p>I quickly realise that I'm not going to be able to push the next blog post out on time either way, and decide to write this post and have a look at what I need to do to move my data onto a new EC2 machine.</p>
+
+<p><strong>Step 1: Create an AMI of the current EC2 instance</strong></p>
+
+<p><img src="/img/create_ami.png" title="creating an AMI" /></p>
+
+<p><strong>Step 2: Create an xlarge instance from this AMI</strong></p>
+
+<p><img src="/img/event_store.png" title="Creating xlarge" /></p>
+
+<p><strong>Step 3: Log in and give this instance access to the old instance</strong></p>
+
+<ul>
+<li>ssh-keygen <em>etc</em></li>
+<li>copy the public key and add it to the old EC2 authorized_keys</li>
+<li>ssh from new machine to old machine to make sure it works</li>
+</ul>
+
+<p><strong>Step 4: Get that data onto the new machine</strong></p>
+
+<p>This is interesting, if you look in the folder I pointed the EventStore at to store its information it looks like this:</p>
+
+<p><img src="/img/data_storage.png" title="raw files for storage"></p>
+
+<p>Apparently all I have to do is copy this folder over and I do this with SCP like so</p>
+
+<p><img src="/img/backing_up.png" title="backing up" /></p>
+
+<p>And then I'm able to run the already-built event store because that came with the AMI I made. Everything works great and I celebrate.</p>
+
+<p><strong>Step 5: Wait</strong></p>
+
+<p>There may be some gaps in my blog entries from this point on as I run the projections over the events to get the results, there is a lot of data and patience is required...</p>
+
+<p><img src="/img/running_projections.png" title="running hte projections" /></p>]]></description><link>http://codeofrob.com/entries/evented-github-adventure---database-storage-and-backing-up.html</link><guid isPermaLink="true">http://codeofrob.com/entries/evented-github-adventure---database-storage-and-backing-up.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 07 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Evented Github Adventure - Emitting Commits as their own events]]></title><description><![CDATA[<p>I'm <a href="/entries/less-abstract,-pumping-data-from-github-into-the-eventstore.html">ploughing all the events from Github into the EventStore</a> as is, but that doesn't mean they're instantly available for querying.</p>
 
 <p>Lets say I want to write a few projections analysing the commits made across Github and performing some correlations off the back of that.</p>
 
@@ -1294,97 +1346,4 @@ ContentType =
 <li>I'm not handling primitive types properly (ResourceNames, ResourceComponents, Numbers etc)</li>
 </ul>
 
-<p>I'll sort all these out in the next entry (I imagine that there will have been some comments made about these already in the future... in the past now, I wrote all this a month ago after all) and then we'll be finished and onto something new.</p>]]></description><link>http://codeofrob.com/entries/the-final-odata-query-bits,-yes-were-nearly-there.html</link><guid isPermaLink="true">http://codeofrob.com/entries/the-final-odata-query-bits,-yes-were-nearly-there.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 22 Apr 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Parsing those pesky filtering functions in OData]]></title><description><![CDATA[<p>The final bit of our $filter feature is the ability to invoke a special function and compare the result of that to the rest of an expression.</p>
-
-<p>Again a reminder of where we are so far:</p>
-
-<ul>
-<li><a href="/entries/building-a-basic-json-parser-in-ometa.html">Learning OMeta through JSON</a></li>
-<li><a href="/entries/building-an-odata-parser-in-ometa.html">Introduction to the OData Parser</a></li>
-<li><a href="/entries/writing-an-odata-parser---starting-at-the-beginning.html">First steps in writing the OData Parser</a></li>
-<li><a href="/entries/parsing-odata---nested-resource-paths.html">Nested resource paths in OData</a></li>
-<li><a href="/entries/parsing-odata---service-operations.html">Service operations in OData</a></li>
-<li><a href="/entries/the-odata-parser---applying-modifiers-to-our-query.html">Query options in OData</a></li>
-<li><a href="/entries/paging-support-in-our-odata-parser.html">Paging support in OData</a></li>
-<li><a href="/entries/our-odata-parser---looking-at-filterby.html">Filtering support in OData</a></li>
-<li><a href="/entries/recursive-expression-parsing-in-our-odata-filter-parser.html">Recursive query support in OData</a></li>
-<li><a href="/entries/these-are-not-the-results-you-are-looking-for---odata-parser.html">'Not' support for OData</a></li>
-<li><a href="/entries/adding-arithmetic-operators-to-our-odata-parser.html">Arithmetic operator support in OData</a></li>
-<li><a href="/entries/precedence-grouping,-you-first..-no-you-odata-parser.html">Precedence grouping in OData</a></li>
-</ul>
-
-<p><strong>Function calls look like this</strong></p>
-
-<pre><code>/Customers?$filter=substringof('Alfreds', CompanyName) eq true
-</code></pre>
-
-<p>In other words, they're a special piece of the expression which can take a list of expressions separated by commas</p>
-
-<p>I could hack this and just allow any function call, or I can explicitly name them all - which I'll do because it'll help with the highlighting in the editor that'll use this parser.</p>
-
-<p>I'll do the first one here, and then go and do the rest in a similar fashion because they're just the same thing over and over again!</p>
-
-<p>Our test for 'substringof'</p>
-
-<pre><code>test("/resource?$filterby=substringof('alfred', Product) eq 'cake'", "OData", function(result) {
-  it("A filter should be present", function() {
-     assert.notEqual(result.options.$filterby, null)
-  })
-  it("Filter should be an instance of 'eq'", function() {
-     assert.equal(result.options.$filterby[0], "eq")
-  })
-  it("lhs should be a function call", function() {
-     assert.equal(result.options.$filterby[1][0], "call")
-  })
-  it("lhs should be substringof with correct args", function() {
-     assert.equal(result.options.$filterby[1][1].method, 'substringof')
-     assert.equal(result.options.$filterby[1][1].args[0], 'alfred')
-     assert.equal(result.options.$filterby[1][1].args[1].name, 'Product')
-  })
-  it("rhs should be cake", function() {
-     assert.equal(result.options.$filterby[2], "cake")
-  }) 
-})
-</code></pre>
-
-<p>This kinda thing will do, and getting the method out is a simple  matter of adding the MethodExpression to the values possible in an expression:</p>
-
-<pre><code>FilterByValue = 
-  FilterMethodCallExpression
-| FilterNegateExpression
-| Number
-| QuotedText
-| PropertyPath
-| GroupedPrecedenceExpression
-,
-</code></pre>
-
-<p>Now, it is tempting to be lazy and just write a  generic method recogniser with variable lists of args, but we're building for highlighting so it would be nice to know what the recognised methods are, and what args they expect, so what I'll do is this</p>
-
-<pre><code>FilterMethodCallExpression = 
-  (
-    FilterSubstringOf
-  | OtherMethod
-  | AnotherMethod
-  ) -&gt; [ "call", methodcall ]
-,
-</code></pre>
-
-<p>And write a definition for each method (tedious, but I'll automate a pile of that with VIM macros)</p>
-
-<pre><code>FilterSubstringOf = 
-  seq('substringof'):method 
-  '(' 
-  spaces 
-  FilterByExpression:one 
-  spaces 
-  ',' 
-  spaces 
-  FilterByExpression:two 
-  spaces 
-  ')' -&gt; { args: [ one, two ], method: method }
-</code></pre>
-
-<p>And they'll all look like that.</p>
-
-<p>With this done, $filter is now fully supported and I can get on with mopping up the final recognised pieces of OData. I'll try and do that all in a single post.</p>]]></description><link>http://codeofrob.com/entries/parsing-those-pesky-filtering-functions-in-odata.html</link><guid isPermaLink="true">http://codeofrob.com/entries/parsing-those-pesky-filtering-functions-in-odata.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 19 Apr 2013 09:30:00 GMT</pubDate></item></channel></rss>
+<p>I'll sort all these out in the next entry (I imagine that there will have been some comments made about these already in the future... in the past now, I wrote all this a month ago after all) and then we'll be finished and onto something new.</p>]]></description><link>http://codeofrob.com/entries/the-final-odata-query-bits,-yes-were-nearly-there.html</link><guid isPermaLink="true">http://codeofrob.com/entries/the-final-odata-query-bits,-yes-were-nearly-there.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 22 Apr 2013 09:30:00 GMT</pubDate></item></channel></rss>
