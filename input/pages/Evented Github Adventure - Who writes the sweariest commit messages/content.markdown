@@ -134,6 +134,8 @@ var data = {"Lua":{"count":365,"total":14410},"Java":{"count":24321,"total":4786
 
 Actually, let's normalise this for the lols and see who is actually the sweariest, normalised from about 0% to 7% (the majority of developers are quite clean about things ;) )
 
+**% of commits containing curse words**
+
 <div id="normalised"></div>
 <script type="text/javascript">
 
