@@ -1,4 +1,4 @@
-Okay, so now I've ran all my projections over all that crazy data
+Okay, so now I've ran all my projections over all that crazy data and have some results to show!
 
 - [Introduction to the EventStore](/entries/playing-with-the-eventstore.html)
 - [Pushing data into the EventStore](/entries/pushing-data-into-streams-in-the-eventstore.html)
@@ -12,6 +12,8 @@ Okay, so now I've ran all my projections over all that crazy data
 
 
 We now have a [stream for the commits](/entries/evented-github-adventure---emitting-commits-as-their-own-events.html) inside Github, and we have information about the repos associated with those commits, now how about asking a question about those commits.
+
+For reference, there are about 20 million commit messages in my event store, so I have more than enough data for this to be statistically relevant!
 
 *"Oh Github Github, in the cloud, who is the sweariest developer out loud?"*
 
@@ -189,7 +191,9 @@ Actually, let's normalise this for the lols and see who is actually the swearies
 </script>
 
 
-I'll leave you to draw your own conclusions about this graph, but I can't say that it comes as a huge surprise judging from the various developers on *my* Twitter feed ;-)
+I'll leave you to draw your own conclusions about this chart, but I can't say that it comes as a huge surprise judging from the various developers on *my* Twitter feed ;-)
+
+Scala developers are ducking *filthy*, but the lisp programmers probably save their curse words for Emacs rather than the language they're using. *Seems legit.*
 
 Projections are a great way to analyse streams to generate knowledge about what is going on, of course simply doing aggregations over data over time is something we can achieve in most systems, in the next entry we'll look at something more interesting.
 
