@@ -24,7 +24,7 @@
     <a class="subscribe" href="http://feed.codeofrob.com/RobAshton">Subscribe to my blog</a>
     <div id="blog-entry">
       <h1 id="post-title">Evented Github Adventure - Temporal queries, who doesn't trust their hardware</h1>
-      <h6>Published on <span class="date">2013-5-9</span></h6>
+      <h6>Published on <span class="date">2013-5-10</span></h6>
       <div id="post"><p>Carrying on in the EventStore series...</p>
 
 <ul>
@@ -141,7 +141,7 @@
 <pre><code>fromStream('paranoidpushes')
   .when({
     "$init": function(state, ev) {
-      state.count = 0
+      return { count: 0 }
     },
     "ParanoidPush": function(state, ev) {
       state.count++
@@ -151,10 +151,17 @@
 
 <p>And the result?</p>
 
-<pre><code>{ count: 1504 }
+<pre><code>{ count: 104533 }
 </code></pre>
 
-<p>Voila, that's a temporal query that just works - and it's pretty easy too. Now we have this, perhaps we can look at combining this data we have to work out how this strange use of git plays out across different language developers.</p></div>
+<p>Voila, that's an incredibly simply temporal query that just works and gives me the total number of pushes that happened within 2 minutes of each other to the same repository - and it's pretty easy too. We have two steps:</p>
+
+<ul>
+<li>Push out events for each instance of some temporal correlation</li>
+<li>Aggregate on those events to get the result</li>
+</ul>
+
+<p>Now we have this, perhaps we can look at combining this data we have to work out how this strange use of git plays out across different language developers.</p></div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>

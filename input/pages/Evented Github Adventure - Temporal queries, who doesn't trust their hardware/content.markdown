@@ -109,7 +109,7 @@ So, how many paranoid pushes have I had in the time period I've been sampling ov
     fromStream('paranoidpushes')
       .when({
         "$init": function(state, ev) {
-          state.count = 0
+          return { count: 0 }
         },
         "ParanoidPush": function(state, ev) {
           state.count++
@@ -118,8 +118,12 @@ So, how many paranoid pushes have I had in the time period I've been sampling ov
 
 And the result?
 
-    { count: 1504 }
+    { count: 104533 }
 
-Voila, that's a temporal query that just works - and it's pretty easy too. Now we have this, perhaps we can look at combining this data we have to work out how this strange use of git plays out across different language developers.
+Voila, that's an incredibly simply temporal query that just works and gives me the total number of pushes that happened within 2 minutes of each other to the same repository - and it's pretty easy too. We have two steps:
 
+- Push out events for each instance of some temporal correlation
+- Aggregate on those events to get the result
+
+Now we have this, perhaps we can look at combining this data we have to work out how this strange use of git plays out across different language developers.
 
