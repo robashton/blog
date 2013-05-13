@@ -45,9 +45,9 @@ So yeah, er - that was stupidly easy, I didn't even have to think about that one
 
 What does the result look like?
 
-    {"paranoid":598,"total":8226}
+    {"paranoid":181423,"total": 2272796}
 
-So, in fact around 7.2% of all pushes to Github happen within 2 minutes of the previous one - that's actually quite high - and my guess is that these are either people rectifying mistakes in previous commits (actually, there's an idea for another projection) or people who are new to git.
+So, in fact around 8% of all pushes to Github happen within 2 minutes of the previous one - that's actually quite high - and my guess is that these are either people rectifying mistakes in previous commits (actually, there's an idea for another projection) or people who are new to git.
 
 Let's generate a result object by language and see what we get
 
