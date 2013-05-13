@@ -1,5 +1,237 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Mon, 13 May 2013 08:59:45 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Evented Github Adventure - Temporal queries, who doesn't trust their hardware]]></title><description><![CDATA[<p>Carrying on in the EventStore series...</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Mon, 13 May 2013 11:51:10 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Evented Github Adventure - Crossing the streams to gain real insights]]></title><description><![CDATA[<p>Carrying on in the EventStore series...</p>
+
+<ul>
+<li><a href="/entries/playing-with-the-eventstore.html">Introduction to the EventStore</a></li>
+<li><a href="/entries/pushing-data-into-streams-in-the-eventstore.html">Pushing data into the EventStore</a></li>
+<li><a href="/entries/basic-projections-in-the-eventstore.html">Projections in the EventStore</a></li>
+<li><a href="/entries/re-partitioning-streams-in-the-event-store-for-better-projections.html">Re-partitioning streams in the EventStore</a></li>
+<li><a href="/entries/creating-a-projection-per-stream-in-the-eventstore.html">Creating a projection per stream</a></li>
+<li><a href="/entries/less-abstract,-pumping-data-from-github-into-the-eventstore.html">Pumping data from Github into the EventStore</a></li>
+<li><a href="/entries/evented-github-adventure---emitting-commits-as-their-own-events.html">Emitting new events from a projection</a></li>
+<li><a href="/entries/evented-github-adventure---who-writes-the-sweariest-commit-messages.html">Who is the sweariest of them all?</a></li>
+<li><a href="/entries/evented-github-adventure---temporal-queries,-who-doesnt-trust-their-hardware.html">Temporal queries in the event store</a></li>
+<li>Projections from multiple streams</li>
+</ul>
+
+<p>It's not enough to just create a <a href="/entries/evented-github-adventure---temporal-queries,-who-doesnt-trust-their-hardware.html">stream of 'events' from correlated actions over time</a>, although that <em>is</em> super cool, what we want to do is then use that stream to tell us something interesting about the activity of developers on Github.</p>
+
+<p>Like, given that we have this information about paranoid pushes, how do they stack up as a percentage to pushes overall when broken down by language?</p>
+
+<p><em>Problem</em>: This information is in completely different streams.</p>
+
+<p>Not to worry, this is where the Event Store's ability to re-partition and consume streams in a variety of ways comes to the rescue once more, want to consume the events from two different streams? Not a problem</p>
+
+<pre><code>fromStreams([ "github", "paranoidpushes" ])
+   .when({
+
+   })
+</code></pre>
+
+<p>First off, let's keep it simple and just find out as a percentage what the paranoid pushes are out of the overal Github stream.</p>
+
+<pre><code>fromStreams([ "github", "paranoidpushes" ])
+   .when({
+     "$init": function() {
+       return { paranoid: 0, total: 0 }
+     },
+     "ParanoidPush": function(state, ev) {
+       state.paranoid++
+     },
+     "PushEvent": function(state, ev) {
+       state.total++
+     }
+   })
+</code></pre>
+
+<p>So yeah, er - that was stupidly easy, I didn't even have to think about that one, we just get all the events from those streams as a unified collection and were able to generate stats from these.</p>
+
+<p>What does the result look like?</p>
+
+<pre><code>{"paranoid":181423,"total": 2272796}
+</code></pre>
+
+<p>So, in fact around 8% of all pushes to Github happen within 2 minutes of the previous one - that's actually quite high - and my guess is that these are either people rectifying mistakes in previous commits (actually, there's an idea for another projection) or people who are new to git.</p>
+
+<p>Let's generate a result object by language and see what we get</p>
+
+<pre><code>function getPerLanguageState(state, ev) {
+  var language = getLanguageFromEvent(ev)
+  var langState = state[language]
+  if(!langState) {
+    langState = { paranoid: 0, total: 0 }
+    state[language] = langState
+  }
+  return langState
+}
+
+function getLanguageFromEvent(ev) {
+  if(ev.body.repo)
+    return ev.body.repo.language
+  if(ev.body.first)
+    return ev.body.first.body.repo.language
+}
+
+fromStreams([ "github", "paranoidpushes" ])
+  .when({
+   "$init": function() {
+     return {}
+   },
+   "ParanoidPush": function(state, ev) {
+     var langState = getPerLanguageState(state, ev)
+     langState.paranoid++
+     return state
+   },
+   "PushEvent": function(state, ev) {
+     var langState = getPerLanguageState(state, ev)
+     langState.total++
+     return state
+   }
+  })
+</code></pre>
+
+<p>There is a lot to take in here, but we can see</p>
+
+<ul>
+<li>I can use custom functions in my projection definition to break down the work</li>
+<li>The custom functions simply work out what language my event is</li>
+<li>The custom functions return a per-language state object</li>
+<li>The projection just adds to the values in that per-language state object</li>
+</ul>
+
+<p>Anyway, the results of this?</p>
+
+<div id="notscaled"></div>
+
+<p>And scaled</p>
+
+<div id="scaled"></div>
+
+<p>So the old school Java and C++ developers can't get enough of that push-based action,  with nearly 16% of their pushes happening within a couple of minutes of their previous push.</p>
+
+<p>Matlab too (presumably they're not doing CI to heroku), maybe they're just worried about their university computer sessions crashing or something.</p>
+
+<p>Not terribly interesting results, but a good example of when it makes sense to combine two streams from the EventStore together.</p>
+
+<script type="text/javascript" src="/d3.v2.js"></script>
+<script type="text/javascript">
+
+
+var data = 
+{"Lua":{"paranoid":710,"total":9208},"Java":{"paranoid":34212,"total":298219},"C":{"paranoid":12549,"total":121676},"AutoHotkey":{"paranoid":14,"total":278},"null":{"paranoid":35773,"total":258170},"C++":{"paranoid":21271,"total":133376},"Ruby":{"paranoid":17924,"total":227354},"undefined":{"paranoid":0,"total":4858},"Python":{"paranoid":17700,"total":205053},"JavaScript":{"paranoid":45154,"total":454877},"PHP":{"paranoid":16789,"total":187223},"Emacs Lisp":{"paranoid":828,"total":11998},"Objective-C":{"paranoid":2715,"total":36117},"Shell":{"paranoid":6792,"total":69272},"Erlang":{"paranoid":541,"total":5643},"ColdFusion":{"paranoid":156,"total":1253},"CoffeeScript":{"paranoid":1489,"total":16010},"C#":{"paranoid":3597,"total":48749},"Groovy":{"paranoid":433,"total":5500},"Go":{"paranoid":868,"total":10820},"Rust":{"paranoid":253,"total":1944},"Arduino":{"paranoid":198,"total":2353},"Standard ML":{"paranoid":819,"total":3191},"R":{"paranoid":522,"total":7247},"Perl":{"paranoid":2069,"total":25325},"Haskell":{"paranoid":719,"total":10351},"Common Lisp":{"paranoid":151,"total":2120},"Verilog":{"paranoid":95,"total":1337},"Haxe":{"paranoid":103,"total":1220},"ooc":{"paranoid":11,"total":193},"VimL":{"paranoid":1625,"total":25894},"FORTRAN":{"paranoid":104,"total":1355},"Scala":{"paranoid":1070,"total":14685},"Clojure":{"paranoid":737,"total":8938},"ActionScript":{"paranoid":365,"total":4431},"Assembly":{"paranoid":170,"total":1755},"OCaml":{"paranoid":189,"total":2563},"ASP":{"paranoid":176,"total":2160},"Puppet":{"paranoid":536,"total":5874},"OpenEdge ABL":{"paranoid":31,"total":319},"HaXe":{"paranoid":24,"total":401},"Julia":{"paranoid":110,"total":1677},"D":{"paranoid":112,"total":1778},"Tcl":{"paranoid":59,"total":502},"Visual Basic":{"paranoid":137,"total":1893},"Racket":{"paranoid":112,"total":1552},"Delphi":{"paranoid":93,"total":1578},"Matlab":{"paranoid":1393,"total":8684},"Dart":{"paranoid":199,"total":2435},"Coq":{"paranoid":32,"total":556},"Vala":{"paranoid":55,"total":435},"Gosu":{"paranoid":5,"total":88},"F#":{"paranoid":86,"total":1186},"Logtalk":{"paranoid":3,"total":73},"Scheme":{"paranoid":162,"total":2117},"Prolog":{"paranoid":82,"total":1117},"Augeas":{"paranoid":1,"total":22},"PowerShell":{"paranoid":98,"total":1366},"VHDL":{"paranoid":56,"total":874},"Turing":{"paranoid":5,"total":28},"DCPU-16 ASM":{"paranoid":1,"total":59},"Smalltalk":{"paranoid":48,"total":490},"XQuery":{"paranoid":6,"total":142},"Dylan":{"paranoid":4,"total":103},"Objective-J":{"paranoid":11,"total":215},"Factor":{"paranoid":40,"total":504},"Ada":{"paranoid":40,"total":326},"Kotlin":{"paranoid":7,"total":129},"Rebol":{"paranoid":2,"total":45},"Io":{"paranoid":5,"total":83},"Nemerle":{"paranoid":40,"total":168},"Elixir":{"paranoid":29,"total":354},"Eiffel":{"paranoid":37,"total":463},"Boo":{"paranoid":3,"total":62},"SuperCollider":{"paranoid":14,"total":260},"AppleScript":{"paranoid":24,"total":176},"Parrot":{"paranoid":4,"total":75},"Scilab":{"paranoid":7,"total":93},"Apex":{"paranoid":14,"total":236},"Ceylon":{"paranoid":2,"total":45},"Bro":{"paranoid":1,"total":8},"Pure Data":{"paranoid":17,"total":149},"Max":{"paranoid":0,"total":1},"Fancy":{"paranoid":2,"total":5},"Lasso":{"paranoid":72,"total":641},"TypeScript":{"paranoid":164,"total":2189},"XML":{"paranoid":220,"total":2649},"LiveScript":{"paranoid":23,"total":288},"Awk":{"paranoid":13,"total":110},"Mirah":{"paranoid":0,"total":4},"Xtend":{"paranoid":4,"total":62},"Ioke":{"paranoid":1,"total":12},"Monkey":{"paranoid":3,"total":41},"Logos":{"paranoid":197,"total":2704},"eC":{"paranoid":0,"total":6},"Nimrod":{"paranoid":5,"total":75},"CLIPS":{"paranoid":1,"total":43},"Arc":{"paranoid":5,"total":22},"DOT":{"paranoid":39,"total":727},"Rouge":{"paranoid":0,"total":3},"Ecl":{"paranoid":0,"total":20},"Processing":{"paranoid":157,"total":1528},"Nu":{"paranoid":15,"total":73},"Forth":{"paranoid":0,"total":9},"PogoScript":{"paranoid":1,"total":18},"Pike":{"paranoid":0,"total":13},"TXL":{"paranoid":0,"total":1},"Fantom":{"paranoid":0,"total":21},"MoonScript":{"paranoid":3,"total":50},"Ragel in Ruby Host":{"paranoid":2,"total":22},"Opa":{"paranoid":0,"total":3},"ABAP":{"paranoid":0,"total":1}}
+
+   var filteredData = []
+   for(var i in data) {
+     if(data[i].total >= 5000) {
+       var datum = data[i]
+       datum.state = {
+        paranoid: data[i].paranoid,
+        total: data[i].total,
+        percentage: Math.floor((data[i].paranoid / data[i].total) * 10000) / 100
+       }
+       datum.key = i
+       filteredData.push(datum)
+     }
+   }
+</script>
+
+<script type="text/javascript">
+
+  var svg = d3.select("#notscaled").append("svg")
+          .attr("width", 640)
+          .attr("height", 480)
+
+
+   var scale = d3.scale.linear()
+     .domain([0, d3.max(filteredData, function(d) { return d.state.total })])
+     .range([0, 280]);
+
+   svg.selectAll("text")
+      .data(filteredData)
+      .enter()
+        .append("text")
+        .attr("transform", function(d, i) { 
+          var transform = "translate(" + i * (640 / filteredData.length) + "," + 380 + ") "
+          transform += "rotate(75) "
+          return transform
+        })
+        .attr("x", 0)
+        .attr("y", 0)
+        .text(function(d) { return d.key })
+
+   svg.selectAll(".total")
+     .data(filteredData)
+     .enter()
+       .append("rect")
+         .attr("class", "total")
+         .attr("fill", '#00A')
+         .attr("x", function(d, i) { return i * (640 / filteredData.length)})
+         .attr("y", function(d, i) { return 370 - scale(d.state.total); })
+         .attr("width", 640 / (filteredData.length + 1))
+         .attr("height", function(d, i) { return scale(d.state.total) })
+
+    svg.selectAll(".paranoid")
+     .data(filteredData)
+     .enter()
+       .append("rect")
+         .attr("class", "paranoid")
+         .attr("fill", '#AAF')
+         .attr("x", function(d, i) { return i * (640 / filteredData.length)})
+         .attr("y", function(d, i) { return 370 - scale(d.state.paranoid); })
+         .attr("width", 640 / (filteredData.length + 1))
+         .attr("height", function(d, i) { return scale(d.state.paranoid) })
+
+</script>
+
+<script type="text/javascript">
+
+  var svg = d3.select("#scaled").append("svg")
+          .attr("width", 800)
+          .attr("height", 480)
+
+   var scale = d3.scale.linear()
+     .domain([0, d3.max(filteredData, function(d) { return d.state.percentage })])
+     .range([0, 1]);
+
+   var maxPercentage = d3.max(filteredData, function(d) { return d.state.percentage });
+
+   svg.append("text")
+      .attr("fill", '#000')
+      .attr("x", 710)
+      .attr("y", 60)
+      .text(maxPercentage + "%")
+
+   svg.append("text")
+      .attr("fill", '#000')
+      .attr("x", 710)
+      .attr("y", 350)
+      .text(0 + "%")
+
+   svg.selectAll(".label")
+      .data(filteredData)
+      .enter()
+        .append("text")
+        .attr("class", "label")
+        .attr("transform", function(d, i) { 
+          var transform = "translate(" + i * (640 / filteredData.length) + "," + 380 + ") "
+          transform += "rotate(75) "
+          return transform
+        })
+        .attr("x", 0)
+        .attr("y", 0)
+        .text(function(d) { return d.key })
+
+    svg.selectAll(".paranoid")
+     .data(filteredData)
+     .enter()
+       .append("rect")
+         .attr("class", "paranoid")
+         .attr("fill", '#AAF')
+         .attr("x", function(d, i) { return i * (640 / filteredData.length)})
+         .attr("y", function(d, i) { return 370 - (280 * scale(d.state.percentage)) })
+         .attr("width", 640 / (filteredData.length + 1))
+         .attr("height", function(d, i) { return 280 * scale(d.state.percentage) })
+</script>]]></description><link>http://codeofrob.com/entries/evented-github-adventure---crossing-the-streams-to-gain-real-insights.html</link><guid isPermaLink="true">http://codeofrob.com/entries/evented-github-adventure---crossing-the-streams-to-gain-real-insights.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 13 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Evented Github Adventure - Temporal queries, who doesn't trust their hardware]]></title><description><![CDATA[<p>Carrying on in the EventStore series...</p>
 
 <ul>
 <li><a href="/entries/playing-with-the-eventstore.html">Introduction to the EventStore</a></li>
@@ -1066,38 +1298,4 @@ req.end()
 
 <p>Now, if we were building a standard event sourced model we'd be able to page through these streams to build up our snapshots/viewmodels and that's all very neat and tidy and that would be the end of our story.</p>
 
-<p>Next up however, it's more interesting to go and have a look at projections now, and see what questions we can ask of those streams in the event store itself.</p>]]></description><link>http://codeofrob.com/entries/pushing-data-into-streams-in-the-eventstore.html</link><guid isPermaLink="true">http://codeofrob.com/entries/pushing-data-into-streams-in-the-eventstore.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 26 Apr 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Playing with the EventStore]]></title><description><![CDATA[<p>I pulled the <a href="http://geteventstore.com/">EventStore</a> out a while ago to play with, with the intention of making a cool Github InfoGraph type thing, it never quite materialised thanks to the rate limits imposed by Github, and then other stuff came up (like I've got a game engine I'm working on and I want to blog about!)</p>
-
-<p>That said, I had some downtime this week in between engagements and decided to bring it up again and blog about some of the things I did with it and some of the questions we're able to ask with the projections feature (which is hitting a point of maturity now which it didn't have before).</p>
-
-<p>Anyway, setting up the EventStore on my Debian install sorta looked like this</p>
-
-<ul>
-<li>Do a fresh build of Mono 3.0.5 (it won't work on the 2.10 that ships out of the box)</li>
-<li>git clone the event store</li>
-<li>checkout the projections branch (not out yet)</li>
-<li>xbuild EventStore.sln</li>
-<li>Build the v8 stuff</li>
-<li>Set up LD<em>LIBRARY</em>PATH so the v8 stuff can be loaded from the .NET exe</li>
-</ul>
-
-<p>Coolio, so we'll assume that this is running throughout my little experiment and that I can access it on http://127.0.0.1:2113</p>
-
-<p>Browsing to that URL, we can see a veritable playground of shinies, the most important for me are</p>
-
-<ul>
-<li>See All Streams</li>
-<li>Projections</li>
-</ul>
-
-<p>Popping into the "See all Streams", we can see a big pile of json, what's cool about this is </p>
-
-<ul>
-<li>It's a pile of links</li>
-<li>The links tell us what types are accepted</li>
-<li>I can request this in various types as well (see the ?format=json) in this URL</li>
-</ul>
-
-<p>Basically, it's AtomPub, and AtomPub is used across the EventStore for interactions - which means no faffing around with custom formats or any of the crap associated with a lot of proprietary systems.</p>
-
-<p>Anwyay, I haven't currently got any info in my event store so I guess I'll look at that next...</p>]]></description><link>http://codeofrob.com/entries/playing-with-the-eventstore.html</link><guid isPermaLink="true">http://codeofrob.com/entries/playing-with-the-eventstore.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 25 Apr 2013 09:30:00 GMT</pubDate></item></channel></rss>
+<p>Next up however, it's more interesting to go and have a look at projections now, and see what questions we can ask of those streams in the event store itself.</p>]]></description><link>http://codeofrob.com/entries/pushing-data-into-streams-in-the-eventstore.html</link><guid isPermaLink="true">http://codeofrob.com/entries/pushing-data-into-streams-in-the-eventstore.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 26 Apr 2013 09:30:00 GMT</pubDate></item></channel></rss>
