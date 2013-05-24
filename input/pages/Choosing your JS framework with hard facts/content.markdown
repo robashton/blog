@@ -61,7 +61,7 @@ Doing this meant I got all the questions with all the tags in the eco-system aro
     </thead>
       <tr><td>backbone</td><td>8863</td><td>5741</td><td>64.7%</td><td>1.42</td></tr>
       <tr><td>angular</td><td>5498</td><td>3401</td><td>61.8%</td><td>1.32</td></tr>
-      <tr><td>knockout</td><td>5624</td><td>3917</td><td>69.6%/5624</td><td>1.31</td></tr>
+      <tr><td>knockout</td><td>5624</td><td>3917</td><td>69.6%</td><td>1.31</td></tr>
       <tr><td>ember</td><td>10086</td><td>6426</td><td>63.71%</td><td>1.63</td></tr>
   </table>
 
@@ -116,6 +116,7 @@ I was going to just paste the charts from Github here, but they weren't really r
 
 I've found a git library for nodejs and will use it to generate a graph of activity over time. What you'd expect to see is that older more stable projects should see a tendency towards less activity and hopefully more contributors as the community fixes issues)
 
+## Average commits per person over time per repo
 
   <div id="contribution-over-time">
 
@@ -166,25 +167,38 @@ And that's that.
                 .attr("height", 480)
 
 
-      var maxx = 0, maxy = 0
+      var maxx = 0, maxy = 0, minx = Infinity, miny = Infinity
       for(var fw in data) {
         var fwdata = data[fw]
+          , newdata = []
         for(var i in fwdata) {
-          maxx = Math.max(maxx, fwdata[i].month * fwdata[i].year)
+          if(fwdata[i].year < 2000) continue
+          fwdata[i].month++
+          var monthstr = fwdata[i].month > 9 ? fwdata[i].month : '0' + fwdata[i].month
+          var date =  new Date(fwdata[i].year + '-' + monthstr + '-01')
+
+          fwdata[i].x = date.getTime()
+
+          maxx = Math.max(fwdata[i].x, maxx)
+          minx = Math.min(minx, fwdata[i].x)
           maxy = Math.max(maxy, fwdata[i].count / fwdata[i].committerCount)
+          miny = Math.min(miny, fwdata[i].count / fwdata[i].committerCount)
+          newdata.push(fwdata[i])
         }
+        data[fw] = newdata
       }
+
       var scalex = d3.scale.linear()
-      .domain([0, maxx])
+      .domain([minx, maxx])
       .range([100, 700]);
 
       var scaley = d3.scale.linear()
-      .domain([0, maxy])
+      .domain([miny, maxy])
       .range([100, 340])
 
     var line = d3.svg.line()
               .interpolate('basis')
-              .x(function(d) { return scalex(d.month * d.year)})
+              .x(function(d) { return scalex(d.x)})
               .y(function(d) { return 480 - scaley(d.count / d.committerCount)})
       
     function addCircle(language, colour, y) {
