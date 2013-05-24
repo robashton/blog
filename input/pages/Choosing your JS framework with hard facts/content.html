@@ -117,7 +117,11 @@ WHERE P.Id IN (
 
 <p>I was going to just paste the charts from Github here, but they weren't really representative of activity and the Angular one just plain-old-wasn't-working at the time</p>
 
-<p>I've found a git library for nodejs and will use it to generate a graph of activity over time. What you'd expect to see is that older more stable projects should see a tendency towards less activity. (And maybe more contributors as the community fixes issues?)</p>
+<p>I've found a git library for nodejs and will use it to generate a graph of activity over time. What you'd expect to see is that older more stable projects should see a tendency towards less activity and hopefully more contributors as the community fixes issues)</p>
+
+<p><div id="contribution-over-time"></p>
+
+<p></div></p>
 
 <h1>Conclusions</h1>
 
@@ -143,104 +147,164 @@ WHERE P.Id IN (
 <p>And that's that.</p>
 
 <script type="text/javascript" src="/d3.v2.js"> </script>
+
 <script type="text/javascript">
+  d3.json("/mvvmfw/angular.js.json", function(angular) {
+    d3.json("/mvvmfw/knockout.json", function(knockout) {
+      d3.json("/mvvmfw/ember.js.json", function(ember) {
+        d3.json("/mvvmfw/backbone.json", function(backbone) {
+          generateGraph({
+            angular: angular,
+            knockout: knockout,
+            ember: ember,
+            backbone: backbone
+          })
+        })
+      })
+    })
+  })
 
-var data = {"backbone":[{"x":1,"y":1118},{"x":2,"y":296},{"x":3,"y":122},{"x":4,"y":75},{"x":5,"y":25},{"x":6,"y":24},{"x":7,"y":24},{"x":8,"y":22},{"x":9,"y":17},{"x":10,"y":16}],"knockout":[{"x":1,"y":566},{"x":2,"y":201},{"x":3,"y":27},{"x":4,"y":15},{"x":5,"y":15},{"x":6,"y":8},{"x":7,"y":7},{"x":8,"y":6},{"x":9,"y":6},{"x":10,"y":3}],"angular":[{"x":1,"y":1027},{"x":2,"y":716},{"x":3,"y":239},{"x":4,"y":21},{"x":5,"y":20},{"x":6,"y":20},{"x":7,"y":20},{"x":8,"y":18},{"x":9,"y":16},{"x":10,"y":10}],"ember":[{"x":1,"y":947},{"x":2,"y":458},{"x":3,"y":274},{"x":4,"y":271},{"x":5,"y":198},{"x":6,"y":108},{"x":7,"y":88},{"x":8,"y":76},{"x":9,"y":70},{"x":10,"y":57}]}
+  function generateGraph(data) {
+    var svg = d3.select('#contribution-over-time')
+                .append("svg")
+                .attr("width", 800)
+                .attr("height", 480)
 
+      var maxx = 0, maxy = 0
+      for(var fw in data) {
+        var fwdata = data[fw]
+        for(var i in fwdata) {
+          maxx = Math.max(maxx, fwdata[i].month * fwdata[i].year)
+          maxy = Math.max(maxy, fwdata[i].count)
+        }
+      }
+      var scalex = d3.scale.linear()
+      .domain([0, maxx])
+      .range([100, 700]);
+
+      var scaley = d3.scale.linear()
+      .domain([0, maxy])
+      .range([100, 340])
+
+
+    function addCircle(language, colour, y) {
+      var langaugeData = data[language]
+
+      svg.selectAll('.' + language)
+          .data(langaugeData)
+         .enter()
+         .append('circle')
+         .attr("cx", function(d) { return scalex(d.month * d.year)})
+         .attr("cy", function(d) { return scaley(d.count)})
+         .attr("r", function(d) { return d.count})
+         .style("fill", colour)
+         .style("opacity", "0.5")
+    }
+
+    addCircle('backbone', "blue")
+    addCircle('knockout', "red")
+    addCircle('ember', "green")
+    addCircle('angular', "black")
+
+  }
 
 </script>
 
 <script type="text/javascript">
 
-var svg = d3.select("#contribution-graph").append("svg")
-      .attr("width", 800)
-      .attr("height", 480)
+d3.json("/mvvmfw/contribution.json", function(data) {
 
-var maxx = 0, maxy = 0
-for(var fw in data) {
-  var fwdata = data[fw]
-  for(var i in fwdata) {
-    maxx = Math.max(maxx, fwdata[i].x)
-    maxy = Math.max(maxy, fwdata[i].y)
+  var svg = d3.select("#contribution-graph").append("svg")
+  .attr("width", 800)
+  .attr("height", 480)
+
+  var maxx = 0, maxy = 0
+  for(var fw in data) {
+    var fwdata = data[fw]
+    for(var i in fwdata) {
+      maxx = Math.max(maxx, fwdata[i].x)
+      maxy = Math.max(maxy, fwdata[i].y)
+    }
   }
-}
 
 
-var scalex = d3.scale.linear()
-.domain([0, maxx])
-.range([100, 700]);
+  var scalex = d3.scale.linear()
+  .domain([0, maxx])
+  .range([100, 700]);
 
-var scaley = d3.scale.linear()
-.domain([0, maxy])
-.range([100, 340])
+  var scaley = d3.scale.linear()
+  .domain([0, maxy])
+  .range([100, 340])
 
-var line = d3.svg.line()
-            .interpolate('basis')
-            .x(function(d) { return scalex(d.x)})
-            .y(function(d) { return 480 - scaley(d.y)})
-
-svg.append("text")
-   .attr("x", 25)
-   .attr("y", 50)
-   .style("font-weight", "bolder")
-   .text("Commits")
-
-svg.append("text")
-   .attr("x", 25)
-   .attr("y", 450)
-   .style("font-weight", "bolder")
-   .text("Commiter #")
-
-svg.append("text")
-   .attr("x", 25)
-   .attr("y", 140)
-   .text(maxy)
-
-svg.append("text")
-   .attr("x", 25)
-   .attr("y", 380)
-   .text(0)
-
-svg.selectAll(".labelx")
-  .data([1,2,3,4,5,6,7,8,9,10])
-  .enter()
-  .append("text")
-  .attr("class", "labelx")
-  .text(function(d) { return '#' + d })
-  .attr("y", 450)
-  .attr("x", function(d) { return scalex(d) })
-
-var legendLine = d3.svg.line()
-                  .x(function(d) { return d.x })
-                  .y(function(d) { return d.y })
-
-
-function addLine(language, colour, y) {
-  var langaugeData = data[language]
-
-  svg.append("path")
-    .attr("class", language)
-    .attr("d", line(langaugeData))
-    .attr("stroke",colour)
-    .attr("stroke-width", 5)
-    .attr("fill", "none")
-
-  svg.append("path")
-    .attr("d", legendLine([{x:400, y: y},{x:500, y: y}]))
-    .attr("stroke", colour)
-    .attr("stroke-width", 5)
+  var line = d3.svg.line()
+              .interpolate('basis')
+              .x(function(d) { return scalex(d.x)})
+              .y(function(d) { return 480 - scaley(d.y)})
 
   svg.append("text")
-   .attr("x", 520)
-   .attr("y", y)
-   .text(language)
+    .attr("x", 25)
+    .attr("y", 50)
+    .style("font-weight", "bolder")
+    .text("Commits")
 
-}
+  svg.append("text")
+    .attr("x", 25)
+    .attr("y", 450)
+    .style("font-weight", "bolder")
+    .text("Commiter #")
 
-addLine('backbone', "blue", 50)
-addLine('knockout', "red", 100)
-addLine('ember', "green", 150)
-addLine('angular', "black", 200)
+  svg.append("text")
+    .attr("x", 25)
+    .attr("y", 140)
+    .text(maxy)
+
+  svg.append("text")
+    .attr("x", 25)
+    .attr("y", 380)
+    .text(0)
+
+  svg.selectAll(".labelx")
+    .data([1,2,3,4,5,6,7,8,9,10])
+    .enter()
+    .append("text")
+    .attr("class", "labelx")
+    .text(function(d) { return '#' + d })
+    .attr("y", 450)
+    .attr("x", function(d) { return scalex(d) })
+
+  var legendLine = d3.svg.line()
+                    .x(function(d) { return d.x })
+                    .y(function(d) { return d.y })
+
+
+  function addLine(language, colour, y) {
+    var langaugeData = data[language]
+
+    svg.append("path")
+      .attr("class", language)
+      .attr("d", line(langaugeData))
+      .attr("stroke",colour)
+      .attr("stroke-width", 5)
+      .attr("fill", "none")
+
+    svg.append("path")
+      .attr("d", legendLine([{x:400, y: y},{x:500, y: y}]))
+      .attr("stroke", colour)
+      .attr("stroke-width", 5)
+
+    svg.append("text")
+    .attr("x", 520)
+    .attr("y", y)
+    .text(language)
+
+  }
+
+  addLine('backbone', "blue", 50)
+  addLine('knockout', "red", 100)
+  addLine('ember', "green", 150)
+  addLine('angular', "black", 200)
+
+})
 
 
 </script>
