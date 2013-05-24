@@ -24,7 +24,7 @@
     <a class="subscribe" href="http://feed.codeofrob.com/RobAshton">Subscribe to my blog</a>
     <div id="blog-entry">
       <h1 id="post-title">Choosing your JS framework with hard facts</h1>
-      <h6>Published on <span class="date">2013-5-24</span></h6>
+      <h6>Published on <span class="date">2013-5-27</span></h6>
       <div id="post"><p>I went for lunch with the a friend the other day and he kindly gave me an idea for a blog post about JavaScript frameworks...</p>
 
 <p><blockquote>
@@ -197,12 +197,13 @@ WHERE P.Id IN (
                 .attr("width", 800)
                 .attr("height", 480)
 
+
       var maxx = 0, maxy = 0
       for(var fw in data) {
         var fwdata = data[fw]
         for(var i in fwdata) {
           maxx = Math.max(maxx, fwdata[i].month * fwdata[i].year)
-          maxy = Math.max(maxy, fwdata[i].count)
+          maxy = Math.max(maxy, fwdata[i].count / fwdata[i].committerCount)
         }
       }
       var scalex = d3.scale.linear()
@@ -213,19 +214,20 @@ WHERE P.Id IN (
       .domain([0, maxy])
       .range([100, 340])
 
+    var line = d3.svg.line()
+              .interpolate('basis')
+              .x(function(d) { return scalex(d.month * d.year)})
+              .y(function(d) { return 480 - scaley(d.count / d.committerCount)})
 
     function addCircle(language, colour, y) {
       var langaugeData = data[language]
 
-      svg.selectAll('.' + language)
-          .data(langaugeData)
-         .enter()
-         .append('circle')
-         .attr("cx", function(d) { return scalex(d.month * d.year)})
-         .attr("cy", function(d) { return scaley(d.count)})
-         .attr("r", function(d) { return d.count})
-         .style("fill", colour)
-         .style("opacity", "0.5")
+    svg.append("path")
+      .attr("class", language)
+      .attr("d", line(langaugeData))
+      .attr("stroke",colour)
+      .attr("stroke-width", 5)
+      .attr("fill", "none")
     }
 
     addCircle('backbone', "blue")
