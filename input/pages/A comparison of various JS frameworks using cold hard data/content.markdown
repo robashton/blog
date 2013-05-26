@@ -109,7 +109,7 @@ What do the contribution distributions look like for these projects?
   </div>
 
 
-The higher a line stays before it drops down to the 1st, a better indication that there is a healthy spread of committers giving love to the project. By this measure, Angular and Ember seem to be getting some shared love, Backbone is a bit of a one man show and Knockout is a bit of a loner.
+The higher a line stays before it drops down to the 1st, a better indication that there is a healthy spread of committers giving love to the project. By this measure, Angular and Ember seem to be getting some shared love, Backbone is a bit of a one man show and Knockout doesn't really have a lot going on.
 
 # A brief history of source
 
