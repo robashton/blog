@@ -5,7 +5,7 @@ module.exports = {
     var newdate = date
     do {
       newdate = new Date(newdate.getTime() + (24 * 60 * 60 * 1000))
-    } while ( newdate.getUTCDay() === 0 || newdate.getUTCDay() === 6)
+    } while ( newdate.getUTCDay() !== 2 && newdate.getUTCDay() !== 4)
 
       return new Date([ newdate.getUTCFullYear(), '-', newdate.getUTCMonth()+1, '-', newdate.getUTCDate(), ' 09:30:00 GMT'].join(''))
   },
@@ -14,8 +14,7 @@ module.exports = {
             .replace(/ /g, '-')
             .replace(/[\'#\(\)]/g, '')
             .replace('/', '-')
-            .replace('?', '')
-            + '.html';
+            .replace('?', '') + '.html';
   },
   titleToFolder: function(title) {
     return title.replace('/', '-');
