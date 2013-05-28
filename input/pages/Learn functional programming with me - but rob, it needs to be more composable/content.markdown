@@ -1,5 +1,20 @@
 As I write my Clojure and the related blog posts, I've been having them reviewed by [@bodil](http://twitter/bodil) who is a proper functional programming neckbeard emacs type.
 
+- [Mission statement](/entries/learn-functional-programming-with-me---a-mission-statement.html)
+- [Drawing a square](/entries/learn-functional-programming-with-me---drawing-a-square.html)
+- [Moving the square](/entries/learn-functional-programming-with-me---moving-the-square.html)
+- [Attributes and vectors](/entries/learn-functional-programming-with-me---attributes-and-vectors.html)
+- [Improving my workflow](/entries/learn-functional-programming-with-me---improving-my-workflow.html)
+- [Creating lots of state](/entries/learn-functional-programming-with-me---adding-lots-more-state.html)
+- [Mutating lots of state](/entries/learn-functional-programming-with-me---mutating-lots-of-state.html)
+- [Improving our data structure with maps](/entries/learn-functional-programming-with-me---improving-our-data-structure-with-maps.html)
+- [Moving our red square with keyboard input](/entries/learn-functional-programming-with-me---keyboard-input-for-our-red-square.html)
+- [Adding items to a sequence and firing bullets](/entries/learn-functional-programming-with-me---adding-items-to-a-sequence.html)
+- [Refactoring my state transitions](/entries/learn-functional-programming-with-me---refactoring-my-state-transitions.html)
+- [More idiomatic clojure](/learn-functional-programming-with-me---more-idiomatic-clojure.html)
+- [Adding collision detection](/entries/learn-functional-programming-with-me---adding-collision-detection-to-the-game.html)
+- [Functional difficulty levels](/entries/learn-functional-programming-with-me---functional-difficulty-levels.html)
+
 Her most recent piece of feedback was
 
   <blockquote>

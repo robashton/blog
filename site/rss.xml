@@ -1,5 +1,389 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Mon, 27 May 2013 12:45:42 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[I'm leaving .NET]]></title><description><![CDATA[<p><em>trolololol</em></p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Tue, 28 May 2013 10:07:44 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[A comparison of various JS frameworks using cold hard data]]></title><description><![CDATA[<p>I went for lunch with the a friend the other day and he kindly gave me an idea for a blog post about JavaScript frameworks...</p>
+
+<p><blockquote>
+    I keep an eye on StackOverflow/Github/etc and mentally tot up the popularity of all these JS frameworks...
+  </blockquote></p>
+
+<p><em>ooooh</em>, that's a good one that. If we're <em>really</em> going to say "We use FrameworkX" (and I advocate that you <em>never</em> do this, it's a silly thing to do), then let's at least look at some cold hard facts when doing so.</p>
+
+<p>Except let's not just look at popularity, let's think about the support and education and how we could find some metrics to determine these things.</p>
+
+<p>Here are a few assumptions I'm making for this post to work</p>
+
+<ul>
+<li>StackOverflow is popular enough for the data to be representative (it's the de-facto place to ask programming questions)</li>
+<li>The number of questions/un-answered questions is indicative of support</li>
+<li>Github is popular enough for the data to be representative</li>
+<li>The number of projects, and the number of stars on a project is indicative of popularity/use</li>
+</ul>
+
+<h1>Number of questions and unanswered questions on StackOverflow</h1>
+
+<p>The Stackoverflow guys are amazing, and <a href="http://data.stackexchange.com/stackoverflow/queries">provide querying capabilities right there on their site</a>, which means I can get some numbers right off the bat for the various frameworks</p>
+
+<p>I ended up with the following parameterised query to get my data</p>
+
+<p><div class="collapse"></p>
+
+<pre><code>DECLARE @TagName varchar(128) = '%##TagName##%'
+
+SELECT COUNT(*) from Posts P
+WHERE P.Id IN (
+  SELECT DISTINCT(PostId) from PostTags 
+  WHERE PostTags.TagId In (
+    SELECT Id From Tags Where TagName LIKE @TagName
+  )
+)
+
+SELECT COUNT(*) from Posts P
+WHERE P.Id IN (
+  SELECT DISTINCT(PostId) from PostTags 
+  WHERE PostTags.TagId In (
+    SELECT Id From Tags Where TagName LIKE @TagName
+  )
+) AND P.AcceptedAnswerId IS NOT NULL
+
+SELECT SUM(P.AnswerCount) from Posts P
+WHERE P.Id IN (
+  SELECT DISTINCT(PostId) from PostTags 
+  WHERE PostTags.TagId In (
+    SELECT Id From Tags Where TagName LIKE @TagName
+  )
+)
+</code></pre>
+
+<p></div>
+Doing this meant I got all the questions with all the tags in the eco-system around that framework, and the data I want is</p>
+
+<ul>
+<li>How many questions are there?</li>
+<li>How many of those questions have accepted answers?</li>
+<li><p>How mant answers do we get on average per question?</p>
+
+<table>
+<thead>
+  <tr>
+    <td>Framework</td><td>Questions</td><td>Answered</td><td>%</td><td>Average answers per question</td>
+  </tr>
+</thead>
+  <tr><td>backbone</td><td>8863</td><td>5741</td><td>64.7%</td><td>1.42</td></tr>
+  <tr><td>angular</td><td>5498</td><td>3401</td><td class="red">61.8%</td><td>1.32</td></tr>
+  <tr><td>knockout</td><td class="green">5624</td><td>3917</td><td class="green">69.6%</td><td>1.31</td></tr>
+  <tr><td>ember</td><td class="red">10086</td><td>6426</td><td>63.71%</td><td>1.63</td></tr>
+</table></li>
+</ul>
+
+<p>This in itself is quite interesting, as it doesn't seem like there is a lot of difference between them - although there are a lot more questions about Ember than I was expecting. Knockout is at the top of the heap as far as accept-rate goes but that might be indicative of the .NET-centric community found on StackOverflow?</p>
+
+<p>To get some sense of this data, we could do with looking elsewhere for some data...</p>
+
+<h1>Framework popularity</h1>
+
+<p>For this, we can head to <a href="http://github.com">Github</a> as that's where all sensible OSS projects are hosted these days. Let's have a quick look at some basic stats about these projects. They're all actively using Github to track issues from the look of things so we can gleam a little bit about them from this data.</p>
+
+<p><table>
+    <thead>
+      <tr>
+        <td>Framework</td>  <td>Stars</td> <td>Forks</td>  <td>Issues open</td>  <td>Issues closed</td>  <td>Pull requests open</td>   <td>Pull requests closed</td>
+      </tr>
+    </thead>
+      <tr><td>backbone</td> <td class="green">14148</td>  <td class="green">2713</td>            <td class="green">23</td>             <td>2508</td>          <td class="green">5</td>      <td>1100</td>          </tr>
+      <tr><td>angular</td>  <td>9692</td>                 <td>1942</td>                          <td class="red">655</td>              <td>2037</td>          <td >52</td>                  <td>1150</td>          </tr>
+      <tr><td>knockout</td> <td class="red">3708</td>     <td class="red">559</td>               <td>235</td>                          <td>738</td>           <td>59</td>                   <td>275</td>           </tr> 
+      <tr><td>ember</td>    <td>6997</td>                 <td>1324</td>                          <td>196</td>                          <td>2487</td>          <td class="red">61</td>       <td>1250</td>          </tr>
+  </table></p>
+
+<p>Backbone apparently by far the healthiest project amongst this bunch, with very few issues or pull requests left open (but with a similar amount of activity). I'm surprised a more "mature" project like Angular has so much outstanding on it - but this might just be because of how they use Github issues.</p>
+
+<h1>Safety in numbers</h1>
+
+<p>This data (when combined with the previous queries) begins to get a little bit more useful if we want to jump to some conclusions already; I'd like to dig deeper into the history of these projects and see who exactly has contributed to them. I don't want to be choosing a framework just because it has a large number of users, I care about who is doing the development too!</p>
+
+<p>To do this, we have the Github API to look at </p>
+
+<pre><code>https://api.github.com/repos/{user}/{repo}/contributors
+</code></pre>
+
+<p>What do the contribution distributions look like for these projects?</p>
+
+<h3>Top 10 contributors and their commit counts</h3>
+
+<p><div id="contribution-graph"></p>
+
+<p></div></p>
+
+<p>The higher a line stays before it drops down to the 1st, a better indication that there is a healthy spread of committers giving love to the project. By this measure, Angular and Ember seem to be getting some shared love, Backbone is a bit of a one man show and Knockout doesn't really have a lot going on.</p>
+
+<h1>A brief history of source</h1>
+
+<p>Now I'm looking at committers, we can probably dig a bit deeper and see how this looks over time to get some further insight into the stability of the projects and how this contributor activity looks over time.</p>
+
+<p>I was going to just paste the charts from Github here, but they weren't really representative of activity and the Angular one just plain-old-wasn't-working at the time</p>
+
+<p>I've found a git library for nodejs and will use it to generate a graph of activity over time. What you'd expect to see is that older more stable projects should see a tendency towards less activity and hopefully more contributors as the community fixes issues)</p>
+
+<h2>Average commits per person over time per repo</h2>
+
+<p><div id="contribution-over-time"></p>
+
+<p></div></p>
+
+<h1>Conclusions</h1>
+
+<p>I've got no real desire to draw conclusions off this data, as this was a harmless bit of digging over a spare few hours I had going, I do have some rough comments though:</p>
+
+<ul>
+<li>EmberJS has a third of the followers on Github to Backbone, a similar amount of activity on Github but <em>more questions on StackOverflow</em> - is this an indication as to it being hard to pick up or use? It also has a high amount of code churn still - presumably because it's still quite an immature project (I didn't realise how much younger it was than the others!)</li>
+<li>Backbone is clearly reaching some sort of maturity, with few issues left open on Github, commit activity subsiding and some sort of stability being reached. It doesn't have the high number of core contributors of other projects but there are plenty of people willing to fix bugs still. The support rate on StackOverflow is about the same as the other projects and while it might be the most popular project on Github it doesn't have that many questions considering that huge size.</li>
+<li>Knockout doesn't really get the love that other frameworks do, this might be due to its conception taking place in the .NET community or because most people steer clear of it for some reason. That said - if you're using it and asking for help on StackOverflow you're more likely to get help than on the other frameworks. The response rate on issues/pull requests is high which means the core contributors are quite active even if there aren't many of them.</li>
+<li>Angular is <em>waaaaay</em> older than I thought it was, so it staggers me the amount of issues pending closure. It has a very solid contributor base and it does seem as though the commit-rate is reaching some sort of stability.  It does however have the lowest accept-rate on StackOverflow so read into that what you will. </li>
+</ul>
+
+<p>I'm saying no more on the matter, trololol.</p>
+
+<script type="text/javascript" src="/d3.v2.js"> </script>
+
+<script type="text/javascript">
+  d3.json("/mvvmfw/angular.js.json", function(angular) {
+    d3.json("/mvvmfw/knockout.json", function(knockout) {
+      d3.json("/mvvmfw/ember.js.json", function(ember) {
+        d3.json("/mvvmfw/backbone.json", function(backbone) {
+          generateGraph({
+            angular: angular,
+            knockout: knockout,
+            ember: ember,
+            backbone: backbone
+          })
+        })
+      })
+    })
+  })
+
+  function generateGraph(data) {
+    var svg = d3.select('#contribution-over-time')
+                .append("svg")
+                .attr("width", 800)
+                .attr("height", 480)
+
+
+      var maxx = 0, maxy = 0, minx = Infinity, miny = Infinity
+      for(var fw in data) {
+        var fwdata = data[fw]
+          , newdata = []
+        for(var i in fwdata) {
+          if(fwdata[i].year < 2000) continue
+          fwdata[i].month++
+          var monthstr = fwdata[i].month > 9 ? fwdata[i].month : '0' + fwdata[i].month
+          var date =  new Date(fwdata[i].year + '-' + monthstr + '-01')
+
+          fwdata[i].x = date.getTime()
+
+          maxx = Math.max(fwdata[i].x, maxx)
+          minx = Math.min(minx, fwdata[i].x)
+          maxy = Math.max(maxy, fwdata[i].count / fwdata[i].committerCount)
+          miny = Math.min(miny, fwdata[i].count / fwdata[i].committerCount)
+          newdata.push(fwdata[i])
+        }
+        data[fw] = newdata
+      }
+
+      var scalex = d3.scale.linear()
+      .domain([minx, maxx])
+      .range([100, 700]);
+
+      var scaley = d3.scale.linear()
+      .domain([miny, maxy])
+      .range([100, 340])
+
+    var line = d3.svg.line()
+              .interpolate('basis')
+              .x(function(d) { return scalex(d.x)})
+              .y(function(d) { return 480 - scaley(d.count / d.committerCount)})
+
+    var legendLine = d3.svg.line()
+                    .x(function(d) { return d.x })
+                    .y(function(d) { return d.y })
+
+    svg.append("text")
+      .attr("x", 25)
+      .attr("y", 50)
+      .style("font-weight", "bolder")
+      .text("Avg commits")
+
+    svg.append("text")
+      .attr("x", 25)
+      .attr("y", 460)
+      .style("font-weight", "bolder")
+      .text("Time")
+
+    svg.selectAll(".labely")
+      .data(d3.range(miny, maxy, 10))
+      .enter()
+        .append("text")
+        .attr("class", "labely")
+        .text(function(d) { return d })
+        .attr("y", function(d) { return 480 - scaley(d)})
+        .attr("x", 20)
+
+    svg.selectAll(".labelx")
+      .data(d3.range(minx, maxx, 1000 * 60 * 60 * 24 * 30 * 12))
+      .enter()
+        .append("text")
+        .attr("class", "labelx")
+        .text(function(d) { return new Date(d).getFullYear() })
+        .attr("y", 460)
+        .attr("x", function(d) { return scalex(d)})
+
+
+/*
+    svg.selectAll(".label7")
+      .data([1,2,3,4,5,6,7,8,9,10])
+      .enter()
+      .append("text")
+      .attr("class", "labelx")
+      .text(function(d) { return '#' + d })
+      .attr("y", 450)
+      .attr("x", function(d) { return scalex(d) })
+
+    svg.selectAll(".labelx")
+      .data([1,2,3,4,5,6,7,8,9,10])
+      .enter()
+      .append("text")
+      .attr("class", "labelx")
+      .text(function(d) { return '#' + d })
+      .attr("y", 450)
+      .attr("x", function(d) { return scalex(d) })
+*/
+
+    function addCircle(language, colour, y) {
+      var langaugeData = data[language]
+
+      svg.append("path")
+        .attr("class", language)
+        .attr("d", line(langaugeData))
+        .attr("stroke",colour)
+        .attr("stroke-width", 5)
+        .attr("fill", "none")
+
+      svg.append("path")
+        .attr("d", legendLine([{x:500, y: y},{x:600, y: y}]))
+        .attr("stroke", colour)
+        .attr("stroke-width", 5)
+
+        svg.append("text")
+        .attr("x", 620)
+        .attr("y", y)
+        .text(language)
+    }
+
+    addCircle('backbone', "blue", 50)
+    addCircle('knockout', "red", 100)
+    addCircle('ember', "green", 150)
+    addCircle('angular', "black", 200)
+
+  }
+
+</script>
+
+<script type="text/javascript">
+
+d3.json("/mvvmfw/contribution.json", function(data) {
+
+  var svg = d3.select("#contribution-graph").append("svg")
+  .attr("width", 800)
+  .attr("height", 480)
+
+  var maxx = 0, maxy = 0
+  for(var fw in data) {
+    var fwdata = data[fw]
+    for(var i in fwdata) {
+      maxx = Math.max(maxx, fwdata[i].x)
+      maxy = Math.max(maxy, fwdata[i].y)
+    }
+  }
+
+
+  var scalex = d3.scale.linear()
+  .domain([0, maxx])
+  .range([100, 700]);
+
+  var scaley = d3.scale.linear()
+  .domain([0, maxy])
+  .range([100, 340])
+
+  var line = d3.svg.line()
+              .interpolate('basis')
+              .x(function(d) { return scalex(d.x)})
+              .y(function(d) { return 480 - scaley(d.y)})
+
+  svg.append("text")
+    .attr("x", 25)
+    .attr("y", 50)
+    .style("font-weight", "bolder")
+    .text("Commits")
+
+  svg.append("text")
+    .attr("x", 25)
+    .attr("y", 450)
+    .style("font-weight", "bolder")
+    .text("Commiter #")
+
+  svg.append("text")
+    .attr("x", 25)
+    .attr("y", 140)
+    .text(maxy)
+
+  svg.append("text")
+    .attr("x", 25)
+    .attr("y", 380)
+    .text(0)
+
+  svg.selectAll(".labelx")
+    .data([1,2,3,4,5,6,7,8,9,10])
+    .enter()
+    .append("text")
+    .attr("class", "labelx")
+    .text(function(d) { return '#' + d })
+    .attr("y", 450)
+    .attr("x", function(d) { return scalex(d) })
+
+  var legendLine = d3.svg.line()
+                    .x(function(d) { return d.x })
+                    .y(function(d) { return d.y })
+
+
+  function addLine(language, colour, y) {
+    var langaugeData = data[language]
+
+    svg.append("path")
+      .attr("class", language)
+      .attr("d", line(langaugeData))
+      .attr("stroke",colour)
+      .attr("stroke-width", 5)
+      .attr("fill", "none")
+
+    svg.append("path")
+      .attr("d", legendLine([{x:600, y: y},{x:700, y: y}]))
+      .attr("stroke", colour)
+      .attr("stroke-width", 5)
+
+    svg.append("text")
+    .attr("x", 620)
+    .attr("y", y)
+    .text(language)
+
+  }
+
+  addLine('backbone', "blue", 50)
+  addLine('knockout', "red", 100)
+  addLine('ember', "green", 150)
+  addLine('angular', "black", 200)
+
+})
+
+
+</script>]]></description><link>http://codeofrob.com/entries/a-comparison-of-various-js-frameworks-using-cold-hard-data.html</link><guid isPermaLink="true">http://codeofrob.com/entries/a-comparison-of-various-js-frameworks-using-cold-hard-data.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 28 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[I'm leaving .NET]]></title><description><![CDATA[<p><em>trolololol</em></p>
 
 <p>Although technically I am now a full-time <em>whatever</em> programmer at a start-up in London, writing all of the features in JavaScripts and inserting Cucumbers into my Rubies I'm not <em>leaving</em> anything per se but I'm probably not going to be doing many talks or blog posts for that ecosystem for the time being. (I haven't actually written any C# in months apart from a week or two at various clients, and the only time I've booted up my Windows laptop for any other reason than that in the past year is to play Diablo III which is an awful game by the way)</p>
 
@@ -1447,140 +1831,4 @@ var data =
          .attr("y", function(d, i) { return 370 - (280 * scale(d.state.percentage)) })
          .attr("width", 640 / (filteredData.length + 1))
          .attr("height", function(d, i) { return 280 * scale(d.state.percentage) })
-</script>]]></description><link>http://codeofrob.com/entries/evented-github-adventure---crossing-the-streams-to-gain-real-insights.html</link><guid isPermaLink="true">http://codeofrob.com/entries/evented-github-adventure---crossing-the-streams-to-gain-real-insights.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 13 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Evented Github Adventure - Temporal queries, who doesn't trust their hardware]]></title><description><![CDATA[<p>Carrying on in the EventStore series...</p>
-
-<ul>
-<li><a href="/entries/playing-with-the-eventstore.html">Introduction to the EventStore</a></li>
-<li><a href="/entries/pushing-data-into-streams-in-the-eventstore.html">Pushing data into the EventStore</a></li>
-<li><a href="/entries/basic-projections-in-the-eventstore.html">Projections in the EventStore</a></li>
-<li><a href="/entries/re-partitioning-streams-in-the-event-store-for-better-projections.html">Re-partitioning streams in the EventStore</a></li>
-<li><a href="/entries/creating-a-projection-per-stream-in-the-eventstore.html">Creating a projection per stream</a></li>
-<li><a href="/entries/less-abstract,-pumping-data-from-github-into-the-eventstore.html">Pumping data from Github into the EventStore</a></li>
-<li><a href="/entries/evented-github-adventure---emitting-commits-as-their-own-events.html">Emitting new events from a projection</a></li>
-<li><a href="/entries/evented-github-adventure---who-writes-the-sweariest-commit-messages.html">Who is the sweariest of them all?</a></li>
-<li>Temporal queries in the event store</li>
-</ul>
-
-<p>Doing <a href="/entries/evented-github-adventure---who-writes-the-sweariest-commit-messages.html">basic aggregations</a> is fairly easy, but actually one of the great selling points of the projections system inside the EventStore is how easy it is to do temporal queries.</p>
-
-<p>What is a temporal query? Well the example that <a href="http://twitter.com/gregyoung">Greg Young</a> always uses is "look for all the events in Twitter where somebody mentions starbucks, coffee, and happy within five minutes of each other"</p>
-
-<p>The clue there is "look for all the events", and we'll see why that is with this example.</p>
-
-<p><strong>Git</strong></p>
-
-<p>Git is great, it's great because it's a DCVS and we can do everything locally and push to a remote repo when we feel we're ready.</p>
-
-<p>That said, some people don't do this, every commit is a push - maybe it's because they're not used to using a system where they can work offline, or maybe they're just paranoid because they're working on a laptop they don't trust.</p>
-
-<p>Either way, this is a great example of a temporal query we could write.</p>
-
-<p><strong>A query on Git</strong></p>
-
-<p><em>"Find the instances of pushes within X minutes of each other from the same user and same repo", is there a trend across different languages for this kind of usage?</em></p>
-
-<p>I would <em>not</em> enjoy doing this in a standard database, but that's neither here nor there, let's see what we have.</p>
-
-<p>First off, the important question is "what is the unique combination we're looking for"</p>
-
-<p>We care about <em>PushEvent</em>s for a unique <em>User</em> and <em>Repo</em>, so it makes sense that what we should do is <em>partition by UserAndRepo</em>  so we can easily keep state around per repo.</p>
-
-<p><strong>Partition by uniqueness</strong></p>
-
-<p>Here is how that might look:</p>
-
-<pre><code>fromStream('github')
-  .when({
-    "PushEvent": function(state, ev) {
-      var repo = ev.body.repo.full_name
-      linkTo('pushesbyrepo-' + repo, ev)
-    }
-  })
-</code></pre>
-
-<p>So far so good, I now have a stream per repo called "pushesbyrepo-{reponame}" - now what?</p>
-
-<p>Well, the key thing I mentioned above was that we're "looking for all the events where", this suggests that perhaps the thing we are looking for should be considered an event in its own right.</p>
-
-<p>We can do this, we can for each of thse streams keep a note of when the last push was, and if we encounter another push within a certain time-frame, emit an event for this find of ours.</p>
-
-<p><strong>Running a projection per generated stream</strong></p>
-
-<p>How to run this for each stream? Enter fromCategory</p>
-
-<pre><code>fromCategory('pushesbyrepo')
-  foreachStream()
-  .when({
-    $init: // etc
-  })
-</code></pre>
-
-<p>There is a built in projection in the EventStore that will automatically use the character '-' to sort a collection of streams into categories, and if we have</p>
-
-<ul>
-<li>pushesbyrepo-bob</li>
-<li>pushesbyrepo-alice</li>
-<li>pushesbyrepo-derpy</li>
-</ul>
-
-<p>We'll get three categories to iterate through (bob, alice, and derpy)</p>
-
-<p><strong>Emit the events we're looking for</strong></p>
-
-<pre><code>fromCategory('pushesbyrepo')
-  foreachStream()
-  .when({
-    $init: function(state, ev) {
-      return {}
-    },
-    "PushEvent": function(state, ev) {
-      if(state.lastPush) {
-        var newDate = new Date(ev.body.created_at)
-          , lastDate = new Date(state.lastPush.body.created_at)
-          , difference = (newDate.getTime() - lastDate.getTime()) / 1000
-
-        if(difference &lt; 120) {
-          emit('paranoidpushes', "ParanoidPush", {
-            first: state.lastPush,
-            next: ev
-          })
-        }
-      }
-      state.lastPush = ev
-      return state
-    }
-  })
-</code></pre>
-
-<p>Seems legit, simply keep the last PushEvent around at all times, when we get a new one, check the difference and emit an event if it's less than X minutes. NICE</p>
-
-<p>Running this, I now have a stream at </p>
-
-<p><em>/streams/paranoidpushes</em> </p>
-
-<p>So, how many paranoid pushes have I had in the time period I've been sampling over? (roughly three hours at time of writing)</p>
-
-<pre><code>fromStream('paranoidpushes')
-  .when({
-    "$init": function(state, ev) {
-      return { count: 0 }
-    },
-    "ParanoidPush": function(state, ev) {
-      state.count++
-    }
-  })
-</code></pre>
-
-<p>And the result?</p>
-
-<pre><code>{ count: 104533 }
-</code></pre>
-
-<p>Voila, that's an incredibly simply temporal query that just works and gives me the total number of pushes that happened within 2 minutes of each other to the same repository - and it's pretty easy too. We have two steps:</p>
-
-<ul>
-<li>Push out events for each instance of some temporal correlation</li>
-<li>Aggregate on those events to get the result</li>
-</ul>
-
-<p>Now we have this, perhaps we can look at combining this data we have to work out how this strange use of git plays out across different language developers.</p>]]></description><link>http://codeofrob.com/entries/evented-github-adventure---temporal-queries,-who-doesnt-trust-their-hardware.html</link><guid isPermaLink="true">http://codeofrob.com/entries/evented-github-adventure---temporal-queries,-who-doesnt-trust-their-hardware.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 10 May 2013 09:30:00 GMT</pubDate></item></channel></rss>
+</script>]]></description><link>http://codeofrob.com/entries/evented-github-adventure---crossing-the-streams-to-gain-real-insights.html</link><guid isPermaLink="true">http://codeofrob.com/entries/evented-github-adventure---crossing-the-streams-to-gain-real-insights.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 13 May 2013 09:30:00 GMT</pubDate></item></channel></rss>
