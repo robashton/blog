@@ -229,27 +229,6 @@ I'm saying no more on the matter, trololol.
         .attr("y", 460)
         .attr("x", function(d) { return scalex(d)})
     
-
-/*
-    svg.selectAll(".label7")
-      .data([1,2,3,4,5,6,7,8,9,10])
-      .enter()
-      .append("text")
-      .attr("class", "labelx")
-      .text(function(d) { return '#' + d })
-      .attr("y", 450)
-      .attr("x", function(d) { return scalex(d) })
-
-    svg.selectAll(".labelx")
-      .data([1,2,3,4,5,6,7,8,9,10])
-      .enter()
-      .append("text")
-      .attr("class", "labelx")
-      .text(function(d) { return '#' + d })
-      .attr("y", 450)
-      .attr("x", function(d) { return scalex(d) })
-*/
-
     function addCircle(language, colour, y) {
       var langaugeData = data[language]
 
@@ -358,12 +337,12 @@ d3.json("/mvvmfw/contribution.json", function(data) {
       .attr("fill", "none")
 
     svg.append("path")
-      .attr("d", legendLine([{x:600, y: y},{x:700, y: y}]))
+      .attr("d", legendLine([{x:500, y: y},{x:600, y: y}]))
       .attr("stroke", colour)
       .attr("stroke-width", 5)
 
     svg.append("text")
-    .attr("x", 520)
+    .attr("x", 620)
     .attr("y", y)
     .text(language)
 
