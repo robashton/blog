@@ -2,6 +2,7 @@
   <head>
     <title id="title">Learn functional programming with me - Adding lots more state</title>
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
     <link href='http://fonts.googleapis.com/css?family=Libre+Baskerville' rel='stylesheet' type='text/css'>
     <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
     <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
@@ -27,8 +28,7 @@
     <div id="blog-entry">
       <h1 id="post-title">Learn functional programming with me - Adding lots more state</h1>
       <h6>Published on <span class="date">2013-6-4</span></h6>
-      <div id="post"><p>I've got a single moving square and a small pile of Clojure written so far, but now what I want to do is have a collection of moving squares because no game of Space Invaders is complete without aliens, and last I checked there was more than one of them.</p>
-
+      <div id="post"><p>I&#39;ve got a single moving square and a small pile of Clojure written so far, but now what I want to do is have a collection of moving squares because no game of Space Invaders is complete without aliens, and last I checked there was more than one of them.</p>
 <ul>
 <li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Missing statement</a></li>
 <li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
@@ -36,84 +36,56 @@
 <li><a href="/entries/learn-functional-programming-with-me---attributes-and-vectors.html">Attributes and vectors</a></li>
 <li><a href="/entries/learn-functional-programming-with-me---improving-my-workflow.html">Improving my workflow</a></li>
 </ul>
-
-<p>Well, if I want lots of squares I'm going to have to look at some means of representing collections in Clojure and my searches take me to <a href="http://clojuredocs.org/clojure_core/clojure.core/seq">Sequences</a></p>
-
+<p>Well, if I want lots of squares I&#39;m going to have to look at some means of representing collections in Clojure and my searches take me to <a href="http://clojuredocs.org/clojure_core/clojure.core/seq">Sequences</a></p>
 <p>To create a sequence, I can do something like this</p>
-
-<pre><code>(defn createSeq []
-  (for [x [0 1 2 3]]
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> createSeq []
+  <span class="list">(<span class="title">for</span><span class="body"> [x [<span class="number">0</span> <span class="number">1</span> <span class="number">2</span> <span class="number">3</span>]]
     x
-  )
-)
-</code></pre>
-
+  )</span></span>
+)</span></span></code></pre>
 <p>Which returns me a sequence containing 0 1 2 3, an important point here is (at least I think), is that this sequence is <em>lazy</em>, it has not been executed yet. </p>
-
 <p>Now, my collection of invaders will actually be 2D, so what I can actually do is</p>
-
-<pre><code>(defn createSeq []
-  (for [x [0 1 2 3] y [0 1 2 3]]
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> createSeq []
+  <span class="list">(<span class="title">for</span><span class="body"> [x [<span class="number">0</span> <span class="number">1</span> <span class="number">2</span> <span class="number">3</span>] y [<span class="number">0</span> <span class="number">1</span> <span class="number">2</span> <span class="number">3</span>]]
     [x y]
-  )
-)
-</code></pre>
-
+  )</span></span>
+)</span></span></code></pre>
 <p>Which returns me a sequence containing lots of [x y] pairs, so [0 0] [0 1] [0 2] etc.</p>
-
 <p>Of course, there are functions for me here, so I can make a range</p>
-
-<pre><code>(defn createSeq []
-  (for [x (range 0 100 10) 
-        y (range 0 100 10)]
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> createSeq []
+  <span class="list">(<span class="title">for</span><span class="body"> [x <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">100</span> <span class="number">10</span>)</span></span> 
+        y <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">100</span> <span class="number">10</span>)</span></span>]
     [x y]
-  )
-)
-</code></pre>
-
+  )</span></span>
+)</span></span></code></pre>
 <p>Pretty nifty if I do say so myself, so what I can start with if I want to draw a grid of yellow squares is something like</p>
-
-<pre><code>(defn initState []
- (for [x (range 0 100 10)
-       y (range 0 100 10)]
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> initState []
+ <span class="list">(<span class="title">for</span><span class="body"> [x <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">100</span> <span class="number">10</span>)</span></span>
+       y <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">100</span> <span class="number">10</span>)</span></span>]
    [x y]
- )
-)
-</code></pre>
-
+ )</span></span>
+)</span></span></code></pre>
 <p>And I can call my initial tick method, passing in this state</p>
-
-<pre><code>(defn ^:export init []
-  (tick (initState)) 
-)
-</code></pre>
-
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> ^<span class="keyword">:export</span> init []
+  <span class="list">(<span class="title">tick</span><span class="body"> <span class="list">(<span class="title">initState</span><span class="body">)</span></span>)</span></span> 
+)</span></span></code></pre>
 <p>And then loop through this</p>
-
-<pre><code>(defn tick [enemies]
-  (let [ctx (context)] 
-    (clearScreen ctx) 
-    (doseq [[x y] enemies] (drawSquare ctx x y 5 5))
-    (js/setTimeout (fn []
-      (tick enemies) 
-    ) 33  )
-  )
-)
-</code></pre>
-
-<p>Note that I'm able to expand the content of this sequence as part of the doseq call</p>
-
-<pre><code>  (doseq [[x y] enemies] (drawSquare ctx x y 5 5))
-</code></pre>
-
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> tick [enemies]
+  <span class="list">(<span class="title">let</span><span class="body"> [ctx <span class="list">(<span class="title">context</span><span class="body">)</span></span>] 
+    <span class="list">(<span class="title">clearScreen</span><span class="body"> ctx)</span></span> 
+    <span class="list">(<span class="title">doseq</span><span class="body"> [[x y] enemies] <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx x y <span class="number">5</span> <span class="number">5</span>)</span></span>)</span></span>
+    <span class="list">(<span class="title">js/setTimeout</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> []
+      <span class="list">(<span class="title">tick</span><span class="body"> enemies)</span></span> 
+    )</span></span> <span class="number">33</span>  )</span></span>
+  )</span></span>
+)</span></span></code></pre>
+<p>Note that I&#39;m able to expand the content of this sequence as part of the doseq call</p>
+<pre><code>  (doseq <span class="string">[[x y] enemies] (drawSquare ctx x y 5 5))</code></pre>
 <p>Gotta like that at least a little bit!</p>
-
 <p>About this doseq, this doseq is <em>explicitly</em> created to allow for side effects, I could have done</p>
-
-<pre><code>  (for [[x y] enemies] (drawSquare ctx x y 5 5))
-</code></pre>
-
-<p>But nothing would happen because this is lazy too - had my head scratching for a while on that one...</p></div>
+<pre><code>  (<span class="keyword">for</span> <span class="string">[[x y] enemies] (drawSquare ctx x y 5 5))</code></pre>
+<p>But nothing would happen because this is lazy too - had my head scratching for a while on that one...</p>
+</div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>

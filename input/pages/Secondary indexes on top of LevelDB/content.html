@@ -1,81 +1,59 @@
 <p>Got <a href="/entries/basic-operations-with-leveldb.htm">atomic writes</a>, <a href="/entries/transactional-guarantees-on-top-of-leveldb.html">consistent reads</a>, <a href="/entries/writing-a-transaction-manager-on-top-of-leveldb.html">transactions</a> and we can <a href="/entries/streaming-large-values-from-leveldb.html">do streaming</a> if we need to - now if we can do secondary indexes we can move forwards with creating a storage implementation for RavenDB.</p>
-
 <p>An example of a couple of indexes we need in RavenDB is:</p>
-
 <ul>
 <li>The document itself stored by key (primary index)</li>
 <li>The document key stored by etag (secondary index)</li>
 </ul>
-
 <p>Whenever we write a document in RavenDB, we want to</p>
-
 <ul>
 <li>Remove the old Etag (or at least update it)</li>
 <li>Write the document against its key</li>
 <li>Write a new etag for the document</li>
 </ul>
-
 <p>(Actually, a bit more goes on than this as we store meta data for headers etc, but this will do for now)</p>
-
 <p>The operation we want to do when indexing is</p>
-
 <ul>
 <li>What are all the new etags since last we indexed?</li>
 <li>Loop through each of these, load the document and index it</li>
 </ul>
-
 <p>Etags are sortable by design, in my rough and ready document database the etag is just an integer that I increase every time I add a new document.</p>
-
 <p>Now, when writing and reading from the database, we need to be able to differentiate between types of key in the database, and ordering for each of these types is set by the key.</p>
-
 <p><em>For example, reading a document</em></p>
+<pre><code><span class="preprocessor">#define DOCPREFIX "/docs/"</span>
+<span class="preprocessor">#define ETAGPREFIX "/etags/"</span>
 
-<pre><code>#define DOCPREFIX "/docs/"
-#define ETAGPREFIX "/etags/"
 
-
-void Get(std::string id, std::string* doc) {
-  std::stringstream st;
-  st &lt;&lt; DOCPREFIX;
-  st &lt;&lt; id;
-  std::string key = st.str();
-  this-&gt;lastStatus = this-&gt;db-&gt;Get(leveldb::ReadOptions(), key, doc);
-}
-</code></pre>
-
-<p>So I'm sticking a prefix in front of each key to denote what sort of key it is, yay.</p>
-
+void Get(<span class="keyword">std</span>::string id, <span class="keyword">std</span>::string* doc) {
+  <span class="keyword">std</span>::stringstream <span class="keyword">st</span><span class="comment">;</span>
+  <span class="keyword">st</span> &lt;&lt; DOCPREFIX<span class="comment">;</span>
+  <span class="keyword">st</span> &lt;&lt; id<span class="comment">;</span>
+  <span class="keyword">std</span>::string key = <span class="keyword">st</span><span class="preprocessor">.str</span>()<span class="comment">;</span>
+  this-&gt;lastStatus = this-&gt;db-&gt;Get(leveldb::ReadOptions(), key, doc)<span class="comment">;</span>
+}</code></pre>
+<p>So I&#39;m sticking a prefix in front of each key to denote what sort of key it is, yay.</p>
 <p>That means that my secondary index of etags will end up looking like this</p>
-
-<pre><code>/etags/0 -&gt; /docs/1
-/etags/1 -&gt; /docs/5
-/etags/2 -&gt; /docs/4
-/etags/3 -&gt; /docs/6
-/etags/4 -&gt; /docs/3
-/etags/6 -&gt; /docs/7
-/etags/8 -&gt; /docs/12
-/etags/9 -&gt; /docs/5
-</code></pre>
-
+<pre><code><span class="comment">/etags/0</span> <span class="literal">-</span>&gt; <span class="comment">/docs/1</span>
+<span class="comment">/etags/1</span> <span class="literal">-</span>&gt; <span class="comment">/docs/5</span>
+<span class="comment">/etags/2</span> <span class="literal">-</span>&gt; <span class="comment">/docs/4</span>
+<span class="comment">/etags/3</span> <span class="literal">-</span>&gt; <span class="comment">/docs/6</span>
+<span class="comment">/etags/4</span> <span class="literal">-</span>&gt; <span class="comment">/docs/3</span>
+<span class="comment">/etags/6</span> <span class="literal">-</span>&gt; <span class="comment">/docs/7</span>
+<span class="comment">/etags/8</span> <span class="literal">-</span>&gt; <span class="comment">/docs/12</span>
+<span class="comment">/etags/9</span> <span class="literal">-</span>&gt; <span class="comment">/docs/5</code></pre>
 <p>When I want to index documents newer than /etags/5, I can do</p>
-
-<pre><code>int IndexNewDocumentsNewerThan(int etag) {
+<pre><code><span class="keyword">int</span> IndexNewDocumentsNewerThan(<span class="keyword">int</span> etag) {
   std::stringstream st;
   st &lt;&lt; ETAGPREFIX;
   st &lt;&lt; etag;
   std::string startkey = st.str();
 
   leveldb::Iterator* it = this-&gt;db-&gt;NewIterator(leveldb::ReadOptions());
-  for (it-&gt;Seek(startkey); it-&gt;Valid() &amp;&amp; this-&gt;IsEtagKey(it-&gt;key().ToString()); it-&gt;Next()) {
+  <span class="keyword">for</span> (it-&gt;Seek(startkey); it-&gt;Valid() &amp;&amp; this-&gt;IsEtagKey(it-&gt;key().ToString()); it-&gt;Next()) {
     std::string document = it-&gt;value().ToString();
     IndexDocument(value);
   }
-  delete it;
-}
-</code></pre>
-
+  <span class="keyword">delete</span> it;
+}</code></pre>
 <p>Building up other indexes is a trivial matter of making sure we have a suitable ordering in place, and queries are simply a matter of building up these keys appropriately.</p>
-
 <p>With all of this, I think we have enough information to go and build persistence for RavenDB on top of LevelDB (and then test test test, performance performance performance etc).</p>
-
 <p>If you want to check out the spikes and playarounds with LevelDB, you can find them on my <a href="https://github.com/robashton/leveldb-play">Github</a></p>

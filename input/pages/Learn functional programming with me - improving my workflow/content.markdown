@@ -44,18 +44,26 @@ Hacky, but if I type "make develop", I can get on and write code without having 
 
 *First off, I specify that I'm sticking this all in the namespace 'game'*
 
+```clojure
     (ns game)
+```
 
 *I define a method called 'context', which takes no args*
 
+```clojure
     (defn context []
+```
+
 
 *I let 'target' be thbe result of calling .getElementById (interop)*
 
+```clojure
       (let [target (.getElementById js/document "target")]
+```
 
 *Return a 'vector' containing the context, the width, and the height*
 
+```clojure
         [
           (.getContext target "2d") 
           (. target -width)
@@ -63,51 +71,67 @@ Hacky, but if I type "make develop", I can get on and write code without having 
         ]
       )
     )
+```
 
 *Define a function called clearScreen, taking in a vector of 'ctx, width, height' - see above*
 
+```clojure
     (defn clearScreen [[ctx width height]]
+```
 
 *Set a property on the context of fillStyle '#FFF'*
 
+```clojure
       (set! (. ctx -fillStyle) "#FFF")
+```
 
 *Call clearRect on the context, with 0,0,width,height*
 
+```clojure
       (.clearRect ctx 0 0 width height) 
     )
+```
 
 *Same again, only parameterised so we're drawing a square*
 
+
+```clojure
     (defn drawSquare [[ctx width height] x y w h]
       (set! (. ctx -fillStyle) "#FF0")
       (.fillRect ctx x y w h) 
     )
+```
 
 
 *Now we have a function called tick which will call clearScreen over and over again, with drawSquare over again*
 
+```clojure
     (defn tick [x]
       (let [ctx (context)] 
         (clearScreen ctx) 
         (drawSquare ctx x 0 100 100)  
         (if (<= x 1000) 
           (js/setTimeout (fn []
+```
 
 *And every frame, we call tick with a new version of the state, in this case an increased 'x'*
 
+```clojure
             (tick (inc x)) 
+
           ) 33  )
         )
       )
     )
+```
 
 *We export a function called 'init' so I can call this from JS and make the game happen*
 
+```clojure
     (defn ^:export init []
       (tick 0) 
     )
-
+```
 
 Wow. There is a lot to (re)-take in here.
 

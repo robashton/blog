@@ -2,6 +2,7 @@
   <head>
     <title id="title">Auto idling auto indexes in RavenDB</title>
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
     <link href='http://fonts.googleapis.com/css?family=Libre+Baskerville' rel='stylesheet' type='text/css'>
     <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
     <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
@@ -28,36 +29,23 @@
       <h1 id="post-title">Auto idling auto indexes in RavenDB</h1>
       <h6>Published on <span class="date">2013-2-13</span></h6>
       <div id="post"><p><a href="/entries/adding-idle-indexes-to-ravendb.html">Last entry</a> I talked about the addition of a priority flag on indexes to save resources on un-important indexes.</p>
-
-<p>This is great news for those indexes that are created and managed manually (once Raven Studio has the UI for it anyway), but a lot of customers are using auto indexes (a feature I'm proud to say I had a hand in <a href="http://ayende.com/blog/4667/ravens-dynamic-queries">All those years ago</a>).</p>
-
+<p>This is great news for those indexes that are created and managed manually (once Raven Studio has the UI for it anyway), but a lot of customers are using auto indexes (a feature I&#39;m proud to say I had a hand in <a href="http://ayende.com/blog/4667/ravens-dynamic-queries">All those years ago</a>).</p>
 <p>What does this therefore mean for this type of index? Well, the way RavenDB currently works for those unfamiliar with it, is if you make a query for all the ponies with rainbow in their name like so:</p>
-
-<pre><code>session.Query&lt;Pony&gt;().Where(pony =&gt; pony.Name.Contains("Rainbow"))
-</code></pre>
-
+<pre><code>session<span class="variable">.Query</span>&lt;Pony&gt;()<span class="variable">.Where</span>(pony =&gt; pony<span class="variable">.Name</span><span class="variable">.Contains</span>(<span class="string">"Rainbow"</span>))</code></pre>
 <p>There is a query optimiser which will try to find an appropriate index to use for this query, and if it fails it will create an index for you at the following URL:</p>
-
-<pre><code>/Index/Temp/PonyWithName
-</code></pre>
-
+<pre><code><span class="regexp">/Index/Temp/</span>PonyWithName</code></pre>
 <p>Or something similar (I forget the exact conventions). After a period of time, the index will be deleted unless it is used within a certain threshold of activity.</p>
-
 <p>On top of this, we now have idle indexes - so what does this mean? We can actually do a lot of this automatically now too, if we select the least-used indexes in the system <em>(for example, order all the auto-indexes by the last time they were queried, and if there is a big gap between the last index and the penultimate index, then demote the index automatically)</em></p>
-
 <p>If the index is queried against after this, we can promote it again - happy days, thus the following scenarios:</p>
-
 <ul>
 <li>Manual indexes get left alone unless managed in the studio</li>
-<li>Auto indexes get made idle if they're not queried very much</li>
-<li>Auto indexes get promoted if they're then queried</li>
+<li>Auto indexes get made idle if they&#39;re not queried very much</li>
+<li>Auto indexes get promoted if they&#39;re then queried</li>
 </ul>
-
 <p>Having the database make these decisions for you keeps away any of the possible complexity of maintaining a well behaving RavenDB implementation.</p>
-
-<p>I left off yesterday by talking about the Forced flag, the idea behind this is you can force an index to keep its current state by using the Studio and not have any of this fancy magic stuff happen  for you. I expect most people won't use it, but it's always good to give customers the ability to assert control.</p>
-
-<p>Now, with this done - the next natural cause of action is obvious really, what would that be...? Stay tuned for my next entry to find out.</p></div>
+<p>I left off yesterday by talking about the Forced flag, the idea behind this is you can force an index to keep its current state by using the Studio and not have any of this fancy magic stuff happen  for you. I expect most people won&#39;t use it, but it&#39;s always good to give customers the ability to assert control.</p>
+<p>Now, with this done - the next natural cause of action is obvious really, what would that be...? Stay tuned for my next entry to find out.</p>
+</div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>

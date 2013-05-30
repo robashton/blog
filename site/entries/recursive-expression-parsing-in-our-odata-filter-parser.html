@@ -2,6 +2,7 @@
   <head>
     <title id="title">Recursive expression parsing in our OData filter parser</title>
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
     <link href='http://fonts.googleapis.com/css?family=Libre+Baskerville' rel='stylesheet' type='text/css'>
     <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
     <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
@@ -28,7 +29,6 @@
       <h1 id="post-title">Recursive expression parsing in our OData filter parser</h1>
       <h6>Published on <span class="date">2013-4-15</span></h6>
       <div id="post"><p>A quick re-cap of where we are so far in our OData OMeta Adventure.</p>
-
 <ul>
 <li><a href="/entries/building-a-basic-json-parser-in-ometa.html">Learning OMeta through JSON</a></li>
 <li><a href="/entries/building-an-odata-parser-in-ometa.html">Introduction to the OData Parser</a></li>
@@ -39,131 +39,92 @@
 <li><a href="/entries/paging-support-in-our-odata-parser.html">Paging support in OData</a></li>
 <li><a href="/entries/our-odata-parser---looking-at-filterby.html">Filtering support in OData</a></li>
 </ul>
-
 <p><strong>CRIKEY</strong></p>
-
-<p>Never thought I'd be writing this much about OMeta, but I've taken quite the shine to it.</p>
-
+<p>Never thought I&#39;d be writing this much about OMeta, but I&#39;ve taken quite the shine to it.</p>
 <p>I did basic expressions, but actually expressions can be made up of other expressions so I may as well bite that bullet and get on with it.</p>
-
-<p>Let's look at what we might expect if we use 'and'</p>
-
-<pre><code>test("/some/resource?$filter=Price gt 5 and Price lt 10", "OData", function(result) {
-  it("A filter should be present", function() {
-     assert.notEqual(result.options.$filterby, null)
+<p>Let&#39;s look at what we might expect if we use &#39;and&#39;</p>
+<pre><code>test(<span class="string">"/some/resource?$filter=Price gt 5 and Price lt 10"</span>, <span class="string">"OData"</span>, function(<span class="constant">result</span>) {
+  <span class="keyword">it</span>(<span class="string">"A filter should be present"</span>, function() {
+     assert.notEqual(<span class="constant">result</span>.options.$filterby, null)
   })
-  it("Filter should be an instance of 'and'", function() {
-     assert.equal(result.options.$filterby[0], "and")
+  <span class="keyword">it</span>(<span class="string">"Filter should be an instance of 'and'"</span>, function() {
+     assert.<span class="keyword">equal</span>(<span class="constant">result</span>.options.$filterby[<span class="number">0</span>], <span class="string">"and"</span>)
   })
 
-  it("Left hand side should be Price gt 5", function() {
-     var lhs = result.options.$filterby[1] 
-     assert.equal(lhs[0], "gt")
-     assert.equal(lhs[1].name, "Price")
-     assert.equal(lhs[2], 5)
+  <span class="keyword">it</span>(<span class="string">"Left hand side should be Price gt 5"</span>, function() {
+     var lhs = <span class="constant">result</span>.options.$filterby[<span class="number">1</span>] 
+     assert.<span class="keyword">equal</span>(lhs[<span class="number">0</span>], <span class="string">"gt"</span>)
+     assert.<span class="keyword">equal</span>(lhs[<span class="number">1</span>].<span class="property">name</span>, <span class="string">"Price"</span>)
+     assert.<span class="keyword">equal</span>(lhs[<span class="number">2</span>], <span class="number">5</span>)
   })
 
-  it("Right hand side should be less than 10", function() {
-     var rs = result.options.$filterby[2] 
-     assert.equal(rhs[0], "lt")
-     assert.equal(rhs[1].name, "Price")
-     assert.equal(rhs[2], 10)
+  <span class="keyword">it</span>(<span class="string">"Right hand side should be less than 10"</span>, function() {
+     var rs = <span class="constant">result</span>.options.$filterby[<span class="number">2</span>] 
+     assert.<span class="keyword">equal</span>(rhs[<span class="number">0</span>], <span class="string">"lt"</span>)
+     assert.<span class="keyword">equal</span>(rhs[<span class="number">1</span>].<span class="property">name</span>, <span class="string">"Price"</span>)
+     assert.<span class="keyword">equal</span>(rhs[<span class="number">2</span>], <span class="number">10</span>)
   })
-})
-</code></pre>
-
+})</code></pre>
 <p>We have a tree that looks like</p>
-
 <pre><code>[ 'and', 
-  [ 'gt', 'Price', 5 ],
-  [ 'lt', 'Price', 10]
-]
-</code></pre>
-
+  [ 'gt', 'Price', <span class="number">5</span> ],
+  [ 'lt', 'Price', <span class="number">10</span>]
+]</code></pre>
 <p>Our next step can walk this tree and generate SQL or something similar very easily.</p>
-
 <p><strong>How do we generate such a thing?</strong></p>
-
-<p>Well, 'and' is an operator with the lowest precedence (well, the same as 'or'), and therefore we want it to be first in the tree (it makes senseif you think about it!). </p>
-
-<p>The leaves should be the nodes with the highest precedence because we'll get their results first and them go up to the root node.</p>
-
+<p>Well, &#39;and&#39; is an operator with the lowest precedence (well, the same as &#39;or&#39;), and therefore we want it to be first in the tree (it makes senseif you think about it!). </p>
+<p>The leaves should be the nodes with the highest precedence because we&#39;ll get their results first and them go up to the root node.</p>
 <p>This suggests we need to cascade through the preferable options until we find something we like:</p>
-
-<p>There is quite a wall here, so let's break it down</p>
-
+<p>There is quite a wall here, so let&#39;s break it down</p>
 <pre><code>  FilterByOption = 
-    seq("$filterby=")
-    FilterByExpression:expr -&gt; { name: "$filterby", value: expr }
-</code></pre>
-
+    se<span class="string">q("<span class="variable">$filterby</span>=")</span>
+    FilterByExpression:expr -&gt; { name: <span class="string">"<span class="variable">$filterby</span>"</span>, value: expr }</code></pre>
 <p><em>When we find $filterby, then parse the expression</em></p>
-
-<pre><code>  FilterByExpression =
-    FilterAndExpression
-</code></pre>
-
-<p><em>The first thing we want to find is an 'and' expression</em></p>
-
-<pre><code>  FilterAndExpression =
-    FilterAndExpression:lhs
-    FilterAndOperand:op
-    FilterLogicalExpression:rhs -&gt; [ op, lhs, rhs ]
-  | FilterLogicalExpression
-</code></pre>
-
+<pre><code>  <span class="title">FilterByExpression</span> =
+    FilterAndExpression</code></pre>
+<p><em>The first thing we want to find is an &#39;and&#39; expression</em></p>
+<pre><code>  <span class="constant">FilterAndExpression</span> =
+    <span class="constant">FilterAndExpression</span><span class="symbol">:lhs</span>
+    <span class="constant">FilterAndOperand</span><span class="symbol">:op</span>
+    <span class="constant">FilterLogicalExpression</span><span class="symbol">:rhs</span> -&gt; [ op, lhs, rhs ]
+  | <span class="constant">FilterLogicalExpression</span></code></pre>
 <p><em>try and find more AndExpressions</em></p>
-
 <p><em>Else, let the right hand side be the next preferable thing (a plain old logical expression)</em></p>
-
 <p><em>Else, just try to find a logical expression</em></p>
-
-<pre><code>  FilterLogicalExpression =
-    FilterLogicalExpression:lhs
-    FilterByOperand:op
-    FilterByValue:rhs -&gt; [ op, lhs, rhs ]
-  | FilterByValue
-</code></pre>
-
+<pre><code>  <span class="constant">FilterLogicalExpression</span> =
+    <span class="constant">FilterLogicalExpression</span><span class="symbol">:lhs</span>
+    <span class="constant">FilterByOperand</span><span class="symbol">:op</span>
+    <span class="constant">FilterByValue</span><span class="symbol">:rhs</span> -&gt; [ op, lhs, rhs ]
+  | <span class="constant">FilterByValue</span></code></pre>
 <p><em>Try to find more LogicalExpressions</em></p>
-
 <p><em>Else, let the right hand side be the next preferable thing (a plain old value)</em></p>
-
 <p><em>Else fall back to finding a value</em></p>
-
 <pre><code>  FilterAndOperand =
     spaces
     (
-      seq("and")
-    | seq("or")
+      se<span class="string">q("and")</span>
+    | se<span class="string">q("or")</span>
     ):op 
-    spaces -&gt; op
-</code></pre>
-
+    spaces -&gt; op</code></pre>
 <p><em>And/or have the same precedence</em></p>
-
 <pre><code>  FilterByOperand =
     spaces
     (
-      seq("eq")
-    | seq("ne")
-    | seq("gt")
-    | seq("ge")
-    | seq("lt")
-    | seq("le")
+      se<span class="string">q("eq")</span>
+    | se<span class="string">q("ne")</span>
+    | se<span class="string">q("gt")</span>
+    | se<span class="string">q("ge")</span>
+    | se<span class="string">q("lt")</span>
+    | se<span class="string">q("le")</span>
     ):op 
-    spaces -&gt; op
-</code></pre>
-
+    spaces -&gt; op</code></pre>
 <p><em>These are unchanged</em></p>
-
 <pre><code>  FilterByValue = 
     Number
-  | QuotedText
-  | PropertyPath
-</code></pre>
-
-<p><em>As are these</em></p></div>
+  <span class="string">| QuotedText</span>
+  <span class="string">| PropertyPath</span></code></pre>
+<p><em>As are these</em></p>
+</div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>

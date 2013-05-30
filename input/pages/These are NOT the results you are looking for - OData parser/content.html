@@ -1,5 +1,4 @@
 <p>A quick re-cap of where we are so far in our OData OMeta Adventure.</p>
-
 <ul>
 <li><a href="/entries/building-a-basic-json-parser-in-ometa.html">Learning OMeta through JSON</a></li>
 <li><a href="/entries/building-an-odata-parser-in-ometa.html">Introduction to the OData Parser</a></li>
@@ -11,45 +10,29 @@
 <li><a href="/entries/our-odata-parser---looking-at-filterby.html">Filtering support in OData</a></li>
 <li><a href="/entries/recursive-expression-parsing-in-our-odata-filter-parser.html">Recursive query support in OData</a></li>
 </ul>
-
-<p>Before we get onto some more fuzzy stuff, it would be good to deal with 'not'</p>
-
-<p>Not is an interesting case because it's not really  the same as the rest of the expressions so far</p>
-
-<pre><code>Not  Logical negation  /Products?$filter=not endswith(Description,'milk')
-</code></pre>
-
-<p>It can't apply in situations like this however</p>
-
-<pre><code>/Products?$filter=not Product eq 5
-</code></pre>
-
+<p>Before we get onto some more fuzzy stuff, it would be good to deal with &#39;not&#39;</p>
+<p>Not is an interesting case because it&#39;s not really  the same as the rest of the expressions so far</p>
+<pre><code><span class="keyword">Not</span>  Logical negation  /Products?$<span class="built_in">filter</span>=<span class="keyword">not</span> endswith(Description,<span class="comment">'milk')</span></code></pre>
+<p>It can&#39;t apply in situations like this however</p>
+<pre><code>/<span class="constant">Products</span>?<span class="variable">$filter</span>=<span class="keyword">not</span> <span class="constant">Product</span> eq <span class="number">5</span></code></pre>
 <p>But it can probably apply in situations like this</p>
+<pre><code>/<span class="constant">Products</span>?<span class="variable">$filter</span>=<span class="keyword">not</span> <span class="constant">Published</span></code></pre>
+<p>This tells us something, which is that not isn&#39;t going to be expecting an expression unless it&#39;s in braces, otherwise it&#39;s going to be looking for a value.</p>
+<p>I&#39;m not supporting methods yet, so I&#39;ll ignore that requirement for now.</p>
+<pre><code><span class="function"><span class="title">test</span><span class="params">(<span class="string">"/some/resource?$filterby=not Published"</span>, <span class="string">"OData"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>(result) <span class="tuple">{
 
-<pre><code>/Products?$filter=not Published
-</code></pre>
+  <span class="function_name">it</span>(<span class="string">"A filter should be present"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+     assert.<span class="function_name">notEqual</span>(result.options.$filterby, null)
+  }</span>)
+  <span class="function_name">it</span>(<span class="string">"Filter should be an instance of 'not'"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+     assert.<span class="function_name">equal</span>(result.options.$filterby[<span class="number">0</span>], <span class="string">"not"</span>)
+  }</span>)
 
-<p>This tells us something, which is that not isn't going to be expecting an expression unless it's in braces, otherwise it's going to be looking for a value.</p>
-
-<p>I'm not supporting methods yet, so I'll ignore that requirement for now.</p>
-
-<pre><code>test("/some/resource?$filterby=not Published", "OData", function(result) {
-
-  it("A filter should be present", function() {
-     assert.notEqual(result.options.$filterby, null)
-  })
-  it("Filter should be an instance of 'not'", function() {
-     assert.equal(result.options.$filterby[0], "not")
-  })
-
-  it("value should be 'Published'", function() {
-    assert.equal(result.options.$filterby[1].name, "Published")
-  })
-})
-</code></pre>
-
+  <span class="function_name">it</span>(<span class="string">"value should be 'Published'"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+    assert.<span class="function_name">equal</span>(result.options.$filterby[<span class="number">1</span>].name, <span class="string">"Published"</span>)
+  }</span>)
+})</code></pre>
 <p>First off, this one</p>
-
 <pre><code>FilterByValue = 
   FilterNegateExpression
 |  Number
@@ -59,46 +42,36 @@
 
 FilterNegateExpression = 
   spaces
-  seq("not")
+  se<span class="string">q("not")</span>
   spaces
-  FilterByValue:value       -&gt;  [ "not", value ]
-,
-</code></pre>
+  FilterByValue:value       -&gt;  [ <span class="string">"not"</span>, value ]
+,</code></pre>
+<p>Quite simple, if we get as far as checking for a value, it means we haven&#39;t found an expression, so we&#39;ll check for &quot;Not&quot; - I guess this is where we&#39;ll probably stick methods later too. </p>
+<p>A &quot;NegateExpression&quot; is simply a &quot;not&quot; followed by a value, we&#39;ll allow double negatives too because there is no harm in this.</p>
+<p>Next up, we&#39;ll check for braces, and inside braces we&#39;ll allow further expressions (recurse recurse recurse)</p>
+<pre><code>test(<span class="string">"/some/resource?$filterby=not (Price gt 5)"</span>, <span class="string">"OData"</span>, function(<span class="constant">result</span>) {
 
-<p>Quite simple, if we get as far as checking for a value, it means we haven't found an expression, so we'll check for "Not" - I guess this is where we'll probably stick methods later too. </p>
-
-<p>A "NegateExpression" is simply a "not" followed by a value, we'll allow double negatives too because there is no harm in this.</p>
-
-<p>Next up, we'll check for braces, and inside braces we'll allow further expressions (recurse recurse recurse)</p>
-
-<pre><code>test("/some/resource?$filterby=not (Price gt 5)", "OData", function(result) {
-
-  it("A filter should be present", function() {
-     assert.notEqual(result.options.$filterby, null)
+  <span class="keyword">it</span>(<span class="string">"A filter should be present"</span>, function() {
+     assert.notEqual(<span class="constant">result</span>.options.$filterby, null)
   })
-  it("Filter should be an instance of 'not'", function() {
-     assert.equal(result.options.$filterby[0], "not")
+  <span class="keyword">it</span>(<span class="string">"Filter should be an instance of 'not'"</span>, function() {
+     assert.<span class="keyword">equal</span>(<span class="constant">result</span>.options.$filterby[<span class="number">0</span>], <span class="string">"not"</span>)
   })
-  it("Value should be Price gt 5", function() {
-     var rhs = result.options.$filterby[1] 
-     assert.equal(rhs[0], "gt")
-     assert.equal(rhs[1].name, "Price")
-     assert.equal(rhs[2], 5)
+  <span class="keyword">it</span>(<span class="string">"Value should be Price gt 5"</span>, function() {
+     var rhs = <span class="constant">result</span>.options.$filterby[<span class="number">1</span>] 
+     assert.<span class="keyword">equal</span>(rhs[<span class="number">0</span>], <span class="string">"gt"</span>)
+     assert.<span class="keyword">equal</span>(rhs[<span class="number">1</span>].<span class="property">name</span>, <span class="string">"Price"</span>)
+     assert.<span class="keyword">equal</span>(rhs[<span class="number">2</span>], <span class="number">5</span>)
   })
-})
-</code></pre>
-
+})</code></pre>
 <p>Solved by</p>
-
 <pre><code>FilterNegateExpression = 
   spaces
-  seq("not")
+  se<span class="string">q("not")</span>
   spaces
   (
     FilterByValue
-  | '(' spaces FilterByExpression:expr spaces ')' -&gt; expr
-  ):value -&gt;  [ "not", value ]
-,
-</code></pre>
-
-<p>Dead easy, now it's time to get our heads stuck into Arithmetic Operators.</p>
+  | <span class="string">'('</span> spaces FilterByExpression:expr spaces <span class="string">')'</span> -&gt; expr
+  ):value -&gt;  [ <span class="string">"not"</span>, value ]
+,</code></pre>
+<p>Dead easy, now it&#39;s time to get our heads stuck into Arithmetic Operators.</p>

@@ -1,35 +1,25 @@
 <p>So, this is a niche case that is quite annoying for people writing transformers as part of a map or a map/reduce index - and now we have the ability to specify transformers separately to the index this problem only gets worse.</p>
-
 <p>What is this problem?</p>
-
 <p>Well, if I make a map that does this:</p>
-
-<pre><code>public class Ponies : AbstractIndexCreationTask&lt;Pony&gt;
+<pre><code><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="id">Ponies</span> : <span class="id">AbstractIndexCreationTask</span>&lt;<span class="id">Pony</span>&gt;</span>
 {
-   public Ponies() {
+   <span class="keyword">public</span> Ponies() {
      Map = ponies =&gt;
            from pony in ponies
            select new {
-             pony.Name,
-             pony.Colour,
-             pony.CutieMark
+             pony<span class="variable">.Name</span>,
+             pony<span class="variable">.Colour</span>,
+             pony<span class="variable">.CutieMark</span>
            }
 
-     Store(pony =&gt; pony.CutieMark, FieldStorage.Yes);
-     Store(pony =&gt; pony.Name, FieldStorage.Yes);
-     Store(pony =&gt; pony.Colour, FieldStorage.Yes);
+     Store(pony =&gt; pony<span class="variable">.CutieMark</span>, FieldStorage<span class="variable">.Yes</span>);
+     Store(pony =&gt; pony<span class="variable">.Name</span>, FieldStorage<span class="variable">.Yes</span>);
+     Store(pony =&gt; pony<span class="variable">.Colour</span>, FieldStorage<span class="variable">.Yes</span>);
    }
-}
-</code></pre>
-
-<p>Available to me <em>without even loading the document</em> after performing a query, is "Name", "Colour", and "CutieMark". Obviously we can store other things in there as well, and so some funky things in the map - but this is the essence of this functionality.</p>
-
+}</code></pre>
+<p>Available to me <em>without even loading the document</em> after performing a query, is &quot;Name&quot;, &quot;Colour&quot;, and &quot;CutieMark&quot;. Obviously we can store other things in there as well, and so some funky things in the map - but this is the essence of this functionality.</p>
 <p>The same thing happens by default when you apply a reduce stage to an index, because you lose the original document entirely because of aggregation.</p>
-
 <p>This can be a bit confusing, as sometimes you want the result from that store data, and sometimes you want the data from the document, and this has been an all-or-nothing thing.</p>
-
-<p>Now we can <a href="/entries/result-transformers---not-just-for-querying.html">Use Load&lt;></a> with a ResultTransformer, this is even more ambiguous.</p>
-
+<p>Now we can <a href="/entries/result-transformers---not-just-for-querying.html">Use Load&lt;&gt;</a> with a ResultTransformer, this is even more ambiguous.</p>
 <p>So, from now on, whenever you access anything in a ResultTransformer, RavenDB will first look in the stored fields for the information, and if not found - will load the document associated with the current result and fetch it from that.</p>
-
-<p>It's a small change, but one which will remove a lot of the confusion around this feature.</p>
+<p>It&#39;s a small change, but one which will remove a lot of the confusion around this feature.</p>

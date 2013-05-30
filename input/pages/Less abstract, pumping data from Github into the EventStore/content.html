@@ -1,74 +1,55 @@
-<p>It's all very well and good <a href="/entries/playing-with-the-eventstore.html">talking</a> <a href="/entries/pushing-data-into-streams-in-the-eventstore.html">events</a> <a href="/entries/basic-projections-in-the-eventstore.html">in</a> <a href="/entries/re-partitioning-streams-in-the-event-store-for-better-projections.html">the</a> <a href="/entries/creating-a-projection-per-stream-in-the-eventstore.html">abstract</a>, but there is only so long I can blather about ponies before I run out of the kind of data I can ask interesting questions about.</p>
-
+<p>It&#39;s all very well and good <a href="/entries/playing-with-the-eventstore.html">talking</a> <a href="/entries/pushing-data-into-streams-in-the-eventstore.html">events</a> <a href="/entries/basic-projections-in-the-eventstore.html">in</a> <a href="/entries/re-partitioning-streams-in-the-event-store-for-better-projections.html">the</a> <a href="/entries/creating-a-projection-per-stream-in-the-eventstore.html">abstract</a>, but there is only so long I can blather about ponies before I run out of the kind of data I can ask interesting questions about.</p>
 <p>We turn to the <a href="http://developer.github.com/v3/activity/events/#list-public-events">Github Events API</a>, something I have a <a href="/entries/github-live.html">bit of experience</a> with for inspiration and start dumping all the events into the event store.</p>
-
 <p>What does this look like?</p>
-
-<p>Well, I'm interested in the public events stream, which can be polled up to 5000 times an hour (at current rates, it needs polling about every 10 seconds in order to keep up, so I'll not be able to get them all)</p>
-
+<p>Well, I&#39;m interested in the public events stream, which can be polled up to 5000 times an hour (at current rates, it needs polling about every 10 seconds in order to keep up, so I&#39;ll not be able to get them all)</p>
 <p>What this looks like</p>
-
 <pre><code> var request = https.get(
- { host: 'api.github.com', path: '/events' + auth }, 
+ { host:<span class="string"> 'api.github.com'</span>, path:<span class="string"> '/events'</span> + auth }, 
  function(res) {
-    var data = ''
-    res.on('data', function (chunk) {
-      data += chunk
-    });
+    var <span class="typedef"><span class="keyword">data</span> = ''</span>
+    res.on('<span class="typedef"><span class="keyword">data</span>', function <span class="container">(<span class="title">chunk</span>)</span> <span class="container">{
+      <span class="title">data</span> += <span class="title">chunk</span>
+    }</span>);</span>
     res.on('end', function() {
-      processData(data)
+      processData(<span class="typedef"><span class="keyword">data</span>)</span>
     })
   })
   .on('error', function(e) {
     console.error(e)
   }).end()
 
-  var processData = function(data) {
-    var eventArray = JSON.parse(data)
-    for(var i = eventArray.length-1 ; i &gt;= 0; i--) {
-      processEvent(eventArray[i])
-    }
-  }
-</code></pre>
-
+  var processData = function(<span class="typedef"><span class="keyword">data</span>) <span class="container">{
+    <span class="title">var</span> <span class="title">eventArray</span> = <span class="type">JSON</span>.<span class="title">parse</span>(<span class="title">data</span>)
+    <span class="title">for</span>(<span class="title">var</span> <span class="title">i</span> = <span class="title">eventArray</span>.<span class="title">length</span>-1 ; <span class="title">i</span> &gt;= 0; <span class="title">i</span>--) {
+      <span class="title">processEvent</span>(<span class="title">eventArray</span>[<span class="title">i</span>])
+    }</span></span>
+  }</code></pre>
 <p>An event looks like this</p>
-
 <pre><code>{
-  id: "somelongid",
-  type: "PushEvent",
-  actor: { // info about the user },
-  repo: { // info about the repo }
-  payload: { // the event itself }
-}
-</code></pre>
-
-<p>I'm going to be shoving these events 'as is' into the EventStore, and using their ids 'as is' too, this means I don't need to do any de-duping or anything like that.</p>
-
-<p>Now, because of the kind of question I want to ask, it isn't enough for me to have the scant info about a repo that the event stream gives me (it looks like this)</p>
-
+  <span class="property">id</span>: <span class="string">"somelongid"</span>,
+  type: <span class="string">"PushEvent"</span>,
+  actor: { // info <span class="keyword">about</span> <span class="keyword">the</span> user },
+  repo: { // info <span class="keyword">about</span> <span class="keyword">the</span> repo }
+  payload: { // <span class="keyword">the</span> event itself }
+}</code></pre>
+<p>I&#39;m going to be shoving these events &#39;as is&#39; into the EventStore, and using their ids &#39;as is&#39; too, this means I don&#39;t need to do any de-duping or anything like that.</p>
+<p>Now, because of the kind of question I want to ask, it isn&#39;t enough for me to have the scant info about a repo that the event stream gives me (it looks like this)</p>
 <pre><code>{
- "id": 3,
- "name": "octocat/Hello-World",
- "url": "https://api.github.com/repos/octocat/Hello-World"
-}
-</code></pre>
-
-<p>So I'm going to augment each event with repo information (this is quite common in the eventing world, augmenting events with useful information for query purposes), and therefore my processEvent method looks something like this:</p>
-
-<pre><code>function processEvent(ev) {
-  if(ev.repo) {
+ "<span class="attribute">id</span>": <span class="value"><span class="number">3</span></span>,
+ "<span class="attribute">name</span>": <span class="value"><span class="string">"octocat/Hello-World"</span></span>,
+ "<span class="attribute">url</span>": <span class="value"><span class="string">"https://api.github.com/repos/octocat/Hello-World"</span>
+}</span></code></pre>
+<p>So I&#39;m going to augment each event with repo information (this is quite common in the eventing world, augmenting events with useful information for query purposes), and therefore my processEvent method looks something like this:</p>
+<pre><code><span class="function"><span class="keyword">function</span> <span class="title">processEvent</span><span class="params">(ev)</span> {</span>
+  <span class="keyword">if</span>(<span class="transposed_variable">ev.</span>repo) <span class="cell">{
     fetchRepoInfo(ev.repo.name, function(repo) {
       ev.repo = repo
       pushEventIntoEventStore(ev)
-    })
-  } else {
+    }</span>)
+  } <span class="keyword">else</span> <span class="cell">{
     pushEventIntoEventStore(ev)
-  }
-}
-</code></pre>
-
-<p>So, I'm not altering any of the events in any way, except by adding repo information to them, therefore if you're interested in the structure of any of the events I'm using you can easily look them up in the API.</p>
-
-<p>By the time the code is readable there'll be some rate management code in there because I can't go looking up repo information for every single event and not go over the rate limit, but it's safe to say we'll be getting ~50% of the events from Github and that's a reasonable amount.</p>
-
+  }</span>
+}</code></pre>
+<p>So, I&#39;m not altering any of the events in any way, except by adding repo information to them, therefore if you&#39;re interested in the structure of any of the events I&#39;m using you can easily look them up in the API.</p>
+<p>By the time the code is readable there&#39;ll be some rate management code in there because I can&#39;t go looking up repo information for every single event and not go over the rate limit, but it&#39;s safe to say we&#39;ll be getting ~50% of the events from Github and that&#39;s a reasonable amount.</p>
 <p>My script simply sits there running in the background and throws events into the event store and this little experiment is going to be about creating projections and asking questions of those events as we go along. Capiche? :)</p>

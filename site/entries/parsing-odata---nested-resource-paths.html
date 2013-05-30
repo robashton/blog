@@ -2,6 +2,7 @@
   <head>
     <title id="title">Parsing OData - nested resource paths</title>
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
     <link href='http://fonts.googleapis.com/css?family=Libre+Baskerville' rel='stylesheet' type='text/css'>
     <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
     <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
@@ -27,83 +28,59 @@
     <div id="blog-entry">
       <h1 id="post-title">Parsing OData - nested resource paths</h1>
       <h6>Published on <span class="date">2013-4-8</span></h6>
-      <div id="post"><p>I'm writing an OData parser in OMeta, and <a href="/entries/writing-an-odata-parser---starting-at-the-beginning.html">yesterday</a> I stopped with the realisation that I'd have to deal with paths of resources, each with their own potential identifier.</p>
-
+      <div id="post"><p>I&#39;m writing an OData parser in OMeta, and <a href="/entries/writing-an-odata-parser---starting-at-the-beginning.html">yesterday</a> I stopped with the realisation that I&#39;d have to deal with paths of resources, each with their own potential identifier.</p>
 <p>First off, I come back to this code and look up the rules for Resource Names in OData as I left that hole open yesterday and it is an itch I want to scratch.</p>
-
 <p>I read the <a href="http://www.odata.org/documentation/uri-conventions#ResourcePath">Uri conventions</a>, the <a href="http://www.odata.org/media/30002/OData%20ABNF.html">ABNF</a> and this leads me to <a href="http://www.rfc-editor.org/rfc/rfc3229.txt">RFC3229</a> and I fell asleep.</p>
-
-<p>I'll see if this has been covered in Rulemotion's codebase when I get back into the office on Tuesday as I'd prefer to do this properly.</p>
-
+<p>I&#39;ll see if this has been covered in Rulemotion&#39;s codebase when I get back into the office on Tuesday as I&#39;d prefer to do this properly.</p>
 <p><strong>Recursing through resource paths</strong></p>
-
 <p>Back to the matter at hand, I want to deal with arbitrary paths like so</p>
-
-<pre><code>/model(1)/children(1)/otherchildren(1)/field
-</code></pre>
-
-<p>This shouldn't be <em>too hard</em>, although I am practising Mojito-driven-development this weekend so it does tax the brain cells that are still functioning.</p>
-
+<pre><code><span class="regexp">/model(1)/children(1)/otherchildren(1)/</span>field</code></pre>
+<p>This shouldn&#39;t be <em>too hard</em>, although I am practising Mojito-driven-development this weekend so it does tax the brain cells that are still functioning.</p>
 <p>What I want to achieve:</p>
-
 <ul>
-<li>I want to be able to parse multiple resource paths separated by a '/'</li>
+<li>I want to be able to parse multiple resource paths separated by a &#39;/&#39;</li>
 <li>I want to build up a model of this path (each with a name and a specified id)</li>
 <li>I want to once this is done, carry on parsing the rest of the path</li>
 </ul>
-
 <p>Hmm, well simplest thing for this is to say that this is recursive and not change a thing at all about the initial expression</p>
-
-<pre><code>OData = (
+<pre><code><span class="constant">OData</span> = (
   (
-    PathSegment:model -&gt; model
+    <span class="constant">PathSegment</span><span class="symbol">:model</span> -&gt; model
   )
-  | '/'
+  | <span class="string">'/'</span>
 ) 
 
 
-PathSegment = 
-      '/'
-      ResourceName:resource
+<span class="constant">PathSegment</span> = 
+      <span class="string">'/'</span>
+      <span class="constant">ResourceName</span><span class="symbol">:resource</span>
       (
-        ("(" Number:key ")")?
-        (PathSegment: next)?
-      ) -&gt; { resource: resource, key: key, next: next }
-    ,
-</code></pre>
-
+        (<span class="string">"("</span> <span class="constant">Number</span><span class="symbol">:key</span> <span class="string">")"</span>)?
+        (<span class="constant">PathSegment</span><span class="symbol">:</span> <span class="keyword">next</span>)?
+      ) -&gt; { <span class="symbol">resource:</span> resource, <span class="symbol">key:</span> key, <span class="symbol">next:</span> <span class="keyword">next</span> }
+    ,</code></pre>
 <p>All we do here is say </p>
-
 <ul>
 <li>We expect a forward-slash, followed by the name of the addressed resource</li>
 <li>We then optionally expect a specified Id for that resource</li>
 <li>We then optionally expect another part of the path component</li>
 </ul>
-
-<p>In this way, we'll recursively build up the path to the addressed resource in the model and end up being able to follow this down when working out what to do with our OData request.</p>
-
+<p>In this way, we&#39;ll recursively build up the path to the addressed resource in the model and end up being able to follow this down when working out what to do with our OData request.</p>
 <p><strong>Links</strong></p>
-
 <p>There is another part to this, which is that rather than addressing paths, we can address links, which are expressed similarly:</p>
-
-<pre><code>/model(1)/$links/children
-</code></pre>
-
+<pre><code>/model(1)/<span class="variable">$links</span>/children</code></pre>
 <p>This can actually be dealt with in very much the same way:</p>
-
 <pre><code>PathSegment = 
-      '/'
+      <span class="string">'/'</span>
       ResourceName:resource
       (
-        ("(" Number:key ")")?
+        (<span class="string">"("</span> Number:key <span class="string">")"</span>)?
         (
-          (seq("/$links") PathSegment:link)
-        | PathSegment: next
+          (se<span class="string">q("/<span class="variable">$links</span>")</span> PathSegment:<span class="keyword">link</span>)
+        | PathSegment: <span class="keyword">next</span>
         )?
-      ) -&gt; { resource: resource, key: key, link: link, property: next }
-    ,
-</code></pre>
-
+      ) -&gt; { resource: resource, key: key, <span class="keyword">link</span>: <span class="keyword">link</span>, property: <span class="keyword">next</span> }
+    ,</code></pre>
 <ul>
 <li>We expect a forward-slash, followed by the name of the addressed resource</li>
 <li>We then optionally expect a specified Id for that resource</li>
@@ -111,10 +88,9 @@ PathSegment =
 <li>OR we expect another path segment</li>
 <li>But the above two are optional</li>
 </ul>
-
 <p>The model is then built up recursively.</p>
-
-<p>I think that actually I shouldn't be allowing further addressing once we've followed a link - but I'm not so sure about that so I'll ask when I get back into the office.</p></div>
+<p>I think that actually I shouldn&#39;t be allowing further addressing once we&#39;ve followed a link - but I&#39;m not so sure about that so I&#39;ll ask when I get back into the office.</p>
+</div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>

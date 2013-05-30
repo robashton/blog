@@ -2,6 +2,7 @@
   <head>
     <title id="title">Transactional guarantees on top of LevelDB</title>
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
     <link href='http://fonts.googleapis.com/css?family=Libre+Baskerville' rel='stylesheet' type='text/css'>
     <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
     <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
@@ -27,49 +28,33 @@
     <div id="blog-entry">
       <h1 id="post-title">Transactional guarantees on top of LevelDB</h1>
       <h6>Published on <span class="date">2013-3-4</span></h6>
-      <div id="post"><p>So, I'm <a href="/entries/basic-operations-with-leveldb.html">experimenting with LevelDB</a> and I've discovered that it does atomic writes both on single operations and batches of operations.</p>
-
-<p>This isn't actually all we need in RavenDB, as we need to be able to support multiple reads and writes - potentially over a period of time.</p>
-
-<p>We can't just be reading from a database that might be changing under our feet all of the time, and it turns out that LevelDB gives us the ability to read from a particular version of the database.</p>
-
+      <div id="post"><p>So, I&#39;m <a href="/entries/basic-operations-with-leveldb.html">experimenting with LevelDB</a> and I&#39;ve discovered that it does atomic writes both on single operations and batches of operations.</p>
+<p>This isn&#39;t actually all we need in RavenDB, as we need to be able to support multiple reads and writes - potentially over a period of time.</p>
+<p>We can&#39;t just be reading from a database that might be changing under our feet all of the time, and it turns out that LevelDB gives us the ability to read from a particular version of the database.</p>
 <p>When beginning a long running operation that needs a consistent read-state, we can create a snapshot and use this in all of our reads to ensure we have a consistent view of the database.</p>
-
 <pre><code>// Create a snapshot at the beginning of a sequence of operations
-leveldb::Snapshot* snapshot = db-&gt;GetSnapshot();
+<span class="label">leveldb:</span>:Snapshot* snapshot = db-&gt;GetSnapshot()<span class="comment">;</span>
 
 
 // For each read operation we can use this snapshot
-leveldb::ReadOptions options;
-options.snapshot = snapshot;
+<span class="label">leveldb:</span>:ReadOptions options<span class="comment">;</span>
+options<span class="preprocessor">.snapshot</span> = snapshot<span class="comment">;</span>
 
-db-&gt;Get(options, "key", &amp;document);
-</code></pre>
-
+db-&gt;Get(options, <span class="string">"key"</span>, &amp;document)<span class="comment">;</span></code></pre>
 <p>That solves that problem then, although it leaves another question in the air - which is how LevelDB handles multiple writers modifying the same key.</p>
-
 <p>Consider a thread coming along and beginning an operation</p>
-
-<pre><code>tx1 = store-&gt;BeginOperation();
-</code></pre>
-
+<pre><code><span class="setting">tx1 = <span class="value">store-&gt;BeginOperation();</span></span></code></pre>
 <p>And another thread beginning an operation</p>
-
-<pre><code>tx2 = store-&gt;BeginOperation();
-</code></pre>
-
+<pre><code><span class="setting">tx2 = <span class="value">store-&gt;BeginOperation();</span></span></code></pre>
 <p>And then</p>
+<pre><code><span class="comment">// Thread one deletes a key</span>
+store-&gt;Delete(<span class="string">"key1"</span>, tx1);
 
-<pre><code>// Thread one deletes a key
-store-&gt;Delete("key1", tx1);
-
-// Thread two Writes to that key
-store-&gt;Put("key1", tx2);
-</code></pre>
-
-<p>By default (at least as I understand) LevelDB will happily accept these operations as it doesn't have any concurrency control.</p>
-
-<p>Happily, this is easy enough to work through as we'll see in the next entry.</p></div>
+<span class="comment">// Thread two Writes to that key</span>
+store-&gt;Put(<span class="string">"key1"</span>, tx2);</code></pre>
+<p>By default (at least as I understand) LevelDB will happily accept these operations as it doesn&#39;t have any concurrency control.</p>
+<p>Happily, this is easy enough to work through as we&#39;ll see in the next entry.</p>
+</div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>

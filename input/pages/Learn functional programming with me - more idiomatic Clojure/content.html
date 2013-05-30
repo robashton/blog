@@ -1,5 +1,4 @@
-<p>I went through my code in the last entry and did a bit of re-factoring in an effort to get my state under control, I've also had some feedback that some of my Clojure could be a bit more idiomatic so let's sort that out.</p>
-
+<p>I went through my code in the last entry and did a bit of re-factoring in an effort to get my state under control, I&#39;ve also had some feedback that some of my Clojure could be a bit more idiomatic so let&#39;s sort that out.</p>
 <ul>
 <li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Mission statement</a></li>
 <li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
@@ -13,233 +12,172 @@
 <li><a href="/entries/learn-functional-programming-with-me---adding-items-to-a-sequence.html">Adding items to a sequence and firing bullets</a></li>
 <li><a href="/entries/learn-functional-programming-with-me---refactoring-my-state-transitions.html">Refactoring my state transitions</a></li>
 </ul>
-
 <p><strong>assoc-in vs update-in</strong></p>
-
 <p>Here is some code I wrote</p>
-
-<pre><code>(defn enemiesLogic [state]
-  (let [direction (:direction state)
-        enemies (:enemies state)
-        func (if(= direction 1) inc dec)
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> enemiesLogic [state]
+  <span class="list">(<span class="title">let</span><span class="body"> [direction <span class="list">(<span class="body"><span class="keyword">:direction</span> state)</span></span>
+        enemies <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>
+        func <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">=</span><span class="body"> direction <span class="number">1</span>)</span></span> inc dec)</span></span>
        ]
-    (assoc state :enemies
-      (for [enemy enemies]
-        (assoc enemy :x (func (:x enemy)))
-      )
-    )
-  )
-)
-</code></pre>
-
-<p>What I'm essentially doing is </p>
-
+    <span class="list">(<span class="title">assoc</span><span class="body"> state <span class="keyword">:enemies</span>
+      <span class="list">(<span class="title">for</span><span class="body"> [enemy enemies]
+        <span class="list">(<span class="title">assoc</span><span class="body"> enemy <span class="keyword">:x</span> <span class="list">(<span class="title">func</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> enemy)</span></span>)</span></span>)</span></span>
+      )</span></span>
+    )</span></span>
+  )</span></span>
+)</span></span></code></pre>
+<p>What I&#39;m essentially doing is </p>
 <ul>
 <li>Selecting a function to apply based on the direction</li>
 <li>Creating a new enemies collection where that function has been applied to each enemy</li>
 </ul>
-
 <p>Well, why bother with this? We can do</p>
-
-<pre><code>(defn enemiesLogic [state]
-  (let [direction (:direction state)
-        enemies (:enemies state)
-        func (if(= direction 1) inc dec)
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> enemiesLogic [state]
+  <span class="list">(<span class="title">let</span><span class="body"> [direction <span class="list">(<span class="body"><span class="keyword">:direction</span> state)</span></span>
+        enemies <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>
+        func <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">=</span><span class="body"> direction <span class="number">1</span>)</span></span> inc dec)</span></span>
        ]
-    (assoc state :enemies
-      (for [enemy enemies]
-        (update-in enemy [:x] func)
-      )
-    )
-  )
-)
-</code></pre>
-
+    <span class="list">(<span class="title">assoc</span><span class="body"> state <span class="keyword">:enemies</span>
+      <span class="list">(<span class="title">for</span><span class="body"> [enemy enemies]
+        <span class="list">(<span class="title">update-in</span><span class="body"> enemy [<span class="keyword">:x</span>] func)</span></span>
+      )</span></span>
+    )</span></span>
+  )</span></span>
+)</span></span></code></pre>
 <p>update-in takes in a func to enact on the value, rather than the new value and saves us precious reading time. Thinking about it, we can actually save some effort here too.</p>
-
-<p>This makes a big difference in cases where I've been lazy and done this</p>
-
-<pre><code>(assoc bullet :y (dec (:y bullet)))
-</code></pre>
-
+<p>This makes a big difference in cases where I&#39;ve been lazy and done this</p>
+<pre><code><span class="list">(<span class="title">assoc</span><span class="body"> bullet <span class="keyword">:y</span> <span class="list">(<span class="title">dec</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> bullet)</span></span>)</span></span>)</span></span></code></pre>
 <p>Looks better like</p>
-
-<pre><code>(update-in bullet [:y] dec)
-</code></pre>
-
+<pre><code><span class="list">(<span class="title">update-in</span><span class="body"> bullet [<span class="keyword">:y</span>] dec)</span></span></code></pre>
 <p>Passing around functions seems pretty functional.</p>
-
-<p><strong>State doesn't define an object</strong></p>
-
+<p><strong>State doesn&#39;t define an object</strong></p>
 <p>Why do I have this?</p>
-
-<pre><code>(defn initEnemy [x y w h]
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> initEnemy [x y w h]
  {
-  :x (* x 30)
-  :y (* y 30)
-  :w w
-  :h h
+  <span class="keyword">:x</span> <span class="list">(<span class="title">*</span><span class="body"> x <span class="number">30</span>)</span></span>
+  <span class="keyword">:y</span> <span class="list">(<span class="title">*</span><span class="body"> y <span class="number">30</span>)</span></span>
+  <span class="keyword">:w</span> w
+  <span class="keyword">:h</span> h
  }
-)
+)</span></span>
 
-(defn initPlayer [x y w h]
+<span class="list">(<span class="title">defn</span><span class="body"> initPlayer [x y w h]
  {
-  :x x
-  :y y
-  :w w
-  :h h
+  <span class="keyword">:x</span> x
+  <span class="keyword">:y</span> y
+  <span class="keyword">:w</span> w
+  <span class="keyword">:h</span> h
  }
-)
+)</span></span>
 
-(defn initBullet [x y w h]
+<span class="list">(<span class="title">defn</span><span class="body"> initBullet [x y w h]
  {
-  :x x
-  :y y
-  :w w
-  :h h
+  <span class="keyword">:x</span> x
+  <span class="keyword">:y</span> y
+  <span class="keyword">:w</span> w
+  <span class="keyword">:h</span> h
  }
-)
-</code></pre>
-
+)</span></span></code></pre>
 <p>Seems to me that everything in my game is a rect, and what changes between these everything is the behaviour that is performed over that state.</p>
-
 <p>So, death to these things and in with</p>
+<pre><code><span class="list">(<span class="title"><span class="built_in">defn</span></span> initRect <span class="collection">[x y w h]</span>
+ <span class="collection">{
+  <span class="attribute">:x</span> x
+  <span class="attribute">:y</span> y
+  <span class="attribute">:w</span> w
+  <span class="attribute">:h</span> h
+ }</span>
+)</span></code></pre>
+<p>Actually, I&#39;m pulling this structure apart in a number of places, such as my drawing functions</p>
+<pre><code><span class="list">(<span class="title">let</span><span class="body"> [{<span class="keyword">:keys</span> [x y w h]} bullet]
+  <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx x y w h <span class="string">"#000"</span>)</span></span>
+)</span></span></code></pre>
+<p>A solution to this would be to make drawSquare take in this map and de-construct it there. I&#39;ve established that this is a primitive I want in my application and I&#39;ll use it as such.</p>
+<p>I could further solidify this by turning it into a Record but I&#39;m not yet feeling any pain from not having it as one so I won&#39;t bother..</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> drawSquare [[ctx width height] rect c]
+  <span class="list">(<span class="title">set</span><span class="body">! <span class="list">(<span class="body">. ctx -fillStyle)</span></span> c)</span></span>
+  <span class="list">(<span class="title">let</span><span class="body"> [{<span class="keyword">:keys</span> [x y w h]} rect]
+    <span class="list">(<span class="body">.fillRect ctx x y w h)</span></span> 
+  )</span></span>
+)</span></span>
 
-<pre><code>(defn initRect [x y w h]
- {
-  :x x
-  :y y
-  :w w
-  :h h
- }
-)
-</code></pre>
+<span class="list">(<span class="title">defn</span><span class="body"> enemiesRender [ctx state]
+  <span class="list">(<span class="title">let</span><span class="body"> [enemies <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>]
+    <span class="list">(<span class="title">doseq</span><span class="body"> [enemy enemies] 
+      <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx enemy <span class="string">"#FF0"</span>)</span></span>
+    )</span></span>
+  )</span></span>
+)</span></span>
 
-<p>Actually, I'm pulling this structure apart in a number of places, such as my drawing functions</p>
+<span class="list">(<span class="title">defn</span><span class="body"> bulletsRender [ctx state]
+  <span class="list">(<span class="title">doseq</span><span class="body"> [bullet <span class="list">(<span class="body"><span class="keyword">:active</span> <span class="list">(<span class="body"><span class="keyword">:bullets</span> state)</span></span>)</span></span>] 
+    <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx bullet <span class="string">"#000"</span>)</span></span>
+  )</span></span>
+)</span></span>
 
-<pre><code>(let [{:keys [x y w h]} bullet]
-  (drawSquare ctx x y w h "#000")
-)
-</code></pre>
-
-<p>A solution to this would be to make drawSquare take in this map and de-construct it there. I've established that this is a primitive I want in my application and I'll use it as such.</p>
-
-<p>I could further solidify this by turning it into a Record but I'm not yet feeling any pain from not having it as one so I won't bother..</p>
-
-<pre><code>(defn drawSquare [[ctx width height] rect c]
-  (set! (. ctx -fillStyle) c)
-  (let [{:keys [x y w h]} rect]
-    (.fillRect ctx x y w h) 
-  )
-)
-
-(defn enemiesRender [ctx state]
-  (let [enemies (:enemies state)]
-    (doseq [enemy enemies] 
-      (drawSquare ctx enemy "#FF0")
-    )
-  )
-)
-
-(defn bulletsRender [ctx state]
-  (doseq [bullet (:active (:bullets state))] 
-    (drawSquare ctx bullet "#000")
-  )
-)
-
-(defn playerRender [ctx state]
-  (let [player (:player state)]
-    (drawSquare ctx player "#F00")
-  )
-)
-</code></pre>
-
+<span class="list">(<span class="title">defn</span><span class="body"> playerRender [ctx state]
+  <span class="list">(<span class="title">let</span><span class="body"> [player <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>]
+    <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx player <span class="string">"#F00"</span>)</span></span>
+  )</span></span>
+)</span></span></code></pre>
 <p>In other thoughts, these functions are all the same apart from the colour of the rect, it seems a bit daft to me, how about</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> renderRects [ctx rects colour]
+  <span class="list">(<span class="title">doseq</span><span class="body"> [rect rects] 
+    <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx enemy colour)</span></span>
+  )</span></span>
+)</span></span>
 
-<pre><code>(defn renderRects [ctx rects colour]
-  (doseq [rect rects] 
-    (drawSquare ctx enemy colour)
-  )
-)
+<span class="list">(<span class="title">defn</span><span class="body"> enemiesRender [ctx state]
+  <span class="list">(<span class="title">renderRects</span><span class="body"> ctx <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span> <span class="string">"#FF0"</span>)</span></span>
+)</span></span>
 
-(defn enemiesRender [ctx state]
-  (renderRects ctx (:enemies state) "#FF0")
-)
+<span class="list">(<span class="title">defn</span><span class="body"> bulletsRender [ctx state]
+  <span class="list">(<span class="title">renderRects</span><span class="body"> ctx <span class="list">(<span class="title">get-in</span><span class="body"> state [<span class="keyword">:bullets</span> <span class="keyword">:active</span>])</span></span> <span class="string">"#000"</span>)</span></span>
+)</span></span>
 
-(defn bulletsRender [ctx state]
-  (renderRects ctx (get-in state [:bullets :active]) "#000")
-)
-
-(defn playerRender [ctx state]
-  (drawSquare ctx (:player state) "#F00")
-)
-</code></pre>
-
+<span class="list">(<span class="title">defn</span><span class="body"> playerRender [ctx state]
+  <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span> <span class="string">"#F00"</span>)</span></span>
+)</span></span></code></pre>
 <p>Keeping the number of data structures to a minimum and re-using tiny little functions seems to be a thing in these parts.</p>
-
 <p><strong>Naming clojure constructs</strong></p>
-
-<p>I've been a naughy boy and stuck to my JavaScript ways of doing things with the camelCase all up in the show.</p>
-
+<p>I&#39;ve been a naughy boy and stuck to my JavaScript ways of doing things with the camelCase all up in the show.</p>
 <p>Turns out that Clojure fiends prefer hyphenation-on-their-names and I can kinda get behind that.</p>
-
-<p>I'll also take the opportunity to formally start using 'rect' everywhere instead a combination of  'square' and 'rect' etc, and do a general tidy up of names.</p>
-
-<p>I'll not show them all, but in essence </p>
-
-<pre><code>(defn bulletsRender [ctx state]
-  (renderRects ctx (get-in state [:bullets :active]) "#000")
-)
-</code></pre>
-
+<p>I&#39;ll also take the opportunity to formally start using &#39;rect&#39; everywhere instead a combination of  &#39;square&#39; and &#39;rect&#39; etc, and do a general tidy up of names.</p>
+<p>I&#39;ll not show them all, but in essence </p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> bulletsRender [ctx state]
+  <span class="list">(<span class="title">renderRects</span><span class="body"> ctx <span class="list">(<span class="title">get-in</span><span class="body"> state [<span class="keyword">:bullets</span> <span class="keyword">:active</span>])</span></span> <span class="string">"#000"</span>)</span></span>
+)</span></span></code></pre>
 <p>Will become</p>
-
-<pre><code>(defn render-bullets [ctx state]
-  (render-rects ctx (get-in state [:bullets :active]) "#000")
-)
-</code></pre>
-
-<p>And so on (so don't get confused in latter entries where the names of things have changed!)</p>
-
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> render-bullets [ctx state]
+  <span class="list">(<span class="title">render-rects</span><span class="body"> ctx <span class="list">(<span class="title">get-in</span><span class="body"> state [<span class="keyword">:bullets</span> <span class="keyword">:active</span>])</span></span> <span class="string">"#000"</span>)</span></span>
+)</span></span></code></pre>
+<p>And so on (so don&#39;t get confused in latter entries where the names of things have changed!)</p>
 <p>The only downside to this arrangement is ctrl-p is now broken in vim for method names, this is a chance for the Emacs people to point and laugh at me.</p>
-
 <p><strong>Parenthesis white space</strong></p>
-
-<p>I'm getting little value from new-lining my parentheses.</p>
-
-<pre><code>(defn update-state [state]
-  (update-bullets
-    (update-player
-      (update-enemies
-        (update-direction state)
-      )
-    )
-  )
-)
-</code></pre>
-
-<p>When re-factoring or moving code around, I'm using the vim shortcuts </p>
-
+<p>I&#39;m getting little value from new-lining my parentheses.</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> update-state [state]
+  <span class="list">(<span class="title">update-bullets</span><span class="body">
+    <span class="list">(<span class="title">update-player</span><span class="body">
+      <span class="list">(<span class="title">update-enemies</span><span class="body">
+        <span class="list">(<span class="title">update-direction</span><span class="body"> state)</span></span>
+      )</span></span>
+    )</span></span>
+  )</span></span>
+)</span></span></code></pre>
+<p>When re-factoring or moving code around, I&#39;m using the vim shortcuts </p>
 <ul>
 <li>vi(</li>
 <li>va(</li>
 <li>ci(</li>
 <li>ca(</li>
 </ul>
-
 <p>And so on, and actually it would be easier if I could just use left and right to move to the brace I want to grab the contents of.</p>
-
-<p>So, I'm going to sort that out too and go with</p>
-
-<pre><code>(defn update-state [state]
-  (update-bullets
-    (update-player
-      (update-enemies
-        (update-direction state)))))
-</code></pre>
-
-<p>Gasp. Radical. This will reduce my vertical space usage and allow me to see more context on my screen (I'm a k+r person in C#/JS etc so I'm totally up in this way of doing things)</p>
-
+<p>So, I&#39;m going to sort that out too and go with</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> update-state [state]
+  <span class="list">(<span class="title">update-bullets</span><span class="body">
+    <span class="list">(<span class="title">update-player</span><span class="body">
+      <span class="list">(<span class="title">update-enemies</span><span class="body">
+        <span class="list">(<span class="title">update-direction</span><span class="body"> state)</span></span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
+<p>Gasp. Radical. This will reduce my vertical space usage and allow me to see more context on my screen (I&#39;m a k+r person in C#/JS etc so I&#39;m totally up in this way of doing things)</p>
 <p>The fully tidied up source code can be found at <a href="https://github.com/robashton/clojure-spaceinvaders/blob/d7df1f4671ffe86dd2391d368e7b0169ab263fae/game.cljs">this snapshot on Github</a> if you want to catch up with where I am so far.</p>
-
 <p>With this, I can go and look at collision detection!</p>

@@ -2,6 +2,7 @@
   <head>
     <title id="title">Evented Github Adventure - Crossing the streams to gain real insights</title>
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
     <link href='http://fonts.googleapis.com/css?family=Libre+Baskerville' rel='stylesheet' type='text/css'>
     <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
     <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
@@ -28,7 +29,6 @@
       <h1 id="post-title">Evented Github Adventure - Crossing the streams to gain real insights</h1>
       <h6>Published on <span class="date">2013-5-13</span></h6>
       <div id="post"><p>Carrying on in the EventStore series...</p>
-
 <ul>
 <li><a href="/entries/playing-with-the-eventstore.html">Introduction to the EventStore</a></li>
 <li><a href="/entries/pushing-data-into-streams-in-the-eventstore.html">Pushing data into the EventStore</a></li>
@@ -41,106 +41,82 @@
 <li><a href="/entries/evented-github-adventure---temporal-queries,-who-doesnt-trust-their-hardware.html">Temporal queries in the event store</a></li>
 <li>Projections from multiple streams</li>
 </ul>
-
-<p>It's not enough to just create a <a href="/entries/evented-github-adventure---temporal-queries,-who-doesnt-trust-their-hardware.html">stream of 'events' from correlated actions over time</a>, although that <em>is</em> super cool, what we want to do is then use that stream to tell us something interesting about the activity of developers on Github.</p>
-
+<p>It&#39;s not enough to just create a <a href="/entries/evented-github-adventure---temporal-queries,-who-doesnt-trust-their-hardware.html">stream of &#39;events&#39; from correlated actions over time</a>, although that <em>is</em> super cool, what we want to do is then use that stream to tell us something interesting about the activity of developers on Github.</p>
 <p>Like, given that we have this information about paranoid pushes, how do they stack up as a percentage to pushes overall when broken down by language?</p>
-
 <p><em>Problem</em>: This information is in completely different streams.</p>
+<p>Not to worry, this is where the Event Store&#39;s ability to re-partition and consume streams in a variety of ways comes to the rescue once more, want to consume the events from two different streams? Not a problem</p>
+<pre><code><span class="function"><span class="title">fromStreams</span><span class="params">([ <span class="string">"github"</span>, <span class="string">"paranoidpushes"</span> ])</span>
+   .<span class="title">when</span><span class="params">(<span class="tuple">{
 
-<p>Not to worry, this is where the Event Store's ability to re-partition and consume streams in a variety of ways comes to the rescue once more, want to consume the events from two different streams? Not a problem</p>
-
-<pre><code>fromStreams([ "github", "paranoidpushes" ])
-   .when({
-
-   })
-</code></pre>
-
-<p>First off, let's keep it simple and just find out as a percentage what the paranoid pushes are out of the overal Github stream.</p>
-
-<pre><code>fromStreams([ "github", "paranoidpushes" ])
-   .when({
-     "$init": function() {
-       return { paranoid: 0, total: 0 }
-     },
-     "ParanoidPush": function(state, ev) {
+   }</span>)</span></code></pre>
+<p>First off, let&#39;s keep it simple and just find out as a percentage what the paranoid pushes are out of the overal Github stream.</p>
+<pre><code><span class="function"><span class="title">fromStreams</span><span class="params">([ <span class="string">"github"</span>, <span class="string">"paranoidpushes"</span> ])</span>
+   .<span class="title">when</span><span class="params">(<span class="tuple">{
+     <span class="string">"$init"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+       return <span class="tuple">{ paranoid: <span class="number">0</span>, total: <span class="number">0</span> }</span>
+     }</span>,
+     <span class="string">"ParanoidPush"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
        state.paranoid++
-     },
-     "PushEvent": function(state, ev) {
+     }</span>,
+     <span class="string">"PushEvent"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
        state.total++
-     }
-   })
-</code></pre>
-
-<p>So yeah, er - that was stupidly easy, I didn't even have to think about that one, we just get all the events from those streams as a unified collection and were able to generate stats from these.</p>
-
+     }</span>
+   })</code></pre>
+<p>So yeah, er - that was stupidly easy, I didn&#39;t even have to think about that one, we just get all the events from those streams as a unified collection and were able to generate stats from these.</p>
 <p>What does the result look like?</p>
-
-<pre><code>{"paranoid":181423,"total": 2272796}
-</code></pre>
-
-<p>So, in fact around 8% of all pushes to Github happen within 2 minutes of the previous one - that's actually quite high - and my guess is that these are either people rectifying mistakes in previous commits (actually, there's an idea for another projection) or people who are new to git.</p>
-
-<p>Let's generate a result object by language and see what we get</p>
-
-<pre><code>function getPerLanguageState(state, ev) {
-  var language = getLanguageFromEvent(ev)
-  var langState = state[language]
-  if(!langState) {
-    langState = { paranoid: 0, total: 0 }
+<pre><code>{"<span class="attribute">paranoid</span>":<span class="value"><span class="number">181423</span></span>,"<span class="attribute">total</span>": <span class="value"><span class="number">2272796</span>}</span></code></pre>
+<p>So, in fact around 8% of all pushes to Github happen within 2 minutes of the previous one - that&#39;s actually quite high - and my guess is that these are either people rectifying mistakes in previous commits (actually, there&#39;s an idea for another projection) or people who are new to git.</p>
+<p>Let&#39;s generate a result object by language and see what we get</p>
+<pre><code><span class="function"><span class="keyword">function</span> <span class="title">getPerLanguageState</span><span class="params">(state, ev)</span> {</span>
+  <span class="keyword">var</span> language = getLanguageFromEvent(ev)
+  <span class="keyword">var</span> langState = state[language]
+  <span class="keyword">if</span>(!langState) {
+    langState = { paranoid: <span class="number">0</span>, total: <span class="number">0</span> }
     state[language] = langState
   }
-  return langState
+  <span class="keyword">return</span> langState
 }
 
-function getLanguageFromEvent(ev) {
-  if(ev.body.repo)
-    return ev.body.repo.language
-  if(ev.body.first)
-    return ev.body.first.body.repo.language
+<span class="function"><span class="keyword">function</span> <span class="title">getLanguageFromEvent</span><span class="params">(ev)</span> {</span>
+  <span class="keyword">if</span>(ev.body.repo)
+    <span class="keyword">return</span> ev.body.repo.language
+  <span class="keyword">if</span>(ev.body.first)
+    <span class="keyword">return</span> ev.body.first.body.repo.language
 }
 
-fromStreams([ "github", "paranoidpushes" ])
+fromStreams([ <span class="string">"github"</span>, <span class="string">"paranoidpushes"</span> ])
   .when({
-   "$init": function() {
-     return {}
+   <span class="string">"$init"</span>: <span class="keyword">function</span>() {
+     <span class="keyword">return</span> {}
    },
-   "ParanoidPush": function(state, ev) {
-     var langState = getPerLanguageState(state, ev)
+   <span class="string">"ParanoidPush"</span>: <span class="keyword">function</span>(state, ev) {
+     <span class="keyword">var</span> langState = getPerLanguageState(state, ev)
      langState.paranoid++
-     return state
+     <span class="keyword">return</span> state
    },
-   "PushEvent": function(state, ev) {
-     var langState = getPerLanguageState(state, ev)
+   <span class="string">"PushEvent"</span>: <span class="keyword">function</span>(state, ev) {
+     <span class="keyword">var</span> langState = getPerLanguageState(state, ev)
      langState.total++
-     return state
+     <span class="keyword">return</span> state
    }
-  })
-</code></pre>
-
+  })</code></pre>
 <p>There is a lot to take in here, but we can see</p>
-
 <ul>
 <li>I can use custom functions in my projection definition to break down the work</li>
 <li>The custom functions simply work out what language my event is</li>
 <li>The custom functions return a per-language state object</li>
 <li>The projection just adds to the values in that per-language state object</li>
 </ul>
-
 <p>Anyway, the results of this?</p>
-
 <div id="notscaled"></div>
 
 <p>And scaled</p>
-
 <div id="scaled"></div>
 
-<p>So the old school Java and C++ developers can't get enough of that push-based action,  with nearly 16% of their pushes happening within a couple of minutes of their previous push.</p>
 
-<p>Matlab too (presumably they're not doing CI to heroku), maybe they're just worried about their university computer sessions crashing or something.</p>
-
+<p>So the old school Java and C++ developers can&#39;t get enough of that push-based action,  with nearly 16% of their pushes happening within a couple of minutes of their previous push.</p>
+<p>Matlab too (presumably they&#39;re not doing CI to heroku), maybe they&#39;re just worried about their university computer sessions crashing or something.</p>
 <p>Not terribly interesting results, but a good example of when it makes sense to combine two streams from the EventStore together.</p>
-
 <script type="text/javascript" src="/d3.v2.js"></script>
 <script type="text/javascript">
 
@@ -259,7 +235,9 @@ var data =
          .attr("y", function(d, i) { return 370 - (280 * scale(d.state.percentage)) })
          .attr("width", 640 / (filteredData.length + 1))
          .attr("height", function(d, i) { return 280 * scale(d.state.percentage) })
-</script></div>
+</script>
+
+</div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>

@@ -1,120 +1,82 @@
-<p>Being able to <a href="/entries/pushing-data-into-streams-in-the-eventstore.html">shove events in and out</a> is great for our event sourced apps, but actually - if we have these streams, it's really useful to be able to consistently manipulate the events as they come in and either query those events or re-organise them so they can be queried.</p>
-
-<p>To do this, we have the notion of projections, which are chunks of code that can be executed over a stream (with persisted state) as events are added to it. Now, in reality this isn't actually too different to what we'd be doing outside the event store when building up view models, and I foresee lots of bad things being done by people are the line between these different ways of reading streams are blurred and fought over.</p>
-
-<p>I'm actually quite interested in these projections as a way of building up state for reports/charts, or re-partitioning into streams for different consumers - let's have a look how the most basic of these could work. </p>
-
-<p>Let's say I've got a few events in the general structure of</p>
-
-<pre><code>{
-  EventType: "PonyJumped",
+<p>Being able to <a href="/entries/pushing-data-into-streams-in-the-eventstore.html">shove events in and out</a> is great for our event sourced apps, but actually - if we have these streams, it&#39;s really useful to be able to consistently manipulate the events as they come in and either query those events or re-organise them so they can be queried.</p>
+<p>To do this, we have the notion of projections, which are chunks of code that can be executed over a stream (with persisted state) as events are added to it. Now, in reality this isn&#39;t actually too different to what we&#39;d be doing outside the event store when building up view models, and I foresee lots of bad things being done by people are the line between these different ways of reading streams are blurred and fought over.</p>
+<p>I&#39;m actually quite interested in these projections as a way of building up state for reports/charts, or re-partitioning into streams for different consumers - let&#39;s have a look how the most basic of these could work. </p>
+<p>Let&#39;s say I&#39;ve got a few events in the general structure of</p>
+<pre><code><span class="rules">{
+  <span class="rule"><span class="attribute">EventType</span>:<span class="value"> <span class="string">"PonyJumped"</span>,
   Data: {
-    Pony: "Derpy Hooves",
-    Height: 10,
-    Distance: 13
-  }
-}
-</code></pre>
-
+    Pony: <span class="string">"Derpy Hooves"</span>,
+    Height: <span class="number">10</span>,
+    Distance: <span class="number">13</span>
+  }</span></span></span>
+}</code></pre>
 <p>and</p>
-
-<pre><code>{
-  EventType: "PonySpoke",
+<pre><code><span class="rules">{
+  <span class="rule"><span class="attribute">EventType</span>:<span class="value"> <span class="string">"PonySpoke"</span>,
   Data: {
-    Sentence: "This is the best day ever",
-    Pony: "Pinkie Pie"
-  }
-}
-</code></pre>
-
-<p>And I'm putting all of these events into a single stream <em>ponies</em></p>
-
-<p>Let's say that I've thrown a few hundred thousand of these events through the event store and I want to know something really basic, like how many times the ponies in my world have jumped since time began.</p>
-
-<p>There is a Web UI available for managing projections in the event store (by default available at 127.0.0.1:2113). This is still subject to change though so I'll just be describing the ideas behind this concept.</p>
-
+    Sentence: <span class="string">"This is the best day ever"</span>,
+    Pony: <span class="string">"Pinkie Pie"</span>
+  }</span></span></span>
+}</code></pre>
+<p>And I&#39;m putting all of these events into a single stream <em>ponies</em></p>
+<p>Let&#39;s say that I&#39;ve thrown a few hundred thousand of these events through the event store and I want to know something really basic, like how many times the ponies in my world have jumped since time began.</p>
+<p>There is a Web UI available for managing projections in the event store (by default available at 127.0.0.1:2113). This is still subject to change though so I&#39;ll just be describing the ideas behind this concept.</p>
 <p>There are some attributes of a projection that we can choose when creating a projection via HTTP or the UI</p>
-
 <ul>
-<li>Name: This is the name of the projection, I'll use this to look up the state</li>
+<li>Name: This is the name of the projection, I&#39;ll use this to look up the state</li>
 <li>Source: This is the code to be executed</li>
 <li>Emit Enabled: Projections can emit (or link) events if this is enabled</li>
 <li>Enabled: Is this projection going to run?</li>
 </ul>
-
 <p>My options</p>
-
 <ul>
-<li>Name: "PonyJumpCount"</li>
+<li>Name: &quot;PonyJumpCount&quot;</li>
 <li>Source: TBC</li>
-<li>Emit Enabled: Leaving this false (we'll cover usage of this later)</li>
+<li>Emit Enabled: Leaving this false (we&#39;ll cover usage of this later)</li>
 <li>Enabled: Yes please!</li>
 </ul>
-
-<p>Now for the source, we'll start with the most basic projection which looks like this:</p>
-
-<pre><code>fromAll()
-  .whenAny(function(state,event) { 
+<p>Now for the source, we&#39;ll start with the most basic projection which looks like this:</p>
+<pre><code><span class="function"><span class="title">fromAll</span><span class="params">()</span>
+  .<span class="title">whenAny</span><span class="params">(<span class="keyword">fun</span><span class="function_name">ction</span>(state,event) <span class="tuple">{ 
      return null; 
-  });
-</code></pre>
-
-<p>Basically, we have to select which streams we're going to be reading our events from, that "fromAll" bit means we're going to be reading from all of the streams, I'm going to go ahead and change that to "fromStream" and select our "ponies" stream.</p>
-
-<pre><code>fromStream("ponies")
-  .whenAny(function(state,event) { 
+  }</span>);</code></pre>
+<p>Basically, we have to select which streams we&#39;re going to be reading our events from, that &quot;fromAll&quot; bit means we&#39;re going to be reading from all of the streams, I&#39;m going to go ahead and change that to &quot;fromStream&quot; and select our &quot;ponies&quot; stream.</p>
+<pre><code><span class="function"><span class="title">fromStream</span><span class="params">(<span class="string">"ponies"</span>)</span>
+  .<span class="title">whenAny</span><span class="params">(<span class="keyword">fun</span><span class="function_name">ction</span>(state,event) <span class="tuple">{ 
      return null; 
-  });
-</code></pre>
-
-<p>How about that next bit "whenAny", well we've already matched which stream we want events from, well this is the bit we get to use to select which events from that stream we're interested in - "whenAny" just means "all the events in the stream".</p>
-
-<p>I'm going to go ahead and change that to a when, which takes in a map of the events we're interested in and the callback to process the event with (pattern-matching on the EventType)</p>
-
-<pre><code>fromStream("ponies")
-  .when({
-    "PonyJumped": function(state, event) {
+  }</span>);</code></pre>
+<p>How about that next bit &quot;whenAny&quot;, well we&#39;ve already matched which stream we want events from, well this is the bit we get to use to select which events from that stream we&#39;re interested in - &quot;whenAny&quot; just means &quot;all the events in the stream&quot;.</p>
+<p>I&#39;m going to go ahead and change that to a when, which takes in a map of the events we&#39;re interested in and the callback to process the event with (pattern-matching on the EventType)</p>
+<pre><code><span class="function"><span class="title">fromStream</span><span class="params">(<span class="string">"ponies"</span>)</span>
+  .<span class="title">when</span><span class="params">(<span class="tuple">{
+    <span class="string">"PonyJumped"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, event) <span class="tuple">{
       return null;
-    })
-</code></pre>
-
-<p>Now for that callback - we have "state" and "event", the former being the state we're building up for this projection, and the latter being the event we're going to be adding to that state.</p>
-
-<p>To begin with, we haven't actually got any state, but we can rectify that by chucking in an "$init" handler (anything starting with a dollar is something built in to the event store)</p>
-
-<pre><code>fromStream("ponies")
-  .when({
-    $init: function() {
-      return { count: 0 }
-    },
-    "PonyJumped": function(state, event) {
+    }</span>)</code></pre>
+<p>Now for that callback - we have &quot;state&quot; and &quot;event&quot;, the former being the state we&#39;re building up for this projection, and the latter being the event we&#39;re going to be adding to that state.</p>
+<p>To begin with, we haven&#39;t actually got any state, but we can rectify that by chucking in an &quot;$init&quot; handler (anything starting with a dollar is something built in to the event store)</p>
+<pre><code><span class="function"><span class="title">fromStream</span><span class="params">(<span class="string">"ponies"</span>)</span>
+  .<span class="title">when</span><span class="params">(<span class="tuple">{
+    $init: <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+      return <span class="tuple">{ count: <span class="number">0</span> }</span>
+    }</span>,
+    <span class="string">"PonyJumped"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, event) <span class="tuple">{
       return state
-    }
-  })
-</code></pre>
-
+    }</span>
+  })</code></pre>
 <p>And now, the actual bit of code for building up our projection</p>
-
-<pre><code>fromStream("ponies")
-   .when({
-        $init: function() {
-           return { count: 0 }
-        },
-        "PonyJumped": function(state, event) {
-          state.count += 1
-        }
-  })
-</code></pre>
-
+<pre><code><span class="function"><span class="title">fromStream</span><span class="params">(<span class="string">"ponies"</span>)</span>
+   .<span class="title">when</span><span class="params">(<span class="tuple">{
+        $init: <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+           return <span class="tuple">{ count: <span class="number">0</span> }</span>
+        }</span>,
+        <span class="string">"PonyJumped"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, event) <span class="tuple">{
+          state.count += <span class="number">1</span>
+        }</span>
+  })</code></pre>
 <p>If I hit save and navigate to</p>
-
-<p><em>http://127.0.0.1:2113/projection/PonyJumpCount/state</em></p>
-
-<pre><code>{
-  count: 1337
-}
-</code></pre>
-
+<p><em><a href="http://127.0.0.1:2113/projection/PonyJumpCount/state">http://127.0.0.1:2113/projection/PonyJumpCount/state</a></em></p>
+<pre><code><span class="rules">{
+  <span class="rule"><span class="attribute">count</span>:<span class="value"> <span class="number">1337</span>
+}</span></span></span></code></pre>
 <p>I get some wonderful state.</p>
-
-<p>Well, that was very basic, next time we'll look at how we could generate one of these projections for each pony we have in our world.</p>
+<p>Well, that was very basic, next time we&#39;ll look at how we could generate one of these projections for each pony we have in our world.</p>

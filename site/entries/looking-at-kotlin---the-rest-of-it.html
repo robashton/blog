@@ -2,6 +2,7 @@
   <head>
     <title id="title">Looking at Kotlin - The rest of it</title>
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
     <link href='http://fonts.googleapis.com/css?family=Libre+Baskerville' rel='stylesheet' type='text/css'>
     <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
     <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
@@ -27,8 +28,7 @@
     <div id="blog-entry">
       <h1 id="post-title">Looking at Kotlin - The rest of it</h1>
       <h6>Published on <span class="date">2013-5-22</span></h6>
-      <div id="post"><p>I'm nearly done with my brief foray into Kotlin, but I've a few more things to cover</p>
-
+      <div id="post"><p>I&#39;m nearly done with my brief foray into Kotlin, but I&#39;ve a few more things to cover</p>
 <ul>
 <li><a href="/entries/looking-at-kotlin---a-few-notes-made.html">Looking at Kotlin - getting started</a></li>
 <li><a href="/entries/looking-at-kotlin---classes-and-functions.html">Looking at Kotkin - Classes and Functions</a></li>
@@ -36,172 +36,113 @@
 <li><a href="/entries/looking-at-kotlin---fun-with-functions.html">Looking at Kotlin - Fun with functions</a></li>
 <li>Looking at Kotlin - Wrapping it up</li>
 </ul>
-
 <p><strong>Inner classes</strong></p>
-
 <p>So, inner classes, a feature that both Java and C# have and each with their own set of issues.</p>
-
-<pre><code>class Outer() { 
-  private val bar : Int = 1 
-    class Nested() { 
-      fun foo() = 2 
+<pre><code><span class="class"><span class="keyword">class</span> <span class="title">Outer</span><span class="params">()</span> {</span> 
+  <span class="keyword">private</span> <span class="keyword">val</span> bar : Int = <span class="number">1</span> 
+    <span class="class"><span class="keyword">class</span> <span class="title">Nested</span><span class="params">()</span> {</span> 
+      fun foo() = <span class="number">2</span> 
     } 
-  } 
-</code></pre>
-
-<p>val demo = Outer.Inner().foo() // == 2</p>
-
+  } </code></pre>
+<p>   val demo = Outer.Inner().foo() // == 2</p>
 <p>No biggy here, except in Java there is a problem with nested class as explained in <a href="http://blog.jetbrains.com/kotlin/2013/02/kotlin-m5-is-out/">this blog entry</a> </p>
-
-<p><blockquote>
+  <blockquote>
     An inner class is a non-static nested class, i.e. it holds a reference to an instance of its outer. In Java nested classes are inner by default, and if you don’t want a reference to the outer, you make your class static. Sometimes it leads to memory leaks, when someone is holding a reference to an instance of an inner class without knowing that it also holds an outer instance.
-  </blockquote></p>
+  </blockquote>
 
-<p>Kotlin's solution is to say that you can't do this</p>
-
-<pre><code>class Outer() { 
-  private val bar : Int = 1 
-    class Nested() { 
+<p>Kotlin&#39;s solution is to say that you can&#39;t do this</p>
+<pre><code><span class="class"><span class="keyword">class</span> <span class="title">Outer</span><span class="params">()</span> {</span> 
+  <span class="keyword">private</span> <span class="keyword">val</span> bar : Int = <span class="number">1</span> 
+    <span class="class"><span class="keyword">class</span> <span class="title">Nested</span><span class="params">()</span> {</span> 
       fun doSomething() {
         println(bar)
       }
     } 
-  } 
-</code></pre>
-
-<p>Instead you have to mark the inner class with 'inner' to make this an explicit decision</p>
-
-<pre><code>class Outer() { 
-  private val bar : Int = 1 
-    inner class Nested() { 
+  } </code></pre>
+<p>Instead you have to mark the inner class with &#39;inner&#39; to make this an explicit decision</p>
+<pre><code><span class="class"><span class="keyword">class</span> <span class="title">Outer</span><span class="params">()</span> {</span> 
+  <span class="keyword">private</span> <span class="keyword">val</span> bar : Int = <span class="number">1</span> 
+    inner <span class="class"><span class="keyword">class</span> <span class="title">Nested</span><span class="params">()</span> {</span> 
       fun doSomething() {
         println(bar)
       }
     } 
-  } 
-</code></pre>
-
-<p>I have a better solution, <em>get rid of inner classes</em>, they're crap anyway and don't just cause problems in software, but apparently cause problems with language design too. Problem solved.</p>
-
+  } </code></pre>
+<p>I have a better solution, <em>get rid of inner classes</em>, they&#39;re crap anyway and don&#39;t just cause problems in software, but apparently cause problems with language design too. Problem solved.</p>
 <p><strong>null and elvis</strong></p>
-
 <p>Kotlin operates on the basis of things not being nullable by default, which is something I wholeheartedly support.</p>
-
-<pre><code>var derpy : Pony = null
-</code></pre>
-
-<p>This isn't allowed.</p>
-
-<p>We're allowed to say we <em>want</em> a nullable object, by adding a question mark to things.</p>
-
-<pre><code>var derpy : Pony? = null
-</code></pre>
-
-<p>This is sensible, and can't be faulted.</p>
-
-<p>Most legacy java APIs will return things that <em>can</em> be nullable, and in fact a lot of Java APIs do this in places where they really shouldn't. The compiler will complain about this though, so where I do</p>
-
+<pre><code><span class="keyword">var</span> derpy : Pony = <span class="keyword">null</span></code></pre>
+<p>This isn&#39;t allowed.</p>
+<p>We&#39;re allowed to say we <em>want</em> a nullable object, by adding a question mark to things.</p>
+<pre><code><span class="keyword">var</span> derpy : Pony? = <span class="keyword">null</span></code></pre>
+<p>This is sensible, and can&#39;t be faulted.</p>
+<p>Most legacy java APIs will return things that <em>can</em> be nullable, and in fact a lot of Java APIs do this in places where they really shouldn&#39;t. The compiler will complain about this though, so where I do</p>
 <p><em>Compiler error</em></p>
-
-<pre><code> var fileList = files.listFiles()
- var size = fileList.size
- println(size)
-</code></pre>
-
+<pre><code> var fileList = <span class="transposed_variable">files.</span>listFiles()
+ var <span class="built_in">size</span> = <span class="transposed_variable">fileList.</span><span class="built_in">size</span>
+ println(<span class="built_in">size</span>)</code></pre>
 <p><em>Compiler success</em></p>
-
-<pre><code> var fileList = files.listFiles()
- var size = fileList?.size
- println(size)
-</code></pre>
-
+<pre><code> var fileList = <span class="transposed_variable">files.</span>listFiles()
+ var <span class="built_in">size</span> = fileList?.<span class="built_in">size</span>
+ println(<span class="built_in">size</span>)</code></pre>
 <p>The elvis operator gets compiled down into</p>
-
-<pre><code> var fileList = files.listFiles()
- if(fileList != null) {
-   var size = fileList.size
+<pre><code> <span class="keyword">var</span> fileList = files.listFiles()
+ <span class="keyword">if</span>(fileList != <span class="keyword">null</span>) {
+   <span class="keyword">var</span> size = fileList.size
    println(size)
- }
-</code></pre>
-
-<p>This is a case where Kotlin "fixes" Java well, so I'm not complaining.</p>
-
+ }</code></pre>
+<p>This is a case where Kotlin &quot;fixes&quot; Java well, so I&#39;m not complaining.</p>
 <p><strong>Ranges</strong></p>
-
 <p>Syntastical sugar, but always a fan of this sort of thing</p>
-
-<pre><code>for (i in (1..4).reversed() step 2) print(i) // prints "42" 
-</code></pre>
-
-<p>I like this sort of thing, although it gets out of hand in languages like Ruby so I'd watch this stuff cautiously.</p>
-
+<pre><code><span class="keyword">for</span> (i <span class="keyword">in</span> (<span class="number">1.</span><span class="number">.4</span>).reversed() <span class="built_in">step</span> <span class="number">2</span>) print(i) <span class="comment">// prints "42" </span></code></pre>
+<p>I like this sort of thing, although it gets out of hand in languages like Ruby so I&#39;d watch this stuff cautiously.</p>
 <p><strong>Pattern matching</strong></p>
-
-<pre><code>when (x) { 
-  1 -&gt; print("x == 1") 
-  2 -&gt; print("x == 2") 
-  else -&gt; { // Note the block 
-    print("x is neither 1 nor 2") 
+<pre><code><span class="keyword">when</span> (<span class="keyword">x</span>) { 
+  <span class="number">1</span> -&gt; <span class="keyword">print</span>(<span class="string">"x == 1"</span>) 
+  <span class="number">2</span> -&gt; <span class="keyword">print</span>(<span class="string">"x == 2"</span>) 
+  <span class="keyword">else</span> -&gt; { <span class="regexp">//</span> Note the block 
+    <span class="keyword">print</span>(<span class="string">"x is neither 1 nor 2"</span>) 
   } 
-}
-</code></pre>
-
+}</code></pre>
 <p>or</p>
-
 <pre><code>when (tuple) { 
-  is #(1, 2) -&gt; ... 
-  is #(val a, 3) -&gt; print(a) // binding a to the first element of the tuple 
-  !is #(*, 1100) -&gt; ... 
-  else -&gt; ... 
-}
-</code></pre>
-
-<p>I'm a sucker for pattern matching constructs and I like this implementation because of how easy it is to declare those function literals.</p>
-
-<p>Also, it does intelligent casting for you as well, cutting own on some of the cruft you'd usually get with this sort of thing</p>
-
-<pre><code>function strangeFunction(a : Any) : Any {
+  is <span class="comment">#(1, 2) -&gt; ... </span>
+  is <span class="comment">#(val a, 3) -&gt; print(a) // binding a to the first element of the tuple </span>
+  !is <span class="comment">#(*, 1100) -&gt; ... </span>
+  <span class="keyword">else</span> -&gt; <span class="keyword">...</span> 
+}</code></pre>
+<p>I&#39;m a sucker for pattern matching constructs and I like this implementation because of how easy it is to declare those function literals.</p>
+<p>Also, it does intelligent casting for you as well, cutting own on some of the cruft you&#39;d usually get with this sort of thing</p>
+<pre><code><span class="function"><span class="keyword">function</span> <span class="title">strangeFunction</span><span class="params">(a : Any)</span> <span class="type">: Any</span> {</span>
   when(a) {
-    is Int -&gt;
-      return a + 5
-    is String -&gt;
-      return a + "5"
+    <span class="keyword">is</span> Int -&gt;
+      <span class="keyword">return</span> a + <span class="number">5</span>
+    <span class="keyword">is</span> String -&gt;
+      <span class="keyword">return</span> a + <span class="string">"5"</span>
   }
-}
-</code></pre>
-
+}</code></pre>
 <p>Nice</p>
-
 <p><strong>Round-up</strong></p>
-
-<p>The stated goals of Kotlin of "fixing Java" don't appear to have been met, there are holdovers from the language such as </p>
-
+<p>The stated goals of Kotlin of &quot;fixing Java&quot; don&#39;t appear to have been met, there are holdovers from the language such as </p>
 <ul>
 <li>The same old Java build cruft</li>
 <li>Over-complicated inheritance system</li>
 <li>Inner class madness</li>
 </ul>
-
 <p>And then some new ones</p>
-
 <ul>
 <li>confusing function constructs</li>
 <li>keyword heavy solutions</li>
 </ul>
-
-<p>It does 'fix'</p>
-
+<p>It does &#39;fix&#39;</p>
 <ul>
 <li>Null</li>
 </ul>
-
 <p>And it does compile to JavaScript which means some interesting library targeting opportunities.</p>
-
-<p>If I were "fixing a problem like Java", it would be by removing features that people shot themselves in the foot with often and by adding a few pieces of sugar to make things more readable in places.</p>
-
-<p>It wouldn't be by adding more key-words and more options for shooting yourself in the foot with, and it wouldn't be by defaulting to mutable and public :)</p>
-
-<p>That's pretty much all I have to say from my day of Kotlin, there are probably more things in there but I've got other stuff to do and not on the JVM!</p></div>
+<p>If I were &quot;fixing a problem like Java&quot;, it would be by removing features that people shot themselves in the foot with often and by adding a few pieces of sugar to make things more readable in places.</p>
+<p>It wouldn&#39;t be by adding more key-words and more options for shooting yourself in the foot with, and it wouldn&#39;t be by defaulting to mutable and public :)</p>
+<p>That&#39;s pretty much all I have to say from my day of Kotlin, there are probably more things in there but I&#39;ve got other stuff to do and not on the JVM!</p>
+</div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>

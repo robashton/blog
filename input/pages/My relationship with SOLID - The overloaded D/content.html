@@ -1,5 +1,4 @@
 <p>My week of SOLID: so far:</p>
-
 <ul>
 <li><a href="/entries/my-relationship-with-solid---starting-with-s.html">S</a>ingle responsibility</li>
 <li><a href="/entries/my-relationship-with-solid---the-big-o.html">O</a>pen closed</li>
@@ -7,114 +6,69 @@
 <li><a href="/entries/my-relationship-with-solid---seeing-i-to-i.html">I</a>nterface segregation</li>
 <li><a href="#">D</a>ependency inversion</li>
 </ul>
-
-<p>We've reached D, and that's where the wave we started with L finally hits the shore and materialises into something we can use.</p>
-
-<p><blockquote>
+<p>We&#39;ve reached D, and that&#39;s where the wave we started with L finally hits the shore and materialises into something we can use.</p>
+  <blockquote>
 A. High-level modules should not depend on low-level modules. Both should depend on abstractions.
-  </blockquote></p>
+  </blockquote>
 
-<p><blockquote>
+  <blockquote>
 B. Abstractions should not depend upon details. Details should depend upon abstractions.
-  </blockquote></p>
+  </blockquote>
 
-<p>We've been using that Stream example for the last couple of blog entries and we'll pull that out one last time as an example:</p>
-
+<p>We&#39;ve been using that Stream example for the last couple of blog entries and we&#39;ll pull that out one last time as an example:</p>
 <p>Stream is an example of a <em>low level module</em>, and we can consider IStream to be an abstraction of that, which <em>high level modules</em> can consume</p>
-
 <pre><code>public interface IStream {
   void Read();
   void Write();
   void Seek();
 }
 
-public class Stream : IStream { etc }
-</code></pre>
-
-<p>However, this is still not really an abstraction, the abstraction is a lie because it is an exact mirroring of the actual Stream object. (this is okay sometimes as we'll see below)</p>
-
+public <span class="class"><span class="keyword">class</span> <span class="title">Stream</span> :</span> IStream { etc }</code></pre>
+<p>However, this is still not really an abstraction, the abstraction is a lie because it is an exact mirroring of the actual Stream object. (this is okay sometimes as we&#39;ll see below)</p>
 <p><strong>How I like to code sometimes</strong></p>
+<p>I&#39;m writing a high level module, let&#39;s say it&#39;s a Controller, and it needs to construct a view model for return to the outside world for rendering in a View of some sort. </p>
+<p>Let&#39;s mix it up a little bit and do it in NodeJS like I&#39;m pretty much doing everywhere at the moment.</p>
+<pre><code><span class="transposed_variable">app.</span>get(<span class="string">'/ponies'</span>, <span class="keyword">function</span>(req, res) <span class="cell">{
 
-<p>I'm writing a high level module, let's say it's a Controller, and it needs to construct a view model for return to the outside world for rendering in a View of some sort. </p>
-
-<p>Let's mix it up a little bit and do it in NodeJS like I'm pretty much doing everywhere at the moment.</p>
-
-<pre><code>app.get('/ponies', function(req, res) {
-
-})
-</code></pre>
-
-<p>I don't like to typically make decisions in a long-term project about persistence until I know more about my use cases, and indeed in this case I don't even want to care that persistence is even happening - instead, what I'll usually do is say to the outside world, <em>I need something that houses ponies</em></p>
-
-<pre><code>module.exports = function(app, stable) {
-    app.get('/ponies', function(req, res) {
-      var ponies = stable.availablePonies(req.params.count, req.params.pagesize, req.params.page)
-      res.send(ponies)
+}</span>)</code></pre>
+<p>I don&#39;t like to typically make decisions in a long-term project about persistence until I know more about my use cases, and indeed in this case I don&#39;t even want to care that persistence is even happening - instead, what I&#39;ll usually do is say to the outside world, <em>I need something that houses ponies</em></p>
+<pre><code><span class="module"><span class="keyword">module</span>.exports = function<span class="container">(<span class="title">app</span>, <span class="title">stable</span>)</span> {
+    app.get<span class="container">('/<span class="title">ponies'</span>, <span class="title">function</span>(<span class="title">req</span>, <span class="title">res</span>)</span> {
+      var ponies = stable.availablePonies<span class="container">(<span class="title">req</span>.<span class="title">params</span>.<span class="title">count</span>, <span class="title">req</span>.<span class="title">params</span>.<span class="title">pagesize</span>, <span class="title">req</span>.<span class="title">params</span>.<span class="title">page</span>)</span>
+      res.send<span class="container">(<span class="title">ponies</span>)</span>
     })
-}
-</code></pre>
-
-<p>What is stable? Well, stable was instantiated by the Application Root and I don't care what stable is, a basic implementation (and indeed the one I start off with is)</p>
-
-<pre><code>stable = new InMemoryStable()
-</code></pre>
-
+}</code></pre>
+<p>What is stable? Well, stable was instantiated by the Application Root and I don&#39;t care what stable is, a basic implementation (and indeed the one I start off with is)</p>
+<pre><code><span class="setting">stable = <span class="value">new InMemoryStable()</span></span></code></pre>
 <p>This allows me to write features quickly, allows me to write functional tests that are relatively fast and allows me to iterate on these things quickly and defer the decision about persistence until it becomes necessary to deal with it (if it does at all)</p>
-
-<p>The important point here is that implicit interface being defined here (I'm in JS, we haven't got a real interface), let's call it "IHousePonies" has been dictated by the high level module and it doesn't care what the low level code behind that interface does.</p>
-
-<p>That's an inversion of responsibility and it's a good one too because it means I'm unlikely to run into violations of <a href="/entries/my-relationship-with-solid---seeing-i-to-i.html">ISP</a> because the high level module <em>requires</em> that the functionality on that interface be present on all implementations of that interface.</p>
-
-<p>This is close-ish to what some people would describe as using <a href="http://martinfowler.com/bliki/RoleInterface.html">role interfaces</a> which are worth reading up on. Certainly when I'm putting my software-engineering hat on and I'm working on a project where things are likely to be complex, there are likely to be quite a few moving parts and code quality is important I'll lean in this direction.</p>
-
+<p>The important point here is that implicit interface being defined here (I&#39;m in JS, we haven&#39;t got a real interface), let&#39;s call it &quot;IHousePonies&quot; has been dictated by the high level module and it doesn&#39;t care what the low level code behind that interface does.</p>
+<p>That&#39;s an inversion of responsibility and it&#39;s a good one too because it means I&#39;m unlikely to run into violations of <a href="/entries/my-relationship-with-solid---seeing-i-to-i.html">ISP</a> because the high level module <em>requires</em> that the functionality on that interface be present on all implementations of that interface.</p>
+<p>This is close-ish to what some people would describe as using <a href="http://martinfowler.com/bliki/RoleInterface.html">role interfaces</a> which are worth reading up on. Certainly when I&#39;m putting my software-engineering hat on and I&#39;m working on a project where things are likely to be complex, there are likely to be quite a few moving parts and code quality is important I&#39;ll lean in this direction.</p>
 <p><strong>How I like to code other times</strong></p>
-
-<p>If I'm in .NET helping build the standard ASP.NET MVC application that clients tend to want, I'll pull out RavenDB which has an in-memory mode and use its interfaces directly across my application. They are an abstraction already and that abstraction hides</p>
-
+<p>If I&#39;m in .NET helping build the standard ASP.NET MVC application that clients tend to want, I&#39;ll pull out RavenDB which has an in-memory mode and use its interfaces directly across my application. They are an abstraction already and that abstraction hides</p>
 <ul>
 <li>The use of RavenDB as an embedded database</li>
 <li>The use of RavenDB as a remote HTTP database</li>
 <li>The use of RavenDB as an in-memory database (for testing)</li>
 </ul>
-
 <p>Sticking our own abstraction around this makes very little sense, although if we have complicated domain logic we might end up with some coordinators between the controller and RavenDB.</p>
-
-<p>In most cases the effort of building up abstractions over time from our high level controllers won't really have much of a pay off.</p>
-
-<p>Of course, if elsewhere in that project I have the need to do something that isn't CRUD, then the use of my own abstractions will come into things because hiding the low level details from the high level consumers is still important. These abstractions can be built up over time as needed, rather than defining them all up front.</p>
-
-<p><em>Insert any other similar technologies into the above scenarios and it's pretty much the same</em></p>
-
+<p>In most cases the effort of building up abstractions over time from our high level controllers won&#39;t really have much of a pay off.</p>
+<p>Of course, if elsewhere in that project I have the need to do something that isn&#39;t CRUD, then the use of my own abstractions will come into things because hiding the low level details from the high level consumers is still important. These abstractions can be built up over time as needed, rather than defining them all up front.</p>
+<p><em>Insert any other similar technologies into the above scenarios and it&#39;s pretty much the same</em></p>
 <p><strong>How any of this can relate to testing</strong></p>
-
-<p>Well, if we're describing our dependencies on other modules as interfaces that we own, we can create in memory representations of those dependencies in the form of mocks, stubs or full-blown in-memory implementations (the latter being my personal preference in most cases)</p>
-
+<p>Well, if we&#39;re describing our dependencies on other modules as interfaces that we own, we can create in memory representations of those dependencies in the form of mocks, stubs or full-blown in-memory implementations (the latter being my personal preference in most cases)</p>
 <p>Having ownership of the interfaces that we rely on means we can dictate the desired behaviour via tests (or in some languages code contracts), and it means that the tests we write for our module can make assumptions about how the code behind that abstraction is going to work.</p>
-
 <p>Coupling this design principal with techniques such as <a href="http://en.wikipedia.org/wiki/Dependency_injection">Dependency Injection</a> means that we can make it very clear to the outside world from our module what abstractions we rely on, and allow the outside world to make decisions about what it is we are going to actually get.</p>
-
 <p><strong>How it can all go wrong - attack of the killer interfaces</strong></p>
-
 <p>What happens in a lot of projects is that we decide that the reason for DI is for testing, and isolation is really important so we need to have abstractions for everything, and almost everywhere we end up with</p>
-
-<pre><code>public class Something
-public interface ISomething
-</code></pre>
-
+<pre><code><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="id">Something</span></span>
+<span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="id">ISomething</span></span></code></pre>
 <p>Because every class needs an interface in order to be mockable - we forget to apply the inversion part of dependency inversion and instead we just focus on dependencies for our tests.</p>
-
-<p>This isn't helped by most popular IOC frameworks and their default convention that it'll automatically bind instances like the above for us.</p>
-
+<p>This isn&#39;t helped by most popular IOC frameworks and their default convention that it&#39;ll automatically bind instances like the above for us.</p>
 <p>This is awful, when we think about inverting the relationship between our high level modules and low level modules, we should be thinking about it in terms of pay-off and not dancing around for the sake of writing pointless low level tests for code with little real behaviour.</p>
-
 <p>We should be limiting our abstractions to the tune of rather than thinking about everything at the class level, thinking about things at the module level (which could be a collection of classes that talk to each other and require some external data/input)</p>
-
 <p><strong>SOLID - where did it all go wrong?</strong></p>
-
-<p>I could go on about this till the cows come home, but I don't want to because I've got some stuff to build, so I'll leave it here with a final note:</p>
-
-<p><strong>ALL</strong> of the SOLID principles are <em>great</em>, as a guideline for thinking about code as we write it, I'm not disagreeing with that at all. What I disagree with are statements that say "MUST" or "NOT ALLOWED" etc - because most developers are not master craftsmen (or whatever you call yourselves these days) and trying to make them write code as if they are is what leads to disaster.</p>
-
-<p>Most code should be allowed to grow organically, and caution should be exercised in making sure that we don't end up with that big ball of mud that everybody fears - absolutely. Trying to avoid that big ball of mud by blindly following the SOLID principles leads to the creation of a big haystack where the actual functionality is a needle hidden somewhere underneath.</p>
-
+<p>I could go on about this till the cows come home, but I don&#39;t want to because I&#39;ve got some stuff to build, so I&#39;ll leave it here with a final note:</p>
+<p><strong>ALL</strong> of the SOLID principles are <em>great</em>, as a guideline for thinking about code as we write it, I&#39;m not disagreeing with that at all. What I disagree with are statements that say &quot;MUST&quot; or &quot;NOT ALLOWED&quot; etc - because most developers are not master craftsmen (or whatever you call yourselves these days) and trying to make them write code as if they are is what leads to disaster.</p>
+<p>Most code should be allowed to grow organically, and caution should be exercised in making sure that we don&#39;t end up with that big ball of mud that everybody fears - absolutely. Trying to avoid that big ball of mud by blindly following the SOLID principles leads to the creation of a big haystack where the actual functionality is a needle hidden somewhere underneath.</p>
 <p><strong>fin</strong></p>

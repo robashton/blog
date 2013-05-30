@@ -5,10 +5,20 @@ var _ = require('underscore');
 var plates = require('plates');
 var common = require('./common');
 var RSS = require('rss');
-var markdown = require('node-markdown').Markdown;
+var markdown = require('marked')
+var highlighter = require('highlight.js')
+
+markdown.setOptions({
+  gfm: true,
+  highlight: function(code, lang) {
+    if(lang)
+      return highlighter.highlight(lang, code).value
+    else
+      return highlighter.highlightAuto(code).value
+  }
+});
 
 console.log('Rebuilding site')
-
 
 function compileStatics(cb) {
   var statictemplate = fs.readFileSync('./input/source/statictemplate.html', 'utf8');

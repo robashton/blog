@@ -2,6 +2,7 @@
   <head>
     <title id="title">This week, let's create a start-up - Day 5</title>
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
     <link href='http://fonts.googleapis.com/css?family=Libre+Baskerville' rel='stylesheet' type='text/css'>
     <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
     <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
@@ -28,11 +29,8 @@
       <h1 id="post-title">This week, let's create a start-up - Day 5</h1>
       <h6>Published on <span class="date">2013-3-19</span></h6>
       <div id="post"><p><strong>This post was written on Friday</strong></p>
-
-<p>Final day of "<a href="entries/this-week,-lets-create-a-start-up.html">Build a start-up in a week</a>", how did we do?</p>
-
-<p>Well, we deployed all assets to Amazon and ported across Sam's first customer from his original single-tenant system and everything works as expected. This work included lots of tidy up and "making nice jobs", very little faffing :)</p>
-
+<p>Final day of &quot;<a href="entries/this-week,-lets-create-a-start-up.html">Build a start-up in a week</a>&quot;, how did we do?</p>
+<p>Well, we deployed all assets to Amazon and ported across Sam&#39;s first customer from his original single-tenant system and everything works as expected. This work included lots of tidy up and &quot;making nice jobs&quot;, very little faffing :)</p>
 <ul>
 <li>Sticking jPlayer into an iFrame so Sam could skin it </li>
 <li>Write a migration script to take data from the original system and create an org for it in the new system</li>
@@ -41,79 +39,58 @@
 <li>Adding the series info on the sermon viewing page</li>
 <li>Styling</li>
 </ul>
-
 <p>Not very exciting, but all very trivial (even full text search)</p>
-
 <p><em>Migration script</em></p>
-
 <p>This just loaded the original data into memory as a string, de-serialized it into the old data types, copied it across into new data types, re-wrote ids across references and then called SaveChanges.</p>
-
-<p>Didn't even bother using any of the bulk support in RavenDB as the amount of data was trivial, the dumb solution is sometimes the best- <em>next</em></p>
-
+<p>Didn&#39;t even bother using any of the bulk support in RavenDB as the amount of data was trivial, the dumb solution is sometimes the best- <em>next</em></p>
 <p><em>Full text search</em></p>
-
 <p>YAY RAVENDB</p>
-
-<pre><code>    public class SermonSearchIndex : AbstractIndexCreationTask&lt;Sermon&gt;
+<pre><code>    <span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="id">SermonSearchIndex</span> : <span class="id">AbstractIndexCreationTask</span>&lt;<span class="id">Sermon</span>&gt;</span>
     {
-        public SermonSearchIndex()
+        <span class="keyword">public</span> SermonSearchIndex()
         {
             Map = docs =&gt; from doc in docs
                           select new
                               {
-                                  doc.OrganisationId,
-                                  doc.ServiceType,
-                                  doc.Title,
-                                  doc.SpeakerName,
-                                  doc.BibleReference,
-                                  doc.SermonDate,
-                                  doc.IsPublished
+                                  doc<span class="variable">.OrganisationId</span>,
+                                  doc<span class="variable">.ServiceType</span>,
+                                  doc<span class="variable">.Title</span>,
+                                  doc<span class="variable">.SpeakerName</span>,
+                                  doc<span class="variable">.BibleReference</span>,
+                                  doc<span class="variable">.SermonDate</span>,
+                                  doc<span class="variable">.IsPublished</span>
                               };
 
-            Index(x =&gt; x.ServiceType, FieldIndexing.Analyzed);
-            Index(x =&gt; x.Title, FieldIndexing.Analyzed);
-            Index(x =&gt; x.SpeakerName, FieldIndexing.Analyzed);
-            Index(x =&gt; x.BibleReference, FieldIndexing.Analyzed);
+            Index(x =&gt; x<span class="variable">.ServiceType</span>, FieldIndexing<span class="variable">.Analyzed</span>);
+            Index(x =&gt; x<span class="variable">.Title</span>, FieldIndexing<span class="variable">.Analyzed</span>);
+            Index(x =&gt; x<span class="variable">.SpeakerName</span>, FieldIndexing<span class="variable">.Analyzed</span>);
+            Index(x =&gt; x<span class="variable">.BibleReference</span>, FieldIndexing<span class="variable">.Analyzed</span>);
 
         }
     }
 }
 
 
-if (!string.IsNullOrEmpty(input.Search))
+<span class="keyword">if</span> (!string<span class="variable">.IsNullOrEmpty</span>(input<span class="variable">.Search</span>))
 {
-    query = query.Where(x =&gt; x.Title == input.Search || x.SpeakerName == input.Search || x.BibleReference == input.Search || x.ServiceType == input.Search);
-}
-</code></pre>
-
-<p>Can't argue with how easy that was, and it still all works with that original paging stuff I wrote on the first day.</p>
-
+    query = query<span class="variable">.Where</span>(x =&gt; x<span class="variable">.Title</span> == input<span class="variable">.Search</span> || x<span class="variable">.SpeakerName</span> == input<span class="variable">.Search</span> || x<span class="variable">.BibleReference</span> == input<span class="variable">.Search</span> || x<span class="variable">.ServiceType</span> == input<span class="variable">.Search</span>);
+}</code></pre>
+<p>Can&#39;t argue with how easy that was, and it still all works with that original paging stuff I wrote on the first day.</p>
 <p><em>Adding the series info for a sermon</em></p>
-
-<pre><code>var sermon = session.Load&lt;Sermon&gt;(id)
+<pre><code>var sermon = session.Load<span class="tag">&lt;<span class="title">Sermon</span>&gt;</span>(id)
 // if null etc
-var series = session.Load&lt;Series&gt;(sermon.SeriesId)
-</code></pre>
-
-<p>Remember that ISecureDocumentSession <a href="/entries/this-week,-lets-create-a-start-up---day-4.html">I wrote yesterday</a>? That made the Include stuff hard to cater for on a Load, so I just do two load calls instead - in a more evolved system we'd have to do this better somehow because it isn't going to scale across all the other usages that IDocumentSession can give us.</p>
-
-<p>Instead I'd look at hooking into RavenDB properly to do this security (either using its server-side security bundle, or adding appropriate extension points for this sort of filtering job on the client)</p>
-
-<p>For this sort of thing though, it's two remote calls rather than one on a fairly low traffic system so it should be okay for now.</p>
-
+var series = session.Load<span class="tag">&lt;<span class="title">Series</span>&gt;</span>(sermon.SeriesId)</code></pre>
+<p>Remember that ISecureDocumentSession <a href="/entries/this-week,-lets-create-a-start-up---day-4.html">I wrote yesterday</a>? That made the Include stuff hard to cater for on a Load, so I just do two load calls instead - in a more evolved system we&#39;d have to do this better somehow because it isn&#39;t going to scale across all the other usages that IDocumentSession can give us.</p>
+<p>Instead I&#39;d look at hooking into RavenDB properly to do this security (either using its server-side security bundle, or adding appropriate extension points for this sort of filtering job on the client)</p>
+<p>For this sort of thing though, it&#39;s two remote calls rather than one on a fairly low traffic system so it should be okay for now.</p>
 <p><em>Deploying</em></p>
-
-<p>Took 10 minutes to get onto Amazon thanks to Sam's efforts earlier in the week, and 5 minutes to replace the content on the old system with the script tag to import data from the new Truthvine system. (That's what the customer would have to do to use it)</p>
-
-<p>If that's not easy I don't know what is. </p>
-
+<p>Took 10 minutes to get onto Amazon thanks to Sam&#39;s efforts earlier in the week, and 5 minutes to replace the content on the old system with the script tag to import data from the new Truthvine system. (That&#39;s what the customer would have to do to use it)</p>
+<p>If that&#39;s not easy I don&#39;t know what is. </p>
 <p><em>Summary</em></p>
-
-<p>ASP.NET MVC is surprisingly tolerable if you leave your opinions and a bit of brain-matter at the door on your way in, certainly it's pretty fine at throwing together a quick cruddy application on top of something simple like RavenDB.  Oh, and Razor is a thing of beauty - well done Microsoft for getting at least one thing right this past few years (Aww, just kidding, you know I love you really)</p>
-
+<p>ASP.NET MVC is surprisingly tolerable if you leave your opinions and a bit of brain-matter at the door on your way in, certainly it&#39;s pretty fine at throwing together a quick cruddy application on top of something simple like RavenDB.  Oh, and Razor is a thing of beauty - well done Microsoft for getting at least one thing right this past few years (Aww, just kidding, you know I love you really)</p>
 <p>Mission accomplished and nothing in the solution is messy at all thanks to the no-crap atttitude of throwing things together that work in the simplest way possible.</p>
-
-<p>I wish Sam luck on his start-up adventure and hope he finds enough clients to make the effort worthwhile, he's got a good project on his hands and I hope I've given him the boost he needed to get going.</p></div>
+<p>I wish Sam luck on his start-up adventure and hope he finds enough clients to make the effort worthwhile, he&#39;s got a good project on his hands and I hope I&#39;ve given him the boost he needed to get going.</p>
+</div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>

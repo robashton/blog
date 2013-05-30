@@ -2,6 +2,7 @@
   <head>
     <title id="title">Evented Github Adventure - Temporal queries, who doesn't trust their hardware</title>
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
     <link href='http://fonts.googleapis.com/css?family=Libre+Baskerville' rel='stylesheet' type='text/css'>
     <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
     <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
@@ -28,7 +29,6 @@
       <h1 id="post-title">Evented Github Adventure - Temporal queries, who doesn't trust their hardware</h1>
       <h6>Published on <span class="date">2013-5-10</span></h6>
       <div id="post"><p>Carrying on in the EventStore series...</p>
-
 <ul>
 <li><a href="/entries/playing-with-the-eventstore.html">Introduction to the EventStore</a></li>
 <li><a href="/entries/pushing-data-into-streams-in-the-eventstore.html">Pushing data into the EventStore</a></li>
@@ -40,130 +40,90 @@
 <li><a href="/entries/evented-github-adventure---who-writes-the-sweariest-commit-messages.html">Who is the sweariest of them all?</a></li>
 <li>Temporal queries in the event store</li>
 </ul>
-
 <p>Doing <a href="/entries/evented-github-adventure---who-writes-the-sweariest-commit-messages.html">basic aggregations</a> is fairly easy, but actually one of the great selling points of the projections system inside the EventStore is how easy it is to do temporal queries.</p>
-
-<p>What is a temporal query? Well the example that <a href="http://twitter.com/gregyoung">Greg Young</a> always uses is "look for all the events in Twitter where somebody mentions starbucks, coffee, and happy within five minutes of each other"</p>
-
-<p>The clue there is "look for all the events", and we'll see why that is with this example.</p>
-
+<p>What is a temporal query? Well the example that <a href="http://twitter.com/gregyoung">Greg Young</a> always uses is &quot;look for all the events in Twitter where somebody mentions starbucks, coffee, and happy within five minutes of each other&quot;</p>
+<p>The clue there is &quot;look for all the events&quot;, and we&#39;ll see why that is with this example.</p>
 <p><strong>Git</strong></p>
-
-<p>Git is great, it's great because it's a DCVS and we can do everything locally and push to a remote repo when we feel we're ready.</p>
-
-<p>That said, some people don't do this, every commit is a push - maybe it's because they're not used to using a system where they can work offline, or maybe they're just paranoid because they're working on a laptop they don't trust.</p>
-
+<p>Git is great, it&#39;s great because it&#39;s a DCVS and we can do everything locally and push to a remote repo when we feel we&#39;re ready.</p>
+<p>That said, some people don&#39;t do this, every commit is a push - maybe it&#39;s because they&#39;re not used to using a system where they can work offline, or maybe they&#39;re just paranoid because they&#39;re working on a laptop they don&#39;t trust.</p>
 <p>Either way, this is a great example of a temporal query we could write.</p>
-
 <p><strong>A query on Git</strong></p>
-
-<p><em>"Find the instances of pushes within X minutes of each other from the same user and same repo", is there a trend across different languages for this kind of usage?</em></p>
-
-<p>I would <em>not</em> enjoy doing this in a standard database, but that's neither here nor there, let's see what we have.</p>
-
-<p>First off, the important question is "what is the unique combination we're looking for"</p>
-
+<p><em>&quot;Find the instances of pushes within X minutes of each other from the same user and same repo&quot;, is there a trend across different languages for this kind of usage?</em></p>
+<p>I would <em>not</em> enjoy doing this in a standard database, but that&#39;s neither here nor there, let&#39;s see what we have.</p>
+<p>First off, the important question is &quot;what is the unique combination we&#39;re looking for&quot;</p>
 <p>We care about <em>PushEvent</em>s for a unique <em>User</em> and <em>Repo</em>, so it makes sense that what we should do is <em>partition by UserAndRepo</em>  so we can easily keep state around per repo.</p>
-
 <p><strong>Partition by uniqueness</strong></p>
-
 <p>Here is how that might look:</p>
-
-<pre><code>fromStream('github')
-  .when({
-    "PushEvent": function(state, ev) {
+<pre><code><span class="function"><span class="title">fromStream</span><span class="params">('github')</span>
+  .<span class="title">when</span><span class="params">(<span class="tuple">{
+    <span class="string">"PushEvent"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
       var repo = ev.body.repo.full_name
-      linkTo('pushesbyrepo-' + repo, ev)
-    }
-  })
-</code></pre>
-
-<p>So far so good, I now have a stream per repo called "pushesbyrepo-{reponame}" - now what?</p>
-
-<p>Well, the key thing I mentioned above was that we're "looking for all the events where", this suggests that perhaps the thing we are looking for should be considered an event in its own right.</p>
-
+      <span class="function_name">linkTo</span>('pushesbyrepo-' + repo, ev)
+    }</span>
+  })</code></pre>
+<p>So far so good, I now have a stream per repo called &quot;pushesbyrepo-{reponame}&quot; - now what?</p>
+<p>Well, the key thing I mentioned above was that we&#39;re &quot;looking for all the events where&quot;, this suggests that perhaps the thing we are looking for should be considered an event in its own right.</p>
 <p>We can do this, we can for each of thse streams keep a note of when the last push was, and if we encounter another push within a certain time-frame, emit an event for this find of ours.</p>
-
 <p><strong>Running a projection per generated stream</strong></p>
-
 <p>How to run this for each stream? Enter fromCategory</p>
-
-<pre><code>fromCategory('pushesbyrepo')
-  foreachStream()
-  .when({
+<pre><code><span class="function"><span class="title">fromCategory</span><span class="params">('pushesbyrepo')</span>
+  <span class="title">foreachStream</span><span class="params">()</span>
+  .<span class="title">when</span><span class="params">(<span class="tuple">{
     $init: // etc
-  })
-</code></pre>
-
-<p>There is a built in projection in the EventStore that will automatically use the character '-' to sort a collection of streams into categories, and if we have</p>
-
+  }</span>)</span></code></pre>
+<p>There is a built in projection in the EventStore that will automatically use the character &#39;-&#39; to sort a collection of streams into categories, and if we have</p>
 <ul>
 <li>pushesbyrepo-bob</li>
 <li>pushesbyrepo-alice</li>
 <li>pushesbyrepo-derpy</li>
 </ul>
+<p>We&#39;ll get three categories to iterate through (bob, alice, and derpy)</p>
+<p><strong>Emit the events we&#39;re looking for</strong></p>
+<pre><code><span class="function"><span class="title">fromCategory</span><span class="params">('pushesbyrepo')</span>
+  <span class="title">foreachStream</span><span class="params">()</span>
+  .<span class="title">when</span><span class="params">(<span class="tuple">{
+    $init: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
+      return <span class="tuple">{}</span>
+    }</span>,
+    <span class="string">"PushEvent"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
+      if(state.last<span class="variable">Push</span>) <span class="tuple">{
+        var new<span class="variable">Date</span> = new <span class="variable">Date</span>(ev.body.created_at)
+          , last<span class="variable">Date</span> = new <span class="variable">Date</span>(state.last<span class="variable">Push</span>.body.created_at)
+          , difference = (new<span class="variable">Date</span>.<span class="function_name">getTime</span>() - last<span class="variable">Date</span>.<span class="function_name">getTime</span>()) / <span class="number">1000</span>
 
-<p>We'll get three categories to iterate through (bob, alice, and derpy)</p>
-
-<p><strong>Emit the events we're looking for</strong></p>
-
-<pre><code>fromCategory('pushesbyrepo')
-  foreachStream()
-  .when({
-    $init: function(state, ev) {
-      return {}
-    },
-    "PushEvent": function(state, ev) {
-      if(state.lastPush) {
-        var newDate = new Date(ev.body.created_at)
-          , lastDate = new Date(state.lastPush.body.created_at)
-          , difference = (newDate.getTime() - lastDate.getTime()) / 1000
-
-        if(difference &lt; 120) {
-          emit('paranoidpushes', "ParanoidPush", {
-            first: state.lastPush,
+        if(difference &lt; <span class="number">120</span>) <span class="tuple">{
+          <span class="function_name">emit</span>('paranoidpushes', <span class="string">"ParanoidPush"</span>, <span class="tuple">{
+            first: state.last<span class="variable">Push</span>,
             next: ev
-          })
-        }
+          }</span>)
+        }</span>
       }
-      state.lastPush = ev
+      state.last<span class="variable">Push</span> = ev
       return state
     }
-  })
-</code></pre>
-
-<p>Seems legit, simply keep the last PushEvent around at all times, when we get a new one, check the difference and emit an event if it's less than X minutes. NICE</p>
-
+  })</code></pre>
+<p>Seems legit, simply keep the last PushEvent around at all times, when we get a new one, check the difference and emit an event if it&#39;s less than X minutes. NICE</p>
 <p>Running this, I now have a stream at </p>
-
 <p><em>/streams/paranoidpushes</em> </p>
-
-<p>So, how many paranoid pushes have I had in the time period I've been sampling over? (roughly three hours at time of writing)</p>
-
-<pre><code>fromStream('paranoidpushes')
-  .when({
-    "$init": function(state, ev) {
-      return { count: 0 }
-    },
-    "ParanoidPush": function(state, ev) {
+<p>So, how many paranoid pushes have I had in the time period I&#39;ve been sampling over? (roughly three hours at time of writing)</p>
+<pre><code><span class="function"><span class="title">fromStream</span><span class="params">('paranoidpushes')</span>
+  .<span class="title">when</span><span class="params">(<span class="tuple">{
+    <span class="string">"$init"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
+      return <span class="tuple">{ count: <span class="number">0</span> }</span>
+    }</span>,
+    <span class="string">"ParanoidPush"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
       state.count++
-    }
-  })
-</code></pre>
-
+    }</span>
+  })</code></pre>
 <p>And the result?</p>
-
-<pre><code>{ count: 104533 }
-</code></pre>
-
-<p>Voila, that's an incredibly simply temporal query that just works and gives me the total number of pushes that happened within 2 minutes of each other to the same repository - and it's pretty easy too. We have two steps:</p>
-
+<pre><code><span class="rules">{ <span class="rule"><span class="attribute">count</span>:<span class="value"> <span class="number">104533</span> }</span></span></span></code></pre>
+<p>Voila, that&#39;s an incredibly simply temporal query that just works and gives me the total number of pushes that happened within 2 minutes of each other to the same repository - and it&#39;s pretty easy too. We have two steps:</p>
 <ul>
 <li>Push out events for each instance of some temporal correlation</li>
 <li>Aggregate on those events to get the result</li>
 </ul>
-
-<p>Now we have this, perhaps we can look at combining this data we have to work out how this strange use of git plays out across different language developers.</p></div>
+<p>Now we have this, perhaps we can look at combining this data we have to work out how this strange use of git plays out across different language developers.</p>
+</div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>

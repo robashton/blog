@@ -2,6 +2,7 @@
   <head>
     <title id="title">Streaming large values from LevelDB</title>
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
     <link href='http://fonts.googleapis.com/css?family=Libre+Baskerville' rel='stylesheet' type='text/css'>
     <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
     <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
@@ -27,42 +28,27 @@
     <div id="blog-entry">
       <h1 id="post-title">Streaming large values from LevelDB</h1>
       <h6>Published on <span class="date">2013-3-6</span></h6>
-      <div id="post"><p>We've uncovered that we can do <a href="/entries/basic-operations-with-leveldb.htm">atomic writes</a>, <a href="/entries/transactional-guarantees-on-top-of-leveldb.html">consistent reads</a> and <a href="/entries/writing-a-transaction-manager-on-top-of-leveldb.html">implement transactions</a> on top of LevelDB, but we've got another need in RavenDB which is that we have large objects (documents) inside RavenDB and we don't always want to load them into managed memory as a whole unit (instead, we want to stream them into a set of smaller objects)</p>
-
-<p>Why don't we want to load them into memory in one go? Because large objects can wreck havoc with the garbage collector (the large object heap), and we also have streaming APIs in RavenDB that allow us to limit this sort of thing that we'd like to honour.</p>
-
-<p>So, back to C++ as we answer the question "What about large objects inside LevelDB"?</p>
-
-<p>Looking at the APIs in our first entry, we can see that "Get" will load entire value into memory ala this:</p>
-
-<pre><code>db-&gt;Get(leveldb::ReadOptions(), key, &amp;document);
-</code></pre>
-
-<p>We <em>could</em> simply read bytes from this document (remember, it's an std::string) and marshal them through to C# bit by bit, but that means copying the whole document out of the store before doing this. This isn't a big deal as it's still completely on the native side at this point, but it's still an expense I'd prefer to skip if we're reading more than a few documents.</p>
-
-<p>That's where Slice comes in.</p>
-
+      <div id="post"><p>We&#39;ve uncovered that we can do <a href="/entries/basic-operations-with-leveldb.htm">atomic writes</a>, <a href="/entries/transactional-guarantees-on-top-of-leveldb.html">consistent reads</a> and <a href="/entries/writing-a-transaction-manager-on-top-of-leveldb.html">implement transactions</a> on top of LevelDB, but we&#39;ve got another need in RavenDB which is that we have large objects (documents) inside RavenDB and we don&#39;t always want to load them into managed memory as a whole unit (instead, we want to stream them into a set of smaller objects)</p>
+<p>Why don&#39;t we want to load them into memory in one go? Because large objects can wreck havoc with the garbage collector (the large object heap), and we also have streaming APIs in RavenDB that allow us to limit this sort of thing that we&#39;d like to honour.</p>
+<p>So, back to C++ as we answer the question &quot;What about large objects inside LevelDB&quot;?</p>
+<p>Looking at the APIs in our first entry, we can see that &quot;Get&quot; will load entire value into memory ala this:</p>
+<pre><code>db-&gt;Get(leveldb::ReadOptions(), key, &amp;document);</code></pre>
+<p>We <em>could</em> simply read bytes from this document (remember, it&#39;s an std::string) and marshal them through to C# bit by bit, but that means copying the whole document out of the store before doing this. This isn&#39;t a big deal as it&#39;s still completely on the native side at this point, but it&#39;s still an expense I&#39;d prefer to skip if we&#39;re reading more than a few documents.</p>
+<p>That&#39;s where Slice comes in.</p>
 <pre><code>  leveldb::Iterator* it = this-&gt;db-&gt;NewIterator(leveldb::ReadOptions());
-  for (it-&gt;Seek(start_key); it-&gt;Valid() &amp;&amp; it-&gt;key().ToString() &lt;= end_key; it-&gt;Next()) {
+  <span class="keyword">for</span> (it-&gt;Seek(start_key); it-&gt;Valid() &amp;&amp; it-&gt;key().ToString() &lt;= end_key; it-&gt;Next()) {
     Slice* slice = it-&gt;value();
 
-    // Do stuff with a slice
-  }
-</code></pre>
-
-<p>This is quite cool, LevelDB gives us the notion of a "Slice", which is merely a pointer to the beginning of the value, and the length of the value.</p>
-
-<p>A "Get" operation merely copies this data into an std::string, and calling slice->ToString() will do this as well.</p>
-
+    <span class="regexp">//</span> Do stuff with a slice
+  }</code></pre>
+<p>This is quite cool, LevelDB gives us the notion of a &quot;Slice&quot;, which is merely a pointer to the beginning of the value, and the length of the value.</p>
+<p>A &quot;Get&quot; operation merely copies this data into an std::string, and calling slice-&gt;ToString() will do this as well.</p>
 <p>What we can do is </p>
-
-<pre><code>char buffer[BUFFER_SIZE];
-memcpy(slice-&gt;data(), buffer, BUFFER_SIZE);
-</code></pre>
-
-<p>Rinse and repeat, we can actually do this within an enumerator and send appropriately sized chunks aross to C# to be processed without copying the whole thing out at once.  This could be useful when iterating over a set of documents, although most likely simply copying into the string and using string.c_str() to get the pointer to the copied data will give us easier code - we'll see how that works out when it comes to actually writing the C# we need.</p>
-
-<p>Anyway, now we just need support for secondary indexes, and for this I'll write a rudimentary document store.</p></div>
+<pre><code><span class="title">char</span> buffer[<span class="type">BUFFER_SIZE</span>];
+<span class="title">memcpy</span>(slice-&gt;<span class="typedef"><span class="keyword">data</span><span class="container">()</span>, buffer, <span class="type">BUFFER_SIZE</span>);</span></code></pre>
+<p>Rinse and repeat, we can actually do this within an enumerator and send appropriately sized chunks aross to C# to be processed without copying the whole thing out at once.  This could be useful when iterating over a set of documents, although most likely simply copying into the string and using string.c_str() to get the pointer to the copied data will give us easier code - we&#39;ll see how that works out when it comes to actually writing the C# we need.</p>
+<p>Anyway, now we just need support for secondary indexes, and for this I&#39;ll write a rudimentary document store.</p>
+</div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>

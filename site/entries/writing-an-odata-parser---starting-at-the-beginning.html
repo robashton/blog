@@ -2,6 +2,7 @@
   <head>
     <title id="title">Writing an OData parser - starting at the beginning</title>
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
     <link href='http://fonts.googleapis.com/css?family=Libre+Baskerville' rel='stylesheet' type='text/css'>
     <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
     <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
@@ -27,68 +28,53 @@
     <div id="blog-entry">
       <h1 id="post-title">Writing an OData parser - starting at the beginning</h1>
       <h6>Published on <span class="date">2013-4-5</span></h6>
-      <div id="post"><p>I'm going off what is specified in both the OData spec and the OData URI conventions document.</p>
-
-<p>This is a bit annoying, because it seems like URI conventions are just that, conventions - and people are free to do what they want (I haven't looked at the metadata spec yet so I'm not sure how discoverable this customisability is, I guess I'll get there during my time on this task)</p>
-
+      <div id="post"><p>I&#39;m going off what is specified in both the OData spec and the OData URI conventions document.</p>
+<p>This is a bit annoying, because it seems like URI conventions are just that, conventions - and people are free to do what they want (I haven&#39;t looked at the metadata spec yet so I&#39;m not sure how discoverable this customisability is, I guess I&#39;ll get there during my time on this task)</p>
 <p>What I think I can start with, is parsing the following basics</p>
-
 <ul>
-<li>The service root itself (http://example.com/service/odata.svc for example)</li>
+<li>The service root itself (<a href="http://example.com/service/odata.svc">http://example.com/service/odata.svc</a> for example)</li>
 <li>An entity at this root ( /model )</li>
 <li>An entity with a key ( /model(1) )</li>
 </ul>
-
-<p><strong>How I'll develop this</strong></p>
-
-<p>This is yet another task I'll probably write tests for as I go so I can document how far I've gotten and have a safety net as I no doubt make lots of mistakes.</p>
-
-<p>I'll copy and paste code from the old OData parser as I need it and as I write the tests to support it, in this even the legacy code will end up with coverage.</p>
-
+<p><strong>How I&#39;ll develop this</strong></p>
+<p>This is yet another task I&#39;ll probably write tests for as I go so I can document how far I&#39;ve gotten and have a safety net as I no doubt make lots of mistakes.</p>
+<p>I&#39;ll copy and paste code from the old OData parser as I need it and as I write the tests to support it, in this even the legacy code will end up with coverage.</p>
 <p>In this way, I hope to be able to hand this over to Rulemotion in its semi-complete state but with a nice document (the tests) explaining what is covered so far.</p>
-
 <p><strong>My first few tests</strong></p>
-
-<p>I'll not bother covering the order in which I do this, as it's pretty similar to how I did the JSON parser, except I can make a few more assumptions because I know a but more about how OMeta works.</p>
-
-<pre><code>function test(input, entry, expectation) {
-  describe("Parsing " + input, function() {
-    var parser = ODataParser.createInstance()
-    var result = parser.matchAll(input, entry)
-    expectation(result)
+<p>I&#39;ll not bother covering the order in which I do this, as it&#39;s pretty similar to how I did the JSON parser, except I can make a few more assumptions because I know a but more about how OMeta works.</p>
+<pre><code>function test(input, entry, expectation) <span class="tuple">{
+  <span class="function_name">describe</span>(<span class="string">"Parsing "</span> + input, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+    var parser = <span class="variable">ODataParser</span>.<span class="function_name">createInstance</span>()
+    var result = parser.<span class="function_name">matchAll</span>(input, en<span class="keyword">try</span>)
+    <span class="function_name">expectation</span>(result)
   });
 }
 
-test("/", "OData", function(result) {
-  it("Service root should have no model", function() {
-     assert.equal(result.resource, null)
-  })
+<span class="function_name">test</span>(<span class="string">"/"</span>, <span class="string">"OData"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>(result) <span class="tuple">{
+  <span class="function_name">it</span>(<span class="string">"Service root should have no model"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+     assert.<span class="function_name">equal</span>(result.resource, null)
+  }</span>)
 })
 
-test("/model", "OData", function(result) {
-  it("should have the resource specified", function() {
-     assert.equal(result.resource, 'model')
-  })
+<span class="function_name">test</span>(<span class="string">"/model"</span>, <span class="string">"OData"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>(result) <span class="tuple">{
+  <span class="function_name">it</span>(<span class="string">"should have the resource specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+     assert.<span class="function_name">equal</span>(result.resource, 'model')
+  }</span>)
 })
 
-test("/model(1)", "OData", function(result) {
-  it("should have the resource specified", function() {
-     assert.equal(result.resource, 'model')
-  })
-  it("should have the key specified for the source", function() {
-     assert.equal(result.key, '1')
-  })
-})
-</code></pre>
-
+<span class="function_name">test</span>(<span class="string">"/model(1)"</span>, <span class="string">"OData"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>(result) <span class="tuple">{
+  <span class="function_name">it</span>(<span class="string">"should have the resource specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+     assert.<span class="function_name">equal</span>(result.resource, 'model')
+  }</span>)
+  <span class="function_name">it</span>(<span class="string">"should have the key specified for the source"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+     assert.<span class="function_name">equal</span>(result.key, '<span class="number">1</span>')
+  }</span>)
+})</code></pre>
 <p>After the first couple of tests, setting up the parser etc was a ball-ache so I fixed it.</p>
-
-<p>I'm missing out the bit where I specify what the service root is, I'll come back to it later as I'm more interested in parsing the path itself.</p>
-
+<p>I&#39;m missing out the bit where I specify what the service root is, I&#39;ll come back to it later as I&#39;m more interested in parsing the path itself.</p>
 <p>This is what I wrote to support the above tests:</p>
-
 <pre><code>ometa ODataParser 
-  Number = &lt;digit+&gt;:d -&gt; parseInt(d, 10),
+  Number = <span class="xml"><span class="tag">&lt;<span class="title">digit+</span>&gt;</span>:d -&gt; parseInt(d, 10),
 
   OData = (
       PathSegment
@@ -105,52 +91,42 @@ test("/model(1)", "OData", function(result) {
       ,
 
   ResourcePart =
-    &lt;    (   letter
-      |    '_'
+    <span class="tag">&lt;    (    <span class="attribute">letter</span>
+      |    '<span class="attribute">_</span>'
       )+
-    &gt;:resourcePart
+    &gt;</span>:resourcePart
     -&gt; resourcePart.replace(new RegExp('_', 'g'), ' '),
 
   ResourceName =
-    &lt;    ResourcePart
-      (    '-'
-        ResourcePart
+    <span class="tag">&lt;    <span class="attribute">ResourcePart</span>
+      (    '<span class="attribute">-</span>'
+        <span class="attribute">ResourcePart</span>
       )*
-    &gt;
-}
-</code></pre>
-
+    &gt;</span>
+}</span></code></pre>
 <p>Things of note</p>
-
 <ul>
-<li>I'm currently returning the model from PathSegment as { resource: resource, key: key }, I'll end up making something else for this I think</li>
-<li>The "key" is optional, if it's not there then it will simply be undefined, this is what that question mark is for after those braces</li>
-<li>The ResourcePart and ResourceName are copied from the old code and simply convert underscores into spaces, I haven't bothered writing tests for this as I've not checked what ODatas rules are for entity names yet (It's likely to be a bit more complicated than "any text at all")</li>
+<li>I&#39;m currently returning the model from PathSegment as { resource: resource, key: key }, I&#39;ll end up making something else for this I think</li>
+<li>The &quot;key&quot; is optional, if it&#39;s not there then it will simply be undefined, this is what that question mark is for after those braces</li>
+<li>The ResourcePart and ResourceName are copied from the old code and simply convert underscores into spaces, I haven&#39;t bothered writing tests for this as I&#39;ve not checked what ODatas rules are for entity names yet (It&#39;s likely to be a bit more complicated than &quot;any text at all&quot;)</li>
 </ul>
-
 <p>This is all very rudimentary, now - looking at the URI conventions, they seem to support arbitrary paths into object relationships like so:</p>
-
-<pre><code>/model(1)/children(1)/otherchildren(1)/field
-</code></pre>
-
+<pre><code><span class="regexp">/model(1)/children(1)/otherchildren(1)/</span>field</code></pre>
 <p>This suggests I probably want to recurse in order to build up this sequence</p>
-
-<pre><code>test("/model(1)/child", "OData", function(result) {
-  it("should have the resource specified", function() {
-     assert.equal(result.resource, 'model')
-  })
-  it("should have the key specified for the resource", function() {
-     assert.equal(result.key, '1')
-  })
-  it("should have the child specified", function() {
-     assert.equal(result.resource.next, 'child')
-  })
-})
-</code></pre>
-
-<p>Not sure if this is an appropriate representation, but it'll do for now until I find out how we're going to be consuming this model.</p>
-
-<p>Having just arrived at the hotel and written this all on the boat, I'll defer having a look at how to do this until tomorrow, I've already passed the balmers peak.</p></div>
+<pre><code><span class="function"><span class="title">test</span><span class="params">(<span class="string">"/model(1)/child"</span>, <span class="string">"OData"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>(result) <span class="tuple">{
+  <span class="function_name">it</span>(<span class="string">"should have the resource specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+     assert.<span class="function_name">equal</span>(result.resource, 'model')
+  }</span>)
+  <span class="function_name">it</span>(<span class="string">"should have the key specified for the resource"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+     assert.<span class="function_name">equal</span>(result.key, '<span class="number">1</span>')
+  }</span>)
+  <span class="function_name">it</span>(<span class="string">"should have the child specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+     assert.<span class="function_name">equal</span>(result.resource.next, 'child')
+  }</span>)
+})</code></pre>
+<p>Not sure if this is an appropriate representation, but it&#39;ll do for now until I find out how we&#39;re going to be consuming this model.</p>
+<p>Having just arrived at the hotel and written this all on the boat, I&#39;ll defer having a look at how to do this until tomorrow, I&#39;ve already passed the balmers peak.</p>
+</div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>

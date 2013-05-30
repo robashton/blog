@@ -1,7 +1,5 @@
 <p>The final bit of our $filter feature is the ability to invoke a special function and compare the result of that to the rest of an expression.</p>
-
 <p>Again a reminder of where we are so far:</p>
-
 <ul>
 <li><a href="/entries/building-a-basic-json-parser-in-ometa.html">Learning OMeta through JSON</a></li>
 <li><a href="/entries/building-an-odata-parser-in-ometa.html">Introduction to the OData Parser</a></li>
@@ -12,83 +10,63 @@
 <li><a href="/entries/paging-support-in-our-odata-parser.html">Paging support in OData</a></li>
 <li><a href="/entries/our-odata-parser---looking-at-filterby.html">Filtering support in OData</a></li>
 <li><a href="/entries/recursive-expression-parsing-in-our-odata-filter-parser.html">Recursive query support in OData</a></li>
-<li><a href="/entries/these-are-not-the-results-you-are-looking-for---odata-parser.html">'Not' support for OData</a></li>
+<li><a href="/entries/these-are-not-the-results-you-are-looking-for---odata-parser.html">&#39;Not&#39; support for OData</a></li>
 <li><a href="/entries/adding-arithmetic-operators-to-our-odata-parser.html">Arithmetic operator support in OData</a></li>
 <li><a href="/entries/precedence-grouping,-you-first..-no-you-odata-parser.html">Precedence grouping in OData</a></li>
 </ul>
-
 <p><strong>Function calls look like this</strong></p>
-
-<pre><code>/Customers?$filter=substringof('Alfreds', CompanyName) eq true
-</code></pre>
-
-<p>In other words, they're a special piece of the expression which can take a list of expressions separated by commas</p>
-
-<p>I could hack this and just allow any function call, or I can explicitly name them all - which I'll do because it'll help with the highlighting in the editor that'll use this parser.</p>
-
-<p>I'll do the first one here, and then go and do the rest in a similar fashion because they're just the same thing over and over again!</p>
-
-<p>Our test for 'substringof'</p>
-
-<pre><code>test("/resource?$filterby=substringof('alfred', Product) eq 'cake'", "OData", function(result) {
-  it("A filter should be present", function() {
-     assert.notEqual(result.options.$filterby, null)
+<pre><code>/Customers?<span class="variable">$filter</span>=substringof(<span class="string">'Alfreds'</span>, CompanyName) eq <span class="literal">true</span></code></pre>
+<p>In other words, they&#39;re a special piece of the expression which can take a list of expressions separated by commas</p>
+<p>I could hack this and just allow any function call, or I can explicitly name them all - which I&#39;ll do because it&#39;ll help with the highlighting in the editor that&#39;ll use this parser.</p>
+<p>I&#39;ll do the first one here, and then go and do the rest in a similar fashion because they&#39;re just the same thing over and over again!</p>
+<p>Our test for &#39;substringof&#39;</p>
+<pre><code>test(<span class="string">"/resource?$filterby=substringof('alfred', Product) eq 'cake'"</span>, <span class="string">"OData"</span>, function(<span class="constant">result</span>) {
+  <span class="keyword">it</span>(<span class="string">"A filter should be present"</span>, function() {
+     assert.notEqual(<span class="constant">result</span>.options.$filterby, null)
   })
-  it("Filter should be an instance of 'eq'", function() {
-     assert.equal(result.options.$filterby[0], "eq")
+  <span class="keyword">it</span>(<span class="string">"Filter should be an instance of 'eq'"</span>, function() {
+     assert.<span class="keyword">equal</span>(<span class="constant">result</span>.options.$filterby[<span class="number">0</span>], <span class="string">"eq"</span>)
   })
-  it("lhs should be a function call", function() {
-     assert.equal(result.options.$filterby[1][0], "call")
+  <span class="keyword">it</span>(<span class="string">"lhs should be a function call"</span>, function() {
+     assert.<span class="keyword">equal</span>(<span class="constant">result</span>.options.$filterby[<span class="number">1</span>][<span class="number">0</span>], <span class="string">"call"</span>)
   })
-  it("lhs should be substringof with correct args", function() {
-     assert.equal(result.options.$filterby[1][1].method, 'substringof')
-     assert.equal(result.options.$filterby[1][1].args[0], 'alfred')
-     assert.equal(result.options.$filterby[1][1].args[1].name, 'Product')
+  <span class="keyword">it</span>(<span class="string">"lhs should be substringof with correct args"</span>, function() {
+     assert.<span class="keyword">equal</span>(<span class="constant">result</span>.options.$filterby[<span class="number">1</span>][<span class="number">1</span>].method, 'substringof')
+     assert.<span class="keyword">equal</span>(<span class="constant">result</span>.options.$filterby[<span class="number">1</span>][<span class="number">1</span>].args[<span class="number">0</span>], 'alfred')
+     assert.<span class="keyword">equal</span>(<span class="constant">result</span>.options.$filterby[<span class="number">1</span>][<span class="number">1</span>].args[<span class="number">1</span>].<span class="property">name</span>, 'Product')
   })
-  it("rhs should be cake", function() {
-     assert.equal(result.options.$filterby[2], "cake")
+  <span class="keyword">it</span>(<span class="string">"rhs should be cake"</span>, function() {
+     assert.<span class="keyword">equal</span>(<span class="constant">result</span>.options.$filterby[<span class="number">2</span>], <span class="string">"cake"</span>)
   }) 
-})
-</code></pre>
-
+})</code></pre>
 <p>This kinda thing will do, and getting the method out is a simple  matter of adding the MethodExpression to the values possible in an expression:</p>
-
 <pre><code>FilterByValue = 
   FilterMethodCallExpression
-| FilterNegateExpression
-| Number
-| QuotedText
-| PropertyPath
-| GroupedPrecedenceExpression
-,
-</code></pre>
-
-<p>Now, it is tempting to be lazy and just write a  generic method recogniser with variable lists of args, but we're building for highlighting so it would be nice to know what the recognised methods are, and what args they expect, so what I'll do is this</p>
-
-<pre><code>FilterMethodCallExpression = 
-  (
-    FilterSubstringOf
-  | OtherMethod
-  | AnotherMethod
-  ) -&gt; [ "call", methodcall ]
-,
-</code></pre>
-
-<p>And write a definition for each method (tedious, but I'll automate a pile of that with VIM macros)</p>
-
+<span class="string">| FilterNegateExpression</span>
+<span class="string">| Number</span>
+<span class="string">| QuotedText</span>
+<span class="string">| PropertyPath</span>
+<span class="string">| GroupedPrecedenceExpression</span>
+,</code></pre>
+<p>Now, it is tempting to be lazy and just write a  generic method recogniser with variable lists of args, but we&#39;re building for highlighting so it would be nice to know what the recognised methods are, and what args they expect, so what I&#39;ll do is this</p>
+<pre><code><span class="comment">FilterMethodCallExpression</span> <span class="comment">=</span> 
+  <span class="comment">(</span>
+    <span class="comment">FilterSubstringOf</span>
+  <span class="comment">|</span> <span class="comment">OtherMethod</span>
+  <span class="comment">|</span> <span class="comment">AnotherMethod</span>
+  <span class="comment">)</span> <span class="literal">-</span>&gt; <span class="title">[</span> <span class="comment">"call"</span>, <span class="comment">methodcall</span> <span class="title">]</span>
+<span class="string">,</span></code></pre>
+<p>And write a definition for each method (tedious, but I&#39;ll automate a pile of that with VIM macros)</p>
 <pre><code>FilterSubstringOf = 
-  seq('substringof'):method 
-  '(' 
+  se<span class="string">q('substringof')</span>:method 
+  <span class="string">'('</span> 
   spaces 
   FilterByExpression:one 
   spaces 
-  ',' 
+  <span class="string">','</span> 
   spaces 
   FilterByExpression:two 
   spaces 
-  ')' -&gt; { args: [ one, two ], method: method }
-</code></pre>
-
-<p>And they'll all look like that.</p>
-
-<p>With this done, $filter is now fully supported and I can get on with mopping up the final recognised pieces of OData. I'll try and do that all in a single post.</p>
+  <span class="string">')'</span> -&gt; { args: [ one, two ], method: method }</code></pre>
+<p>And they&#39;ll all look like that.</p>
+<p>With this done, $filter is now fully supported and I can get on with mopping up the final recognised pieces of OData. I&#39;ll try and do that all in a single post.</p>

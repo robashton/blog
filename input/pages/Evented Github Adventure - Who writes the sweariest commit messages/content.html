@@ -1,5 +1,4 @@
-<p>Okay, so now I've ran all my projections over all that crazy data and have some results to show!</p>
-
+<p>Okay, so now I&#39;ve ran all my projections over all that crazy data and have some results to show!</p>
 <ul>
 <li><a href="/entries/playing-with-the-eventstore.html">Introduction to the EventStore</a></li>
 <li><a href="/entries/pushing-data-into-streams-in-the-eventstore.html">Pushing data into the EventStore</a></li>
@@ -11,60 +10,45 @@
 <li><a href="/entries/evented-github-adventure---database-storage-and-backing-up.html">Event store database storage</a></li>
 <li>Who is the sweariest of them all?</li>
 </ul>
-
 <p>We now have a <a href="/entries/evented-github-adventure---emitting-commits-as-their-own-events.html">stream for the commits</a> inside Github, and we have information about the repos associated with those commits, now how about asking a question about those commits.</p>
-
 <p>For reference, there are about 20 million commit messages in my event store, so I have more than enough data for this to be statistically relevant!</p>
+<p><em>&quot;Oh Github Github, in the cloud, who is the sweariest developer out loud?&quot;</em></p>
+<p>Well, this is the kind of thing we might do outside the store (after re-partitioning per-language inside the store), but I haven&#39;t got a secondary store so I&#39;m just going to build up a view model for my charting library directly inside the event store (using the commit events I made)</p>
+<pre><code><span class="reserved">var</span> swearwords = [ <span class="string">"poop"</span>, <span class="string">"arse"</span>, <span class="string">"sugarlumps"</span> ] <span class="regexp">//</span> Changed to protect the innocent
 
-<p><em>"Oh Github Github, in the cloud, who is the sweariest developer out loud?"</em></p>
-
-<p>Well, this is the kind of thing we might do outside the store (after re-partitioning per-language inside the store), but I haven't got a secondary store so I'm just going to build up a view model for my charting library directly inside the event store (using the commit events I made)</p>
-
-<pre><code>var swearwords = [ "poop", "arse", "sugarlumps" ] // Changed to protect the innocent
-
-fromStream('github-commits')
-  .when({
-    "$init": function(state, ev) {
-      return { }
+fromStream(<span class="string">'github-commits'</span>)
+  .<span class="keyword">when</span>({
+    <span class="string">"$init"</span>: <span class="reserved">function</span>(state, ev) {
+      <span class="keyword">return</span> { }
     },
-    "Commit": function(state, ev) {
-      var language = ev.body.repo.language
+    <span class="string">"Commit"</span>: <span class="reserved">function</span>(state, ev) {
+      <span class="reserved">var</span> language = ev.body.repo.language
 
-      if(!state[language])
-        state[language] = { count: 0, total: 0 }
+      <span class="keyword">if</span>(!state[language])
+        state[language] = { count: <span class="number">0</span>, total: <span class="number">0</span> }
 
-      var languageState = state[language]
-      languageState.total += 1
+      <span class="reserved">var</span> languageState = state[language]
+      languageState.total += <span class="number">1</span>
 
-      for(var i = 0 ; i &lt; swearwords.length; i++) {
-        var curse = swearwords[i]
-        if(ev.body.commit.message.indexOf(curse) &gt;= 0)
-          languageState.count += 1
+      <span class="keyword">for</span>(<span class="reserved">var</span> i = <span class="number">0</span> ; i &lt; swearwords.length; i++) {
+        <span class="reserved">var</span> curse = swearwords[i]
+        <span class="keyword">if</span>(ev.body.commit.message.indexOf(curse) &gt;= <span class="number">0</span>)
+          languageState.count += <span class="number">1</span>
       }
-      return state
+      <span class="keyword">return</span> state
     }
-  })
-</code></pre>
-
+  })</code></pre>
 <p>And the results?</p>
-
 <p>Well, I can go to </p>
-
 <p><em>/projection/curses/state</em></p>
-
 <p>And get a big pile of JSON, which looks a bit like this</p>
-
 <pre><code>{
-  "ASP": { total: 1, curses: 200 },
-  "OpenEdge ABL": { total: 2, curses: 0 },
-  "Julia": { total: 11, curses: 0 }
-}
-</code></pre>
-
+  <span class="comment">"ASP"</span>: { <span class="method">total:</span> <span class="number">1</span>, <span class="method">curses:</span> <span class="number">200</span> },
+  <span class="comment">"OpenEdge ABL"</span>: { <span class="method">total:</span> <span class="number">2</span>, <span class="method">curses:</span> <span class="number">0</span> },
+  <span class="comment">"Julia"</span>: { <span class="method">total:</span> <span class="number">11</span>, <span class="method">curses:</span> <span class="number">0</span> }
+}</code></pre>
 <p>Plugging this into d3, and filtering out the items without enough entries (5000 events), we get </p>
-
-<div id="graph"></div>
-
+<p><div id="graph"></div></p>
 <script type="text/javascript" src="/d3.v2.js"></script>
 
 <script type="text/javascript">
@@ -138,12 +122,9 @@ var data = {"Lua":{"count":365,"total":14410},"Java":{"count":24321,"total":4786
 
 </script>
 
-<p>Actually, let's normalise this for the lols and see who is actually the sweariest, normalised from about 0% to 7% (the majority of developers are quite clean about things ;) )</p>
-
+<p>Actually, let&#39;s normalise this for the lols and see who is actually the sweariest, normalised from about 0% to 7% (the majority of developers are quite clean about things ;) )</p>
 <p><strong>% of commit messages containing curse words</strong></p>
-
-<div id="normalised"></div>
-
+<p><div id="normalised"></div></p>
 <script type="text/javascript">
 
   var svg = d3.select("#normalised").append("svg")
@@ -195,8 +176,7 @@ var data = {"Lua":{"count":365,"total":14410},"Java":{"count":24321,"total":4786
 
 </script>
 
-<p>I'll leave you to draw your own conclusions about this chart, but I can't say that it comes as a huge surprise judging from the various developers on <em>my</em> Twitter feed ;-)</p>
 
-<p>Scala developers are ducking <em>filthy</em>, but the lisp programmers probably save their curse words for Emacs rather than the language they're using. <em>Seems legit.</em></p>
-
-<p>Projections are a great way to analyse streams to generate knowledge about what is going on, of course simply doing aggregations over data over time is something we can achieve in most systems, in the next entry we'll look at something more interesting.</p>
+<p>I&#39;ll leave you to draw your own conclusions about this chart, but I can&#39;t say that it comes as a huge surprise judging from the various developers on <em>my</em> Twitter feed ;-)</p>
+<p>Scala developers are ducking <em>filthy</em>, but the lisp programmers probably save their curse words for Emacs rather than the language they&#39;re using. <em>Seems legit.</em></p>
+<p>Projections are a great way to analyse streams to generate knowledge about what is going on, of course simply doing aggregations over data over time is something we can achieve in most systems, in the next entry we&#39;ll look at something more interesting.</p>

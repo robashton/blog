@@ -2,6 +2,7 @@
   <head>
     <title id="title">Pushing data into streams in the EventStore</title>
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
     <link href='http://fonts.googleapis.com/css?family=Libre+Baskerville' rel='stylesheet' type='text/css'>
     <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
     <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
@@ -27,211 +28,170 @@
     <div id="blog-entry">
       <h1 id="post-title">Pushing data into streams in the EventStore</h1>
       <h6>Published on <span class="date">2013-4-26</span></h6>
-      <div id="post"><p>I'm <a href="/entries/playing-with-the-eventstore.html">playing with the EventStore</a> and I need to push some data into it in the form of streams.</p>
-
-<p>What does this look like? Well I'm using NodeJS, and naturally that means using JSON and object literals:</p>
-
+      <div id="post"><p>I&#39;m <a href="/entries/playing-with-the-eventstore.html">playing with the EventStore</a> and I need to push some data into it in the form of streams.</p>
+<p>What does this look like? Well I&#39;m using NodeJS, and naturally that means using JSON and object literals:</p>
 <p>So, if I have an event</p>
-
-<pre><code>// An Event
+<pre><code><span class="comment">// An Event</span>
 {
   Data: {
-    PonyName: "Rainbow Dash",
-    TrampStamp: "Rainbow",
-    Date: "January 2013"
+    PonyName: <span class="string">"Rainbow Dash"</span>,
+    TrampStamp: <span class="string">"Rainbow"</span>,
+    Date: <span class="string">"January 2013"</span>
   },
-  EventType: "PonyBorn"
-}
-</code></pre>
-
+  EventType: <span class="string">"PonyBorn"</span>
+}</code></pre>
 <p>And I want to get this into a stream, well first I want to package it up</p>
-
-<pre><code>// A package with the event in it
+<pre><code>// A package <span class="keyword">with</span> <span class="keyword">the</span> event <span class="keyword">in</span> <span class="keyword">it</span>
 {
-  CorrelationId: "something-i-know",
-  ExpectedVersion: "last-version-i-knew-about",
+  CorrelationId: <span class="string">"something-i-know"</span>,
+  ExpectedVersion: <span class="string">"last-version-i-knew-about"</span>,
   Events: [ ev ]
-}
-</code></pre>
-
+}</code></pre>
 <p>And serialise it</p>
-
-<pre><code>var body = JSON.stringify(package)
-</code></pre>
-
+<pre><code><span class="keyword">var</span> body = JSON.stringify(<span class="keyword">package</span>)</code></pre>
 <p>I can POST it to the event store with the following code</p>
-
-<pre><code>var req = http.request({
-  host: "127.0.0.1",
-  port: 2113,
+<pre><code>var req = <span class="transposed_variable">http.</span>request(<span class="cell">{
+  host: "<span class="number">127.0</span><span class="number">.0</span><span class="number">.1</span>",
+  port: <span class="number">2113</span>,
   path: "/streams/ponies",
   method: "POST",
   headers: {
     "Accept": "application/json",
     "Content-Type": "application/json",
     "Content-Length": body.length
-  }
-}, function(res) {
+  }</span>
+}, <span class="keyword">function</span>(res) <span class="cell">{
   // Handle this
-})
+}</span>)
 
-req.write(body)
-req.end()
-</code></pre>
-
+<span class="transposed_variable">req.</span>write(body)
+<span class="transposed_variable">req.</span><span class="keyword">end</span>()</code></pre>
 <p>What do we notice about the data?</p>
-
 <ul>
 <li>We can supply a correlation id for our own convenience</li>
 <li>We supply an expected version so our event can be rejected if things are not as they should be</li>
 <li>We can send a collection of events to be committed all as one</li>
 <li>EventType can be sent in alongside the event data</li>
 </ul>
-
 <p>And what do we notice about the request?</p>
-
 <ul>
 <li>We choose which stream to post to as part of the URL</li>
 <li>We specify the content types we expect and are sending (because it can accept XML etc)</li>
 </ul>
-
-<p>What happens once I've done this?</p>
-
-<p>Well, we'll see that I have a ponies stream</p>
-
+<p>What happens once I&#39;ve done this?</p>
+<p>Well, we&#39;ll see that I have a ponies stream</p>
 <p><em>/streams</em></p>
-
-<pre><code>{
-  title: "ponies",
-  uri: "http://127.0.0.1:2113/streams/ponies",
+<pre><code><span class="rules">{
+  <span class="rule"><span class="attribute">title</span>:<span class="value"> <span class="string">"ponies"</span>,
+  uri: <span class="string">"http://127.0.0.1:2113/streams/ponies"</span>,
   accepts: [
     {
-      type: "text/xml"
-    },
-    {
-      type: "application/atom+xml"
-    },
-    {
-      type: "application/json"
-    },
-    {
-      type: "application/atom+x.json"
-    }
+      type: <span class="string">"text/xml"</span>
+    }</span></span></span>,
+    <span class="rules">{
+      <span class="rule"><span class="attribute">type</span>:<span class="value"> <span class="string">"application/atom+xml"</span>
+    }</span></span></span>,
+    <span class="rules">{
+      <span class="rule"><span class="attribute">type</span>:<span class="value"> <span class="string">"application/json"</span>
+    }</span></span></span>,
+    <span class="rules">{
+      <span class="rule"><span class="attribute">type</span>:<span class="value"> <span class="string">"application/atom+x.json"</span>
+    }</span></span></span>
   ]
-},
-</code></pre>
-
-<p>And that if we go to this ponies stream via the URI specified we'll see</p>
-
+},</code></pre>
+<p>And that if we go to this ponies stream via the URI specified we&#39;ll see</p>
 <p><em>/streams/ponies</em></p>
-
 <pre><code>[
   {
-    title: "ponies #1",
-    id: "http://127.0.0.1:2113/streams/ponies/1",
-    updated: "2013-03-01T22:30:11.790066Z",
-    author: {
-      name: "EventStore"
+    <span class="method">title:</span> <span class="comment">"ponies #1"</span>,
+    <span class="method">id:</span> <span class="comment">"http://127.0.0.1:2113/streams/ponies/1"</span>,
+    <span class="method">updated:</span> <span class="comment">"2013-03-01T22:30:11.790066Z"</span>,
+    <span class="method">author:</span> {
+      <span class="method">name:</span> <span class="comment">"EventStore"</span>
     },
-    summary: "Entry #1",
-    links: [
+    <span class="method">summary:</span> <span class="comment">"Entry #1"</span>,
+    <span class="method">links:</span> [
       {
-        uri: "http://127.0.0.1:2113/streams/ponies/1",
-        relation: "edit"
+        <span class="method">uri:</span> <span class="comment">"http://127.0.0.1:2113/streams/ponies/1"</span>,
+        <span class="method">relation:</span> <span class="comment">"edit"</span>
       },
       {
-        uri: "http://127.0.0.1:2113/streams/ponies/event/1?format=text",
-        type: "text/plain"
+        <span class="method">uri:</span> <span class="comment">"http://127.0.0.1:2113/streams/ponies/event/1?format=text"</span>,
+        <span class="method">type:</span> <span class="comment">"text/plain"</span>
       },
       {
-        uri: "http://127.0.0.1:2113/streams/ponies/event/1?format=json",
-        relation: "alternate",
-        type: "application/json"
+        <span class="method">uri:</span> <span class="comment">"http://127.0.0.1:2113/streams/ponies/event/1?format=json"</span>,
+        <span class="method">relation:</span> <span class="comment">"alternate"</span>,
+        <span class="method">type:</span> <span class="comment">"application/json"</span>
       },
       {
-        uri: "http://127.0.0.1:2113/streams/ponies/event/1?format=xml",
-        relation: "alternate",
-        type: "text/xml"
+        <span class="method">uri:</span> <span class="comment">"http://127.0.0.1:2113/streams/ponies/event/1?format=xml"</span>,
+        <span class="method">relation:</span> <span class="comment">"alternate"</span>,
+        <span class="method">type:</span> <span class="comment">"text/xml"</span>
       }
     ]
   },
   {
-    title: "ponies #0",
-    id: "http://127.0.0.1:2113/streams/ponies/0",
-    updated: "2013-03-01T22:30:11.79004Z",
-    author: {
-      name: "EventStore"
+    <span class="method">title:</span> <span class="comment">"ponies #0"</span>,
+    <span class="method">id:</span> <span class="comment">"http://127.0.0.1:2113/streams/ponies/0"</span>,
+    <span class="method">updated:</span> <span class="comment">"2013-03-01T22:30:11.79004Z"</span>,
+    <span class="method">author:</span> {
+      <span class="method">name:</span> <span class="comment">"EventStore"</span>
     },
-    summary: "Entry #0",
-    links: [
+    <span class="method">summary:</span> <span class="comment">"Entry #0"</span>,
+    <span class="method">links:</span> [
       {
-        uri: "http://127.0.0.1:2113/streams/ponies/0",
-        relation: "edit"
+        <span class="method">uri:</span> <span class="comment">"http://127.0.0.1:2113/streams/ponies/0"</span>,
+        <span class="method">relation:</span> <span class="comment">"edit"</span>
       },
       {
-        uri: "http://127.0.0.1:2113/streams/ponies/event/0?format=text",
-        type: "text/plain"
+        <span class="method">uri:</span> <span class="comment">"http://127.0.0.1:2113/streams/ponies/event/0?format=text"</span>,
+        <span class="method">type:</span> <span class="comment">"text/plain"</span>
       },
       {
-        uri: "http://127.0.0.1:2113/streams/ponies/event/0?format=json",
-        relation: "alternate",
-        type: "application/json"
+        <span class="method">uri:</span> <span class="comment">"http://127.0.0.1:2113/streams/ponies/event/0?format=json"</span>,
+        <span class="method">relation:</span> <span class="comment">"alternate"</span>,
+        <span class="method">type:</span> <span class="comment">"application/json"</span>
       },
       {
-        uri: "http://127.0.0.1:2113/streams/ponies/event/0?format=xml",
-        relation: "alternate",
-        type: "text/xml"
+        <span class="method">uri:</span> <span class="comment">"http://127.0.0.1:2113/streams/ponies/event/0?format=xml"</span>,
+        <span class="method">relation:</span> <span class="comment">"alternate"</span>,
+        <span class="method">type:</span> <span class="comment">"text/xml"</span>
       }
     ]
   }
-]
-</code></pre>
-
+]</code></pre>
 <p>We have two events, navigating to them we can see that one of them is for the creation of the stream</p>
-
 <p><em>/streams/ponies/event/0?format=json</em></p>
-
 <pre><code>{
-  eventStreamId: "ponies",
-  eventNumber: 0,
-  eventType: "$stream-created-implicit",
-  data: "",
-  metadata: ""
-}
-</code></pre>
-
+  <span class="method">eventStreamId:</span> <span class="comment">"ponies"</span>,
+  <span class="method">eventNumber:</span> <span class="number">0</span>,
+  <span class="method">eventType:</span> <span class="comment">"$stream-created-implicit"</span>,
+  <span class="method">data:</span> <span class="comment">""</span>,
+  <span class="method">metadata:</span> <span class="comment">""</span>
+}</code></pre>
 <p>And the other one is the event we pushed</p>
-
 <p><em>/streams/ponies/event/1?format=json</em></p>
-
 <pre><code>{
-  eventStreamId: "ponies",
-  eventNumber: 1,
-  eventType: "PonyBorn",
-  data: {
-    PonyName: "Rainbow Dash",
-    TrampStamp: "Rainbow",
-    Date: "January 2013"
-  },
-  metadata: ""
-}
-</code></pre>
-
+  eventStreamId: <span class="string">"ponies"</span>,
+  eventNumber: <span class="number">1</span>,
+  eventType: <span class="string">"PonyBorn"</span>,
+  <span class="typedef"><span class="keyword">data</span>: <span class="container">{
+    <span class="type">PonyName</span>: "<span class="type">Rainbow</span> <span class="type">Dash</span>",
+    <span class="type">TrampStamp</span>: "<span class="type">Rainbow</span>",
+    <span class="type">Date</span>: "<span class="type">January</span> 2013"
+  }</span>,</span>
+  metadata: <span class="string">""</span>
+}</code></pre>
 <p>Neato, I guess we notice a few things here then</p>
-
 <ul>
-<li>The stream doesn't contain the actual events, just links to the events</li>
-<li>The stream is pageable, and contains the links to the pages (well, it's AtomPub)</li>
+<li>The stream doesn&#39;t contain the actual events, just links to the events</li>
+<li>The stream is pageable, and contains the links to the pages (well, it&#39;s AtomPub)</li>
 <li>Each event has its own unique uri, because events are immutable these can be cached by any intermdiate proxy</li>
 </ul>
-
-<p>And indeed, if we look at the header on a HTTP request for one of these events we'll see</p>
-
-<pre><code>Cache-Control:max-age=31556926
-</code></pre>
-
-<p>That's cool, we've discovered that</p>
-
+<p>And indeed, if we look at the header on a HTTP request for one of these events we&#39;ll see</p>
+<pre><code><span class="constant">Cache</span>-<span class="constant">Control</span><span class="symbol">:max-age=</span><span class="number">31556926</span></code></pre>
+<p>That&#39;s cool, we&#39;ve discovered that</p>
 <ul>
 <li>We can throw events into the event store with a default partitioning (the stream name specified)</li>
 <li>We can get them back out again by paging through the links in that stream</li>
@@ -239,10 +199,9 @@ req.end()
 <li>Everything is AtomPub</li>
 <li>Everything is easily navigable</li>
 </ul>
-
-<p>Now, if we were building a standard event sourced model we'd be able to page through these streams to build up our snapshots/viewmodels and that's all very neat and tidy and that would be the end of our story.</p>
-
-<p>Next up however, it's more interesting to go and have a look at projections now, and see what questions we can ask of those streams in the event store itself.</p></div>
+<p>Now, if we were building a standard event sourced model we&#39;d be able to page through these streams to build up our snapshots/viewmodels and that&#39;s all very neat and tidy and that would be the end of our story.</p>
+<p>Next up however, it&#39;s more interesting to go and have a look at projections now, and see what questions we can ask of those streams in the event store itself.</p>
+</div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>

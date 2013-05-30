@@ -2,6 +2,7 @@
   <head>
     <title id="title">The price of abstraction - using LevelDB in RavenDB</title>
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
     <link href='http://fonts.googleapis.com/css?family=Libre+Baskerville' rel='stylesheet' type='text/css'>
     <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
     <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
@@ -27,8 +28,7 @@
     <div id="blog-entry">
       <h1 id="post-title">The price of abstraction - using LevelDB in RavenDB</h1>
       <h6>Published on <span class="date">2013-3-8</span></h6>
-      <div id="post"><p>So, in our little foray into LevelDB, we've uncovered the following:</p>
-
+      <div id="post"><p>So, in our little foray into LevelDB, we&#39;ve uncovered the following:</p>
 <ul>
 <li>We can do <a href="/entries/basic-operations-with-leveldb.htm">atomic writes</a></li>
 <li>We can have <a href="/entries/transactional-guarantees-on-top-of-leveldb.html">consistent reads</a>, </li>
@@ -36,82 +36,51 @@
 <li>We can can <a href="/entries/streaming-large-values-from-leveldb.html">stream data out of LevelDB</a></li>
 <li>And we can create <a href="/entries/secondary-indexes-on-top-of-leveldb.html">secondary indexes</a></li>
 </ul>
-
 <p>With this, I set about creating a fork of RavenDB with a starting implementation of LevelDB for document storage.</p>
-
 <p>I grabbed the <a href="https://github.com/meebey/leveldb-sharp">C# bindings</a> from Github and set about re-implementing my in-memory transaction manager on top of them.</p>
-
 <p>The first thing I notice about the C# bindings is that the API looks like this:</p>
-
-<pre><code>string value = db.Get(string key)
-db.Put(string key, string value)
-</code></pre>
-
+<pre><code><span class="keyword">string</span> <span class="keyword">value</span> = db.Get(<span class="keyword">string</span> key)
+db.Put(<span class="keyword">string</span> key, <span class="keyword">string</span> <span class="keyword">value</span>)</code></pre>
 <p>This is not what <a href="/entries/streaming-large-values-from-leveldb.html">RavenDB wants</a>, what RavenDB wants is a MemoryStream or at the very least a ByteArray - as it is not in the business of pushing large strings around the place in managed memory.</p>
-
 <p>No problem, I fork the original project and set about addding Byte array support and then notice something.</p>
-
-<p><em>The bindings are using the C API for LevelDB</em> (which makes sense if you're going to support cross platform C#), but more importantly the C API looks something like this:</p>
-
-<pre><code>char* leveldb_get(char* key)
-</code></pre>
-
-<p>See that return result? That's a malloc, what does the LevelDB C# code do?</p>
-
-<pre><code> var value = Marshal.PtrToStringAnsi(valuePtr, (int) valueLength);
- return value;
-</code></pre>
-
-<p>Ignoring the <a href="https://github.com/meebey/leveldb-sharp/issues/2">memory leak</a>, as it's a known issue and an easy mistake to make, we can see we're copying the data out of the unmanaged array into a managed string via the PtrToStringAnsi call.</p>
-
+<p><em>The bindings are using the C API for LevelDB</em> (which makes sense if you&#39;re going to support cross platform C#), but more importantly the C API looks something like this:</p>
+<pre><code><span class="keyword">char</span>* leveldb_get(<span class="keyword">char</span>* key)</code></pre>
+<p>See that return result? That&#39;s a malloc, what does the LevelDB C# code do?</p>
+<pre><code> <span class="keyword">var</span> <span class="keyword">value</span> = Marshal.PtrToStringAnsi(valuePtr, (<span class="keyword">int</span>) valueLength);
+ <span class="keyword">return</span> <span class="keyword">value</span>;</code></pre>
+<p>Ignoring the <a href="https://github.com/meebey/leveldb-sharp/issues/2">memory leak</a>, as it&#39;s a known issue and an easy mistake to make, we can see we&#39;re copying the data out of the unmanaged array into a managed string via the PtrToStringAnsi call.</p>
 <p>What does the C api do?</p>
-
-<pre><code>Status s = db-&gt;rep-&gt;Get(options-&gt;rep, Slice(key, keylen), &amp;tmp);
-if (s.ok()) {
-  *vallen = tmp.size();
-  result = CopyString(tmp);
-} else {
-  *vallen = 0;
-  if (!s.IsNotFound()) {
-    SaveError(errptr, s);
+<pre><code><span class="variable">Status</span> s = db-&gt;rep-&gt;<span class="variable">Get</span>(options-&gt;rep, <span class="variable">Slice</span>(key, keylen), &amp;tmp);
+<span class="function"><span class="title">if</span> <span class="params">(s.<span class="function_name">ok</span>())</span> {
+  *<span class="title">vallen</span> = <span class="title">tmp</span>.<span class="title">size</span><span class="params">()</span>;
+  <span class="title">result</span> = C<span class="title">opyString</span><span class="params">(tmp)</span>;
+} <span class="title">else</span> {
+  *<span class="title">vallen</span> = 0;
+  <span class="title">if</span> <span class="params">(!s.<span class="variable">IsNotFound</span>()</span>) {
+    S<span class="title">aveError</span><span class="params">(errptr, s)</span>;
   }
 }
-return result;
-</code></pre>
-
+<span class="title">return</span> <span class="title">result</span>;</code></pre>
 <p>And CopyString?</p>
-
-<pre><code>static char* CopyString(const std::string&amp; str) {
-  char* result = reinterpret_cast&lt;char*&gt;(malloc(sizeof(char) * str.size()));
-  memcpy(result, str.data(), sizeof(char) * str.size());
-  return result;
-}
-</code></pre>
-
+<pre><code><span class="keyword">static</span> <span class="keyword">char</span>* CopyString(<span class="keyword">const</span> <span class="built_in">std</span>::<span class="built_in">string</span>&amp; str) {
+  <span class="keyword">char</span>* result = <span class="keyword">reinterpret_cast</span>&lt;<span class="keyword">char</span>*&gt;(malloc(<span class="keyword">sizeof</span>(<span class="keyword">char</span>) * str.size()));
+  memcpy(result, str.data(), <span class="keyword">sizeof</span>(<span class="keyword">char</span>) * str.size());
+  <span class="keyword">return</span> result;
+}</code></pre>
 <p><em>urk</em></p>
-
 <p>In order to get a stored document from LevelDB, the following operations are performed:</p>
-
-<pre><code>- Internally, LevelDB will load the document into memory
-- Internally, LevelDB will copy that memory into a string on a Get call
-- The C API copies that memory into a mallocced byte array
-- The C# API copies that memory into a managed string (probably on the Large Object Heap)
-</code></pre>
-
+<pre><code>- Internally, LevelDB will load <span class="keyword">the</span> document <span class="keyword">into</span> memory
+- Internally, LevelDB will <span class="keyword">copy</span> <span class="keyword">that</span> memory <span class="keyword">into</span> a <span class="type">string</span> <span class="function_start"><span class="keyword">on</span> <span class="title">a</span></span> Get call
+- The C API copies <span class="keyword">that</span> memory <span class="keyword">into</span> a mallocced byte array
+- The C<span class="comment"># API copies that memory into a managed string (probably on the Large Object Heap)</span></code></pre>
 <p>What we have here, is a C# wrapper around a C API that is a wrapper around a C++ API, and each of them is trying to be semantically equivalent to the underlying API - and the abstraction is <em>killing us</em>.</p>
-
-<p>For small values, this probably isn't a big deal, but RavenDB documents can be any size, and RavenDB documents often <em>are</em> any size - ideally what we want is</p>
-
-<pre><code>MemoryStream stream = db.Get(string key)
-</code></pre>
-
+<p>For small values, this probably isn&#39;t a big deal, but RavenDB documents can be any size, and RavenDB documents often <em>are</em> any size - ideally what we want is</p>
+<pre><code><span class="title">MemoryStream</span> stream = db.Get(string key)</code></pre>
 <p>Where that stream reads from the start of an unmanaged array to the end of that unmanaged array and then disposes it.</p>
-
 <p>In essence, the job of getting LevelDB into RavenDB is going to involve writing a new C API for LevelDB specific to our needs, then writing a C# API around that API specific to our needs.</p>
-
-<p>Thankfully we need about 10% of the exposed functionality in LevelDB so our job isn't as hard as "writing a set of managed bindings for LevelDB", but this means that I won't have time to do this before I leave Israel.</p>
-
-<p>I put my sad face on and get to work on something more manageable for my final day of work :-(</p></div>
+<p>Thankfully we need about 10% of the exposed functionality in LevelDB so our job isn&#39;t as hard as &quot;writing a set of managed bindings for LevelDB&quot;, but this means that I won&#39;t have time to do this before I leave Israel.</p>
+<p>I put my sad face on and get to work on something more manageable for my final day of work :-(</p>
+</div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>

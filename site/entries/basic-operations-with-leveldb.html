@@ -2,6 +2,7 @@
   <head>
     <title id="title">Basic operations with LevelDB</title>
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
     <link href='http://fonts.googleapis.com/css?family=Libre+Baskerville' rel='stylesheet' type='text/css'>
     <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
     <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
@@ -27,63 +28,38 @@
     <div id="blog-entry">
       <h1 id="post-title">Basic operations with LevelDB</h1>
       <h6>Published on <span class="date">2013-3-1</span></h6>
-      <div id="post"><p>So, in <a href="/entries/investigating-ravendb-on-mono-for-reals.html">trying out LevelDB</a>, I need to work out the basics, and then apply those learnings to whether the functionality exposed is compatible with RavenDB's storage needs.</p>
-
+      <div id="post"><p>So, in <a href="/entries/investigating-ravendb-on-mono-for-reals.html">trying out LevelDB</a>, I need to work out the basics, and then apply those learnings to whether the functionality exposed is compatible with RavenDB&#39;s storage needs.</p>
 <p>I spent a few hours in the car on the way to and back from the Dead Sea and this seemed like an ideal time to crack out the g++ and write some C++ on top of LevelDB.</p>
-
-<p>The first thing I did was download <a href="https://code.google.com/p/leveldb/">the source</a> and un-pack it, I also grabbed <a href="http://twitter.com/kellabyte">@kellabytes</a>'s '<a href="https://github.com/kellabyte/Dazzle">Dazzle</a>' source code as an 'RTFM' back-up.</p>
-
+<p>The first thing I did was download <a href="https://code.google.com/p/leveldb/">the source</a> and un-pack it, I also grabbed <a href="http://twitter.com/kellabyte">@kellabytes</a>&#39;s &#39;<a href="https://github.com/kellabyte/Dazzle">Dazzle</a>&#39; source code as an &#39;RTFM&#39; back-up.</p>
 <p>What I really like is that the header files for LevelDB are the best means of documentation, I forgot I liked this about C++, I now remember - all the learnings done ended up being done by just reading the source code, pretty neat.</p>
-
 <p>So, what do we have?</p>
-
 <p><em>Opening a database</em></p>
-
-<pre><code>leveldb::DB* db;
-leveldb::DB::Open(options, "play/testdb", &amp;db);
-</code></pre>
-
+<pre><code><span class="label">leveldb:</span>:DB* db<span class="comment">;</span>
+<span class="label">leveldb:</span>:DB::Open(options, <span class="string">"play/testdb"</span>, &amp;db)<span class="comment">;</span></code></pre>
 <p><em>Putting something in</em></p>
-
-<pre><code>status = db-&gt;Put(leveldb::WriteOptions(), "Key", "Hello World");
-</code></pre>
-
+<pre><code><span class="setting">status = <span class="value">db-&gt;Put(leveldb::WriteOptions(), <span class="string">"Key"</span>, <span class="string">"Hello World"</span>);</span></span></code></pre>
 <p><em>Getting something out</em></p>
-
-<pre><code>std::string document;
-store-&gt;Get(leveldb::ReadOptions(), "key", &amp;document);
-</code></pre>
-
+<pre><code><span class="label">std:</span>:string document<span class="comment">;</span>
+store-&gt;Get(leveldb::ReadOptions(), <span class="string">"key"</span>, &amp;document)<span class="comment">;</span></code></pre>
 <p><em>Deleting something</em></p>
-
-<pre><code>store-&gt;Delete(leveldb::WriteOptions(), "key");
-</code></pre>
-
+<pre><code>store-&gt;<span class="operator"><span class="keyword">Delete</span>(leveldb::WriteOptions(), <span class="string">"key"</span>);</span></code></pre>
 <p><em>Squeeeeeeee</em></p>
-
 <p>I love how simple that is, and that each of these is a safe operation, important to note the following at this point:</p>
-
 <ul>
-<li>I'm passing in strings to those put/get operations</li>
+<li>I&#39;m passing in strings to those put/get operations</li>
 <li>LevelDB is copying to/from those strings</li>
-<li>Because we're using strings, scope determines the release of memory</li>
+<li>Because we&#39;re using strings, scope determines the release of memory</li>
 </ul>
-
-<p>This is elegant, Put actually takes a "Slice" type too, but that's implicitly convertable from a string and therefore this works nicely. </p>
-
-<p>I'll cover Slice on its own as it's an interesting notion if I understand it correctly.</p>
-
+<p>This is elegant, Put actually takes a &quot;Slice&quot; type too, but that&#39;s implicitly convertable from a string and therefore this works nicely. </p>
+<p>I&#39;ll cover Slice on its own as it&#39;s an interesting notion if I understand it correctly.</p>
 <p>Importantly for RavenDB, we need to be able to write multiple operations in an atomic fashion, LevelDB appears to accommodate for this neatly.</p>
-
-<pre><code> leveldb::WriteBatch batch;
- batch.Delete("key");
- batch.Put("key2", value);
- db-&gt;Write(leveldb::WriteOptions(), &amp;batch);
-</code></pre>
-
-<p>LevelDB can actually operate in async or synchronous mode, but because Raven makes gaurantees about writes having happened I can't think we'd be able to use async mode (because there isn't any way to know when these writes are finished to my knowledge).</p>
-
-<p>These guarantees aren't actually enough for RavenDB, and I'll cover the reasons for that in the next entry.</p></div>
+<pre><code> leveldb::WriteBatch batch<span class="comment">;</span>
+ batch<span class="preprocessor">.Delete</span>(<span class="string">"key"</span>)<span class="comment">;</span>
+ batch<span class="preprocessor">.Put</span>(<span class="string">"key2"</span>, value)<span class="comment">;</span>
+ db-&gt;Write(leveldb::WriteOptions(), &amp;batch)<span class="comment">;</span></code></pre>
+<p>LevelDB can actually operate in async or synchronous mode, but because Raven makes gaurantees about writes having happened I can&#39;t think we&#39;d be able to use async mode (because there isn&#39;t any way to know when these writes are finished to my knowledge).</p>
+<p>These guarantees aren&#39;t actually enough for RavenDB, and I&#39;ll cover the reasons for that in the next entry.</p>
+</div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>

@@ -1,5 +1,4 @@
 <p>Having uncovered the need for composability, and thought a little bit about what that means, there is an obvious refactoring route to now take...</p>
-
 <ul>
 <li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Mission statement</a></li>
 <li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
@@ -17,35 +16,60 @@
 <li><a href="/entries/learn-functional-programming-with-me---functional-difficulty-levels.html">Functional difficulty levels</a></li>
 <li><a href="/entries/learn-functional-programming-with-me---but-rob,-it-needs-to-be-more-composable.html">It needs to be more composable</a></li>
 </ul>
-
-<p>This is the point where I wish I'd written some tests like I usually do when learning something hyper-new, but I'll have to make do with hitting refresh and seeing if "stuff is broke" <em>OH WELL ONWARDS</em></p>
-
+<p>This is the point where I wish I&#39;d written some tests like I usually do when learning something hyper-new, but I&#39;ll have to make do with hitting refresh and seeing if &quot;stuff is broke&quot; <em>OH WELL ONWARDS</em></p>
 <h3>Making records</h3>
-
-<p>I've decided that I'm going to have a record describing a rect, and start building up behaviour over the top of it, this looks something like this:</p>
-
-<pre><code>(defrecord Rect  [x y w h]) 
-</code></pre>
-
-<p>So far so good, "this is the name of my record and these are the fields that it has", I guess the next thing to do is see about slotting it in and break all my code.</p>
-
+<p>I&#39;ve decided that I&#39;m going to have a record describing a rect, and start building up behaviour over the top of it, this looks something like this:</p>
+<pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> Rect  [x y w h])</span></span> </code></pre>
+<p>So far so good, &quot;this is the name of my record and these are the fields that it has&quot;, I guess the next thing to do is see about slotting it in and break all my code.</p>
 <p>I have a function for creating a rect already</p>
-
-<pre><code>(defn create-rect [x y w h]
-{ :x x
-  :y y
-  :w w
-  :h h })
-</code></pre>
-
-<p>So how to swap out this code? Well it turns out that once you have a record they can be used just like the maps I've been using so far.</p>
-
-<pre><code>(defn create-rect [x y w h]
-  (Rect. x y w h))
-</code></pre>
-
-<p>Re-compiling gives me the same old red square defending the world against yellow blocks we've come to know and love. Obviously what I'm better off doing is replacing all the calls to create-rect with that call so that's what I do.</p>
-
-<h3>Encapsulation with records</h3>
-
-<p>Can I add methods that are now explicitly for this record?  At the same time can I move to stop passing that ball of state around?</p>
+<pre><code><span class="list">(<span class="title"><span class="built_in">defn</span></span> create-rect <span class="collection">[x y w h]</span>
+<span class="collection">{ <span class="attribute">:x</span> x
+  <span class="attribute">:y</span> y
+  <span class="attribute">:w</span> w
+  <span class="attribute">:h</span> h }</span>)</span></code></pre>
+<p>So how to swap out this code? Well it turns out that once you have a record they can be used just like the maps I&#39;ve been using so far.</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> create-rect [x y w h]
+  <span class="list">(<span class="title">Rect</span><span class="body">. x y w h)</span></span>)</span></span></code></pre>
+<p>Re-compiling gives me the same old red square defending the world against yellow blocks we&#39;ve come to know and love. Obviously what I&#39;m better off doing is replacing all the calls to create-rect with that call so that&#39;s what I do. So far the only advantage I can see of this is that I get &quot;slightly better performance on field look-up&quot; (which I don&#39;t even know if that applies to the compiled JS)</p>
+<h3>Methods with protocols</h3>
+<p>Can I add methods that are now explicitly for this record?  Will this help with the readability of some of my code? Starting with something pure is probably a good idea as the amount of code I&#39;m going to have to cut away will be small. Here is a function which determines whether two rects are over-lapping</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> collides-with [one two]
+  <span class="list">(<span class="title">cond</span><span class="body"> <span class="list">(<span class="title">&lt;</span><span class="body"> <span class="list">(<span class="title">rect-right</span><span class="body"> one)</span></span> <span class="list">(<span class="body"><span class="keyword">:x</span> two)</span></span>)</span></span> false
+        <span class="list">(<span class="title">&gt;</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> one)</span></span> <span class="list">(<span class="title">rect-right</span><span class="body"> two)</span></span>)</span></span> false
+        <span class="list">(<span class="title">&lt;</span><span class="body"> <span class="list">(<span class="title">rect-bottom</span><span class="body"> one)</span></span> <span class="list">(<span class="body"><span class="keyword">:y</span> two)</span></span>)</span></span> false
+        <span class="list">(<span class="title">&gt;</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> one)</span></span> <span class="list">(<span class="title">rect-bottom</span><span class="body"> two)</span></span>)</span></span> false
+        <span class="keyword">:else</span> true)</span></span>)</span></span></code></pre>
+<p>I&#39;ve a couple methods here for &#39;bottom&#39; and &#39;right&#39;, can I put them on the Rect?</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> rect-right [rect] <span class="list">(<span class="title">+</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> rect)</span></span> <span class="list">(<span class="body"><span class="keyword">:w</span> rect)</span></span>)</span></span>)</span></span>
+<span class="list">(<span class="title">defn</span><span class="body"> rect-bottom [rect] <span class="list">(<span class="title">+</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> rect)</span></span> <span class="list">(<span class="body"><span class="keyword">:h</span> rect)</span></span>)</span></span>)</span></span></code></pre>
+<p>Well no, but I can make a protocol for these things and then make implementations for them on the record (this effectively maps to an interface/class in Java land)</p>
+<pre><code><span class="list">(<span class="title">defprotocol</span><span class="body"> Bounds 
+  <span class="list">(<span class="title">left</span><span class="body"> [this])</span></span>
+  <span class="list">(<span class="title">right</span><span class="body"> [this])</span></span>
+  <span class="list">(<span class="title">top</span><span class="body"> [this])</span></span>
+  <span class="list">(<span class="title">bottom</span><span class="body"> [this])</span></span>)</span></span></code></pre>
+<p>Implementing this is a simple matter of providing methods in the record for this protocol</p>
+<pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> Rect  [x y w h]
+Bounds
+  <span class="list">(<span class="title">left</span><span class="body"> [this] x)</span></span>
+  <span class="list">(<span class="title">right</span><span class="body"> [this] <span class="list">(<span class="title">+</span><span class="body"> x w)</span></span>)</span></span>
+  <span class="list">(<span class="title">top</span><span class="body"> [this] y)</span></span>
+  <span class="list">(<span class="title">bottom</span><span class="body"> [this] <span class="list">(<span class="title">+</span><span class="body"> y h)</span></span>)</span></span>)</span></span> </code></pre>
+<p>Calling these is kinda magical</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> collides-with [one two]
+  <span class="list">(<span class="title">cond</span><span class="body"> <span class="list">(<span class="title">&lt;</span><span class="body"> <span class="list">(<span class="title">right</span><span class="body"> one)</span></span> <span class="list">(<span class="title">left</span><span class="body"> two)</span></span>)</span></span> false
+        <span class="list">(<span class="title">&gt;</span><span class="body"> <span class="list">(<span class="title">left</span><span class="body"> one)</span></span> <span class="list">(<span class="title">right</span><span class="body"> two)</span></span>)</span></span> false
+        <span class="list">(<span class="title">&lt;</span><span class="body"> <span class="list">(<span class="title">bottom</span><span class="body"> one)</span></span> <span class="list">(<span class="title">top</span><span class="body"> two)</span></span>)</span></span> false
+        <span class="list">(<span class="title">&gt;</span><span class="body"> <span class="list">(<span class="title">top</span><span class="body"> one)</span></span> <span class="list">(<span class="title">bottom</span><span class="body"> two)</span></span>)</span></span> false
+        <span class="keyword">:else</span> true)</span></span>)</span></span></code></pre>
+<p>Well that&#39;s certainly pretty, but I could have probably made that happen with this instead!</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> left [rect] <span class="list">(<span class="body"><span class="keyword">:x</span> rect)</span></span>)</span></span>
+<span class="list">(<span class="title">defn</span><span class="body"> top [rect] <span class="list">(<span class="body"><span class="keyword">:y</span> rect)</span></span>)</span></span>
+<span class="list">(<span class="title">defn</span><span class="body"> right [rect] <span class="list">(<span class="title">+</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> rect)</span></span> <span class="list">(<span class="body"><span class="keyword">:w</span> rect)</span></span>)</span></span>)</span></span>
+<span class="list">(<span class="title">defn</span><span class="body"> bottom [rect] <span class="list">(<span class="title">+</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> rect)</span></span> <span class="list">(<span class="body"><span class="keyword">:h</span> rect)</span></span>)</span></span>)</span></span></code></pre>
+<p>Which isn&#39;t as pretty, but gives me the same result and doesn&#39;t come with the explicit interface stuff.</p>
+<h3>I&#39;m still not sure about records</h3>
+<p>Before I got to protocols, I wasn&#39;t sure why I&#39;d be declaring explicit records over just using maps. I can still see that I could just use methods over maps and forego records and protocols altogether.</p>
+<p>In this vein, my foray into records hasn&#39;t really helped me generate &quot;<a href="/entries/learn-functional-programming-with-me---implementing-records.html">more composable</a>&quot; code yet, although thinking about the overall behaviours being exposed over a certain data structure could be helpful.</p>
+<p>I&#39;m wondering if I can declare my bullets/invaders/player as entities in this way, and have a single collection like I would in an ordinary game/scene-graph thing.</p>
+<p>That&#39;s skipping ahead a bit though, right now I have composability to make happen. I think I&#39;ll carry on trying to do it with records as it will co-erce me into thinking about my data structures and maybe I&#39;ll work out some advantages to these along the way.</p>

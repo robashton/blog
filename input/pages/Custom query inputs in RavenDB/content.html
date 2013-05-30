@@ -1,48 +1,34 @@
-<p>Back on the list of things "added to RavenDB" <a href="/entries/working-at-hibernating-rhinos.html">during my time at Hibernating Rhinos</a>, ever wished you could pass custom arguments to the transformer when performing a query in RavenDB?</p>
-
-<p>Well, this has been asked for a number of times and since <a href="/entries/ravendb-resulttransformers---a-new-way-of-looking-at-things.html'">splitting out results-transformers</a> into their own process, it has become much easier to add this functionality.</p>
-
+<p>Back on the list of things &quot;added to RavenDB&quot; <a href="/entries/working-at-hibernating-rhinos.html">during my time at Hibernating Rhinos</a>, ever wished you could pass custom arguments to the transformer when performing a query in RavenDB?</p>
+<p>Well, this has been asked for a number of times and since <a href="/entries/ravendb-resulttransformers---a-new-way-of-looking-at-things.html&#39;">splitting out results-transformers</a> into their own process, it has become much easier to add this functionality.</p>
 <p>What does this look like?</p>
-
-<p>Well, say we have a result transformer that takes Ponies and creates unicorns, only our database doesn't know about horns - let's see what we can do here.</p>
-
-<pre><code>public class Unicorn {
-  public string Name { get; set; }
-  public string Colour { get; set; }
-  public string CutieMark { get; set; }
-  public int Hornsize { get; set; }
+<p>Well, say we have a result transformer that takes Ponies and creates unicorns, only our database doesn&#39;t know about horns - let&#39;s see what we can do here.</p>
+<pre><code><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Unicorn</span> {</span>
+  <span class="keyword">public</span> <span class="keyword">string</span> Name { <span class="keyword">get</span>; <span class="keyword">set</span>; }
+  <span class="keyword">public</span> <span class="keyword">string</span> Colour { <span class="keyword">get</span>; <span class="keyword">set</span>; }
+  <span class="keyword">public</span> <span class="keyword">string</span> CutieMark { <span class="keyword">get</span>; <span class="keyword">set</span>; }
+  <span class="keyword">public</span> <span class="keyword">int</span> Hornsize { <span class="keyword">get</span>; <span class="keyword">set</span>; }
 }
 
-public class PoniesIntoUnicorns : AbstractTransformerCreationTask&lt;Pony&gt; {
-  public PoniesIntoUnicorns() {
+<span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">PoniesIntoUnicorns</span> : <span class="title">AbstractTransformerCreationTask</span>&lt;<span class="title">Pony</span>&gt; {</span>
+  <span class="keyword">public</span> PoniesIntoUnicorns() {
     Transform = ponies =&gt; from pony in ponies
-                          select new {
+                          select <span class="keyword">new</span> {
                             pony.Name,
                             pony.Colour,
                             pony.CutieMark,
-                            Hornsize = pony.Size * Query["hornscalefactor"]
+                            Hornsize = pony.Size * Query[<span class="string">"hornscalefactor"</span>]
                           }
   }
-}
-</code></pre>
-
-<p>Okay, contrived example but this feature isn't for me and my pony database, it's for you and your requirements, and you know it's you I'm talking about because you're looking at the above and going <em>finally, I've been waiting for this</em>.</p>
-
+}</code></pre>
+<p>Okay, contrived example but this feature isn&#39;t for me and my pony database, it&#39;s for you and your requirements, and you know it&#39;s you I&#39;m talking about because you&#39;re looking at the above and going <em>finally, I&#39;ve been waiting for this</em>.</p>
 <p>How do we use the above?</p>
-
-<pre><code>session.Query&lt;Pony&gt;()
-       .Where(pony =&gt; pony.Colour === "purple")
-       .TransformWith&lt;PoniesIntoUnicorns, Unicorn&gt;()
-       .AddQueryInput("hornscalefactor", 0.1)
-       .ToArray();
-</code></pre>
-
+<pre><code>session<span class="preprocessor">.Query</span>&lt;Pony&gt;()
+       <span class="preprocessor">.Where</span>(pony =&gt; pony<span class="preprocessor">.Colour</span> === <span class="string">"purple"</span>)
+       <span class="preprocessor">.TransformWith</span>&lt;PoniesIntoUnicorns, Unicorn&gt;()
+       <span class="preprocessor">.AddQueryInput</span>(<span class="string">"hornscalefactor"</span>, <span class="number">0.1</span>)
+       <span class="preprocessor">.ToArray</span>()<span class="comment">;</span></code></pre>
 <p>Pretty simple and effective, glad I could oblige :)</p>
-
 <p>Oh yeah, it works for Load too</p>
-
-<pre><code>var unicorn = session.Load&lt;PoniesIntoUnicorns, Pony&gt;(
-              x=&gt; x.AddQueryInput("hornscalefactor", 0.1))
-</code></pre>
-
-<p>Not the tidiest API in the world, but I'm sure it will improve as people actually use it.</p>
+<pre><code>var unicorn = session.Load<span class="tag">&lt;<span class="title">PoniesIntoUnicorns,</span> <span class="attribute">Pony</span>&gt;</span>(
+              x=&gt; x.AddQueryInput("hornscalefactor", 0.1))</code></pre>
+<p>Not the tidiest API in the world, but I&#39;m sure it will improve as people actually use it.</p>

@@ -1,5 +1,4 @@
 <p>Carrying on in the EventStore series...</p>
-
 <ul>
 <li><a href="/entries/playing-with-the-eventstore.html">Introduction to the EventStore</a></li>
 <li><a href="/entries/pushing-data-into-streams-in-the-eventstore.html">Pushing data into the EventStore</a></li>
@@ -14,84 +13,63 @@
 <li><a href="/entries/evented-github-adventure---temporal-averages.html">Temporal averages</a></li>
 <li>Sentiment analysis of Github events</li>
 </ul>
-
-<p>Okay, back to more practical things now we've covered how easy <a href="/entries/evented-github-adventure---temporal-averages.html">temporal queries are with the event store</a>.</p>
-
-<p>Ever wondered how happy developers from different languages were? Well, let's find out </p>
-
+<p>Okay, back to more practical things now we&#39;ve covered how easy <a href="/entries/evented-github-adventure---temporal-averages.html">temporal queries are with the event store</a>.</p>
+<p>Ever wondered how happy developers from different languages were? Well, let&#39;s find out </p>
 <p>First off, I downloaded a list of words for both positive and negative sentiment from the internet, here are the references to the studies done which provided these word lists for use:</p>
-
-<pre><code>   Minqing Hu and Bing Liu. "Mining and Summarizing Customer Reviews."
-       Proceedings of the ACM SIGKDD International Conference on Knowledge
-       Discovery and Data Mining (KDD-2004), Aug 22-25, 2004, Seattle,
+<pre><code>   Minqing Hu <span class="keyword">and</span> Bing Liu. <span class="string">"Mining and Summarizing Customer Reviews."</span>
+       Proceedings <span class="keyword">of</span> <span class="keyword">the</span> ACM SIGKDD International Conference <span class="function_start"><span class="keyword">on</span> <span class="title">Knowledge</span></span>
+       Discovery <span class="keyword">and</span> Data Mining (KDD-<span class="number">2004</span>), Aug <span class="number">22</span>-<span class="number">25</span>, <span class="number">2004</span>, Seattle,
        Washington, USA, 
-   Bing Liu, Minqing Hu and Junsheng Cheng. "Opinion Observer: Analyzing
-       and Comparing Opinions on the Web." Proceedings of the 14th
-       International World Wide Web conference (WWW-2005), May 10-14,
-       2005, Chiba, Japan.
-</code></pre>
-
+   Bing Liu, Minqing Hu <span class="keyword">and</span> Junsheng Cheng. <span class="string">"Opinion Observer: Analyzing
+       and Comparing Opinions on the Web."</span> Proceedings <span class="keyword">of</span> <span class="keyword">the</span> <span class="number">14</span>th
+       International World Wide Web conference (WWW-<span class="number">2005</span>), May <span class="number">10</span>-<span class="number">14</span>,
+       <span class="number">2005</span>, Chiba, Japan.</code></pre>
 <p>So, how to use this? Well, I just pasted the list of words into a file in vim, and ran a macro over them to convert them into two arrays like so:</p>
-
-<pre><code>var happyWords = [ "yay", "funsome", "winsome" ]
-var sadWords = [ "boo", "crap", "lame" ]
-</code></pre>
-
-<p>There are actually about 5000 words in total, but essentially what I'm going to do is partition by language and keep a count of </p>
-
+<pre><code><span class="keyword">var</span> happyWords = [ <span class="string">"yay"</span>, <span class="string">"funsome"</span>, <span class="string">"winsome"</span> ]
+<span class="keyword">var</span> sadWords = [ <span class="string">"boo"</span>, <span class="string">"crap"</span>, <span class="string">"lame"</span> ]</code></pre>
+<p>There are actually about 5000 words in total, but essentially what I&#39;m going to do is partition by language and keep a count of </p>
 <ul>
 <li>How many commits per language I see</li>
 <li>How many happy words I see in each commit</li>
 <li>How many sad words I see in each commit</li>
 </ul>
-
-<p>Now, real sentiment analysis is a little more complicated than simply looking for words, but we'll be happy with this for now, let's have a look at the projection:</p>
-
-<pre><code>function collectHappinessIndexOfCommit(commit, state) {
+<p>Now, real sentiment analysis is a little more complicated than simply looking for words, but we&#39;ll be happy with this for now, let&#39;s have a look at the projection:</p>
+<pre><code><span class="function"><span class="keyword">function</span> <span class="title">collectHappinessIndexOfCommit</span><span class="params">(commit, state)</span> <span class="comment">{
    var index = 0
    for(var i in happyWords) {
        if(commit.message.indexOf(happyWords[i]) &gt;= 0)
           state.happycount++
-   }
-   for(var i in sadWords) {
+   }</span>
+   <span class="title">for</span><span class="params">(<span class="keyword">var</span> i <span class="keyword">in</span> sadWords)</span> <span class="comment">{
        if(commit.message.indexOf(sadWords[i]) &gt;= 0)
           state.sadcount++
-   }
-   state.commits++
+   }</span>
+   <span class="title">state</span>.<span class="title">commits</span>++
 }
 
-fromStreams(['github-commits'])
-  .partitionBy(function(ev) {
+<span class="title">fromStreams</span><span class="params">([<span class="string">'github-commits'</span>])</span>
+  .<span class="title">partitionBy</span><span class="params">(<span class="keyword">function</span>(ev)</span> <span class="comment">{
     if(ev.body.repo)
       return ev.body.repo.language
-  })
-  .when({
-    "$init": function() {
+  }</span>)
+  .<span class="title">when</span><span class="params">({
+    "$init": <span class="keyword">function</span>()</span> <span class="comment">{
       return { 
          commits: 0, sadcount: 0, happycount: 0
-      }
+      }</span>
     },
-    "Commit": function(state, ev) {
+    "<span class="title">Commit</span>":</span> <span class="keyword">function</span>(state, ev) <span class="comment">{
        collectHappinessIndexOfCommit(ev.body.commit, state)
-    },
-  })
-</code></pre>
-
-<p>I guess I'll say that my "happiness index" can be expressed by </p>
-
-<pre><code>var index = happycount / sadcount
-</code></pre>
-
-<p>Or something similar (not the point of this post, if you want to change it then modify the JS on this page..), let's have a look at the chart of happiness over languages</p>
-
+    }</span>,
+  })</code></pre>
+<p>I guess I&#39;ll say that my &quot;happiness index&quot; can be expressed by </p>
+<pre><code><span class="title">var</span> index = happycount / sadcount</code></pre>
+<p>Or something similar (not the point of this post, if you want to change it then modify the JS on this page..), let&#39;s have a look at the chart of happiness over languages</p>
 <div id="scaled"></div>
 
-<p>Wow, look at those guys writing Delphi! Presumably they've got the best work/life balance ever known, or they know something the rest of us don't. The folk doing Puppet? I guess when your job is automating the crap that nobody else wants to touch you're going to be pretty miserable most of the time ;-)</p>
-
-<p>Actually, most of the "old school" languages hang around to the right and the "new school" to the left - is this an indication that unhappy people jump ship sooner than others?</p>
-
+<p>Wow, look at those guys writing Delphi! Presumably they&#39;ve got the best work/life balance ever known, or they know something the rest of us don&#39;t. The folk doing Puppet? I guess when your job is automating the crap that nobody else wants to touch you&#39;re going to be pretty miserable most of the time ;-)</p>
+<p>Actually, most of the &quot;old school&quot; languages hang around to the right and the &quot;new school&quot; to the left - is this an indication that unhappy people jump ship sooner than others?</p>
 <p><em>Note: The differences are actually hilariously small, and although there is a huge amount of data it is likely not statistically that relevant, this is just a bit of fun</em></p>
-
 <script type="text/javascript" src="/d3.v2.js"></script>
 <script type="text/javascript">
 
@@ -170,3 +148,5 @@ var data =
          .attr("width", 640 / (filteredData.length + 1))
          .attr("height", function(d, i) { return 280 * scale(d.state.index) })
 </script>
+
+

@@ -1,92 +1,69 @@
-<p>I've made a <a href="http://github.com/robashton/hotelier">Github repo</a>, into which I've placed the standard .gitignore for .NET and etc.</p>
-
-<p>I'm using Visual Studio 2010, because I haven't got Visual Studio 2012 and it's unlikely I'm going to get it as most of my personal dev these days is done in vim and most of my professional dev is done on client machines.</p>
-
-<p>I've cloned that to my local drive and next up imma create an empty ASP.NET MVC4 application using Razor views.</p>
-
-<p>With that done, I'm going to use the version of RavenDB from the unstable builds because there is functionality in there that I want (I wrote it while I was in Israel at Hibernating Rhinos) and by the time most people read this that'll be old news. (Judging by past performance in Google Analytics)</p>
-
-<p>I'll install Zombify via NuGet into an empty class library project which is part of the solution.</p>
-
+<p>I&#39;ve made a <a href="http://github.com/robashton/hotelier">Github repo</a>, into which I&#39;ve placed the standard .gitignore for .NET and etc.</p>
+<p>I&#39;m using Visual Studio 2010, because I haven&#39;t got Visual Studio 2012 and it&#39;s unlikely I&#39;m going to get it as most of my personal dev these days is done in vim and most of my professional dev is done on client machines.</p>
+<p>I&#39;ve cloned that to my local drive and next up imma create an empty ASP.NET MVC4 application using Razor views.</p>
+<p>With that done, I&#39;m going to use the version of RavenDB from the unstable builds because there is functionality in there that I want (I wrote it while I was in Israel at Hibernating Rhinos) and by the time most people read this that&#39;ll be old news. (Judging by past performance in Google Analytics)</p>
+<p>I&#39;ll install Zombify via NuGet into an empty class library project which is part of the solution.</p>
 <p>Thus, things now look like this:</p>
-
 <p><img src="/img/empty-hotelier.png"></p>
-
-<p>You'll notice that Zombify has made some basic set-up stuffs for us which is nice of it, we'll ignore that for now though because we have other fish to fry.</p>
-
-<p>I've added RavenDB to a naughty _libs folder, and added it as references and that's me good to go.</p>
-
+<p>You&#39;ll notice that Zombify has made some basic set-up stuffs for us which is nice of it, we&#39;ll ignore that for now though because we have other fish to fry.</p>
+<p>I&#39;ve added RavenDB to a naughty _libs folder, and added it as references and that&#39;s me good to go.</p>
 <p><strong>Hooking up RavenDB per request</strong></p>
-
-<p>Well, I'm going to be a rebel and not bother with an IOC container, it's a big faff, every one of my controllers is going to need the IDocumentSession to begin with and I'm not planning on writing unit tests for my controllers anyway (they can instantiate stuff just fine thank-you).</p>
-
-<p>Instead, this is what I'll do:</p>
-
+<p>Well, I&#39;m going to be a rebel and not bother with an IOC container, it&#39;s a big faff, every one of my controllers is going to need the IDocumentSession to begin with and I&#39;m not planning on writing unit tests for my controllers anyway (they can instantiate stuff just fine thank-you).</p>
+<p>Instead, this is what I&#39;ll do:</p>
 <p><strong>RavenDBFilterAttribute</strong></p>
-
-<pre><code>public class RavenPerRequestAttribute : ActionFilterAttribute
+<pre><code><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="id">RavenPerRequestAttribute</span> : <span class="id">ActionFilterAttribute</span></span>
 {
-    public override void OnActionExecuting(ActionExecutingContext filterContext)
+    <span class="keyword">public</span> override <span class="keyword">void</span> OnActionExecuting(ActionExecutingContext filterContext)
     {
-        if (filterContext.IsChildAction)
-            return;
-        PerRequestRavenControllerExtensions.BeginAction();
+        <span class="keyword">if</span> (filterContext<span class="variable">.IsChildAction</span>)
+            <span class="keyword">return</span>;
+        PerRequestRavenControllerExtensions<span class="variable">.BeginAction</span>();
     }
 
-    public override void OnResultExecuted(ResultExecutedContext filterContext)
+    <span class="keyword">public</span> override <span class="keyword">void</span> OnResultExecuted(ResultExecutedContext filterContext)
     {
-        if (filterContext.IsChildAction)
-            return;
-        PerRequestRavenControllerExtensions.EndAction();
+        <span class="keyword">if</span> (filterContext<span class="variable">.IsChildAction</span>)
+            <span class="keyword">return</span>;
+        PerRequestRavenControllerExtensions<span class="variable">.EndAction</span>();
     }
-}
-</code></pre>
-
+}</code></pre>
 <p><strong>And the extensions</strong></p>
-
-<pre><code>public static class PerRequestRavenControllerExtensions
+<pre><code><span class="keyword">public</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="id">PerRequestRavenControllerExtensions</span></span>
 {
-    private static DocumentStore _store;
+    <span class="keyword">private</span> <span class="keyword">static</span> DocumentStore _store;
 
-    public static IDocumentSession Documents(this Controller controller)
+    <span class="keyword">public</span> <span class="keyword">static</span> IDocumentSession Documents(<span class="keyword">this</span> Controller controller)
     {
-        return GetSecureDocuments();
+        <span class="keyword">return</span> GetSecureDocuments();
     }
 
 
-    public static void BeginAction()
+    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> BeginAction()
     {
-        HttpContext.Current.Items["DocumentSession"] = _store.OpenSession();
+        HttpContext<span class="variable">.Current</span><span class="variable">.Items</span>[<span class="string">"DocumentSession"</span>] = _store<span class="variable">.OpenSession</span>();
     }
 
-    public static void EndAction()
+    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> EndAction()
     {
-        var session = (IDocumentSession) HttpContext.Current.Items["DocumentSession"];
-        session.SaveChanges();
-        session.Dispose();
+        var session = (IDocumentSession) HttpContext<span class="variable">.Current</span><span class="variable">.Items</span>[<span class="string">"DocumentSession"</span>];
+        session<span class="variable">.SaveChanges</span>();
+        session<span class="variable">.Dispose</span>();
     }
 
-    public static void Initialize(IDocumentStore store)
+    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> Initialize(IDocumentStore store)
     {
       _store = store;
     }
-}
-</code></pre>
-
+}</code></pre>
 <p><strong>Being direct</strong></p>
-
-<p>This is a very direct way of doing per-request IDocumentSession and while it's non obvious that I need to call Initialize on those Extensions, it's part of the infrastructure and exists in a single place in my application so I'll live.</p>
-
-<p>In my AppStart, which I'll designate my Application Root and almighty Controller Of All Things Regarding Setup (in the absence of a real entry point ala real-coding in NodeJS)</p>
-
+<p>This is a very direct way of doing per-request IDocumentSession and while it&#39;s non obvious that I need to call Initialize on those Extensions, it&#39;s part of the infrastructure and exists in a single place in my application so I&#39;ll live.</p>
+<p>In my AppStart, which I&#39;ll designate my Application Root and almighty Controller Of All Things Regarding Setup (in the absence of a real entry point ala real-coding in NodeJS)</p>
 <pre><code>var store = new DocumentStore()
 {
-    DefaultDatabase = "Hotelier"
-};
-store.ParseConnectionString(ConfigurationManager.AppSettings["RavenConnectionString"]);
-store.Initialize();
+    DefaultDatabase = <span class="string">"Hotelier"</span>
+}<span class="comment">;</span>
+store<span class="preprocessor">.ParseConnectionString</span>(ConfigurationManager<span class="preprocessor">.AppSettings</span>[<span class="string">"RavenConnectionString"</span>])<span class="comment">;</span>
+store<span class="preprocessor">.Initialize</span>()<span class="comment">;</span>
 
-PerRequestRavenControllerExtensions.Initialize(store);
-</code></pre>
-
-<p>And that's me done with that. I now have access to RavenDB throughout my ASP.NET MVC controllers and that's a <em>good thing</em>. RavenDB is very much part of this application and there is no point hiding from it.</p>
+PerRequestRavenControllerExtensions<span class="preprocessor">.Initialize</span>(store)<span class="comment">;</span></code></pre>
+<p>And that&#39;s me done with that. I now have access to RavenDB throughout my ASP.NET MVC controllers and that&#39;s a <em>good thing</em>. RavenDB is very much part of this application and there is no point hiding from it.</p>

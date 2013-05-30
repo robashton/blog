@@ -1,88 +1,78 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Tue, 28 May 2013 10:11:37 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[A comparison of various JS frameworks using cold hard data]]></title><description><![CDATA[<p>I went for lunch with the a friend the other day and he kindly gave me an idea for a blog post about JavaScript frameworks...</p>
-
-<p><blockquote>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Thu, 30 May 2013 09:17:06 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[A comparison of various JS frameworks using cold hard data]]></title><description><![CDATA[<p>I went for lunch with the a friend the other day and he kindly gave me an idea for a blog post about JavaScript frameworks...</p>
+  <blockquote>
     I keep an eye on StackOverflow/Github/etc and mentally tot up the popularity of all these JS frameworks...
-  </blockquote></p>
+  </blockquote>
 
-<p><em>ooooh</em>, that's a good one that. If we're <em>really</em> going to say "We use FrameworkX" (and I advocate that you <em>never</em> do this, it's a silly thing to do), then let's at least look at some cold hard facts when doing so.</p>
-
-<p>Except let's not just look at popularity, let's think about the support and education and how we could find some metrics to determine these things.</p>
-
-<p>Here are a few assumptions I'm making for this post to work</p>
-
+<p><em>ooooh</em>, that&#39;s a good one that. If we&#39;re <em>really</em> going to say &quot;We use FrameworkX&quot; (and I advocate that you <em>never</em> do this, it&#39;s a silly thing to do), then let&#39;s at least look at some cold hard facts when doing so.</p>
+<p>Except let&#39;s not just look at popularity, let&#39;s think about the support and education and how we could find some metrics to determine these things.</p>
+<p>Here are a few assumptions I&#39;m making for this post to work</p>
 <ul>
-<li>StackOverflow is popular enough for the data to be representative (it's the de-facto place to ask programming questions)</li>
+<li>StackOverflow is popular enough for the data to be representative (it&#39;s the de-facto place to ask programming questions)</li>
 <li>The number of questions/un-answered questions is indicative of support</li>
 <li>Github is popular enough for the data to be representative</li>
 <li>The number of projects, and the number of stars on a project is indicative of popularity/use</li>
 </ul>
-
 <h1>Number of questions and unanswered questions on StackOverflow</h1>
-
 <p>The Stackoverflow guys are amazing, and <a href="http://data.stackexchange.com/stackoverflow/queries">provide querying capabilities right there on their site</a>, which means I can get some numbers right off the bat for the various frameworks</p>
-
 <p>I ended up with the following parameterised query to get my data</p>
+  <div class="collapse">
 
-<p><div class="collapse"></p>
+    DECLARE @TagName varchar(128) = &#39;%##TagName##%&#39;
 
-<pre><code>DECLARE @TagName varchar(128) = '%##TagName##%'
+    SELECT COUNT(<em>) from Posts P
+    WHERE P.Id IN (
+      SELECT DISTINCT(PostId) from PostTags 
+      WHERE PostTags.TagId In (
+        SELECT Id From Tags Where TagName LIKE @TagName
+      )
+    )
 
-SELECT COUNT(*) from Posts P
-WHERE P.Id IN (
-  SELECT DISTINCT(PostId) from PostTags 
-  WHERE PostTags.TagId In (
-    SELECT Id From Tags Where TagName LIKE @TagName
-  )
-)
+    SELECT COUNT(</em>) from Posts P
+    WHERE P.Id IN (
+      SELECT DISTINCT(PostId) from PostTags 
+      WHERE PostTags.TagId In (
+        SELECT Id From Tags Where TagName LIKE @TagName
+      )
+    ) AND P.AcceptedAnswerId IS NOT NULL
 
-SELECT COUNT(*) from Posts P
-WHERE P.Id IN (
-  SELECT DISTINCT(PostId) from PostTags 
-  WHERE PostTags.TagId In (
-    SELECT Id From Tags Where TagName LIKE @TagName
-  )
-) AND P.AcceptedAnswerId IS NOT NULL
+    SELECT SUM(P.AnswerCount) from Posts P
+    WHERE P.Id IN (
+      SELECT DISTINCT(PostId) from PostTags 
+      WHERE PostTags.TagId In (
+        SELECT Id From Tags Where TagName LIKE @TagName
+      )
+    )
 
-SELECT SUM(P.AnswerCount) from Posts P
-WHERE P.Id IN (
-  SELECT DISTINCT(PostId) from PostTags 
-  WHERE PostTags.TagId In (
-    SELECT Id From Tags Where TagName LIKE @TagName
-  )
-)
-</code></pre>
+  </div>
+Doing this meant I got all the questions with all the tags in the eco-system around that framework, and the data I want is
 
-<p></div>
-Doing this meant I got all the questions with all the tags in the eco-system around that framework, and the data I want is</p>
+- How many questions are there?
+- How many of those questions have accepted answers?
+- How mant answers do we get on average per question?
 
-<ul>
-<li>How many questions are there?</li>
-<li>How many of those questions have accepted answers?</li>
-<li><p>How mant answers do we get on average per question?</p>
+  <table>
+    <thead>
+      <tr>
+        <td>Framework</td><td>Questions</td><td>Answered</td><td>%</td><td>Average answers per question</td>
+      </tr>
+    </thead>
+      <tr><td>backbone</td><td>8863</td><td>5741</td><td>64.7%</td><td>1.42</td></tr>
+      <tr><td>angular</td><td>5498</td><td>3401</td><td class="red">61.8%</td><td>1.32</td></tr>
+      <tr><td>knockout</td><td class="green">5624</td><td>3917</td><td class="green">69.6%</td><td>1.31</td></tr>
+      <tr><td>ember</td><td class="red">10086</td><td>6426</td><td>63.71%</td><td>1.63</td></tr>
+  </table>
 
-<table>
-<thead>
-  <tr>
-    <td>Framework</td><td>Questions</td><td>Answered</td><td>%</td><td>Average answers per question</td>
-  </tr>
-</thead>
-  <tr><td>backbone</td><td>8863</td><td>5741</td><td>64.7%</td><td>1.42</td></tr>
-  <tr><td>angular</td><td>5498</td><td>3401</td><td class="red">61.8%</td><td>1.32</td></tr>
-  <tr><td>knockout</td><td class="green">5624</td><td>3917</td><td class="green">69.6%</td><td>1.31</td></tr>
-  <tr><td>ember</td><td class="red">10086</td><td>6426</td><td>63.71%</td><td>1.63</td></tr>
-</table></li>
-</ul>
+This in itself is quite interesting, as it doesn&#39;t seem like there is a lot of difference between them - although there are a lot more questions about Ember than I was expecting. Knockout is at the top of the heap as far as accept-rate goes but that might be indicative of the .NET-centric community found on StackOverflow?
 
-<p>This in itself is quite interesting, as it doesn't seem like there is a lot of difference between them - although there are a lot more questions about Ember than I was expecting. Knockout is at the top of the heap as far as accept-rate goes but that might be indicative of the .NET-centric community found on StackOverflow?</p>
+To get some sense of this data, we could do with looking elsewhere for some data...
 
-<p>To get some sense of this data, we could do with looking elsewhere for some data...</p>
+# Framework popularity
 
-<h1>Framework popularity</h1>
+For this, we can head to <a href="http://github.com">Github</a> as that&#39;s where all sensible OSS projects are hosted these days. Let&#39;s have a quick look at some basic stats about these projects. They&#39;re all actively using Github to track issues from the look of things so we can gleam a little bit about them from this data.
 
-<p>For this, we can head to <a href="http://github.com">Github</a> as that's where all sensible OSS projects are hosted these days. Let's have a quick look at some basic stats about these projects. They're all actively using Github to track issues from the look of things so we can gleam a little bit about them from this data.</p>
 
-<p><table>
+  <table>
     <thead>
       <tr>
         <td>Framework</td>  <td>Stars</td> <td>Forks</td>  <td>Issues open</td>  <td>Issues closed</td>  <td>Pull requests open</td>   <td>Pull requests closed</td>
@@ -92,56 +82,47 @@ Doing this meant I got all the questions with all the tags in the eco-system aro
       <tr><td>angular</td>  <td>9692</td>                 <td>1942</td>                          <td class="red">655</td>              <td>2037</td>          <td >52</td>                  <td>1150</td>          </tr>
       <tr><td>knockout</td> <td class="red">3708</td>     <td class="red">559</td>               <td>235</td>                          <td>738</td>           <td>59</td>                   <td>275</td>           </tr> 
       <tr><td>ember</td>    <td>6997</td>                 <td>1324</td>                          <td>196</td>                          <td>2487</td>          <td class="red">61</td>       <td>1250</td>          </tr>
-  </table></p>
+  </table>
 
-<p>Backbone apparently by far the healthiest project amongst this bunch, with very few issues or pull requests left open (but with a similar amount of activity). I'm surprised a more "mature" project like Angular has so much outstanding on it - but this might just be because of how they use Github issues.</p>
 
-<h1>Safety in numbers</h1>
+Backbone apparently by far the healthiest project amongst this bunch, with very few issues or pull requests left open (but with a similar amount of activity). I&#39;m surprised a more &quot;mature&quot; project like Angular has so much outstanding on it - but this might just be because of how they use Github issues.
 
-<p>This data (when combined with the previous queries) begins to get a little bit more useful if we want to jump to some conclusions already; I'd like to dig deeper into the history of these projects and see who exactly has contributed to them. I don't want to be choosing a framework just because it has a large number of users, I care about who is doing the development too!</p>
+# Safety in numbers
 
-<p>To do this, we have the Github API to look at </p>
+This data (when combined with the previous queries) begins to get a little bit more useful if we want to jump to some conclusions already; I&#39;d like to dig deeper into the history of these projects and see who exactly has contributed to them. I don&#39;t want to be choosing a framework just because it has a large number of users, I care about who is doing the development too!
 
-<pre><code>https://api.github.com/repos/{user}/{repo}/contributors
-</code></pre>
+To do this, we have the Github API to look at 
 
-<p>What do the contribution distributions look like for these projects?</p>
+    <a href="https://api.github.com/repos/{user}/{repo}/contributors">https://api.github.com/repos/{user}/{repo}/contributors</a>
 
-<h3>Top 10 contributors and their commit counts</h3>
+What do the contribution distributions look like for these projects?
 
-<p><div id="contribution-graph"></p>
+### Top 10 contributors and their commit counts
 
-<p></div></p>
+  <div id="contribution-graph">
 
-<p>The higher a line stays before it drops down to the 1st, a better indication that there is a healthy spread of committers giving love to the project. By this measure, Angular and Ember seem to be getting some shared love, Backbone is a bit of a one man show and Knockout doesn't really have a lot going on.</p>
+  </div>
 
+
+<p>The higher a line stays before it drops down to the 1st, a better indication that there is a healthy spread of committers giving love to the project. By this measure, Angular and Ember seem to be getting some shared love, Backbone is a bit of a one man show and Knockout doesn&#39;t really have a lot going on.</p>
 <h1>A brief history of source</h1>
-
-<p>Now I'm looking at committers, we can probably dig a bit deeper and see how this looks over time to get some further insight into the stability of the projects and how this contributor activity looks over time.</p>
-
-<p>I was going to just paste the charts from Github here, but they weren't really representative of activity and the Angular one just plain-old-wasn't-working at the time</p>
-
-<p>I've found a git library for nodejs and will use it to generate a graph of activity over time. What you'd expect to see is that older more stable projects should see a tendency towards less activity and hopefully more contributors as the community fixes issues)</p>
-
+<p>Now I&#39;m looking at committers, we can probably dig a bit deeper and see how this looks over time to get some further insight into the stability of the projects and how this contributor activity looks over time.</p>
+<p>I was going to just paste the charts from Github here, but they weren&#39;t really representative of activity and the Angular one just plain-old-wasn&#39;t-working at the time</p>
+<p>I&#39;ve found a git library for nodejs and will use it to generate a graph of activity over time. What you&#39;d expect to see is that older more stable projects should see a tendency towards less activity and hopefully more contributors as the community fixes issues)</p>
 <h2>Average commits per person over time per repo</h2>
+  <div id="contribution-over-time">
 
-<p><div id="contribution-over-time"></p>
-
-<p></div></p>
+  </div>
 
 <h1>Conclusions</h1>
-
-<p>I've got no real desire to draw conclusions off this data, as this was a harmless bit of digging over a spare few hours I had going, I do have some rough comments though:</p>
-
+<p>I&#39;ve got no real desire to draw conclusions off this data, as this was a harmless bit of digging over a spare few hours I had going, I do have some rough comments though:</p>
 <ul>
-<li>EmberJS has a third of the followers on Github to Backbone, a similar amount of activity on Github but <em>more questions on StackOverflow</em> - is this an indication as to it being hard to pick up or use? It also has a high amount of code churn still - presumably because it's still quite an immature project (I didn't realise how much younger it was than the others!)</li>
-<li>Backbone is clearly reaching some sort of maturity, with few issues left open on Github, commit activity subsiding and some sort of stability being reached. It doesn't have the high number of core contributors of other projects but there are plenty of people willing to fix bugs still. The support rate on StackOverflow is about the same as the other projects and while it might be the most popular project on Github it doesn't have that many questions considering that huge size.</li>
-<li>Knockout doesn't really get the love that other frameworks do, this might be due to its conception taking place in the .NET community or because most people steer clear of it for some reason. That said - if you're using it and asking for help on StackOverflow you're more likely to get help than on the other frameworks. The response rate on issues/pull requests is high which means the core contributors are quite active even if there aren't many of them.</li>
+<li>EmberJS has a third of the followers on Github to Backbone, a similar amount of activity on Github but <em>more questions on StackOverflow</em> - is this an indication as to it being hard to pick up or use? It also has a high amount of code churn still - presumably because it&#39;s still quite an immature project (I didn&#39;t realise how much younger it was than the others!)</li>
+<li>Backbone is clearly reaching some sort of maturity, with few issues left open on Github, commit activity subsiding and some sort of stability being reached. It doesn&#39;t have the high number of core contributors of other projects but there are plenty of people willing to fix bugs still. The support rate on StackOverflow is about the same as the other projects and while it might be the most popular project on Github it doesn&#39;t have that many questions considering that huge size.</li>
+<li>Knockout doesn&#39;t really get the love that other frameworks do, this might be due to its conception taking place in the .NET community or because most people steer clear of it for some reason. That said - if you&#39;re using it and asking for help on StackOverflow you&#39;re more likely to get help than on the other frameworks. The response rate on issues/pull requests is high which means the core contributors are quite active even if there aren&#39;t many of them.</li>
 <li>Angular is <em>waaaaay</em> older than I thought it was, so it staggers me the amount of issues pending closure. It has a very solid contributor base and it does seem as though the commit-rate is reaching some sort of stability.  It does however have the lowest accept-rate on StackOverflow so read into that what you will. </li>
 </ul>
-
-<p>I'm saying no more on the matter, trololol.</p>
-
+<p>I&#39;m saying no more on the matter, trololol.</p>
 <script type="text/javascript" src="/d3.v2.js"> </script>
 
 <script type="text/javascript">
@@ -362,28 +343,22 @@ d3.json("/mvvmfw/contribution.json", function(data) {
 })
 
 
-</script>]]></description><link>http://codeofrob.com/entries/a-comparison-of-various-js-frameworks-using-cold-hard-data.html</link><guid isPermaLink="true">http://codeofrob.com/entries/a-comparison-of-various-js-frameworks-using-cold-hard-data.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 28 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[I'm leaving .NET]]></title><description><![CDATA[<p><em>trolololol</em></p>
+</script>
 
-<p>Although technically I am now a full-time <em>whatever</em> programmer at a start-up in London, writing all of the features in JavaScripts and inserting Cucumbers into my Rubies I'm not <em>leaving</em> anything per se but I'm probably not going to be doing many talks or blog posts for that ecosystem for the time being. (I haven't actually written any C# in months apart from a week or two at various clients, and the only time I've booted up my Windows laptop for any other reason than that in the past year is to play Diablo III which is an awful game by the way)</p>
 
+
+]]></description><link>http://codeofrob.com/entries/a-comparison-of-various-js-frameworks-using-cold-hard-data.html</link><guid isPermaLink="true">http://codeofrob.com/entries/a-comparison-of-various-js-frameworks-using-cold-hard-data.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 28 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[I'm leaving .NET]]></title><description><![CDATA[<p><em>trolololol</em></p>
+<p>Although technically I am now a full-time <em>whatever</em> programmer at a start-up in London, writing all of the features in JavaScripts and inserting Cucumbers into my Rubies I&#39;m not <em>leaving</em> anything per se but I&#39;m probably not going to be doing many talks or blog posts for that ecosystem for the time being. (I haven&#39;t actually written any C# in months apart from a week or two at various clients, and the only time I&#39;ve booted up my Windows laptop for any other reason than that in the past year is to play Diablo III which is an awful game by the way)</p>
 <h2>Apologies</h2>
-
-<p>I'm actually writing this post to apologise to anybody who hoped to see me at any of the conferences I'm supposed to be speaking at over the next few months as I have cancelled these engagements.</p>
-
-<p>I am devoting myself to a start-up, dropping my glamorous consulting and contracting lifestyle, ceasing my constant travel schedule and going to spend the majority of my time in London from now on (becoming UK resident once more, paying UK tax and renting an apartment here). I'll stop being able to reach into the infinite buckets of cash handed over in exchange for fractions of my immortal soul but hopefully I'm going to be a part of something pretty big and exciting.</p>
-
+<p>I&#39;m actually writing this post to apologise to anybody who hoped to see me at any of the conferences I&#39;m supposed to be speaking at over the next few months as I have cancelled these engagements.</p>
+<p>I am devoting myself to a start-up, dropping my glamorous consulting and contracting lifestyle, ceasing my constant travel schedule and going to spend the majority of my time in London from now on (becoming UK resident once more, paying UK tax and renting an apartment here). I&#39;ll stop being able to reach into the infinite buckets of cash handed over in exchange for fractions of my immortal soul but hopefully I&#39;m going to be a part of something pretty big and exciting.</p>
 <h2>The start-up life</h2>
-
-<p>I'm not going to write about who the start-up is here on my blog as the site is going a re-design at the moment; although folk who know me already know and it's not a secret. I'm pretty enthused about what they are doing and believe it not only has a reasonable chance of success, but is being led by people who have a good idea of what they want to do with it and what they want to get out of it.</p>
-
-<p>My role? Undefined, I'm going to be writing code (and I have been writing code for the past couple of weeks for them), and looking to take more ownership of the codebase as we onboard new clients and encounter challenges come as a part of that.</p>
-
-<p>This is the kind of stuff I'm good at, writing code and delivering software and it's a genuine pleasure to be in a job where this is what is expected of me rather than hours of bullshit meetings and endless hand waving.</p>
-
-<p>I'm a bit scared about staying in one place for more than a few weeks, as I've not done that for a while but this should be the start of a rather awesome adventure and I look forward to working out how to enjoy London as a tax paying resident.</p>
-
-<p>Woop woop.</p>]]></description><link>http://codeofrob.com/entries/im-leaving-.net.html</link><guid isPermaLink="true">http://codeofrob.com/entries/im-leaving-.net.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 23 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Looking at Kotlin - The rest of it]]></title><description><![CDATA[<p>I'm nearly done with my brief foray into Kotlin, but I've a few more things to cover</p>
-
+<p>I&#39;m not going to write about who the start-up is here on my blog as the site is going a re-design at the moment; although folk who know me already know and it&#39;s not a secret. I&#39;m pretty enthused about what they are doing and believe it not only has a reasonable chance of success, but is being led by people who have a good idea of what they want to do with it and what they want to get out of it.</p>
+<p>My role? Undefined, I&#39;m going to be writing code (and I have been writing code for the past couple of weeks for them), and looking to take more ownership of the codebase as we onboard new clients and encounter challenges come as a part of that.</p>
+<p>This is the kind of stuff I&#39;m good at, writing code and delivering software and it&#39;s a genuine pleasure to be in a job where this is what is expected of me rather than hours of bullshit meetings and endless hand waving.</p>
+<p>I&#39;m a bit scared about staying in one place for more than a few weeks, as I&#39;ve not done that for a while but this should be the start of a rather awesome adventure and I look forward to working out how to enjoy London as a tax paying resident.</p>
+<p>Woop woop.</p>
+]]></description><link>http://codeofrob.com/entries/im-leaving-.net.html</link><guid isPermaLink="true">http://codeofrob.com/entries/im-leaving-.net.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 23 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Looking at Kotlin - The rest of it]]></title><description><![CDATA[<p>I&#39;m nearly done with my brief foray into Kotlin, but I&#39;ve a few more things to cover</p>
 <ul>
 <li><a href="/entries/looking-at-kotlin---a-few-notes-made.html">Looking at Kotlin - getting started</a></li>
 <li><a href="/entries/looking-at-kotlin---classes-and-functions.html">Looking at Kotkin - Classes and Functions</a></li>
@@ -391,456 +366,293 @@ d3.json("/mvvmfw/contribution.json", function(data) {
 <li><a href="/entries/looking-at-kotlin---fun-with-functions.html">Looking at Kotlin - Fun with functions</a></li>
 <li>Looking at Kotlin - Wrapping it up</li>
 </ul>
-
 <p><strong>Inner classes</strong></p>
-
 <p>So, inner classes, a feature that both Java and C# have and each with their own set of issues.</p>
-
-<pre><code>class Outer() { 
-  private val bar : Int = 1 
-    class Nested() { 
-      fun foo() = 2 
+<pre><code><span class="class"><span class="keyword">class</span> <span class="title">Outer</span><span class="params">()</span> {</span> 
+  <span class="keyword">private</span> <span class="keyword">val</span> bar : Int = <span class="number">1</span> 
+    <span class="class"><span class="keyword">class</span> <span class="title">Nested</span><span class="params">()</span> {</span> 
+      fun foo() = <span class="number">2</span> 
     } 
-  } 
-</code></pre>
-
-<p>val demo = Outer.Inner().foo() // == 2</p>
-
+  } </code></pre>
+<p>   val demo = Outer.Inner().foo() // == 2</p>
 <p>No biggy here, except in Java there is a problem with nested class as explained in <a href="http://blog.jetbrains.com/kotlin/2013/02/kotlin-m5-is-out/">this blog entry</a> </p>
-
-<p><blockquote>
+  <blockquote>
     An inner class is a non-static nested class, i.e. it holds a reference to an instance of its outer. In Java nested classes are inner by default, and if you don’t want a reference to the outer, you make your class static. Sometimes it leads to memory leaks, when someone is holding a reference to an instance of an inner class without knowing that it also holds an outer instance.
-  </blockquote></p>
+  </blockquote>
 
-<p>Kotlin's solution is to say that you can't do this</p>
-
-<pre><code>class Outer() { 
-  private val bar : Int = 1 
-    class Nested() { 
+<p>Kotlin&#39;s solution is to say that you can&#39;t do this</p>
+<pre><code><span class="class"><span class="keyword">class</span> <span class="title">Outer</span><span class="params">()</span> {</span> 
+  <span class="keyword">private</span> <span class="keyword">val</span> bar : Int = <span class="number">1</span> 
+    <span class="class"><span class="keyword">class</span> <span class="title">Nested</span><span class="params">()</span> {</span> 
       fun doSomething() {
         println(bar)
       }
     } 
-  } 
-</code></pre>
-
-<p>Instead you have to mark the inner class with 'inner' to make this an explicit decision</p>
-
-<pre><code>class Outer() { 
-  private val bar : Int = 1 
-    inner class Nested() { 
+  } </code></pre>
+<p>Instead you have to mark the inner class with &#39;inner&#39; to make this an explicit decision</p>
+<pre><code><span class="class"><span class="keyword">class</span> <span class="title">Outer</span><span class="params">()</span> {</span> 
+  <span class="keyword">private</span> <span class="keyword">val</span> bar : Int = <span class="number">1</span> 
+    inner <span class="class"><span class="keyword">class</span> <span class="title">Nested</span><span class="params">()</span> {</span> 
       fun doSomething() {
         println(bar)
       }
     } 
-  } 
-</code></pre>
-
-<p>I have a better solution, <em>get rid of inner classes</em>, they're crap anyway and don't just cause problems in software, but apparently cause problems with language design too. Problem solved.</p>
-
+  } </code></pre>
+<p>I have a better solution, <em>get rid of inner classes</em>, they&#39;re crap anyway and don&#39;t just cause problems in software, but apparently cause problems with language design too. Problem solved.</p>
 <p><strong>null and elvis</strong></p>
-
 <p>Kotlin operates on the basis of things not being nullable by default, which is something I wholeheartedly support.</p>
-
-<pre><code>var derpy : Pony = null
-</code></pre>
-
-<p>This isn't allowed.</p>
-
-<p>We're allowed to say we <em>want</em> a nullable object, by adding a question mark to things.</p>
-
-<pre><code>var derpy : Pony? = null
-</code></pre>
-
-<p>This is sensible, and can't be faulted.</p>
-
-<p>Most legacy java APIs will return things that <em>can</em> be nullable, and in fact a lot of Java APIs do this in places where they really shouldn't. The compiler will complain about this though, so where I do</p>
-
+<pre><code><span class="keyword">var</span> derpy : Pony = <span class="keyword">null</span></code></pre>
+<p>This isn&#39;t allowed.</p>
+<p>We&#39;re allowed to say we <em>want</em> a nullable object, by adding a question mark to things.</p>
+<pre><code><span class="keyword">var</span> derpy : Pony? = <span class="keyword">null</span></code></pre>
+<p>This is sensible, and can&#39;t be faulted.</p>
+<p>Most legacy java APIs will return things that <em>can</em> be nullable, and in fact a lot of Java APIs do this in places where they really shouldn&#39;t. The compiler will complain about this though, so where I do</p>
 <p><em>Compiler error</em></p>
-
-<pre><code> var fileList = files.listFiles()
- var size = fileList.size
- println(size)
-</code></pre>
-
+<pre><code> var fileList = <span class="transposed_variable">files.</span>listFiles()
+ var <span class="built_in">size</span> = <span class="transposed_variable">fileList.</span><span class="built_in">size</span>
+ println(<span class="built_in">size</span>)</code></pre>
 <p><em>Compiler success</em></p>
-
-<pre><code> var fileList = files.listFiles()
- var size = fileList?.size
- println(size)
-</code></pre>
-
+<pre><code> var fileList = <span class="transposed_variable">files.</span>listFiles()
+ var <span class="built_in">size</span> = fileList?.<span class="built_in">size</span>
+ println(<span class="built_in">size</span>)</code></pre>
 <p>The elvis operator gets compiled down into</p>
-
-<pre><code> var fileList = files.listFiles()
- if(fileList != null) {
-   var size = fileList.size
+<pre><code> <span class="keyword">var</span> fileList = files.listFiles()
+ <span class="keyword">if</span>(fileList != <span class="keyword">null</span>) {
+   <span class="keyword">var</span> size = fileList.size
    println(size)
- }
-</code></pre>
-
-<p>This is a case where Kotlin "fixes" Java well, so I'm not complaining.</p>
-
+ }</code></pre>
+<p>This is a case where Kotlin &quot;fixes&quot; Java well, so I&#39;m not complaining.</p>
 <p><strong>Ranges</strong></p>
-
 <p>Syntastical sugar, but always a fan of this sort of thing</p>
-
-<pre><code>for (i in (1..4).reversed() step 2) print(i) // prints "42" 
-</code></pre>
-
-<p>I like this sort of thing, although it gets out of hand in languages like Ruby so I'd watch this stuff cautiously.</p>
-
+<pre><code><span class="keyword">for</span> (i <span class="keyword">in</span> (<span class="number">1.</span><span class="number">.4</span>).reversed() <span class="built_in">step</span> <span class="number">2</span>) print(i) <span class="comment">// prints "42" </span></code></pre>
+<p>I like this sort of thing, although it gets out of hand in languages like Ruby so I&#39;d watch this stuff cautiously.</p>
 <p><strong>Pattern matching</strong></p>
-
-<pre><code>when (x) { 
-  1 -&gt; print("x == 1") 
-  2 -&gt; print("x == 2") 
-  else -&gt; { // Note the block 
-    print("x is neither 1 nor 2") 
+<pre><code><span class="keyword">when</span> (<span class="keyword">x</span>) { 
+  <span class="number">1</span> -&gt; <span class="keyword">print</span>(<span class="string">"x == 1"</span>) 
+  <span class="number">2</span> -&gt; <span class="keyword">print</span>(<span class="string">"x == 2"</span>) 
+  <span class="keyword">else</span> -&gt; { <span class="regexp">//</span> Note the block 
+    <span class="keyword">print</span>(<span class="string">"x is neither 1 nor 2"</span>) 
   } 
-}
-</code></pre>
-
+}</code></pre>
 <p>or</p>
-
 <pre><code>when (tuple) { 
-  is #(1, 2) -&gt; ... 
-  is #(val a, 3) -&gt; print(a) // binding a to the first element of the tuple 
-  !is #(*, 1100) -&gt; ... 
-  else -&gt; ... 
-}
-</code></pre>
-
-<p>I'm a sucker for pattern matching constructs and I like this implementation because of how easy it is to declare those function literals.</p>
-
-<p>Also, it does intelligent casting for you as well, cutting own on some of the cruft you'd usually get with this sort of thing</p>
-
-<pre><code>function strangeFunction(a : Any) : Any {
+  is <span class="comment">#(1, 2) -&gt; ... </span>
+  is <span class="comment">#(val a, 3) -&gt; print(a) // binding a to the first element of the tuple </span>
+  !is <span class="comment">#(*, 1100) -&gt; ... </span>
+  <span class="keyword">else</span> -&gt; <span class="keyword">...</span> 
+}</code></pre>
+<p>I&#39;m a sucker for pattern matching constructs and I like this implementation because of how easy it is to declare those function literals.</p>
+<p>Also, it does intelligent casting for you as well, cutting own on some of the cruft you&#39;d usually get with this sort of thing</p>
+<pre><code><span class="function"><span class="keyword">function</span> <span class="title">strangeFunction</span><span class="params">(a : Any)</span> <span class="type">: Any</span> {</span>
   when(a) {
-    is Int -&gt;
-      return a + 5
-    is String -&gt;
-      return a + "5"
+    <span class="keyword">is</span> Int -&gt;
+      <span class="keyword">return</span> a + <span class="number">5</span>
+    <span class="keyword">is</span> String -&gt;
+      <span class="keyword">return</span> a + <span class="string">"5"</span>
   }
-}
-</code></pre>
-
+}</code></pre>
 <p>Nice</p>
-
 <p><strong>Round-up</strong></p>
-
-<p>The stated goals of Kotlin of "fixing Java" don't appear to have been met, there are holdovers from the language such as </p>
-
+<p>The stated goals of Kotlin of &quot;fixing Java&quot; don&#39;t appear to have been met, there are holdovers from the language such as </p>
 <ul>
 <li>The same old Java build cruft</li>
 <li>Over-complicated inheritance system</li>
 <li>Inner class madness</li>
 </ul>
-
 <p>And then some new ones</p>
-
 <ul>
 <li>confusing function constructs</li>
 <li>keyword heavy solutions</li>
 </ul>
-
-<p>It does 'fix'</p>
-
+<p>It does &#39;fix&#39;</p>
 <ul>
 <li>Null</li>
 </ul>
-
 <p>And it does compile to JavaScript which means some interesting library targeting opportunities.</p>
-
-<p>If I were "fixing a problem like Java", it would be by removing features that people shot themselves in the foot with often and by adding a few pieces of sugar to make things more readable in places.</p>
-
-<p>It wouldn't be by adding more key-words and more options for shooting yourself in the foot with, and it wouldn't be by defaulting to mutable and public :)</p>
-
-<p>That's pretty much all I have to say from my day of Kotlin, there are probably more things in there but I've got other stuff to do and not on the JVM!</p>]]></description><link>http://codeofrob.com/entries/looking-at-kotlin---the-rest-of-it.html</link><guid isPermaLink="true">http://codeofrob.com/entries/looking-at-kotlin---the-rest-of-it.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 22 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Looking at Kotlin - Fun with functions]]></title><description><![CDATA[<p>Onto some of the interesting things you can do with functions in Kotlin...</p>
-
+<p>If I were &quot;fixing a problem like Java&quot;, it would be by removing features that people shot themselves in the foot with often and by adding a few pieces of sugar to make things more readable in places.</p>
+<p>It wouldn&#39;t be by adding more key-words and more options for shooting yourself in the foot with, and it wouldn&#39;t be by defaulting to mutable and public :)</p>
+<p>That&#39;s pretty much all I have to say from my day of Kotlin, there are probably more things in there but I&#39;ve got other stuff to do and not on the JVM!</p>
+]]></description><link>http://codeofrob.com/entries/looking-at-kotlin---the-rest-of-it.html</link><guid isPermaLink="true">http://codeofrob.com/entries/looking-at-kotlin---the-rest-of-it.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 22 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Looking at Kotlin - Fun with functions]]></title><description><![CDATA[<p>Onto some of the interesting things you can do with functions in Kotlin...</p>
 <ul>
 <li><a href="/entries/looking-at-kotlin---a-few-notes-made.html">Looking at Kotlin - getting started</a></li>
 <li><a href="/entries/looking-at-kotlin---classes-and-functions.html">Looking at Kotkin - Classes and Functions</a></li>
 <li><a href="/entries/looking-at-kotlin---kicking-the-java-inheritance-addiction.html">Looking at Kotlin - Inheritance</a></li>
 <li>Looking at Kotlin - Fun with functions</li>
 </ul>
-
-<p>You can have some real fun with functions in Kotlin, let's do a really basic one first:</p>
-
+<p>You can have some real fun with functions in Kotlin, let&#39;s do a really basic one first:</p>
 <p><em>Extension methods</em></p>
-
 <p>Extension methods were exciting a few years ago when they came out in C# because they offered the possibility of creating new and innovative APIs. There is little harm in them being in Kotlin then!</p>
-
 <p>An extension method on the StringBuilder class which when invoked adds a new line to the builder:</p>
-
-<pre><code>fun StringBuilder.newLine() {
-    this.append("\n")
-}
-</code></pre>
-
+<pre><code>fun StringBuilder<span class="variable">.newLine</span>() {
+    <span class="keyword">this</span><span class="variable">.append</span>(<span class="string">"\n"</span>)
+}</code></pre>
 <p>Simple enough.</p>
-
 <p><strong>Function literals</strong></p>
-
-<p>Any sane language has a way of declaring functions as variables. In JavaScript functions are objects just like anything else so this <em>just works</em>, in C# this ability was added as an afterthought so it is a bit ugly and Java well... it's Java.</p>
-
+<p>Any sane language has a way of declaring functions as variables. In JavaScript functions are objects just like anything else so this <em>just works</em>, in C# this ability was added as an afterthought so it is a bit ugly and Java well... it&#39;s Java.</p>
 <p>A function that takes in nothing and returns nothing in Kotlin looks like:</p>
-
-<pre><code>var function : () -&gt; Unit
-</code></pre>
-
+<pre><code><span class="keyword">var</span> <span class="function"><span class="keyword">function</span> <span class="type">: () -&gt; Unit</span></code></pre>
 <p>If we wanted to invoke this, we could do so very easily</p>
-
-<pre><code>function()
-</code></pre>
-
-<p>Of course, we'd have to define it first and that looks like this</p>
-
-<pre><code>var function : () -&gt; Unit = {
-  println("Hello world")
-}
-</code></pre>
-
-<p>We can be implicit if we're combining declaration and definition so..</p>
-
-<pre><code>var function = {
-  println("Hello world")
-}
-</code></pre>
-
-<p>I've got very few comments about this, it's pretty simples and self explanatory.</p>
-
+<pre><code><span class="function"><span class="title">function</span><span class="params">()</span></code></pre>
+<p>Of course, we&#39;d have to define it first and that looks like this</p>
+<pre><code><span class="keyword">var</span> <span class="function"><span class="keyword">function</span> : <span class="params">()</span> -&gt; <span class="title">Unit</span> = {</span>
+  println(<span class="string">"Hello world"</span>)
+}</code></pre>
+<p>We can be implicit if we&#39;re combining declaration and definition so..</p>
+<pre><code>var <span class="function"><span class="keyword">function</span> = {
+  <span class="title">println</span><span class="params">("Hello world")</span></span>
+}</code></pre>
+<p>I&#39;ve got very few comments about this, it&#39;s pretty simples and self explanatory.</p>
 <p>A few examples to help with the next bits</p>
-
 <p><em>A function take takes in a string and returns nothing</em></p>
-
-<pre><code>var print : (arg: String) -&gt; Unit = { (arg: String) -&gt;
+<pre><code>var <span class="keyword">print</span> : (arg: String) -&gt; Unit = { (arg: String) -&gt;
   println(arg)
-}
-</code></pre>
-
+}</code></pre>
 <p>or implicitly</p>
-
-<pre><code>var print = { (arg: String) -&gt;
-  println(arg)
-}
-</code></pre>
-
+<pre><code><span class="keyword">var</span> <span class="built_in">print</span> = { (arg: String) -&gt;
+  <span class="built_in">println</span>(arg)
+}</code></pre>
 <p><em>A function that takes in two numbers and returns their sum</em></p>
-
-<pre><code>var sum = { (one: Int, two: Int) -&gt; one + two }
-</code></pre>
-
+<pre><code><span class="comment">var</span> <span class="comment">sum</span> <span class="comment">=</span> <span class="comment">{</span> <span class="comment">(one:</span> <span class="comment">Int</span>, <span class="comment">two:</span> <span class="comment">Int)</span> <span class="literal">-</span>&gt; <span class="comment">one</span> <span class="literal">+</span> <span class="comment">two</span> <span class="comment">}</code></pre>
 <p>All of this is pretty nice, although it takes quite a bit of practice remembering what the various forms are for declaring these functions, what threw me (if I understand) is the difference between these function literals and declared functions.</p>
-
 <p>With the function literals, it <em>seems</em> as though the returned value is the last statement in the function</p>
-
-<pre><code>var doubleUp = { (val: Int) -&gt; 
-  println("do a thing")
-  val * 2 
-}
-</code></pre>
-
+<pre><code><span class="keyword">var</span> doubleUp = { (<span class="keyword">val</span>: Int) -&gt; 
+  println(<span class="string">"do a thing"</span>)
+  <span class="keyword">val</span> * <span class="number">2</span> 
+}</code></pre>
 <p>where as in the declared functions it looks like this</p>
-
-<pre><code>fun doubleUp(val: Int) : Int {
-  println("do a thing")
-  return val * 2
-}
-</code></pre>
-
-<p>I'm not sure I understand this, two different ways of defining functions (plus all the various options we have around being implicit/explicit about the various aspects of the function) made it quite confusing to pick this up and I haven't even gone through some of the examples I saw on the Kotlin website.</p>
-
+<pre><code>fun doubleUp(<span class="keyword">val</span>: Int) : Int {
+  println(<span class="string">"do a thing"</span>)
+  <span class="keyword">return</span> <span class="keyword">val</span> * <span class="number">2</span>
+}</code></pre>
+<p>I&#39;m not sure I understand this, two different ways of defining functions (plus all the various options we have around being implicit/explicit about the various aspects of the function) made it quite confusing to pick this up and I haven&#39;t even gone through some of the examples I saw on the Kotlin website.</p>
 <p><strong>Passing functions around</strong></p>
-
 <p>Given the following two methods, I want to invoke applyAndPrint with an array and the doubleUp function</p>
-
-<pre><code>fun doubleUp(value: Int) : Int {
-  return value * 2
+<pre><code>fun doubleUp(value: <span class="built_in">Int</span>) : <span class="built_in">Int</span> {
+  return value * <span class="number">2</span>
 }
 
-fun applyAndPrint(values: Array&lt;Int&gt;, modifier: (value: Int) -&gt; Int) {
-  for(i in values)
+fun applyAndPrint(values: <span class="built_in">Array</span>&lt;<span class="built_in">Int</span>&gt;, modifier: (value: <span class="built_in">Int</span>) -&gt; <span class="built_in">Int</span>) {
+  <span class="keyword">for</span>(i <span class="keyword">in</span> values)
     println(modifier(i))
-}
-</code></pre>
-
+}</code></pre>
 <p>My first thought would be </p>
-
-<pre><code>applyAndPrint(array(1,3,4,5), doubleUp)
-</code></pre>
-
-<p>But this doesn't actually work, which I find counter-intuitive - in fact I couldn't find a good way to do this other than</p>
-
-<pre><code>applyAndPrint(array(1,3,4,5), {(x) -&gt; doubleUp(x)})
-</code></pre>
-
-<p>I'm definitely missing something here but the docs didn't really help me out.</p>
-
+<pre><code><span class="function"><span class="title">applyAndPrint</span><span class="params">(<span class="function_name">array</span>(<span class="number">1</span>,<span class="number">3</span>,<span class="number">4</span>,<span class="number">5</span>), double<span class="variable">Up</span>)</span></code></pre>
+<p>But this doesn&#39;t actually work, which I find counter-intuitive - in fact I couldn&#39;t find a good way to do this other than</p>
+<pre><code><span class="function"><span class="title">applyAndPrint</span><span class="params">(<span class="function_name">array</span>(<span class="number">1</span>,<span class="number">3</span>,<span class="number">4</span>,<span class="number">5</span>), <span class="tuple">{(x) -&gt; <span class="function_name">doubleUp</span>(x)}</span>)</span></code></pre>
+<p>I&#39;m definitely missing something here but the docs didn&#39;t really help me out.</p>
 <p><strong>Setting the context of these passed functions</strong></p>
-
 <p>Okay, this is where things get a bit cooler in theory - what if we had some sort of context (a builder) with some state in it and we want to invoke these functions transparently on top of these state.</p>
-
-<p>Understand that? Well done, I don't - but here's an example</p>
-
-<pre><code>class Builder (val multiplier: Int) {
+<p>Understand that? Well done, I don&#39;t - but here&#39;s an example</p>
+<pre><code><span class="class"><span class="keyword">class</span> <span class="id">Builder</span> (<span class="id">val</span> <span class="id">multiplier</span>: <span class="id">Int</span>) {</span>
 
     fun invokeStuff(action: (Builder.() -&gt; Unit)) {
-        this.action()
+        <span class="keyword">this</span><span class="variable">.action</span>()
     }
 
     fun multiply(value: Int) : Int {
-        return value * multiplier
+        <span class="keyword">return</span> value * multiplier
     }
-}
-</code></pre>
-
-<p>The important bit here is the way we've declared the type of 'action'</p>
-
-<pre><code>action: (Builder.() -&gt; Unit)
-</code></pre>
-
-<p>This is a function that returns nothing, takes in nothing but is invoked on an object of type "Builder".</p>
-
+}</code></pre>
+<p>The important bit here is the way we&#39;ve declared the type of &#39;action&#39;</p>
+<pre><code><span class="attribute">action</span>: <span class="string">(Builder.() -&gt; Unit)</span></code></pre>
+<p>This is a function that returns nothing, takes in nothing but is invoked on an object of type &quot;Builder&quot;.</p>
 <p>This means when we use this builder like so</p>
-
-<pre><code>var builder = Builder(10)
+<pre><code><span class="title">var</span> builder = Builder(<span class="number">10</span>)
 builder.invokeStuff({
-  var result = multiply(1)
+  <span class="title">var</span> result = multiply(<span class="number">1</span>)
   println(result)
-})
-</code></pre>
-
-<p>The context of 'this' has been set to the builder object and we can invoke functions declared within the builder.</p>
-
-<p>Thing is, this context can be played with - consider that we can also create extension methods on types, let's say the Int type.</p>
-
-<pre><code>class Builder (val multiplier: Int) {
+})</code></pre>
+<p>The context of &#39;this&#39; has been set to the builder object and we can invoke functions declared within the builder.</p>
+<p>Thing is, this context can be played with - consider that we can also create extension methods on types, let&#39;s say the Int type.</p>
+<pre><code><span class="class"><span class="keyword">class</span> <span class="id">Builder</span> (<span class="id">val</span> <span class="id">multiplier</span>: <span class="id">Int</span>) {</span>
 
     fun invokeStuff(action: (Builder.() -&gt; Unit)) {
-        this.action()
+        <span class="keyword">this</span><span class="variable">.action</span>()
     }
 
     fun multiply(value: Int) : Int {
-        return value * multiplier
+        <span class="keyword">return</span> value * multiplier
     }
 
-    fun Int.doStuff(value: Int) : Int {
-      return value * multiplier
+    fun Int<span class="variable">.doStuff</span>(value: Int) : Int {
+      <span class="keyword">return</span> value * multiplier
     }
 
-}
-</code></pre>
-
+}</code></pre>
 <p>I can use this with</p>
-
-<pre><code>var builder = Builder(10)
+<pre><code><span class="title">var</span> builder = Builder(<span class="number">10</span>)
 builder.invokeStuff({
-  var result = 1.doStuff(50)
+  <span class="title">var</span> result = <span class="number">1</span>.doStuff(<span class="number">50</span>)
   println(result)
-})
-</code></pre>
-
+})</code></pre>
 <p><em>The scoping of extension functions</em></p>
-
 <p>This is invalid code</p>
+<pre><code><span class="keyword">fun</span> some<span class="variable">Function</span>() <span class="tuple">{
+    <span class="keyword">fun</span> <span class="variable">String</span>.<span class="function_name">someOtherFunction</span>() <span class="tuple">{
 
-<pre><code>fun someFunction() {
-    fun String.someOtherFunction() {
-
-    }
+    }</span>
 }
 
-fun someStuff() {
-    "".someOtherFunction()
-}
-</code></pre>
-
-<p>The extension method isn't visible because it was declared inside a different function.</p>
-
+<span class="keyword">fun</span> <span class="function_name">someStuff</span>() <span class="tuple">{
+    <span class="string">""</span>.<span class="function_name">someOtherFunction</span>()
+}</span></code></pre>
+<p>The extension method isn&#39;t visible because it was declared inside a different function.</p>
 <p>This is the valid version:</p>
+<pre><code><span class="keyword">fun</span> some<span class="variable">Function</span>() <span class="tuple">{
+    <span class="keyword">fun</span> <span class="variable">String</span>.<span class="function_name">someOtherFunction</span>() <span class="tuple">{
 
-<pre><code>fun someFunction() {
-    fun String.someOtherFunction() {
-
-    }
-    "".someOtherFunction()
-}
-</code></pre>
-
+    }</span>
+    <span class="string">""</span>.<span class="function_name">someOtherFunction</span>()
+}</code></pre>
 <p>The same goes for classes too, this is also invalid</p>
-
-<pre><code>class someClass() {
-    fun String.someOtherFunction() {
+<pre><code><span class="class"><span class="keyword">class</span> <span class="id">someClass</span>() {</span>
+    fun String<span class="variable">.someOtherFunction</span>() {
 
     }
 }
 
 fun someStuff() {
-    "".someOtherFunction()
-}
-</code></pre>
-
+    <span class="string">""</span><span class="variable">.someOtherFunction</span>()
+}</code></pre>
 <p>The scope is shared outwards when we set the context of those function calls, and this was clearly thought about.</p>
-
 <p><em>Infix calls</em></p>
-
 <p>And here is another feature, we have infix calls for functions with only one argument so..</p>
-
-<pre><code>var builder = Builder(10)
+<pre><code><span class="title">var</span> builder = Builder(<span class="number">10</span>)
 builder.invokeStuff({
-  var result = 1 doStuff 50
+  <span class="title">var</span> result = <span class="number">1</span> doStuff <span class="number">50</span>
   println(result)
-})
-</code></pre>
-
+})</code></pre>
 <p><strong>My feedback</strong></p>
-
 <p>There are so many things we can do with these functions and the way we do this seems to change with context (which is also something we control - haha, see what I did there?)</p>
-
-<p>There is also power locked up in this state of affairs, I just wish it wasn't so confusing.</p>
-
-<p>I don't see why there is a difference between function literals and declared functions (and if there isn't, I don't know why my examples work or why I'm so confused about it).</p>
-
+<p>There is also power locked up in this state of affairs, I just wish it wasn&#39;t so confusing.</p>
+<p>I don&#39;t see why there is a difference between function literals and declared functions (and if there isn&#39;t, I don&#39;t know why my examples work or why I&#39;m so confused about it).</p>
 <p>Functions are functions are functions, or at least they should be. I should be able to just do</p>
+<pre><code><span class="title">var</span> doSomething = fun(x: Int) : Int {
 
-<pre><code>var doSomething = fun(x: Int) : Int {
-
-}
-</code></pre>
-
+}</code></pre>
 <p>and</p>
-
-<pre><code>map(doSomething)
-</code></pre>
-
+<pre><code><span class="function"><span class="title">map</span><span class="params">(do<span class="variable">Something</span>)</span></code></pre>
 <p>Being able to pass in/set the context of calls is quite interesting for a specific use case (builders), and I kinda like it - although it feels a bit like something we could abuse horribly (and in fact, in the workshop we did - this is valid Kotlin code)</p>
-
-<pre><code>json {
-    "name" .. "Rob Ashton"
-    "age" .. 5
-    "address" .. {
-        "number" .. 444
-        "line one" .. "never you mind"
-    }
-    "family".array(
-        {
-            "name" .. "Gareth Ashton"
-            "relation" .. "brother"
-        },
-        {
-            "name" .. "Suzanne Ashton"
-            "relation" .. "sister"
-        })
-}
-</code></pre>
-
-<p>What I don't know is all the angles that are trying to be covered, so it's hard to tell why we've ended up in a situation where there is so much to learn about functions.</p>
-
-<p>If you need a page on "<a href="http://confluence.jetbrains.com/display/Kotlin/This+expressions#Thisexpressions-Qualified">this ambiguiguity</a>", then probably you've gone too far.</p>
-
+<pre><code><span class="comment">json</span> <span class="comment">{</span>
+    <span class="comment">"name"</span> <span class="string">.</span><span class="string">.</span> <span class="comment">"Rob</span> <span class="comment">Ashton"</span>
+    <span class="comment">"age"</span> <span class="string">.</span><span class="string">.</span> <span class="comment">5</span>
+    <span class="comment">"address"</span> <span class="string">.</span><span class="string">.</span> <span class="comment">{</span>
+        <span class="comment">"number"</span> <span class="string">.</span><span class="string">.</span> <span class="comment">444</span>
+        <span class="comment">"line</span> <span class="comment">one"</span> <span class="string">.</span><span class="string">.</span> <span class="comment">"never</span> <span class="comment">you</span> <span class="comment">mind"</span>
+    <span class="comment">}</span>
+    <span class="comment">"family"</span>.<span class="comment">array(</span>
+        <span class="comment">{</span>
+            <span class="comment">"name"</span> <span class="string">.</span><span class="string">.</span> <span class="comment">"Gareth</span> <span class="comment">Ashton"</span>
+            <span class="comment">"relation"</span> <span class="string">.</span><span class="string">.</span> <span class="comment">"brother"</span>
+        <span class="comment">}</span>,
+        <span class="comment">{</span>
+            <span class="comment">"name"</span> <span class="string">.</span><span class="string">.</span> <span class="comment">"Suzanne</span> <span class="comment">Ashton"</span>
+            <span class="comment">"relation"</span> <span class="string">.</span><span class="string">.</span> <span class="comment">"sister"</span>
+        <span class="comment">})</span>
+<span class="comment">}</code></pre>
+<p>What I don&#39;t know is all the angles that are trying to be covered, so it&#39;s hard to tell why we&#39;ve ended up in a situation where there is so much to learn about functions.</p>
+<p>If you need a page on &quot;<a href="http://confluence.jetbrains.com/display/Kotlin/This+expressions#Thisexpressions-Qualified">this ambiguiguity</a>&quot;, then probably you&#39;ve gone too far.</p>
 <p>Like the other language features so far, it feels a bit like there were some cool features thought of, and then things got a little bit of hand as the edge cases were discovered.</p>
-
 <ul>
 <li>I like infix notation</li>
 <li>I like being able to pass functions around</li>
@@ -849,341 +661,217 @@ builder.invokeStuff({
 <li>I like the scoping of extension methods</li>
 <li>I like having type safety in the above</li>
 </ul>
-
-<p>I'd just make an effort to prune it back and make things a bit more cohesive. I'd definitely take a look at context and try to avoid the need for pages explaining how to manage it. </p>]]></description><link>http://codeofrob.com/entries/looking-at-kotlin---fun-with-functions.html</link><guid isPermaLink="true">http://codeofrob.com/entries/looking-at-kotlin---fun-with-functions.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 21 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Looking at Kotlin - Kicking the Java Inheritance Addiction]]></title><description><![CDATA[<p>I'm still looking at Kotlin and this is where I'm at so far..</p>
-
+<p>I&#39;d just make an effort to prune it back and make things a bit more cohesive. I&#39;d definitely take a look at context and try to avoid the need for pages explaining how to manage it. </p>
+]]></description><link>http://codeofrob.com/entries/looking-at-kotlin---fun-with-functions.html</link><guid isPermaLink="true">http://codeofrob.com/entries/looking-at-kotlin---fun-with-functions.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 21 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Looking at Kotlin - Kicking the Java Inheritance Addiction]]></title><description><![CDATA[<p>I&#39;m still looking at Kotlin and this is where I&#39;m at so far..</p>
 <ul>
 <li><a href="/entries/looking-at-kotlin---a-few-notes-made.html">Looking at Kotlin - getting started</a></li>
 <li><a href="/entries/looking-at-kotlin---classes-and-functions.html">Looking at Kotkin - Classes and Functions</a></li>
 <li>Looking at Kotlin - Inheritance</li>
 </ul>
-
-<p>We've established (at least in my brief foray), that Kotlin doesn't really fix one of the biggest problems in Java (and C#), which is the misuse of classes as mutable data bags being passed around by scripts.</p>
-
-<p>One of the other big problems in Java is that a common way to fix problems with code you don't own is simply "inherit from all the things and override all the things".</p>
-
+<p>We&#39;ve established (at least in my brief foray), that Kotlin doesn&#39;t really fix one of the biggest problems in Java (and C#), which is the misuse of classes as mutable data bags being passed around by scripts.</p>
+<p>One of the other big problems in Java is that a common way to fix problems with code you don&#39;t own is simply &quot;inherit from all the things and override all the things&quot;.</p>
 <p>This is their version of monkey patching, but in practise ends up being even worse because there is a tendency to use this power for the re-use of re-usable things which need re-using because there are a few lines of code we could re-use if we squinted hard enough at it.</p>
-
-<p>I'm not really a big fan of inheritance systems in any language; I <em>am</em> all for the notion of bringing in behaviours from other systems though. I prefer to do it via composition or in JavaScript just copying the methods over with the constructor function state.</p>
-
+<p>I&#39;m not really a big fan of inheritance systems in any language; I <em>am</em> all for the notion of bringing in behaviours from other systems though. I prefer to do it via composition or in JavaScript just copying the methods over with the constructor function state.</p>
 <p><strong>What does inheritance look like in Kotlin?</strong></p>
-
-<p>Well, to begin with it looks just like it does anywhere else, although it allows for multiple inheritance too (which is an inevitable quagmire of complexity, let's see...)</p>
-
-<pre><code>open class Pony(val name: String) {
+<p>Well, to begin with it looks just like it does anywhere else, although it allows for multiple inheritance too (which is an inevitable quagmire of complexity, let&#39;s see...)</p>
+<pre><code>open <span class="class"><span class="keyword">class</span> <span class="title">Pony</span>(<span class="title">val</span> <span class="title">name</span>: <span class="title">String</span>) {</span>
 
 }
 
-class Unicorn(name: String) : Pony(name) {
+<span class="class"><span class="keyword">class</span> <span class="title">Unicorn</span>(<span class="title">name</span>: <span class="title">String</span>) : <span class="title">Pony</span>(<span class="title">name</span>) {</span>
 
-}
-</code></pre>
-
-<p>One of the good decisions made here is that at least classes are closed by default, which I know annoys a lot of people but I think if you're making APIs or framework code in this sort of language a closed-by-default approach makes sense.</p>
-
-<p>I'm going to ignore this for now because it's the same old crap you'd expect from any inheritance system.</p>
-
-<p>One of the reasons we sometimes wants to "inherit", isn't necessarily because we want state <em>and</em>behaviour, and in fact the multiple inheritance in Kotlin is only allowed in cases where we only want behaviour.</p>
-
-<p>For this, we have the "trait" keyword, which defines an class which only has behaviour, and in this inheritance system you can inherit from one class and as many traits as you like.</p>
-
+}</code></pre>
+<p>One of the good decisions made here is that at least classes are closed by default, which I know annoys a lot of people but I think if you&#39;re making APIs or framework code in this sort of language a closed-by-default approach makes sense.</p>
+<p>I&#39;m going to ignore this for now because it&#39;s the same old crap you&#39;d expect from any inheritance system.</p>
+<p>One of the reasons we sometimes wants to &quot;inherit&quot;, isn&#39;t necessarily because we want state <em>and</em>behaviour, and in fact the multiple inheritance in Kotlin is only allowed in cases where we only want behaviour.</p>
+<p>For this, we have the &quot;trait&quot; keyword, which defines an class which only has behaviour, and in this inheritance system you can inherit from one class and as many traits as you like.</p>
 <pre><code>trait Speaker {
   fun SayHi() {
-    println("This is the best day ever")
+    println(<span class="string">"This is the best day ever"</span>)
   }
 }
 
-class Unicorn(name: String) : Pony(name), Speaker {
+<span class="class"><span class="keyword">class</span> <span class="title">Unicorn</span><span class="params">(name: String)</span> :</span> Pony(name), Speaker {
 
-}
-</code></pre>
-
-<p>I can't actually think of many cases where this would be something I'd want to do, you can't give anything to that trait so it's basically a static utility bag at this point.</p>
-
+}</code></pre>
+<p>I can&#39;t actually think of many cases where this would be something I&#39;d want to do, you can&#39;t give anything to that trait so it&#39;s basically a static utility bag at this point.</p>
 <p>It gets interesting when we have the ability to create a composition system out of these traits</p>
-
 <p><strong>Composable traits</strong></p>
-
-<p>How about we a trait called Speaker like the above, and ponies and unicorns aren't derived from each other, let's make it look like this for now:</p>
-
+<p>How about we a trait called Speaker like the above, and ponies and unicorns aren&#39;t derived from each other, let&#39;s make it look like this for now:</p>
 <pre><code>trait Speaker {
   fun SayHi() {
-    println("This is the best day ever")
+    println(<span class="string">"This is the best day ever"</span>)
   }
 }
 
-class Pony(val name: String) : Speaker {
+<span class="class"><span class="keyword">class</span> <span class="title">Pony</span><span class="params">(val name: String)</span> :</span> Speaker {
 
 }
 
-class Unicorn(val name: String) : Speaker {
+<span class="class"><span class="keyword">class</span> <span class="title">Unicorn</span><span class="params">(val name: String)</span> :</span> Speaker {
 
-}
-</code></pre>
-
-<p>My ponies and unicorns now have a method called "SayHi" and I can invoke these like so</p>
-
-<pre><code>var pony = Pony("Pinkie Pie")
-pony.SayHi()
-</code></pre>
-
-<p>This is great, except actually ponies and unicorns don't say things in quite the same way, and actually they all have different sayings.</p>
-
+}</code></pre>
+<p>My ponies and unicorns now have a method called &quot;SayHi&quot; and I can invoke these like so</p>
+<pre><code><span class="title">var</span> pony = <span class="type">Pony</span>(<span class="string">"Pinkie Pie"</span>)
+<span class="title">pony</span>.<span class="type">SayHi</span>()</code></pre>
+<p>This is great, except actually ponies and unicorns don&#39;t say things in quite the same way, and actually they all have different sayings.</p>
 <p>Well how about creating a speaker which is pretty much an interface, and an implementation which says stuff based on some state:</p>
-
 <pre><code>trait Speaker {
     open fun SayHi() {
-        println("herp derp")
+        println(<span class="string">"herp derp"</span>)
     }
 }
 
-class ConstSpeaker(val saying: String) : Speaker {
+<span class="class"><span class="keyword">class</span> <span class="title">ConstSpeaker</span><span class="params">(val saying: String)</span> :</span> Speaker {
     override fun SayHi() {
         println(saying)
     }
-}
-</code></pre>
-
+}</code></pre>
 <p>We can actually pass these in in the constructor of our ponies and unicorns like so</p>
-
-<pre><code>class Pony(val name: String, voice: Speaker) : Speaker  by voice {
-
-}
-
-class Unicorn(val name: String, voice : Speaker) : Speaker by voice {
+<pre><code><span class="class"><span class="keyword">class</span> <span class="title">Pony</span><span class="params">(val name: String, voice: Speaker)</span> :</span> Speaker  by voice {
 
 }
-</code></pre>
 
+<span class="class"><span class="keyword">class</span> <span class="title">Unicorn</span><span class="params">(val name: String, voice : Speaker)</span> :</span> Speaker by voice {
+
+}</code></pre>
 <p>Which means we can do</p>
-
-<pre><code>var dash = Pony("Rainbow dash", ConstSpeaker("I run faster than you"))
-var celestia = Unicorn("Princess Celestia", ConstSpeaker("I'm the boss of all the ponies"))
-</code></pre>
-
+<pre><code><span class="keyword">var</span> dash = Pony(<span class="string">"Rainbow dash"</span>, ConstSpeaker(<span class="string">"I run faster than you"</span>))
+<span class="keyword">var</span> celestia = Unicorn(<span class="string">"Princess Celestia"</span>, ConstSpeaker(<span class="string">"I'm the boss of all the ponies"</span>))</code></pre>
 <p><strong>Good news everyone</strong></p>
-
-<p><img src="/img/farnsworth.jpg" style="float: left;"></p>
-
-<p>Well, we've found something that in principle I really like about Kotlin.</p>
-
+<p>  <img src="/img/farnsworth.jpg" style="float: left;"></p>
+<p>Well, we&#39;ve found something that in principle I really like about Kotlin.</p>
 <p>This is one of the pleasant surprises I had when exploring Kotlin at the workshop, although it caused all of the people in my immediate vicinity (including myself) undergo confusion the first time we came to try and use it.</p>
-
-<p>If we got rid of the crappy legacy inheritance system and forced this composition based approach my <em>word</em>, we'd solve problems, we'd solve a lot of problems.</p>
-
-<p><div style="float: none; clear: both;"></p>
+<p>If we got rid of the crappy legacy inheritance system and forced this composition based approach my <em>word</em>, we&#39;d solve problems, we&#39;d solve a lot of problems.</p>
+  <div style="float: none; clear: both;">
 
 <p>Make the above a little less verbose and we could be onto a winner.</p>
-
-<p>It feels as if the language designers haven't really designed at this point, they've just thrown a load of stuff at the wall because inheritance is something that all Java developers want and given us a few bad ways of doing something as well as something that has the potential to make us write better Java.</p>
-
+<p>It feels as if the language designers haven&#39;t really designed at this point, they&#39;ve just thrown a load of stuff at the wall because inheritance is something that all Java developers want and given us a few bad ways of doing something as well as something that has the potential to make us write better Java.</p>
 <p><strong>My feedback</strong></p>
-
-<p>If I was taking tackling this whole "improve Java" problem, I'd be looking at some of the awful Java being written out there and saying "Hey, inheritance based approaches usually suck, can we make them better?", and I'd still not have come up with that traits system.</p>
-
+<p>If I was taking tackling this whole &quot;improve Java&quot; problem, I&#39;d be looking at some of the awful Java being written out there and saying &quot;Hey, inheritance based approaches usually suck, can we make them better?&quot;, and I&#39;d still not have come up with that traits system.</p>
 <p>The traits system is great, run with it - get rid of the others and you remove a crap load of complexity and show an opinionated way of building composable software.</p>
-
-<p>No doubt there are some problems not immediately obvious with it, but I'm not being paid to be a language designer, the JB guys are so... what are you waiting for? :)</p>]]></description><link>http://codeofrob.com/entries/looking-at-kotlin---kicking-the-java-inheritance-addiction.html</link><guid isPermaLink="true">http://codeofrob.com/entries/looking-at-kotlin---kicking-the-java-inheritance-addiction.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 20 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Looking at Kotlin - Classes and Functions]]></title><description><![CDATA[<p>I'm writing up my notes on Kotlin and this is the second entry</p>
-
+<p>No doubt there are some problems not immediately obvious with it, but I&#39;m not being paid to be a language designer, the JB guys are so... what are you waiting for? :)</p>
+]]></description><link>http://codeofrob.com/entries/looking-at-kotlin---kicking-the-java-inheritance-addiction.html</link><guid isPermaLink="true">http://codeofrob.com/entries/looking-at-kotlin---kicking-the-java-inheritance-addiction.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 20 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Looking at Kotlin - Classes and Functions]]></title><description><![CDATA[<p>I&#39;m writing up my notes on Kotlin and this is the second entry</p>
 <ul>
 <li><a href="/entries/looking-at-kotlin---a-few-notes-made.html">Looking at Kotlin - getting started</a></li>
 <li>Looking at Kotkin - Classes and Functions</li>
 </ul>
-
 <p>What better place to start investigating Kotlin than classes and functions, the basic constructs in any Javariffic language.</p>
-
-<p><em>Taking the 'ction' out of function</em></p>
-
+<p><em>Taking the &#39;ction&#39; out of function</em></p>
 <p>What I immediately like about Kotlin that the hello world example (beyond the laborious exercise of getting it compiled) is really simple.</p>
-
-<pre><code>fun main(args : Array&lt;String&gt;) {
+<pre><code>fun main(args : Array<span class="tag">&lt;<span class="title">String</span>&gt;</span>) {
   println("Hello world")
-}
-</code></pre>
-
-<p>There are no import statements, I haven't had to create a containing static class with a static method etc, I've not had to tell it where println is coming from and I haven't had to write 'function' which makes it immediately 60% better than JavaScript and 260% better than Java.</p>
-
-<p>I'm not sure how modules work in Kotlin yet, or how you'd share these functions between projects (That means getting into some Javariffic cruft I imagine), but I'm able to create other files in the project with more functions like so:</p>
-
+}</code></pre>
+<p>There are no import statements, I haven&#39;t had to create a containing static class with a static method etc, I&#39;ve not had to tell it where println is coming from and I haven&#39;t had to write &#39;function&#39; which makes it immediately 60% better than JavaScript and 260% better than Java.</p>
+<p>I&#39;m not sure how modules work in Kotlin yet, or how you&#39;d share these functions between projects (That means getting into some Javariffic cruft I imagine), but I&#39;m able to create other files in the project with more functions like so:</p>
 <p><em>secondary.kt</em></p>
-
-<pre><code>fun doSomething() {
-  println("I'm doing something")
-}
-</code></pre>
-
+<pre><code><span class="keyword">fun</span> do<span class="variable">Something</span>() <span class="tuple">{
+  <span class="function_name">println</span>(<span class="string">"I'm doing something"</span>)
+}</span></code></pre>
 <p>and call them from my other files ala</p>
-
 <p><em>main.kt</em></p>
-
-<pre><code>fun main(args : Array&lt;String&gt;) {
+<pre><code>fun main(args : Array<span class="tag">&lt;<span class="title">String</span>&gt;</span>) {
   doSomething()
-}
-</code></pre>
-
-<p>Without dancing through any hoops so that's cool.</p>
-
-<p>In JavaScript I'd be using require statements for this, which is great because dependencies are made explicit and I can follow them manually. </p>
-
+}</code></pre>
+<p>Without dancing through any hoops so that&#39;s cool.</p>
+<p>In JavaScript I&#39;d be using require statements for this, which is great because dependencies are made explicit and I can follow them manually. </p>
 <p>In a tooling-oriented language like Kotlin we can rely on the intellisense to tell us where stuff came from so this makes sense. (Although it makes it less ideal for vimming it up)</p>
-
 <p><em>Class action Kotlin</em></p>
+<p>Classes are interesting in Kotlin, they&#39;re rather reminiscent of constructor functions in JavaScript</p>
+<pre><code><span class="class"><span class="keyword">class</span> <span class="title">Person</span>(<span class="title">age</span>: <span class="title">Int</span>, <span class="title">name</span>: <span class="title">String</span>) {</span>
 
-<p>Classes are interesting in Kotlin, they're rather reminiscent of constructor functions in JavaScript</p>
-
-<pre><code>class Person(age: Int, name: String) {
-
-}
-</code></pre>
-
+}</code></pre>
 <p>and to create it (notice the lack of a new key-word)</p>
-
-<pre><code>var person = Person(27, "Rob")
-</code></pre>
-
-<p>However, we start to encounter differences almost immediately - let's try adding a function</p>
-
-<pre><code>class Person(age: Int, name: String) {
+<pre><code><span class="title">var</span> person = Person(<span class="number">27</span>, <span class="string">"Rob"</span>)</code></pre>
+<p>However, we start to encounter differences almost immediately - let&#39;s try adding a function</p>
+<pre><code><span class="class"><span class="keyword">class</span> <span class="title">Person</span>(<span class="title">age</span>: <span class="title">Int</span>, <span class="title">name</span>: <span class="title">String</span>) {</span>
   fun sayHello() {
-    println("Hi, I am $name, and I am $age years old")
+    println(<span class="string">"Hi, I am $name, and I am $age years old"</span>)
   }
-}
-</code></pre>
-
-<p>Ignoring the string interpolation at this point (any good sane language has this good feature these days) age and name don't actually exist at this point, we have to declare them as fields in the class and to do this we do:</p>
-
-<pre><code>class Person(age: Int, name: String) {
-  var age = age
-  var name = name
+}</code></pre>
+<p>Ignoring the string interpolation at this point (any good sane language has this good feature these days) age and name don&#39;t actually exist at this point, we have to declare them as fields in the class and to do this we do:</p>
+<pre><code><span class="class"><span class="keyword">class</span> <span class="title">Person</span>(<span class="title">age</span>: <span class="title">Int</span>, <span class="title">name</span>: <span class="title">String</span>) {</span>
+  <span class="keyword">var</span> age = age
+  <span class="keyword">var</span> name = name
 
   fun sayHello() {
-    println("Hi, I am $name, and I am $age years old")
+    println(<span class="string">"Hi, I am $name, and I am $age years old"</span>)
   }
-}
-</code></pre>
-
+}</code></pre>
 <p>Or short-hand:</p>
-
-<pre><code>class Person(var age: Int, var name: String) {
+<pre><code><span class="class"><span class="keyword">class</span> <span class="title">Person</span>(<span class="title">var</span> <span class="title">age</span>: <span class="title">Int</span>, <span class="title">var</span> <span class="title">name</span>: <span class="title">String</span>) {</span>
 
   fun sayHello() {
-    println("Hi, I am $name, and I am $age years old")
+    println(<span class="string">"Hi, I am $name, and I am $age years old"</span>)
   }
-}
-</code></pre>
-
-<p>This feels a bit weird and unnecessary (if I understand it correctly), I'm all for having to explicitly declare those properties if we want to access them externally but I don't see why we'd be passing state in if we didn't want to use it.</p>
-
-<p>Now we've declared those as vars, we can access them externally too, because those vars are public and write-only by default.</p>
-
+}</code></pre>
+<p>This feels a bit weird and unnecessary (if I understand it correctly), I&#39;m all for having to explicitly declare those properties if we want to access them externally but I don&#39;t see why we&#39;d be passing state in if we didn&#39;t want to use it.</p>
+<p>Now we&#39;ve declared those as vars, we can access them externally too, because those vars are public and write-only by default.</p>
 <pre><code>fun main(args: Array&lt;string&gt;) {
-  var person = Person(27, "Rob")
-  println("I can access ${person.name} from here")
-}
-</code></pre>
-
-<p>We actually have an immutable key-word too, which is 'val', we can make read-only properties therefore with:</p>
-
-<pre><code>class Person(val age: Int, val name: String) {
+  var person = Person(<span class="number">27</span>, <span class="string">"Rob"</span>)
+  println(<span class="string">"I can access <span class="subst">${person.name}</span> from here"</span>)
+}</code></pre>
+<p>We actually have an immutable key-word too, which is &#39;val&#39;, we can make read-only properties therefore with:</p>
+<pre><code><span class="class"><span class="keyword">class</span> <span class="title">Person</span>(<span class="title">val</span> <span class="title">age</span>: <span class="title">Int</span>, <span class="title">val</span> <span class="title">name</span>: <span class="title">String</span>) {</span>
 
   fun sayHello() {
-    println("Hi, I am $name, and I am $age years old")
+    println(<span class="string">"Hi, I am $name, and I am $age years old"</span>)
   }
-}
-</code></pre>
-
+}</code></pre>
 <p><em>Access control in classes</em></p>
-
-<p>I'm not a huge fan of public state in classes, so how do we make these things private?</p>
-
-<pre><code>class Person(private var age: Int, private var name: String) {
+<p>I&#39;m not a huge fan of public state in classes, so how do we make these things private?</p>
+<pre><code><span class="class"><span class="keyword">class</span> <span class="title">Person</span>(<span class="title">private</span> <span class="title">var</span> <span class="title">age</span>: <span class="title">Int</span>, <span class="title">private</span> <span class="title">var</span> <span class="title">name</span>: <span class="title">String</span>) {</span>
 
   fun sayHello() {
-    println("Hi, I am $name, and I am $age years old")
+    println(<span class="string">"Hi, I am $name, and I am $age years old"</span>)
   }
-}
-</code></pre>
-
-<p>Yeah, they're public by default, this is a weird design decision - if we were looking to correct the sins of badly written Java programs this is not how I'd start.</p>
-
+}</code></pre>
+<p>Yeah, they&#39;re public by default, this is a weird design decision - if we were looking to correct the sins of badly written Java programs this is not how I&#39;d start.</p>
 <p>In fact, the notion of data-only objects is baked right into Kotlin, this is a data-bag or struct in this language:</p>
-
-<pre><code>data class Person(val age: Int, val name: String)
-</code></pre>
-
-<p>Notice the data key-word in front of class, theoretically this means that Kotlin will generate a toString and equals check for you (although this didn't work on my machine).</p>
-
-<p><strong>What I'd do differently</strong></p>
-
-<p>There is a fundamental difference between data bags and objects, and I'm fine with both of them existing. I don't think we even need all those key-words or constructs to make it happen. </p>
-
+<pre><code>data <span class="class"><span class="keyword">class</span> <span class="title">Person</span><span class="params">(val age: Int, val name: String)</span></code></pre>
+<p>Notice the data key-word in front of class, theoretically this means that Kotlin will generate a toString and equals check for you (although this didn&#39;t work on my machine).</p>
+<p><strong>What I&#39;d do differently</strong></p>
+<p>There is a fundamental difference between data bags and objects, and I&#39;m fine with both of them existing. I don&#39;t think we even need all those key-words or constructs to make it happen. </p>
 <p><em>Want private state in a behavioural object?</em></p>
-
-<pre><code>class Person(age: Int, name: String) {
+<pre><code><span class="class"><span class="keyword">class</span> <span class="title">Person</span>(<span class="title">age</span>: <span class="title">Int</span>, <span class="title">name</span>: <span class="title">String</span>) {</span>
   fun someBehaviour() {
 
   }
-}
-</code></pre>
-
-<p>That should be the default as far as I'm concerned.</p>
-
+}</code></pre>
+<p>That should be the default as far as I&#39;m concerned.</p>
 <p><em>Want to expose that state?</em></p>
-
 <p>Make it explicit,</p>
-
-<pre><code>class Person(val age: Int, val name: String) {
+<pre><code><span class="class"><span class="keyword">class</span> <span class="title">Person</span>(<span class="title">val</span> <span class="title">age</span>: <span class="title">Int</span>, <span class="title">val</span> <span class="title">name</span>: <span class="title">String</span>) {</span>
   fun someBehaviour() {
 
   }
-}
-</code></pre>
-
+}</code></pre>
 <p><em>Want to expose that state as mutable?</em></p>
-
-<pre><code>class Person(mutval age: Int, mutval name: String) {
+<pre><code><span class="class"><span class="keyword">class</span> <span class="title">Person</span>(<span class="title">mutval</span> <span class="title">age</span>: <span class="title">Int</span>, <span class="title">mutval</span> <span class="title">name</span>: <span class="title">String</span>) {</span>
   fun someBehaviour() {
 
   }
-}
-</code></pre>
-
+}</code></pre>
 <p><em>Want immutable value data bags?</em></p>
-
-<pre><code>class Person(val age: Int, val name: String)
-</code></pre>
-
-<p>No behaviour = data bag. In fact, I'd tolerate the data attribute in this case too although I feel that the more key-words a language has the less likely I am to want to use it.</p>
-
-<p><em>I don't like lots of key-words</em></p>
-
-<p>In fact, you know what? What's the difference between a function and an object? We'll cover some of this later but I don't really see why we need the class key-word at all, the above would be fine as</p>
-
-<pre><code>fun Person(age: Int, name: String) {
-  fun someBehaviour() {
+<pre><code><span class="class"><span class="keyword">class</span> <span class="title">Person</span><span class="params">(val age: Int, val name: String)</span></code></pre>
+<p>No behaviour = data bag. In fact, I&#39;d tolerate the data attribute in this case too although I feel that the more key-words a language has the less likely I am to want to use it.</p>
+<p><em>I don&#39;t like lots of key-words</em></p>
+<p>In fact, you know what? What&#39;s the difference between a function and an object? We&#39;ll cover some of this later but I don&#39;t really see why we need the class key-word at all, the above would be fine as</p>
+<pre><code><span class="title">fun</span> Person(age: Int, name: String) {
+  <span class="title">fun</span> someBehaviour() {
 
   }
-}
-</code></pre>
-
-<p>One of the reasons I quite like Clojure is that everything is just a function, and looking up how to do something is <em>always</em> a case of looking up an appropriate function - I've just talked about some basic class functionality and I've already had to go through 5 different key-words.</p>
-
-<p>Reduce towards simplicity and have some opinions, that's all I'm saying, I'm a big fan of JavaScript's lack of features, I'm actually a fan of Java's lack of features too, if we could just fix some problems in those languages then we'd be great.</p>
-
-<p>I feel with just what I've shown here, we've just made it even <em>easier</em> for Java developers to carry on <em>doing it wrong</em>, when there is actually a good opportunity to encourage them to go in a better direction with the code. </p>
-
-<p>A default towards private and immutable would have been a logical choice and I don't know why this isn't the case.</p>]]></description><link>http://codeofrob.com/entries/looking-at-kotlin---classes-and-functions.html</link><guid isPermaLink="true">http://codeofrob.com/entries/looking-at-kotlin---classes-and-functions.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 17 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Looking at Kotlin - a few notes made]]></title><description><![CDATA[<p>I ended up (because of jetlag) waking up at 4am and deciding to book myself in for that day's <a href="http://kotlin.jetbrains.org/">Kotlin</a> workshop being ran by everybody's favourite sarcastic <a href="http://jetbrains.org/">Jetbrains</a> employee <a href="http://twitter.com/hhariri">@hhariri</a>. (Much to his surprise and irritation no doubt :))</p>
-
-<p>I made a few remarks as the day went by about things I didn't like, and as one might think I was being a bit negative, I decided to take notes and write up some of my thoughts on language decisions I'd found interesting for one reason or another.</p>
-
+}</code></pre>
+<p>One of the reasons I quite like Clojure is that everything is just a function, and looking up how to do something is <em>always</em> a case of looking up an appropriate function - I&#39;ve just talked about some basic class functionality and I&#39;ve already had to go through 5 different key-words.</p>
+<p>Reduce towards simplicity and have some opinions, that&#39;s all I&#39;m saying, I&#39;m a big fan of JavaScript&#39;s lack of features, I&#39;m actually a fan of Java&#39;s lack of features too, if we could just fix some problems in those languages then we&#39;d be great.</p>
+<p>I feel with just what I&#39;ve shown here, we&#39;ve just made it even <em>easier</em> for Java developers to carry on <em>doing it wrong</em>, when there is actually a good opportunity to encourage them to go in a better direction with the code. </p>
+<p>A default towards private and immutable would have been a logical choice and I don&#39;t know why this isn&#39;t the case.</p>
+]]></description><link>http://codeofrob.com/entries/looking-at-kotlin---classes-and-functions.html</link><guid isPermaLink="true">http://codeofrob.com/entries/looking-at-kotlin---classes-and-functions.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 17 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Looking at Kotlin - a few notes made]]></title><description><![CDATA[<p>I ended up (because of jetlag) waking up at 4am and deciding to book myself in for that day&#39;s <a href="http://kotlin.jetbrains.org/">Kotlin</a> workshop being ran by everybody&#39;s favourite sarcastic <a href="http://jetbrains.org/">Jetbrains</a> employee <a href="http://twitter.com/hhariri">@hhariri</a>. (Much to his surprise and irritation no doubt :))</p>
+<p>I made a few remarks as the day went by about things I didn&#39;t like, and as one might think I was being a bit negative, I decided to take notes and write up some of my thoughts on language decisions I&#39;d found interesting for one reason or another.</p>
 <p><strong>So what IS Kotlin</strong></p>
-
-<p>Well this is the easiest bit really, it's another language that runs on the JVM that isn't Java. Any language that isn't Java is fine by me, and having already got the JVM installed for my (temporarily) abandoned Clojure efforts last year setting up wasn't too hard.</p>
-
+<p>Well this is the easiest bit really, it&#39;s another language that runs on the JVM that isn&#39;t Java. Any language that isn&#39;t Java is fine by me, and having already got the JVM installed for my (temporarily) abandoned Clojure efforts last year setting up wasn&#39;t too hard.</p>
 <p><strong>What is its purpose?</strong></p>
-
 <p>This is the first thing everybody (including myself) asks, and my understanding is that </p>
-
 <ul>
 <li>Java is crap</li>
 <li>Clojure is too hard for the common developer to pick up and be effective in</li>
@@ -1192,63 +880,38 @@ var celestia = Unicorn("Princess Celestia", ConstSpeaker("I'm the boss of all th
 <li>the JVM has a good eco-system and is appealing to work with</li>
 <li>Having a language that is easy to use but has some nice features and is on the JVM is also appealing</li>
 </ul>
-
-<p>That's a simplification, it might just be that Jetbrains has a lot of spare R&amp;D cash and is throwing stuff at the wall to see what sticks ;-)</p>
-
+<p>That&#39;s a simplification, it might just be that Jetbrains has a lot of spare R&amp;D cash and is throwing stuff at the wall to see what sticks ;-)</p>
 <p><strong>What did I use to play with it?</strong></p>
-
 <p>I did what I normally do when pulling down something new, I opened vim and tried to write hello world in it.</p>
-
-<p>Sadly, (and one might say as you'd expect from a tooling oriented company), the docs/support for the compiler is sub-optimal and I wasn't able to run any of the jars I created using their command line tools.</p>
-
+<p>Sadly, (and one might say as you&#39;d expect from a tooling oriented company), the docs/support for the compiler is sub-optimal and I wasn&#39;t able to run any of the jars I created using their command line tools.</p>
 <p><em>One of the many attempts I had at doing command line kotlin</em></p>
-
-<p><img src="/img/command_line_kotlin.png" title="Command line failure"></p>
-
-<p>The best advice for "getting started on the command line" was to "install ANT" and "write some XML" and I figured if I was going to go down that route then I should just get with the program and use IntelliJ. Hopefully this will change in the future, I hate being told what to use to do my work and I hate tooling-oriented eco-systems.</p>
-
-<p>I installed IntelliJ which thankfully was a simple matter of downloading a tar.gz and executing a shell script (it's all written in Java). I got some warnings because I'm using OpenJDK out of principle but that doesn't seem to have caused me any issues.</p>
-
-<p>Installing the Kotlin plug-in was easy (there is a nice plug-in manager), and I managed to install a vim plug-in too (although it's a bit dodgy at times, especially when trying to leave any of the editing modes)</p>
-
+<p>  <img src="/img/command_line_kotlin.png" title="Command line failure"></p>
+<p>The best advice for &quot;getting started on the command line&quot; was to &quot;install ANT&quot; and &quot;write some XML&quot; and I figured if I was going to go down that route then I should just get with the program and use IntelliJ. Hopefully this will change in the future, I hate being told what to use to do my work and I hate tooling-oriented eco-systems.</p>
+<p>I installed IntelliJ which thankfully was a simple matter of downloading a tar.gz and executing a shell script (it&#39;s all written in Java). I got some warnings because I&#39;m using OpenJDK out of principle but that doesn&#39;t seem to have caused me any issues.</p>
+<p>Installing the Kotlin plug-in was easy (there is a nice plug-in manager), and I managed to install a vim plug-in too (although it&#39;s a bit dodgy at times, especially when trying to leave any of the editing modes)</p>
 <p><strong>What did I find out when writing hello world</strong></p>
-
-<p>Well, I had to get Hadi to fix my IntelliJ set-up because things weren't working right from the beginning (installing the Kotlin plug-in wasn't enough) and it seems some of the confusing cruft in the JVM is still present when it comes to working out what the program entry point is, and all that class/jar/nonsense that I never really understood.</p>
-
+<p>Well, I had to get Hadi to fix my IntelliJ set-up because things weren&#39;t working right from the beginning (installing the Kotlin plug-in wasn&#39;t enough) and it seems some of the confusing cruft in the JVM is still present when it comes to working out what the program entry point is, and all that class/jar/nonsense that I never really understood.</p>
 <p><em>Getting started</em></p>
-
-<p><img src="/img/idea_start.png" title="confusing"></p>
-
-<p>This is the stuff I'm talking about, I ask to create a "Java Module" (and I'm not really sure what this is) and then after setting up some Kotlin stuff I get a big folder full of all sorts of xml and jar files in it and at some point I get to create the single kotlin file I really wanted. This is one of the reasons I never really liked tooling like Visual Studio/etc - there is a big surface area of potential problems here and I don't know what is really going on. </p>
-
-<p>One of the great things like Clojure and its eco-system has done, is hide a lot of this crap away so I <em>can</em> just write some code in a file and compile/execute it. If we're going to make Java less sucky, this is a must.</p>
-
+<p>  <img src="/img/idea_start.png" title="confusing"></p>
+<p>This is the stuff I&#39;m talking about, I ask to create a &quot;Java Module&quot; (and I&#39;m not really sure what this is) and then after setting up some Kotlin stuff I get a big folder full of all sorts of xml and jar files in it and at some point I get to create the single kotlin file I really wanted. This is one of the reasons I never really liked tooling like Visual Studio/etc - there is a big surface area of potential problems here and I don&#39;t know what is really going on. </p>
+<p>One of the great things like Clojure and its eco-system has done, is hide a lot of this crap away so I <em>can</em> just write some code in a file and compile/execute it. If we&#39;re going to make Java less sucky, this is a must.</p>
 <p>Hello world is quite simple, once you get past the mess of files above:</p>
-
-<pre><code>fun main(args : Array&lt;String&gt;) {
+<pre><code>fun main(args : Array<span class="tag">&lt;<span class="title">String</span>&gt;</span>) {
   println("Hello world")
-}
-</code></pre>
-
+}</code></pre>
 <p>The syntax is quite explanatory, and the main(args/etc) stuff is just a convention that the tooling knows means this is an entry point. It takes about 15 seconds to compile on my MBA and in this lies another annoyance.</p>
-
 <p>15 seconds to run hello world means 15 seconds to run my tests, means 15 seconds for a feedback loop <em>before even writing any code</em>.</p>
-
-<p>Hosting the compiler so we haven't got JVM start-up time in this mess, and cutting this time down would make me a happier developer.</p>
-
+<p>Hosting the compiler so we haven&#39;t got JVM start-up time in this mess, and cutting this time down would make me a happier developer.</p>
 <p><strong>My feedback to Jetbrains over this getting started bit</strong></p>
-
 <ul>
 <li>Make it easier for me to just write a standalone file and execute it as a program please</li>
-<li>Hide the legacy Java crap that I don't know anything about</li>
-<li>Give me a Kotlin Command Line app option in IntelliJ which doesn't give me all the crap in the project</li>
+<li>Hide the legacy Java crap that I don&#39;t know anything about</li>
+<li>Give me a Kotlin Command Line app option in IntelliJ which doesn&#39;t give me all the crap in the project</li>
 <li>Keep the compiler in memory or do whatever else is needed so this feedback loop goes from a minimum of 15 seconds to a minimum of &lt; 0.1 seconds</li>
 </ul>
-
 <p><strong>Next up...</strong></p>
-
-<p>I'll go through some of the language features I liked, and some of the language features I didn't like and give some (hopefully) constructive feedback over them.</p>]]></description><link>http://codeofrob.com/entries/looking-at-kotlin---a-few-notes-made.html</link><guid isPermaLink="true">http://codeofrob.com/entries/looking-at-kotlin---a-few-notes-made.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 16 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Evented Github Adventure - Sentiment Analysis of Github Commits]]></title><description><![CDATA[<p>Carrying on in the EventStore series...</p>
-
+<p>I&#39;ll go through some of the language features I liked, and some of the language features I didn&#39;t like and give some (hopefully) constructive feedback over them.</p>
+]]></description><link>http://codeofrob.com/entries/looking-at-kotlin---a-few-notes-made.html</link><guid isPermaLink="true">http://codeofrob.com/entries/looking-at-kotlin---a-few-notes-made.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 16 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Evented Github Adventure - Sentiment Analysis of Github Commits]]></title><description><![CDATA[<p>Carrying on in the EventStore series...</p>
 <ul>
 <li><a href="/entries/playing-with-the-eventstore.html">Introduction to the EventStore</a></li>
 <li><a href="/entries/pushing-data-into-streams-in-the-eventstore.html">Pushing data into the EventStore</a></li>
@@ -1263,84 +926,63 @@ var celestia = Unicorn("Princess Celestia", ConstSpeaker("I'm the boss of all th
 <li><a href="/entries/evented-github-adventure---temporal-averages.html">Temporal averages</a></li>
 <li>Sentiment analysis of Github events</li>
 </ul>
-
-<p>Okay, back to more practical things now we've covered how easy <a href="/entries/evented-github-adventure---temporal-averages.html">temporal queries are with the event store</a>.</p>
-
-<p>Ever wondered how happy developers from different languages were? Well, let's find out </p>
-
+<p>Okay, back to more practical things now we&#39;ve covered how easy <a href="/entries/evented-github-adventure---temporal-averages.html">temporal queries are with the event store</a>.</p>
+<p>Ever wondered how happy developers from different languages were? Well, let&#39;s find out </p>
 <p>First off, I downloaded a list of words for both positive and negative sentiment from the internet, here are the references to the studies done which provided these word lists for use:</p>
-
-<pre><code>   Minqing Hu and Bing Liu. "Mining and Summarizing Customer Reviews."
-       Proceedings of the ACM SIGKDD International Conference on Knowledge
-       Discovery and Data Mining (KDD-2004), Aug 22-25, 2004, Seattle,
+<pre><code>   Minqing Hu <span class="keyword">and</span> Bing Liu. <span class="string">"Mining and Summarizing Customer Reviews."</span>
+       Proceedings <span class="keyword">of</span> <span class="keyword">the</span> ACM SIGKDD International Conference <span class="function_start"><span class="keyword">on</span> <span class="title">Knowledge</span></span>
+       Discovery <span class="keyword">and</span> Data Mining (KDD-<span class="number">2004</span>), Aug <span class="number">22</span>-<span class="number">25</span>, <span class="number">2004</span>, Seattle,
        Washington, USA, 
-   Bing Liu, Minqing Hu and Junsheng Cheng. "Opinion Observer: Analyzing
-       and Comparing Opinions on the Web." Proceedings of the 14th
-       International World Wide Web conference (WWW-2005), May 10-14,
-       2005, Chiba, Japan.
-</code></pre>
-
+   Bing Liu, Minqing Hu <span class="keyword">and</span> Junsheng Cheng. <span class="string">"Opinion Observer: Analyzing
+       and Comparing Opinions on the Web."</span> Proceedings <span class="keyword">of</span> <span class="keyword">the</span> <span class="number">14</span>th
+       International World Wide Web conference (WWW-<span class="number">2005</span>), May <span class="number">10</span>-<span class="number">14</span>,
+       <span class="number">2005</span>, Chiba, Japan.</code></pre>
 <p>So, how to use this? Well, I just pasted the list of words into a file in vim, and ran a macro over them to convert them into two arrays like so:</p>
-
-<pre><code>var happyWords = [ "yay", "funsome", "winsome" ]
-var sadWords = [ "boo", "crap", "lame" ]
-</code></pre>
-
-<p>There are actually about 5000 words in total, but essentially what I'm going to do is partition by language and keep a count of </p>
-
+<pre><code><span class="keyword">var</span> happyWords = [ <span class="string">"yay"</span>, <span class="string">"funsome"</span>, <span class="string">"winsome"</span> ]
+<span class="keyword">var</span> sadWords = [ <span class="string">"boo"</span>, <span class="string">"crap"</span>, <span class="string">"lame"</span> ]</code></pre>
+<p>There are actually about 5000 words in total, but essentially what I&#39;m going to do is partition by language and keep a count of </p>
 <ul>
 <li>How many commits per language I see</li>
 <li>How many happy words I see in each commit</li>
 <li>How many sad words I see in each commit</li>
 </ul>
-
-<p>Now, real sentiment analysis is a little more complicated than simply looking for words, but we'll be happy with this for now, let's have a look at the projection:</p>
-
-<pre><code>function collectHappinessIndexOfCommit(commit, state) {
+<p>Now, real sentiment analysis is a little more complicated than simply looking for words, but we&#39;ll be happy with this for now, let&#39;s have a look at the projection:</p>
+<pre><code><span class="function"><span class="keyword">function</span> <span class="title">collectHappinessIndexOfCommit</span><span class="params">(commit, state)</span> <span class="comment">{
    var index = 0
    for(var i in happyWords) {
        if(commit.message.indexOf(happyWords[i]) &gt;= 0)
           state.happycount++
-   }
-   for(var i in sadWords) {
+   }</span>
+   <span class="title">for</span><span class="params">(<span class="keyword">var</span> i <span class="keyword">in</span> sadWords)</span> <span class="comment">{
        if(commit.message.indexOf(sadWords[i]) &gt;= 0)
           state.sadcount++
-   }
-   state.commits++
+   }</span>
+   <span class="title">state</span>.<span class="title">commits</span>++
 }
 
-fromStreams(['github-commits'])
-  .partitionBy(function(ev) {
+<span class="title">fromStreams</span><span class="params">([<span class="string">'github-commits'</span>])</span>
+  .<span class="title">partitionBy</span><span class="params">(<span class="keyword">function</span>(ev)</span> <span class="comment">{
     if(ev.body.repo)
       return ev.body.repo.language
-  })
-  .when({
-    "$init": function() {
+  }</span>)
+  .<span class="title">when</span><span class="params">({
+    "$init": <span class="keyword">function</span>()</span> <span class="comment">{
       return { 
          commits: 0, sadcount: 0, happycount: 0
-      }
+      }</span>
     },
-    "Commit": function(state, ev) {
+    "<span class="title">Commit</span>":</span> <span class="keyword">function</span>(state, ev) <span class="comment">{
        collectHappinessIndexOfCommit(ev.body.commit, state)
-    },
-  })
-</code></pre>
-
-<p>I guess I'll say that my "happiness index" can be expressed by </p>
-
-<pre><code>var index = happycount / sadcount
-</code></pre>
-
-<p>Or something similar (not the point of this post, if you want to change it then modify the JS on this page..), let's have a look at the chart of happiness over languages</p>
-
+    }</span>,
+  })</code></pre>
+<p>I guess I&#39;ll say that my &quot;happiness index&quot; can be expressed by </p>
+<pre><code><span class="title">var</span> index = happycount / sadcount</code></pre>
+<p>Or something similar (not the point of this post, if you want to change it then modify the JS on this page..), let&#39;s have a look at the chart of happiness over languages</p>
 <div id="scaled"></div>
 
-<p>Wow, look at those guys writing Delphi! Presumably they've got the best work/life balance ever known, or they know something the rest of us don't. The folk doing Puppet? I guess when your job is automating the crap that nobody else wants to touch you're going to be pretty miserable most of the time ;-)</p>
-
-<p>Actually, most of the "old school" languages hang around to the right and the "new school" to the left - is this an indication that unhappy people jump ship sooner than others?</p>
-
+<p>Wow, look at those guys writing Delphi! Presumably they&#39;ve got the best work/life balance ever known, or they know something the rest of us don&#39;t. The folk doing Puppet? I guess when your job is automating the crap that nobody else wants to touch you&#39;re going to be pretty miserable most of the time ;-)</p>
+<p>Actually, most of the &quot;old school&quot; languages hang around to the right and the &quot;new school&quot; to the left - is this an indication that unhappy people jump ship sooner than others?</p>
 <p><em>Note: The differences are actually hilariously small, and although there is a huge amount of data it is likely not statistically that relevant, this is just a bit of fun</em></p>
-
 <script type="text/javascript" src="/d3.v2.js"></script>
 <script type="text/javascript">
 
@@ -1418,8 +1060,10 @@ var data =
          .attr("y", function(d, i) { return 370 - (280 * scale(d.state.index)) })
          .attr("width", 640 / (filteredData.length + 1))
          .attr("height", function(d, i) { return 280 * scale(d.state.index) })
-</script>]]></description><link>http://codeofrob.com/entries/evented-github-adventure---sentiment-analysis-of-github-commits.html</link><guid isPermaLink="true">http://codeofrob.com/entries/evented-github-adventure---sentiment-analysis-of-github-commits.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 15 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Evented Github Adventure - Temporal averages]]></title><description><![CDATA[<p>Carrying on in the EventStore series...</p>
+</script>
 
+
+]]></description><link>http://codeofrob.com/entries/evented-github-adventure---sentiment-analysis-of-github-commits.html</link><guid isPermaLink="true">http://codeofrob.com/entries/evented-github-adventure---sentiment-analysis-of-github-commits.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 15 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Evented Github Adventure - Temporal averages]]></title><description><![CDATA[<p>Carrying on in the EventStore series...</p>
 <ul>
 <li><a href="/entries/playing-with-the-eventstore.html">Introduction to the EventStore</a></li>
 <li><a href="/entries/pushing-data-into-streams-in-the-eventstore.html">Pushing data into the EventStore</a></li>
@@ -1433,83 +1077,67 @@ var data =
 <li><a href="/entries/evented-github-adventure---crossing-the-streams-to-gain-real-insights.html">Projections from multiple streams</a></li>
 <li>Temporal averages</li>
 </ul>
-
-<p>If we can <a href="/entries/evented-github-adventure---temporal-queries,-who-doesnt-trust-their-hardware.html">emit temporal events</a> by partitioning streams and building up state over time, then we can probably go a bit further and build up averages over "How long things usually take", let's have a look at the temporal projection we used to emit time-based events:</p>
-
-<pre><code>"PushEvent": function(state, ev) {
-  if(state.lastPush) {
+<p>If we can <a href="/entries/evented-github-adventure---temporal-queries,-who-doesnt-trust-their-hardware.html">emit temporal events</a> by partitioning streams and building up state over time, then we can probably go a bit further and build up averages over &quot;How long things usually take&quot;, let&#39;s have a look at the temporal projection we used to emit time-based events:</p>
+<pre><code><span class="string">"PushEvent"</span>: function(<span class="keyword">state</span>, ev) {
+  <span class="keyword">if</span>(<span class="keyword">state</span>.lastPush) {
     var newDate = new Date(ev.body.created_at)
-      , lastDate = new Date(state.lastPush.body.created_at)
-      , difference = (newDate.getTime() - lastDate.getTime()) / 1000
+      , lastDate = new Date(<span class="keyword">state</span>.lastPush.body.created_at)
+      , difference = (newDate.getTime() - lastDate.getTime()) / <span class="number">1000</span>
 
-    if(difference &lt; 120) {
-      emit('paranoidpushes', "ParanoidPush", {
-        first: state.lastPush,
-        next: ev
+    <span class="keyword">if</span>(difference &lt; <span class="number">120</span>) {
+      emit(<span class="string">'paranoidpushes'</span>, <span class="string">"ParanoidPush"</span>, {
+        first: <span class="keyword">state</span>.lastPush,
+        <span class="keyword">next</span>: ev
       })
     }
   }
-  state.lastPush = ev
-  return state
-}
-</code></pre>
-
+  <span class="keyword">state</span>.lastPush = ev
+  <span class="keyword">return</span> <span class="keyword">state</span>
+}</code></pre>
 <p>What we can actually do here is instead of checking for a difference, simply emit an event for every time we receive a PushEvent notification which happened after another one we already saw:</p>
+<pre><code><span class="function"><span class="title">fromCategory</span><span class="params">('pushesbyrepo')</span>
+  <span class="title">foreachStream</span><span class="params">()</span>
+  .<span class="title">when</span><span class="params">(<span class="tuple">{
+    $init: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
+      return <span class="tuple">{}</span>
+    }</span>,
+    <span class="string">"PushEvent"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
+      if(state.last<span class="variable">Push</span>) <span class="tuple">{
+        var new<span class="variable">Date</span> = new <span class="variable">Date</span>(ev.body.created_at)
+          , last<span class="variable">Date</span> = new <span class="variable">Date</span>(state.last<span class="variable">Push</span>.body.created_at)
+          , difference = (new<span class="variable">Date</span>.<span class="function_name">getTime</span>() - last<span class="variable">Date</span>.<span class="function_name">getTime</span>()) / <span class="number">1000</span>
 
-<pre><code>fromCategory('pushesbyrepo')
-  foreachStream()
-  .when({
-    $init: function(state, ev) {
-      return {}
-    },
-    "PushEvent": function(state, ev) {
-      if(state.lastPush) {
-        var newDate = new Date(ev.body.created_at)
-          , lastDate = new Date(state.lastPush.body.created_at)
-          , difference = (newDate.getTime() - lastDate.getTime()) / 1000
-
-        emit('successivepushes', "SuccessivePush", {
-          first: state.lastPush,
+        <span class="function_name">emit</span>('successivepushes', <span class="string">"SuccessivePush"</span>, <span class="tuple">{
+          first: state.last<span class="variable">Push</span>,
           next: ev,
           difference: difference
         })
       }
-      state.lastPush = ev
+      state.last<span class="variable">Push</span> = ev
       return state
     }
-  })
-</code></pre>
-
+  })</code></pre>
 <p>This can actually lead to better analysis of our data, for example</p>
-
 <p><em>What are the average times between pushes across the different languages</em></p>
-
-<p>So, this time we'll partition by language and work out an average time between pushes per language</p>
-
-<pre><code>fromStream('successivepushes')
-  .when({
-   "$init": function() {
-     return {}
-   },
-   "SuccessivePush": function(state, ev) {
-     var langState = getPerLanguageState(state, ev)
-     langState.total++
-     langState.totaltime += ev.body.difference
+<p>So, this time we&#39;ll partition by language and work out an average time between pushes per language</p>
+<pre><code><span class="function"><span class="title">fromStream</span><span class="params">('successivepushes')</span>
+  .<span class="title">when</span><span class="params">(<span class="tuple">{
+   <span class="string">"$init"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+     return <span class="tuple">{}</span>
+   }</span>,
+   <span class="string">"SuccessivePush"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
+     var lang<span class="variable">State</span> = <span class="function_name">getPerLanguageState</span>(state, ev)
+     lang<span class="variable">State</span>.total++
+     lang<span class="variable">State</span>.totaltime += ev.body.difference
      return state
    }
-  })
-</code></pre>
-
+  })</code></pre>
 <p>Now how I got to re-use that per-repo stream I created earlier.</p>
-
 <div id="scaled"></div>
 
 <p>My old version of this chart had C# developers at the right hand of the chart, but more data showed this was not the case (which is a shame because I was going to make a snarky remark about build times)</p>
-
-<p>As it happens, the ML folk are the folk who push often and furiously - I can't explain why this is but this is from over 3000 pushes and is quite representative. (Anybody who works in standard ML care to comment? I didn't even know this was a popular thing...)</p>
-
+<p>As it happens, the ML folk are the folk who push often and furiously - I can&#39;t explain why this is but this is from over 3000 pushes and is quite representative. (Anybody who works in standard ML care to comment? I didn&#39;t even know this was a popular thing...)</p>
 <p>VimL being on the right hand side makes a lot of sense - how often do we change our configs after all? :)</p>
-
 <script type="text/javascript" src="/d3.v2.js"></script>
 <script type="text/javascript">
 var data = {"Java":{"count":253580,"totaldifference":38238330856},"JavaScript":{"count":377205,"totaldifference":56632429808},"PHP":{"count":153121,"totaldifference":24771723876},"C":{"count":102470,"totaldifference":17105126095},"Python":{"count":166696,"totaldifference":28787843794},"null":{"count":172572,"totaldifference":14480451092},"Shell":{"count":55989,"totaldifference":10294378504},"Lua":{"count":7462,"totaldifference":1435117732},"C++":{"count":115765,"totaldifference":16678557230},"Ruby":{"count":176623,"totaldifference":27952013780},"ColdFusion":{"count":1079,"totaldifference":112788357},"Objective-C":{"count":26592,"totaldifference":5090102450},"C#":{"count":39300,"totaldifference":6771578404},"CoffeeScript":{"count":12882,"totaldifference":1958762763},"FORTRAN":{"count":1079,"totaldifference":257931768},"ActionScript":{"count":3559,"totaldifference":658819864},"Assembly":{"count":1410,"totaldifference":270141323},"Perl":{"count":19860,"totaldifference":3899985663},"R":{"count":5853,"totaldifference":1247020443},"Clojure":{"count":6951,"totaldifference":1281534272},"Arduino":{"count":1636,"totaldifference":378845394},"Go":{"count":8604,"totaldifference":1303815011},"Haskell":{"count":8268,"totaldifference":1718963984},"OpenEdge ABL":{"count":280,"totaldifference":49990984},"Erlang":{"count":4511,"totaldifference":838173598},"Julia":{"count":1390,"totaldifference":210414747},"VimL":{"count":18202,"totaldifference":6334893565},"Tcl":{"count":361,"totaldifference":107774886},"Common Lisp":{"count":1608,"totaldifference":319061186},"Rust":{"count":1753,"totaldifference":190856284},"Scala":{"count":11826,"totaldifference":2331705101},"Groovy":{"count":4365,"totaldifference":834385794},"Puppet":{"count":4504,"totaldifference":744092109},"Emacs Lisp":{"count":8986,"totaldifference":2641763583},"ASP":{"count":1885,"totaldifference":245957381},"Verilog":{"count":1180,"totaldifference":166834193},"Visual Basic":{"count":1476,"totaldifference":322967626},"AutoHotkey":{"count":197,"totaldifference":58191551},"Standard ML":{"count":3119,"totaldifference":62683634},"Matlab":{"count":7773,"totaldifference":978243889},"F#":{"count":961,"totaldifference":184019680},"Vala":{"count":356,"totaldifference":68369602},"Scheme":{"count":1781,"totaldifference":307656750},"D":{"count":1358,"totaldifference":347429358},"Racket":{"count":1249,"totaldifference":235521807},"OCaml":{"count":2135,"totaldifference":423226057},"Prolog":{"count":888,"totaldifference":198471986},"Dart":{"count":1978,"totaldifference":502985423},"ooc":{"count":179,"totaldifference":8666096},"HaXe":{"count":308,"totaldifference":64412989},"PowerShell":{"count":1015,"totaldifference":207512933},"Turing":{"count":20,"totaldifference":5009659},"Logtalk":{"count":71,"totaldifference":4315767},"Smalltalk":{"count":436,"totaldifference":59346112},"XQuery":{"count":102,"totaldifference":35513771},"Haxe":{"count":1045,"totaldifference":176098167},"Factor":{"count":491,"totaldifference":11389691},"Delphi":{"count":1359,"totaldifference":232268974},"VHDL":{"count":739,"totaldifference":141829947},"Ada":{"count":284,"totaldifference":42642935},"Kotlin":{"count":98,"totaldifference":19861112},"Rebol":{"count":32,"totaldifference":9488848},"Elixir":{"count":277,"totaldifference":43585554},"Bro":{"count":2,"totaldifference":389},"Coq":{"count":490,"totaldifference":76134746},"Parrot":{"count":71,"totaldifference":6472209},"DCPU-16 ASM":{"count":48,"totaldifference":9578220},"Eiffel":{"count":433,"totaldifference":47667533},"Objective-J":{"count":181,"totaldifference":44845404},"Scilab":{"count":69,"totaldifference":19688536},"Apex":{"count":152,"totaldifference":27645682},"Fancy":{"count":4,"totaldifference":3523197},"AppleScript":{"count":122,"totaldifference":28262738},"Ceylon":{"count":36,"totaldifference":14033292},"Pure Data":{"count":111,"totaldifference":26227613},"Io":{"count":70,"totaldifference":13317185},"Lasso":{"count":517,"totaldifference":53654351},"TypeScript":{"count":1922,"totaldifference":312329074},"XML":{"count":2200,"totaldifference":510073123},"LiveScript":{"count":249,"totaldifference":34549381},"Xtend":{"count":53,"totaldifference":12040358},"SuperCollider":{"count":209,"totaldifference":45851945},"Ioke":{"count":11,"totaldifference":2397847},"Dylan":{"count":81,"totaldifference":27279547},"Awk":{"count":90,"totaldifference":20843043},"Boo":{"count":50,"totaldifference":17946733},"Monkey":{"count":30,"totaldifference":7011348},"Nimrod":{"count":64,"totaldifference":14514326},"Logos":{"count":2398,"totaldifference":407157116},"Mirah":{"count":1,"totaldifference":3521},"CLIPS":{"count":37,"totaldifference":7394334},"Nemerle":{"count":147,"totaldifference":17242985},"DOT":{"count":671,"totaldifference":113091927},"Gosu":{"count":64,"totaldifference":10434170},"Augeas":{"count":14,"totaldifference":1169525},"Processing":{"count":1188,"totaldifference":206758704},"Nu":{"count":68,"totaldifference":3581684},"PogoScript":{"count":14,"totaldifference":3207543},"eC":{"count":5,"totaldifference":2925691},"Forth":{"count":7,"totaldifference":2797176},"Pike":{"count":6,"totaldifference":3902037},"TXL":{"count":1,"totaldifference":113769},"Fantom":{"count":18,"totaldifference":2346866},"Ecl":{"count":17,"totaldifference":2004560},"MoonScript":{"count":46,"totaldifference":6038229},"Ragel in Ruby Host":{"count":18,"totaldifference":1364124},"Rouge":{"count":1,"totaldifference":1833},"Opa":{"count":1,"totaldifference":648},"Arc":{"count":15,"totaldifference":5975508}}
@@ -1578,8 +1206,9 @@ var data = {"Java":{"count":253580,"totaldifference":38238330856},"JavaScript":{
          .attr("y", function(d, i) { return 370 - (280 * scale(d.state.average)) })
          .attr("width", 640 / (filteredData.length + 1))
          .attr("height", function(d, i) { return 280 * scale(d.state.average) })
-</script>]]></description><link>http://codeofrob.com/entries/evented-github-adventure---temporal-averages.html</link><guid isPermaLink="true">http://codeofrob.com/entries/evented-github-adventure---temporal-averages.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 14 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Evented Github Adventure - Crossing the streams to gain real insights]]></title><description><![CDATA[<p>Carrying on in the EventStore series...</p>
+</script>
 
+]]></description><link>http://codeofrob.com/entries/evented-github-adventure---temporal-averages.html</link><guid isPermaLink="true">http://codeofrob.com/entries/evented-github-adventure---temporal-averages.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 14 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Evented Github Adventure - Crossing the streams to gain real insights]]></title><description><![CDATA[<p>Carrying on in the EventStore series...</p>
 <ul>
 <li><a href="/entries/playing-with-the-eventstore.html">Introduction to the EventStore</a></li>
 <li><a href="/entries/pushing-data-into-streams-in-the-eventstore.html">Pushing data into the EventStore</a></li>
@@ -1592,106 +1221,82 @@ var data = {"Java":{"count":253580,"totaldifference":38238330856},"JavaScript":{
 <li><a href="/entries/evented-github-adventure---temporal-queries,-who-doesnt-trust-their-hardware.html">Temporal queries in the event store</a></li>
 <li>Projections from multiple streams</li>
 </ul>
-
-<p>It's not enough to just create a <a href="/entries/evented-github-adventure---temporal-queries,-who-doesnt-trust-their-hardware.html">stream of 'events' from correlated actions over time</a>, although that <em>is</em> super cool, what we want to do is then use that stream to tell us something interesting about the activity of developers on Github.</p>
-
+<p>It&#39;s not enough to just create a <a href="/entries/evented-github-adventure---temporal-queries,-who-doesnt-trust-their-hardware.html">stream of &#39;events&#39; from correlated actions over time</a>, although that <em>is</em> super cool, what we want to do is then use that stream to tell us something interesting about the activity of developers on Github.</p>
 <p>Like, given that we have this information about paranoid pushes, how do they stack up as a percentage to pushes overall when broken down by language?</p>
-
 <p><em>Problem</em>: This information is in completely different streams.</p>
+<p>Not to worry, this is where the Event Store&#39;s ability to re-partition and consume streams in a variety of ways comes to the rescue once more, want to consume the events from two different streams? Not a problem</p>
+<pre><code><span class="function"><span class="title">fromStreams</span><span class="params">([ <span class="string">"github"</span>, <span class="string">"paranoidpushes"</span> ])</span>
+   .<span class="title">when</span><span class="params">(<span class="tuple">{
 
-<p>Not to worry, this is where the Event Store's ability to re-partition and consume streams in a variety of ways comes to the rescue once more, want to consume the events from two different streams? Not a problem</p>
-
-<pre><code>fromStreams([ "github", "paranoidpushes" ])
-   .when({
-
-   })
-</code></pre>
-
-<p>First off, let's keep it simple and just find out as a percentage what the paranoid pushes are out of the overal Github stream.</p>
-
-<pre><code>fromStreams([ "github", "paranoidpushes" ])
-   .when({
-     "$init": function() {
-       return { paranoid: 0, total: 0 }
-     },
-     "ParanoidPush": function(state, ev) {
+   }</span>)</span></code></pre>
+<p>First off, let&#39;s keep it simple and just find out as a percentage what the paranoid pushes are out of the overal Github stream.</p>
+<pre><code><span class="function"><span class="title">fromStreams</span><span class="params">([ <span class="string">"github"</span>, <span class="string">"paranoidpushes"</span> ])</span>
+   .<span class="title">when</span><span class="params">(<span class="tuple">{
+     <span class="string">"$init"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+       return <span class="tuple">{ paranoid: <span class="number">0</span>, total: <span class="number">0</span> }</span>
+     }</span>,
+     <span class="string">"ParanoidPush"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
        state.paranoid++
-     },
-     "PushEvent": function(state, ev) {
+     }</span>,
+     <span class="string">"PushEvent"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
        state.total++
-     }
-   })
-</code></pre>
-
-<p>So yeah, er - that was stupidly easy, I didn't even have to think about that one, we just get all the events from those streams as a unified collection and were able to generate stats from these.</p>
-
+     }</span>
+   })</code></pre>
+<p>So yeah, er - that was stupidly easy, I didn&#39;t even have to think about that one, we just get all the events from those streams as a unified collection and were able to generate stats from these.</p>
 <p>What does the result look like?</p>
-
-<pre><code>{"paranoid":181423,"total": 2272796}
-</code></pre>
-
-<p>So, in fact around 8% of all pushes to Github happen within 2 minutes of the previous one - that's actually quite high - and my guess is that these are either people rectifying mistakes in previous commits (actually, there's an idea for another projection) or people who are new to git.</p>
-
-<p>Let's generate a result object by language and see what we get</p>
-
-<pre><code>function getPerLanguageState(state, ev) {
-  var language = getLanguageFromEvent(ev)
-  var langState = state[language]
-  if(!langState) {
-    langState = { paranoid: 0, total: 0 }
+<pre><code>{"<span class="attribute">paranoid</span>":<span class="value"><span class="number">181423</span></span>,"<span class="attribute">total</span>": <span class="value"><span class="number">2272796</span>}</span></code></pre>
+<p>So, in fact around 8% of all pushes to Github happen within 2 minutes of the previous one - that&#39;s actually quite high - and my guess is that these are either people rectifying mistakes in previous commits (actually, there&#39;s an idea for another projection) or people who are new to git.</p>
+<p>Let&#39;s generate a result object by language and see what we get</p>
+<pre><code><span class="function"><span class="keyword">function</span> <span class="title">getPerLanguageState</span><span class="params">(state, ev)</span> {</span>
+  <span class="keyword">var</span> language = getLanguageFromEvent(ev)
+  <span class="keyword">var</span> langState = state[language]
+  <span class="keyword">if</span>(!langState) {
+    langState = { paranoid: <span class="number">0</span>, total: <span class="number">0</span> }
     state[language] = langState
   }
-  return langState
+  <span class="keyword">return</span> langState
 }
 
-function getLanguageFromEvent(ev) {
-  if(ev.body.repo)
-    return ev.body.repo.language
-  if(ev.body.first)
-    return ev.body.first.body.repo.language
+<span class="function"><span class="keyword">function</span> <span class="title">getLanguageFromEvent</span><span class="params">(ev)</span> {</span>
+  <span class="keyword">if</span>(ev.body.repo)
+    <span class="keyword">return</span> ev.body.repo.language
+  <span class="keyword">if</span>(ev.body.first)
+    <span class="keyword">return</span> ev.body.first.body.repo.language
 }
 
-fromStreams([ "github", "paranoidpushes" ])
+fromStreams([ <span class="string">"github"</span>, <span class="string">"paranoidpushes"</span> ])
   .when({
-   "$init": function() {
-     return {}
+   <span class="string">"$init"</span>: <span class="keyword">function</span>() {
+     <span class="keyword">return</span> {}
    },
-   "ParanoidPush": function(state, ev) {
-     var langState = getPerLanguageState(state, ev)
+   <span class="string">"ParanoidPush"</span>: <span class="keyword">function</span>(state, ev) {
+     <span class="keyword">var</span> langState = getPerLanguageState(state, ev)
      langState.paranoid++
-     return state
+     <span class="keyword">return</span> state
    },
-   "PushEvent": function(state, ev) {
-     var langState = getPerLanguageState(state, ev)
+   <span class="string">"PushEvent"</span>: <span class="keyword">function</span>(state, ev) {
+     <span class="keyword">var</span> langState = getPerLanguageState(state, ev)
      langState.total++
-     return state
+     <span class="keyword">return</span> state
    }
-  })
-</code></pre>
-
+  })</code></pre>
 <p>There is a lot to take in here, but we can see</p>
-
 <ul>
 <li>I can use custom functions in my projection definition to break down the work</li>
 <li>The custom functions simply work out what language my event is</li>
 <li>The custom functions return a per-language state object</li>
 <li>The projection just adds to the values in that per-language state object</li>
 </ul>
-
 <p>Anyway, the results of this?</p>
-
 <div id="notscaled"></div>
 
 <p>And scaled</p>
-
 <div id="scaled"></div>
 
-<p>So the old school Java and C++ developers can't get enough of that push-based action,  with nearly 16% of their pushes happening within a couple of minutes of their previous push.</p>
 
-<p>Matlab too (presumably they're not doing CI to heroku), maybe they're just worried about their university computer sessions crashing or something.</p>
-
+<p>So the old school Java and C++ developers can&#39;t get enough of that push-based action,  with nearly 16% of their pushes happening within a couple of minutes of their previous push.</p>
+<p>Matlab too (presumably they&#39;re not doing CI to heroku), maybe they&#39;re just worried about their university computer sessions crashing or something.</p>
 <p>Not terribly interesting results, but a good example of when it makes sense to combine two streams from the EventStore together.</p>
-
 <script type="text/javascript" src="/d3.v2.js"></script>
 <script type="text/javascript">
 
@@ -1810,4 +1415,6 @@ var data =
          .attr("y", function(d, i) { return 370 - (280 * scale(d.state.percentage)) })
          .attr("width", 640 / (filteredData.length + 1))
          .attr("height", function(d, i) { return 280 * scale(d.state.percentage) })
-</script>]]></description><link>http://codeofrob.com/entries/evented-github-adventure---crossing-the-streams-to-gain-real-insights.html</link><guid isPermaLink="true">http://codeofrob.com/entries/evented-github-adventure---crossing-the-streams-to-gain-real-insights.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 13 May 2013 09:30:00 GMT</pubDate></item></channel></rss>
+</script>
+
+]]></description><link>http://codeofrob.com/entries/evented-github-adventure---crossing-the-streams-to-gain-real-insights.html</link><guid isPermaLink="true">http://codeofrob.com/entries/evented-github-adventure---crossing-the-streams-to-gain-real-insights.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 13 May 2013 09:30:00 GMT</pubDate></item></channel></rss>

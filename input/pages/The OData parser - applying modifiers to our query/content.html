@@ -1,262 +1,199 @@
-<p>I've got <a href="/entries/writing-an-odata-parser---starting-at-the-beginning.html">basic resource parsing</a>, <a href="/entries/parsing-odata---nested-resource-paths.html">path parsing</a>, and <a href="/entries/parsing-odata---service-operations.html">service operations</a> sussed, now I need to begin the grand delving into parsing all of the query options that can be applied to an OData request.</p>
-
+<p>I&#39;ve got <a href="/entries/writing-an-odata-parser---starting-at-the-beginning.html">basic resource parsing</a>, <a href="/entries/parsing-odata---nested-resource-paths.html">path parsing</a>, and <a href="/entries/parsing-odata---service-operations.html">service operations</a> sussed, now I need to begin the grand delving into parsing all of the query options that can be applied to an OData request.</p>
 <p>There is quite the myriad of query string options that can be applied in a conventional OData request, and they all begin with $ and have some sort of expression after it.</p>
-
 <ul>
 <li>$orderby (order by some sort of field)</li>
 <li>$top (paging support)</li>
 <li>$skip (paging support)</li>
 <li>$filter (expressions passed in to do filtering - basically LINQ support and SQL server support &lt;/cynicism&gt;)</li>
 </ul>
-
 <p>These all appear at the very end of the query string like so</p>
-
-<pre><code>/resource/child?$orderby=Rating asc
-/resource?$top=10
-/resource?$orderby=Rating,Category/Name desc
-/resource?$filter=Rating eq 5
-</code></pre>
-
-<p>As can be seen, the complexity of these can grow quite easily but in reality they're pretty much a combination of</p>
-
+<pre><code>/resource/child?<span class="variable">$orderby</span>=Rating asc
+/resource?<span class="variable">$top</span>=10
+/resource?<span class="variable">$orderby</span>=Rating,Category/Name desc
+/resource?<span class="variable">$filter</span>=Rating eq 5</code></pre>
+<p>As can be seen, the complexity of these can grow quite easily but in reality they&#39;re pretty much a combination of</p>
 <ul>
 <li>the query option itself</li>
 <li>an expression that is unique to that query option</li>
 </ul>
-
-<p>Also, we can re-use any rules we already have about parsing resource names (except we don't want to allow id specification, etc)
-I imagine when trying to re-use those rules I'll probably sort out some of the niggles I've overlooked so far too!</p>
-
-<p>So I guess what we need to do is parse the resource path and then apply any of these modifiers to it. There is actually a fair amount of support for this already in the Rulemotion code that I'm looking to replace so I'll likely be able to copy most of it out as I write the tests for it.</p>
-
+<p>Also, we can re-use any rules we already have about parsing resource names (except we don&#39;t want to allow id specification, etc)
+I imagine when trying to re-use those rules I&#39;ll probably sort out some of the niggles I&#39;ve overlooked so far too!</p>
+<p>So I guess what we need to do is parse the resource path and then apply any of these modifiers to it. There is actually a fair amount of support for this already in the Rulemotion code that I&#39;m looking to replace so I&#39;ll likely be able to copy most of it out as I write the tests for it.</p>
 <p><strong>$orderby</strong></p>
-
-<p>OrderBy seems quite trivial so we'll start with that</p>
-
-<pre><code>test("/resource?$orderby=Property", "OData", function(result) {
-  it("sort options are present on the result", function() {
-     assert.notEqual(result.options.$orderby, null)
-  })
-  it("sort options have the property specified", function() {
-     assert.equal(result.options.$orderby.property, "Property")
-  })
-})
-</code></pre>
-
-<p>I'm quite excited about this as how this model presents itself will probably help me sort out the main model I'm creating to support the OData request.</p>
-
-<p>I'll start off with:</p>
-
+<p>OrderBy seems quite trivial so we&#39;ll start with that</p>
+<pre><code><span class="function"><span class="title">test</span><span class="params">(<span class="string">"/resource?$orderby=Property"</span>, <span class="string">"OData"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>(result) <span class="tuple">{
+  <span class="function_name">it</span>(<span class="string">"sort options are present on the result"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+     assert.<span class="function_name">notEqual</span>(result.options.$orderby, null)
+  }</span>)
+  <span class="function_name">it</span>(<span class="string">"sort options have the property specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+     assert.<span class="function_name">equal</span>(result.options.$orderby.property, <span class="string">"Property"</span>)
+  }</span>)
+})</code></pre>
+<p>I&#39;m quite excited about this as how this model presents itself will probably help me sort out the main model I&#39;m creating to support the OData request.</p>
+<p>I&#39;ll start off with:</p>
 <pre><code>OData = (
   (
     PathSegment:model 
     (
-      '?'
-      ( listOf(`QueryOption, '&amp;'):options
+      <span class="string">'?'</span>
+      ( listOf(`QueryOption, <span class="string">'&amp;'</span>):options
       )
     )?
   ) -&gt; { 
-          if(options) {
-           model.options = {}
-           for(var i in options)
-             model.options[options[i].name] = options[i].value;
+          <span class="keyword">if</span>(options) {
+           model<span class="variable">.options</span> = {}
+           <span class="keyword">for</span>(var i in options)
+             model<span class="variable">.options</span>[options[i]<span class="variable">.name</span>] = options[i]<span class="variable">.value</span>;
           }
-         return model
+         <span class="keyword">return</span> model
        }
-  | '/'
-) 
-</code></pre>
-
-<p>I'll simply look for a list of query options, and actually merge the notion of service parameters and known query options (and in fact, custom options too - which are simply any unrecognised options - without a dollar sign in front of them)</p>
-
+  | <span class="string">'/'</span>
+) </code></pre>
+<p>I&#39;ll simply look for a list of query options, and actually merge the notion of service parameters and known query options (and in fact, custom options too - which are simply any unrecognised options - without a dollar sign in front of them)</p>
 <p>What does this look like? </p>
-
 <pre><code>QueryOption = 
   SortOption
 | OperationParam
 ,
 
 SortOption = 
-  seq("$orderby=")
-  ResourceName:property -&gt; { name: '$orderby', value = { property: property }}
-</code></pre>
-
-<p>Well we'll start off with the simplest one, which is just supporting a single property and no options. I don't want to get too ahead of myself after all.</p>
-
-<p>This works but of course I've broken my tests for service parameters now, so I'll fix those</p>
-
-<pre><code>test("/method(1)/child?foo=bar", "OData", function(result) {
-    console.log(result)
-  it("should have the resource specified", function() {
-     assert.equal(result.resource, 'method')
+  se<span class="string">q("<span class="variable">$orderby</span>=")</span>
+  ResourceName:property -&gt; { name: <span class="string">'$orderby'</span>, value = { property: property }}</code></pre>
+<p>Well we&#39;ll start off with the simplest one, which is just supporting a single property and no options. I don&#39;t want to get too ahead of myself after all.</p>
+<p>This works but of course I&#39;ve broken my tests for service parameters now, so I&#39;ll fix those</p>
+<pre><code>test(<span class="string">"/method(1)/child?foo=bar"</span>, <span class="string">"OData"</span>, function(<span class="constant">result</span>) {
+    console.<span class="command">log</span>(<span class="constant">result</span>)
+  <span class="keyword">it</span>(<span class="string">"should have the resource specified"</span>, function() {
+     assert.<span class="keyword">equal</span>(<span class="constant">result</span>.resource, 'method')
   })
-  it("The result should be addressed", function() {
-     assert.equal(result.key, '1')
+  <span class="keyword">it</span>(<span class="string">"The result should be addressed"</span>, function() {
+     assert.<span class="keyword">equal</span>(<span class="constant">result</span>.key, '<span class="number">1</span>')
   })
 
-  it("should have the path specified", function() {
-     assert.equal(result.property.resource, 'child')
+  <span class="keyword">it</span>(<span class="string">"should have the path specified"</span>, function() {
+     assert.<span class="keyword">equal</span>(<span class="constant">result</span>.<span class="keyword">property</span>.resource, 'child')
   })
 
-  it("should have the argument specified", function() {
-     assert.equal(result.options.foo, 'bar')
+  <span class="keyword">it</span>(<span class="string">"should have the argument specified"</span>, function() {
+     assert.<span class="keyword">equal</span>(<span class="constant">result</span>.options.foo, 'bar')
   })
-})
-</code></pre>
-
+})</code></pre>
 <p><strong>A bit more $orderby</strong></p>
-
 <p>Not done by a long-shot, we have several aspects to $orderby</p>
-
 <ul>
 <li>We can order by a single property</li>
 <li>We can order by several properties</li>
 <li>A property can be specified by a path to that property</li>
 <li>We can order ASC or DESC</li>
 </ul>
-
-<p>First off, let's deal with multiple properties - it seems this will be easiest</p>
-
-<pre><code>test("/resource?$orderby=PropertyOne,PropertyTwo", "OData", function(result) {
-  it("sort options are present on the result", function() {
-     assert.notEqual(result.options.$orderby, null)
-  })
-  it("sort options have the first property specified", function() {
-     assert.equal(result.options.$orderby.properties[0].name, "PropertyOne")
-  })
-  it("sort options have the second property specified", function() {
-     assert.equal(result.options.$orderby.properties[1].name, "PropertyTwo")
-  })
-})
-</code></pre>
-
-<p>Yeugh, our data model is getting quite convoluted - I'll be working on that for sure.</p>
-
+<p>First off, let&#39;s deal with multiple properties - it seems this will be easiest</p>
+<pre><code><span class="function"><span class="title">test</span><span class="params">(<span class="string">"/resource?$orderby=PropertyOne,PropertyTwo"</span>, <span class="string">"OData"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>(result) <span class="tuple">{
+  <span class="function_name">it</span>(<span class="string">"sort options are present on the result"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+     assert.<span class="function_name">notEqual</span>(result.options.$orderby, null)
+  }</span>)
+  <span class="function_name">it</span>(<span class="string">"sort options have the first property specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+     assert.<span class="function_name">equal</span>(result.options.$orderby.properties[<span class="number">0</span>].name, <span class="string">"PropertyOne"</span>)
+  }</span>)
+  <span class="function_name">it</span>(<span class="string">"sort options have the second property specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+     assert.<span class="function_name">equal</span>(result.options.$orderby.properties[<span class="number">1</span>].name, <span class="string">"PropertyTwo"</span>)
+  }</span>)
+})</code></pre>
+<p>Yeugh, our data model is getting quite convoluted - I&#39;ll be working on that for sure.</p>
 <p>But first...</p>
-
 <pre><code>SortOption = 
-  seq("$orderby=")
-  listOf(`SortProperty, ','):properties -&gt; { name: '$orderby', value: { properties: properties }  }
+  se<span class="string">q("<span class="variable">$orderby</span>=")</span>
+  listOf(<span class="string">`SortProperty, ','):properties -&gt; { name: '$orderby', value: { properties: properties }  }
 ,
 
 SortProperty = 
   ResourceName:property -&gt; { name: property }
 
-,
-</code></pre>
-
+,</code></pre>
 <p>Pretty tidy, and this opens up the avenue of being able to specify ASC or DESC very easily</p>
-
 <p><em>DESC</em></p>
-
-<pre><code>test("/resource?$orderby=PropertyOne desc", "OData", function(result) {
-  it("sort options are present on the result", function() {
-     assert.notEqual(result.options.$orderby, null)
-  })
-  it("sort options have the property specified", function() {
-     assert.equal(result.options.$orderby.properties[0].name, "PropertyOne")
-  })
-  it("sort options have the property ordering specified", function() {
-     assert.equal(result.options.$orderby.properties[0].order, "desc")
-  })
-})
-</code></pre>
-
+<pre><code><span class="function"><span class="title">test</span><span class="params">(<span class="string">"/resource?$orderby=PropertyOne desc"</span>, <span class="string">"OData"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>(result) <span class="tuple">{
+  <span class="function_name">it</span>(<span class="string">"sort options are present on the result"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+     assert.<span class="function_name">notEqual</span>(result.options.$orderby, null)
+  }</span>)
+  <span class="function_name">it</span>(<span class="string">"sort options have the property specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+     assert.<span class="function_name">equal</span>(result.options.$orderby.properties[<span class="number">0</span>].name, <span class="string">"PropertyOne"</span>)
+  }</span>)
+  <span class="function_name">it</span>(<span class="string">"sort options have the property ordering specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+     assert.<span class="function_name">equal</span>(result.options.$orderby.properties[<span class="number">0</span>].order, <span class="string">"desc"</span>)
+  }</span>)
+})</code></pre>
 <p><em>ASC</em></p>
-
-<pre><code>test("/resource?$orderby=PropertyOne asc", "OData", function(result) {
-  it("sort options are present on the result", function() {
-     assert.notEqual(result.options.$orderby, null)
-  })
-  it("sort options have the property specified", function() {
-     assert.equal(result.options.$orderby.properties[0].name, "PropertyOne")
-  })
-  it("sort options have the property ordering specified", function() {
-     assert.equal(result.options.$orderby.properties[0].order, "asc")
-  })
-})
-</code></pre>
-
+<pre><code><span class="function"><span class="title">test</span><span class="params">(<span class="string">"/resource?$orderby=PropertyOne asc"</span>, <span class="string">"OData"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>(result) <span class="tuple">{
+  <span class="function_name">it</span>(<span class="string">"sort options are present on the result"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+     assert.<span class="function_name">notEqual</span>(result.options.$orderby, null)
+  }</span>)
+  <span class="function_name">it</span>(<span class="string">"sort options have the property specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+     assert.<span class="function_name">equal</span>(result.options.$orderby.properties[<span class="number">0</span>].name, <span class="string">"PropertyOne"</span>)
+  }</span>)
+  <span class="function_name">it</span>(<span class="string">"sort options have the property ordering specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
+     assert.<span class="function_name">equal</span>(result.options.$orderby.properties[<span class="number">0</span>].order, <span class="string">"asc"</span>)
+  }</span>)
+})</code></pre>
 <p><em>Double trouble</em></p>
-
-<pre><code>test("/resource?$orderby=PropertyOne asc,PropertyTwo desc", "OData", function(result) {
-  it("sort options are present on the result", function() {
-     assert.notEqual(result.options.$orderby, null)
+<pre><code>test(<span class="string">"/resource?$orderby=PropertyOne asc,PropertyTwo desc"</span>, <span class="string">"OData"</span>, function(result) {
+  it(<span class="string">"sort options are present on the result"</span>, function() {
+     assert<span class="variable">.notEqual</span>(result<span class="variable">.options</span>.$orderby, null)
   })
-  it("sort options have property one name specified", function() {
-     assert.equal(result.options.$orderby.properties[0].name, "PropertyOne")
+  it(<span class="string">"sort options have property one name specified"</span>, function() {
+     assert<span class="variable">.equal</span>(result<span class="variable">.options</span>.$orderby<span class="variable">.properties</span>[<span class="number">0</span>]<span class="variable">.name</span>, <span class="string">"PropertyOne"</span>)
   })
-  it("sort options have property one ordering specified", function() {
-     assert.equal(result.options.$orderby.properties[0].order, "asc")
+  it(<span class="string">"sort options have property one ordering specified"</span>, function() {
+     assert<span class="variable">.equal</span>(result<span class="variable">.options</span>.$orderby<span class="variable">.properties</span>[<span class="number">0</span>]<span class="variable">.order</span>, <span class="string">"asc"</span>)
   })
-  it("sort options have the property two name specified", function() {
-     assert.equal(result.options.$orderby.properties[1].name, "PropertyTwo")
+  it(<span class="string">"sort options have the property two name specified"</span>, function() {
+     assert<span class="variable">.equal</span>(result<span class="variable">.options</span>.$orderby<span class="variable">.properties</span>[<span class="number">1</span>]<span class="variable">.name</span>, <span class="string">"PropertyTwo"</span>)
   })
-  it("sort options have the property two ordering specified", function() {
-     assert.equal(result.options.$orderby.properties[1].order, "desc")
+  it(<span class="string">"sort options have the property two ordering specified"</span>, function() {
+     assert<span class="variable">.equal</span>(result<span class="variable">.options</span>.$orderby<span class="variable">.properties</span>[<span class="number">1</span>]<span class="variable">.order</span>, <span class="string">"desc"</span>)
   })
-})
-</code></pre>
-
+})</code></pre>
 <p>Adding this is <em>super</em> easy</p>
-
 <pre><code>SortProperty = 
   ResourceName:property
   (
-    seq(" asc") -&gt; "asc"
-  | seq(" desc") -&gt; "desc"
+    se<span class="string">q(" asc")</span> -&gt; <span class="string">"asc"</span>
+  | se<span class="string">q(" desc")</span> -&gt; <span class="string">"desc"</span>
   )?:order
-  -&gt; { name: property, order: order }
-</code></pre>
-
-<p>Simply check for the resource name, then optionally check for an "asc" or a "desc", before bundling this into an object.</p>
-
+  -&gt; { name: property, order: order }</code></pre>
+<p>Simply check for the resource name, then optionally check for an &quot;asc&quot; or a &quot;desc&quot;, before bundling this into an object.</p>
 <p><strong>And the final bit - property paths</strong></p>
-
-<p>I already technically have this written in the form of the expression "PathSegment", but that's a bit too coupled to the main query path, and un-coupling it would be tricky - so it's better off just to write a new expression for matching paths within query options.</p>
-
+<p>I already technically have this written in the form of the expression &quot;PathSegment&quot;, but that&#39;s a bit too coupled to the main query path, and un-coupling it would be tricky - so it&#39;s better off just to write a new expression for matching paths within query options.</p>
 <p>First off, the test I want to pass</p>
-
 <p><em>Reminder: This is the PathSegment I put together last time</em></p>
-
 <pre><code>PathSegment = 
-      '/'
+      <span class="string">'/'</span>
       ResourceName:resource
       (
-        ("(" Number:key ")")?
+        (<span class="string">"("</span> Number:key <span class="string">")"</span>)?
         (
-          (seq("/$links") PathSegment:link)
-        | PathSegment: next
+          (se<span class="string">q("/<span class="variable">$links</span>")</span> PathSegment:<span class="keyword">link</span>)
+        | PathSegment: <span class="keyword">next</span>
         )?
-      ) -&gt; { resource: resource, key: key, link: link, property: next }
-,
-</code></pre>
-
-<p>We just need a subset of this, let's call it PropertyPath</p>
-
+      ) -&gt; { resource: resource, key: key, <span class="keyword">link</span>: <span class="keyword">link</span>, property: <span class="keyword">next</span> }
+,</code></pre>
+<p>We just need a subset of this, let&#39;s call it PropertyPath</p>
 <pre><code>PropertyPath = 
       ResourceName:resource
       (
-        '/'
-        PropertyPath: next
-      )? -&gt; { name: resource, property: next}
-,
-</code></pre>
-
+        <span class="comment">'/'</span>
+        PropertyPath: <span class="keyword">next</span>
+      )? -&gt; { name: resource, <span class="keyword">property</span>: <span class="keyword">next</span>}
+,</code></pre>
 <p>And with a slight modification to our SortOptions to use this new expression:</p>
-
 <pre><code>SortProperty = 
   PropertyPath:property
   (
-    seq(" asc") -&gt; "asc"
-  | seq(" desc") -&gt; "desc"
+    se<span class="string">q(" asc")</span> -&gt; <span class="string">"asc"</span>
+  | se<span class="string">q(" desc")</span> -&gt; <span class="string">"desc"</span>
   )?:order
   -&gt; {
        property.order = order;
-       return property;
-     }
-</code></pre>
-
-<p>And we're done.</p>
-
-<p>Next up, I'll tackle the paging stuffs, as that should be simple.</p>
+       <span class="keyword">return</span> property;
+     }</code></pre>
+<p>And we&#39;re done.</p>
+<p>Next up, I&#39;ll tackle the paging stuffs, as that should be simple.</p>

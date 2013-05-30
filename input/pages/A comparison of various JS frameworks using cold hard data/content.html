@@ -1,87 +1,77 @@
 <p>I went for lunch with the a friend the other day and he kindly gave me an idea for a blog post about JavaScript frameworks...</p>
-
-<p><blockquote>
+  <blockquote>
     I keep an eye on StackOverflow/Github/etc and mentally tot up the popularity of all these JS frameworks...
-  </blockquote></p>
+  </blockquote>
 
-<p><em>ooooh</em>, that's a good one that. If we're <em>really</em> going to say "We use FrameworkX" (and I advocate that you <em>never</em> do this, it's a silly thing to do), then let's at least look at some cold hard facts when doing so.</p>
-
-<p>Except let's not just look at popularity, let's think about the support and education and how we could find some metrics to determine these things.</p>
-
-<p>Here are a few assumptions I'm making for this post to work</p>
-
+<p><em>ooooh</em>, that&#39;s a good one that. If we&#39;re <em>really</em> going to say &quot;We use FrameworkX&quot; (and I advocate that you <em>never</em> do this, it&#39;s a silly thing to do), then let&#39;s at least look at some cold hard facts when doing so.</p>
+<p>Except let&#39;s not just look at popularity, let&#39;s think about the support and education and how we could find some metrics to determine these things.</p>
+<p>Here are a few assumptions I&#39;m making for this post to work</p>
 <ul>
-<li>StackOverflow is popular enough for the data to be representative (it's the de-facto place to ask programming questions)</li>
+<li>StackOverflow is popular enough for the data to be representative (it&#39;s the de-facto place to ask programming questions)</li>
 <li>The number of questions/un-answered questions is indicative of support</li>
 <li>Github is popular enough for the data to be representative</li>
 <li>The number of projects, and the number of stars on a project is indicative of popularity/use</li>
 </ul>
-
 <h1>Number of questions and unanswered questions on StackOverflow</h1>
-
 <p>The Stackoverflow guys are amazing, and <a href="http://data.stackexchange.com/stackoverflow/queries">provide querying capabilities right there on their site</a>, which means I can get some numbers right off the bat for the various frameworks</p>
-
 <p>I ended up with the following parameterised query to get my data</p>
+  <div class="collapse">
 
-<p><div class="collapse"></p>
+    DECLARE @TagName varchar(128) = &#39;%##TagName##%&#39;
 
-<pre><code>DECLARE @TagName varchar(128) = '%##TagName##%'
+    SELECT COUNT(<em>) from Posts P
+    WHERE P.Id IN (
+      SELECT DISTINCT(PostId) from PostTags 
+      WHERE PostTags.TagId In (
+        SELECT Id From Tags Where TagName LIKE @TagName
+      )
+    )
 
-SELECT COUNT(*) from Posts P
-WHERE P.Id IN (
-  SELECT DISTINCT(PostId) from PostTags 
-  WHERE PostTags.TagId In (
-    SELECT Id From Tags Where TagName LIKE @TagName
-  )
-)
+    SELECT COUNT(</em>) from Posts P
+    WHERE P.Id IN (
+      SELECT DISTINCT(PostId) from PostTags 
+      WHERE PostTags.TagId In (
+        SELECT Id From Tags Where TagName LIKE @TagName
+      )
+    ) AND P.AcceptedAnswerId IS NOT NULL
 
-SELECT COUNT(*) from Posts P
-WHERE P.Id IN (
-  SELECT DISTINCT(PostId) from PostTags 
-  WHERE PostTags.TagId In (
-    SELECT Id From Tags Where TagName LIKE @TagName
-  )
-) AND P.AcceptedAnswerId IS NOT NULL
+    SELECT SUM(P.AnswerCount) from Posts P
+    WHERE P.Id IN (
+      SELECT DISTINCT(PostId) from PostTags 
+      WHERE PostTags.TagId In (
+        SELECT Id From Tags Where TagName LIKE @TagName
+      )
+    )
 
-SELECT SUM(P.AnswerCount) from Posts P
-WHERE P.Id IN (
-  SELECT DISTINCT(PostId) from PostTags 
-  WHERE PostTags.TagId In (
-    SELECT Id From Tags Where TagName LIKE @TagName
-  )
-)
-</code></pre>
+  </div>
+Doing this meant I got all the questions with all the tags in the eco-system around that framework, and the data I want is
 
-<p></div>
-Doing this meant I got all the questions with all the tags in the eco-system around that framework, and the data I want is</p>
+- How many questions are there?
+- How many of those questions have accepted answers?
+- How mant answers do we get on average per question?
 
-<ul>
-<li>How many questions are there?</li>
-<li>How many of those questions have accepted answers?</li>
-<li><p>How mant answers do we get on average per question?</p>
+  <table>
+    <thead>
+      <tr>
+        <td>Framework</td><td>Questions</td><td>Answered</td><td>%</td><td>Average answers per question</td>
+      </tr>
+    </thead>
+      <tr><td>backbone</td><td>8863</td><td>5741</td><td>64.7%</td><td>1.42</td></tr>
+      <tr><td>angular</td><td>5498</td><td>3401</td><td class="red">61.8%</td><td>1.32</td></tr>
+      <tr><td>knockout</td><td class="green">5624</td><td>3917</td><td class="green">69.6%</td><td>1.31</td></tr>
+      <tr><td>ember</td><td class="red">10086</td><td>6426</td><td>63.71%</td><td>1.63</td></tr>
+  </table>
 
-<table>
-<thead>
-  <tr>
-    <td>Framework</td><td>Questions</td><td>Answered</td><td>%</td><td>Average answers per question</td>
-  </tr>
-</thead>
-  <tr><td>backbone</td><td>8863</td><td>5741</td><td>64.7%</td><td>1.42</td></tr>
-  <tr><td>angular</td><td>5498</td><td>3401</td><td class="red">61.8%</td><td>1.32</td></tr>
-  <tr><td>knockout</td><td class="green">5624</td><td>3917</td><td class="green">69.6%</td><td>1.31</td></tr>
-  <tr><td>ember</td><td class="red">10086</td><td>6426</td><td>63.71%</td><td>1.63</td></tr>
-</table></li>
-</ul>
+This in itself is quite interesting, as it doesn&#39;t seem like there is a lot of difference between them - although there are a lot more questions about Ember than I was expecting. Knockout is at the top of the heap as far as accept-rate goes but that might be indicative of the .NET-centric community found on StackOverflow?
 
-<p>This in itself is quite interesting, as it doesn't seem like there is a lot of difference between them - although there are a lot more questions about Ember than I was expecting. Knockout is at the top of the heap as far as accept-rate goes but that might be indicative of the .NET-centric community found on StackOverflow?</p>
+To get some sense of this data, we could do with looking elsewhere for some data...
 
-<p>To get some sense of this data, we could do with looking elsewhere for some data...</p>
+# Framework popularity
 
-<h1>Framework popularity</h1>
+For this, we can head to <a href="http://github.com">Github</a> as that&#39;s where all sensible OSS projects are hosted these days. Let&#39;s have a quick look at some basic stats about these projects. They&#39;re all actively using Github to track issues from the look of things so we can gleam a little bit about them from this data.
 
-<p>For this, we can head to <a href="http://github.com">Github</a> as that's where all sensible OSS projects are hosted these days. Let's have a quick look at some basic stats about these projects. They're all actively using Github to track issues from the look of things so we can gleam a little bit about them from this data.</p>
 
-<p><table>
+  <table>
     <thead>
       <tr>
         <td>Framework</td>  <td>Stars</td> <td>Forks</td>  <td>Issues open</td>  <td>Issues closed</td>  <td>Pull requests open</td>   <td>Pull requests closed</td>
@@ -91,56 +81,47 @@ Doing this meant I got all the questions with all the tags in the eco-system aro
       <tr><td>angular</td>  <td>9692</td>                 <td>1942</td>                          <td class="red">655</td>              <td>2037</td>          <td >52</td>                  <td>1150</td>          </tr>
       <tr><td>knockout</td> <td class="red">3708</td>     <td class="red">559</td>               <td>235</td>                          <td>738</td>           <td>59</td>                   <td>275</td>           </tr> 
       <tr><td>ember</td>    <td>6997</td>                 <td>1324</td>                          <td>196</td>                          <td>2487</td>          <td class="red">61</td>       <td>1250</td>          </tr>
-  </table></p>
+  </table>
 
-<p>Backbone apparently by far the healthiest project amongst this bunch, with very few issues or pull requests left open (but with a similar amount of activity). I'm surprised a more "mature" project like Angular has so much outstanding on it - but this might just be because of how they use Github issues.</p>
 
-<h1>Safety in numbers</h1>
+Backbone apparently by far the healthiest project amongst this bunch, with very few issues or pull requests left open (but with a similar amount of activity). I&#39;m surprised a more &quot;mature&quot; project like Angular has so much outstanding on it - but this might just be because of how they use Github issues.
 
-<p>This data (when combined with the previous queries) begins to get a little bit more useful if we want to jump to some conclusions already; I'd like to dig deeper into the history of these projects and see who exactly has contributed to them. I don't want to be choosing a framework just because it has a large number of users, I care about who is doing the development too!</p>
+# Safety in numbers
 
-<p>To do this, we have the Github API to look at </p>
+This data (when combined with the previous queries) begins to get a little bit more useful if we want to jump to some conclusions already; I&#39;d like to dig deeper into the history of these projects and see who exactly has contributed to them. I don&#39;t want to be choosing a framework just because it has a large number of users, I care about who is doing the development too!
 
-<pre><code>https://api.github.com/repos/{user}/{repo}/contributors
-</code></pre>
+To do this, we have the Github API to look at 
 
-<p>What do the contribution distributions look like for these projects?</p>
+    <a href="https://api.github.com/repos/{user}/{repo}/contributors">https://api.github.com/repos/{user}/{repo}/contributors</a>
 
-<h3>Top 10 contributors and their commit counts</h3>
+What do the contribution distributions look like for these projects?
 
-<p><div id="contribution-graph"></p>
+### Top 10 contributors and their commit counts
 
-<p></div></p>
+  <div id="contribution-graph">
 
-<p>The higher a line stays before it drops down to the 1st, a better indication that there is a healthy spread of committers giving love to the project. By this measure, Angular and Ember seem to be getting some shared love, Backbone is a bit of a one man show and Knockout doesn't really have a lot going on.</p>
+  </div>
 
+
+<p>The higher a line stays before it drops down to the 1st, a better indication that there is a healthy spread of committers giving love to the project. By this measure, Angular and Ember seem to be getting some shared love, Backbone is a bit of a one man show and Knockout doesn&#39;t really have a lot going on.</p>
 <h1>A brief history of source</h1>
-
-<p>Now I'm looking at committers, we can probably dig a bit deeper and see how this looks over time to get some further insight into the stability of the projects and how this contributor activity looks over time.</p>
-
-<p>I was going to just paste the charts from Github here, but they weren't really representative of activity and the Angular one just plain-old-wasn't-working at the time</p>
-
-<p>I've found a git library for nodejs and will use it to generate a graph of activity over time. What you'd expect to see is that older more stable projects should see a tendency towards less activity and hopefully more contributors as the community fixes issues)</p>
-
+<p>Now I&#39;m looking at committers, we can probably dig a bit deeper and see how this looks over time to get some further insight into the stability of the projects and how this contributor activity looks over time.</p>
+<p>I was going to just paste the charts from Github here, but they weren&#39;t really representative of activity and the Angular one just plain-old-wasn&#39;t-working at the time</p>
+<p>I&#39;ve found a git library for nodejs and will use it to generate a graph of activity over time. What you&#39;d expect to see is that older more stable projects should see a tendency towards less activity and hopefully more contributors as the community fixes issues)</p>
 <h2>Average commits per person over time per repo</h2>
+  <div id="contribution-over-time">
 
-<p><div id="contribution-over-time"></p>
-
-<p></div></p>
+  </div>
 
 <h1>Conclusions</h1>
-
-<p>I've got no real desire to draw conclusions off this data, as this was a harmless bit of digging over a spare few hours I had going, I do have some rough comments though:</p>
-
+<p>I&#39;ve got no real desire to draw conclusions off this data, as this was a harmless bit of digging over a spare few hours I had going, I do have some rough comments though:</p>
 <ul>
-<li>EmberJS has a third of the followers on Github to Backbone, a similar amount of activity on Github but <em>more questions on StackOverflow</em> - is this an indication as to it being hard to pick up or use? It also has a high amount of code churn still - presumably because it's still quite an immature project (I didn't realise how much younger it was than the others!)</li>
-<li>Backbone is clearly reaching some sort of maturity, with few issues left open on Github, commit activity subsiding and some sort of stability being reached. It doesn't have the high number of core contributors of other projects but there are plenty of people willing to fix bugs still. The support rate on StackOverflow is about the same as the other projects and while it might be the most popular project on Github it doesn't have that many questions considering that huge size.</li>
-<li>Knockout doesn't really get the love that other frameworks do, this might be due to its conception taking place in the .NET community or because most people steer clear of it for some reason. That said - if you're using it and asking for help on StackOverflow you're more likely to get help than on the other frameworks. The response rate on issues/pull requests is high which means the core contributors are quite active even if there aren't many of them.</li>
+<li>EmberJS has a third of the followers on Github to Backbone, a similar amount of activity on Github but <em>more questions on StackOverflow</em> - is this an indication as to it being hard to pick up or use? It also has a high amount of code churn still - presumably because it&#39;s still quite an immature project (I didn&#39;t realise how much younger it was than the others!)</li>
+<li>Backbone is clearly reaching some sort of maturity, with few issues left open on Github, commit activity subsiding and some sort of stability being reached. It doesn&#39;t have the high number of core contributors of other projects but there are plenty of people willing to fix bugs still. The support rate on StackOverflow is about the same as the other projects and while it might be the most popular project on Github it doesn&#39;t have that many questions considering that huge size.</li>
+<li>Knockout doesn&#39;t really get the love that other frameworks do, this might be due to its conception taking place in the .NET community or because most people steer clear of it for some reason. That said - if you&#39;re using it and asking for help on StackOverflow you&#39;re more likely to get help than on the other frameworks. The response rate on issues/pull requests is high which means the core contributors are quite active even if there aren&#39;t many of them.</li>
 <li>Angular is <em>waaaaay</em> older than I thought it was, so it staggers me the amount of issues pending closure. It has a very solid contributor base and it does seem as though the commit-rate is reaching some sort of stability.  It does however have the lowest accept-rate on StackOverflow so read into that what you will. </li>
 </ul>
-
-<p>I'm saying no more on the matter, trololol.</p>
-
+<p>I&#39;m saying no more on the matter, trololol.</p>
 <script type="text/javascript" src="/d3.v2.js"> </script>
 
 <script type="text/javascript">
@@ -362,3 +343,6 @@ d3.json("/mvvmfw/contribution.json", function(data) {
 
 
 </script>
+
+
+

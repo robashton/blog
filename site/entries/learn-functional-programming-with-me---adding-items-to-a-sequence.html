@@ -2,6 +2,7 @@
   <head>
     <title id="title">Learn functional programming with me - Adding items to a sequence</title>
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
     <link href='http://fonts.googleapis.com/css?family=Libre+Baskerville' rel='stylesheet' type='text/css'>
     <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
     <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
@@ -27,8 +28,7 @@
     <div id="blog-entry">
       <h1 id="post-title">Learn functional programming with me - Adding items to a sequence</h1>
       <h6>Published on <span class="date">2013-6-18</span></h6>
-      <div id="post"><p>What good is Space Invaders if you can't shoot anyone?</p>
-
+      <div id="post"><p>What good is Space Invaders if you can&#39;t shoot anyone?</p>
 <ul>
 <li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Mission statement</a></li>
 <li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
@@ -40,157 +40,111 @@
 <li><a href="/entries/learn-functional-programming-with-me---improving-our-data-structure-with-maps.html">Improving our data structure with maps</a></li>
 <li><a href="/entries/learn-functional-programming-with-me---keyboard-input-for-our-red-square.html">Moving our red square with keyboard input</a></li>
 </ul>
-
 <p>So far I have a fixed number of entities in my scene, which means the pattern</p>
-
-<pre><code>logic(state) =&gt; newState
-</code></pre>
-
+<pre><code><span class="function"><span class="title">logic</span><span class="params">(state)</span> =&gt; <span class="title">newState</span></code></pre>
 <p>Has been working great for me, but how might I manage a variable number of these entities? How might I hook up the creation of these entities to keyboard input?</p>
-
-<p>Well, actually I don't think it is going to be that hard - but we'll see as I give it a go...</p>
-
+<p>Well, actually I don&#39;t think it is going to be that hard - but we&#39;ll see as I give it a go...</p>
 <p><strong>The basics once again</strong></p>
-
 <p>The same deal as everything else so far (okay, my next entry might be on re-factoring all this to avoid duplication)</p>
-
 <p><em>This is how we create a bullet</em></p>
-
-<pre><code>(defn initBullet [x y w h]
- {
-  :x x
-  :y y
-  :w w
-  :h h
- }
-)
-</code></pre>
-
+<pre><code><span class="list">(<span class="title"><span class="built_in">defn</span></span> initBullet <span class="collection">[x y w h]</span>
+ <span class="collection">{
+  <span class="attribute">:x</span> x
+  <span class="attribute">:y</span> y
+  <span class="attribute">:w</span> w
+  <span class="attribute">:h</span> h
+ }</span>
+)</span></code></pre>
 <p><em>Bullets logic is taking the current sequence of bullets and moving them on the vertical axis</em></p>
-
-<pre><code>(defn bulletsLogic [state]
-  (for [bullet (:bullets state)]
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> bulletsLogic [state]
+  <span class="list">(<span class="title">for</span><span class="body"> [bullet <span class="list">(<span class="body"><span class="keyword">:bullets</span> state)</span></span>]
     {
-      :x (:x bullet)
-      :y (dec (:y bullet))
-      :w (:w bullet)
-      :h (:h bullet)
+      <span class="keyword">:x</span> <span class="list">(<span class="body"><span class="keyword">:x</span> bullet)</span></span>
+      <span class="keyword">:y</span> <span class="list">(<span class="title">dec</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> bullet)</span></span>)</span></span>
+      <span class="keyword">:w</span> <span class="list">(<span class="body"><span class="keyword">:w</span> bullet)</span></span>
+      <span class="keyword">:h</span> <span class="list">(<span class="body"><span class="keyword">:h</span> bullet)</span></span>
     }
-  )
-)
-</code></pre>
-
-<p><em>And I'm going to draw a black square for each bullet</em></p>
-
-<pre><code>(defn bulletsRender [ctx state]
-  (doseq [bullet (:bullets state)] 
-    (let [{:keys [x y w h]} bullet]
-      (drawSquare ctx x y w h "#000")
-    )
-  )
-)
-</code></pre>
-
-<p>There is nothing special or new about the above, although I've dropped the 'let' (as compared to the enemies render function) and pulled the bullets out of the state as part of the doseq call.</p>
-
+  )</span></span>
+)</span></span></code></pre>
+<p><em>And I&#39;m going to draw a black square for each bullet</em></p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> bulletsRender [ctx state]
+  <span class="list">(<span class="title">doseq</span><span class="body"> [bullet <span class="list">(<span class="body"><span class="keyword">:bullets</span> state)</span></span>] 
+    <span class="list">(<span class="title">let</span><span class="body"> [{<span class="keyword">:keys</span> [x y w h]} bullet]
+      <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx x y w h <span class="string">"#000"</span>)</span></span>
+    )</span></span>
+  )</span></span>
+)</span></span></code></pre>
+<p>There is nothing special or new about the above, although I&#39;ve dropped the &#39;let&#39; (as compared to the enemies render function) and pulled the bullets out of the state as part of the doseq call.</p>
 <p>My bullets to begin with?</p>
-
 <p><em>Create an empty list</em></p>
-
-<pre><code>(defn initState []
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> initState []
  { 
-   :direction 1
-   :enemies (for [x (range 0 16 2)
-                  y (range 0 8 2)]
-              (initEnemy x y 20 20)
-   )
-   :player (initPlayer 200 430 20 20)
-   :bullets ()
+   <span class="keyword">:direction</span> <span class="number">1</span>
+   <span class="keyword">:enemies</span> <span class="list">(<span class="title">for</span><span class="body"> [x <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">16</span> <span class="number">2</span>)</span></span>
+                  y <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">8</span> <span class="number">2</span>)</span></span>]
+              <span class="list">(<span class="title">initEnemy</span><span class="body"> x y <span class="number">20</span> <span class="number">20</span>)</span></span>
+   )</span></span>
+   <span class="keyword">:player</span> <span class="list">(<span class="title">initPlayer</span><span class="body"> <span class="number">200</span> <span class="number">430</span> <span class="number">20</span> <span class="number">20</span>)</span></span>
+   <span class="keyword">:bullets</span> <span class="list">(<span class="body">)</span></span>
  } 
-)
-</code></pre>
-
-<p>I found out how to do that on Google so I think it's right.</p>
-
+)</span></span></code></pre>
+<p>I found out how to do that on Google so I think it&#39;s right.</p>
 <p>I also found out that apparently an empty list is not a sequence, although it is sequenceable which means I can safely do the above (I think)</p>
-
 <p><em>Calling the appropriate methods</em></p>
-
-<pre><code>(defn doLogic [state]
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> doLogic [state]
   {
-    :direction (directionLogic state)
-    :enemies (enemiesLogic state)
-    :player (playerLogic state)
-    :bullets (bulletsLogic state)
+    <span class="keyword">:direction</span> <span class="list">(<span class="title">directionLogic</span><span class="body"> state)</span></span>
+    <span class="keyword">:enemies</span> <span class="list">(<span class="title">enemiesLogic</span><span class="body"> state)</span></span>
+    <span class="keyword">:player</span> <span class="list">(<span class="title">playerLogic</span><span class="body"> state)</span></span>
+    <span class="keyword">:bullets</span> <span class="list">(<span class="title">bulletsLogic</span><span class="body"> state)</span></span>
   }
-)
+)</span></span>
 
-(defn renderScene [ctx state]
-  (enemiesRender ctx state)
-  (playerRender ctx state)
-  (bulletsRender ctx state)
-)
-</code></pre>
-
-<p>Now, all of this achieves the square root of diddly squat, although if I run the program it doesn't fall over in a heap pile of flames so that's pretty good going for all of this code.</p>
-
+<span class="list">(<span class="title">defn</span><span class="body"> renderScene [ctx state]
+  <span class="list">(<span class="title">enemiesRender</span><span class="body"> ctx state)</span></span>
+  <span class="list">(<span class="title">playerRender</span><span class="body"> ctx state)</span></span>
+  <span class="list">(<span class="title">bulletsRender</span><span class="body"> ctx state)</span></span>
+)</span></span></code></pre>
+<p>Now, all of this achieves the square root of diddly squat, although if I run the program it doesn&#39;t fall over in a heap pile of flames so that&#39;s pretty good going for all of this code.</p>
 <p><strong>Hooking up some input events</strong></p>
-
-<p>Well okay, for now what I'll do is say is "if the spacebar is pressed we'll fire a bullet", so we can do this in a similar manner to everything else thus far...</p>
-
-<pre><code>(defn bulletsLogic [state]
-</code></pre>
-
-<p><em>Get the player out, and update the bullets into a seq called 'existingBullets'</em></p>
-
-<pre><code>  (let [player (:player state)
+<p>Well okay, for now what I&#39;ll do is say is &quot;if the spacebar is pressed we&#39;ll fire a bullet&quot;, so we can do this in a similar manner to everything else thus far...</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> bulletsLogic [state]</code></pre>
+<p><em>Get the player out, and update the bullets into a seq called &#39;existingBullets&#39;</em></p>
+<pre><code>  <span class="list">(<span class="title">let</span><span class="body"> [player <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>
         existingBullets 
-        (for [bullet (:bullets state)]
+        <span class="list">(<span class="title">for</span><span class="body"> [bullet <span class="list">(<span class="body"><span class="keyword">:bullets</span> state)</span></span>]
           {
-            :x (:x bullet)
-            :y (dec (:y bullet))
-            :w (:w bullet)
-            :h (:h bullet)
+            <span class="keyword">:x</span> <span class="list">(<span class="body"><span class="keyword">:x</span> bullet)</span></span>
+            <span class="keyword">:y</span> <span class="list">(<span class="title">dec</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> bullet)</span></span>)</span></span>
+            <span class="keyword">:w</span> <span class="list">(<span class="body"><span class="keyword">:w</span> bullet)</span></span>
+            <span class="keyword">:h</span> <span class="list">(<span class="body"><span class="keyword">:h</span> bullet)</span></span>
           }
-        )
-      ]
-</code></pre>
-
+        )</span></span>
+      ]</code></pre>
 <p><em>If the space bar is down, then create a new sequence with a new bullet and the existing bullets</em></p>
-
-<pre><code>    (if (@keyStates 32)
-      (cons 
+<pre><code>    <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="body">@keyStates <span class="number">32</span>)</span></span>
+      <span class="list">(<span class="title">cons</span><span class="body"> 
         {
-         :x (:x (:player state))
-         :y (:y (:player state))
-         :w 5
-         :h 5
+         <span class="keyword">:x</span> <span class="list">(<span class="body"><span class="keyword">:x</span> <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>)</span></span>
+         <span class="keyword">:y</span> <span class="list">(<span class="body"><span class="keyword">:y</span> <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>)</span></span>
+         <span class="keyword">:w</span> <span class="number">5</span>
+         <span class="keyword">:h</span> <span class="number">5</span>
         }
         existingBullets
-      )
-</code></pre>
-
+      )</span></span></code></pre>
 <p><em>Else just return the existing bullets</em></p>
-
-<pre><code>      existingBullets
+<pre><code>      <span class="title">existingBullets</span>
     )
   )
-)
-</code></pre>
-
-<p>This is pretty messy, although it's my first iteration at this so that's okay, I suspect I can be a bit cleverer about this and probably will end up being so!</p>
-
-<p><strong>Don't change the collection, create a new one</strong></p>
-
-<p>What we can see though, is that I don't "add the new bullet to the sequence", I instead "create a new sequence out of the old one plus the new items". That's what <em>cons</em> does according to the Clojure docs.</p>
-
-<p>This is counter-intuitive to those of us used to our mutable collections, but apparently Clojure is quite clever about this stuff and I should trust that this is okay. (Just like so far I'm trusting that everything else is going to be okay too).</p>
-
-<p>At some point soon I'll start reading about these sequences, collections, maps etc and see how they're implemented - now I have some "real" examples of their usage.</p>
-
+)</code></pre>
+<p>This is pretty messy, although it&#39;s my first iteration at this so that&#39;s okay, I suspect I can be a bit cleverer about this and probably will end up being so!</p>
+<p><strong>Don&#39;t change the collection, create a new one</strong></p>
+<p>What we can see though, is that I don&#39;t &quot;add the new bullet to the sequence&quot;, I instead &quot;create a new sequence out of the old one plus the new items&quot;. That&#39;s what <em>cons</em> does according to the Clojure docs.</p>
+<p>This is counter-intuitive to those of us used to our mutable collections, but apparently Clojure is quite clever about this stuff and I should trust that this is okay. (Just like so far I&#39;m trusting that everything else is going to be okay too).</p>
+<p>At some point soon I&#39;ll start reading about these sequences, collections, maps etc and see how they&#39;re implemented - now I have some &quot;real&quot; examples of their usage.</p>
 <p><strong>The result</strong></p>
-
-<p><img src="/img/constant_flow.png"></p></div>
+<p><img src="/img/constant_flow.png"></p>
+</div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
