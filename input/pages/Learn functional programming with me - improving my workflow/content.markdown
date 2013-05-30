@@ -2,7 +2,7 @@ So I ended up picking this up again towards the end of March (yes I know, it's n
 
 This is where I was up to last time:
 
-- [Missing statement](/entries/learn-functional-programming-with-me---a-mission-statement.html)
+- [Mission statement](/entries/learn-functional-programming-with-me---a-mission-statement.html)
 - [Drawing a square](/entries/learn-functional-programming-with-me---drawing-a-square.html)
 - [Moving the square](/entries/learn-functional-programming-with-me---moving-the-square.html)
 - [Attributes and vectors](/entries/learn-functional-programming-with-me---attributes-and-vectors.html)

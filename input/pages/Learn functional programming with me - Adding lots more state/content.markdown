@@ -1,6 +1,6 @@
 I've got a single moving square and a small pile of Clojure written so far, but now what I want to do is have a collection of moving squares because no game of Space Invaders is complete without aliens, and last I checked there was more than one of them.
 
-- [Missing statement](/entries/learn-functional-programming-with-me---a-mission-statement.html)
+- [Mission statement](/entries/learn-functional-programming-with-me---a-mission-statement.html)
 - [Drawing a square](/entries/learn-functional-programming-with-me---drawing-a-square.html)
 - [Moving the square](/entries/learn-functional-programming-with-me---moving-the-square.html)
 - [Attributes and vectors](/entries/learn-functional-programming-with-me---attributes-and-vectors.html)

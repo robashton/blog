@@ -1,6 +1,6 @@
 Now we have some enemies, let's add our player and see how we might achieve the handling of keyboard events to move him.
 
-- [Mision statement](/entries/learn-functional-programming-with-me---a-mission-statement.html)
+- [Mission statement](/entries/learn-functional-programming-with-me---a-mission-statement.html)
 - [Drawing a square](/entries/learn-functional-programming-with-me---drawing-a-square.html)
 - [Moving the square](/entries/learn-functional-programming-with-me---moving-the-square.html)
 - [Attributes and vectors](/entries/learn-functional-programming-with-me---attributes-and-vectors.html)
