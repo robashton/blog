@@ -1,5 +1,85 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Thu, 30 May 2013 09:17:06 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[A comparison of various JS frameworks using cold hard data]]></title><description><![CDATA[<p>I went for lunch with the a friend the other day and he kindly gave me an idea for a blog post about JavaScript frameworks...</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Thu, 30 May 2013 10:00:12 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Learn functional programming with me - improving my workflow]]></title><description><![CDATA[<p>So I ended up picking this up again towards the end of March (yes I know, it&#39;s near the end of May now, I&#39;ve ended up writing and doing a lot...)</p>
+<p>This is where I was up to last time:</p>
+<ul>
+<li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Missing statement</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---moving-the-square.html">Moving the square</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---attributes-and-vectors.html">Attributes and vectors</a></li>
+</ul>
+<p>And the Github repo is here: <a href="https://github.com/robashton/clojure-spaceinvaders">github.com/robashton/clojure-spaceinvaders</a></p>
+<p>I advise you pop back and read those if you&#39;re just tuning in, as I&#39;ve had to as well in order to start up again!</p>
+<p><strong>Improving my workflow</strong></p>
+<p>I&#39;m writing this after I&#39;ve learned a lot about managing my workflow to keep myself interested in tasks, and I&#39;m writing this after writing a silly number of posts about writing an <a href="/entries/ometa-odata-odear---polishing-it-off.html">OData parser in OMeta</a>, which reminded me an awful lot of what functional programming was like, so I came back here.</p>
+<p>So, what have I done to make my life easier with this Clojure malarkey?</p>
+<p>Well, I want faster feedback, I don&#39;t want to have to keep spawning up Java and I don&#39;t want any manaul build process.</p>
+<p>Here is what I came up with (I know there is a repl and stuff, but I honestly just want to get some Clojure written at this stage and this seemed nice)</p>
+<p>I&#39;m using <a href="https://github.com/ibdknox/cljs-watch">cljs-watch</a>, and I&#39;ve written a Makefile that looks like this:</p>
+<pre><code><span class="attribute">default</span>: <span class="string">build</span>
+<span class="attribute">all</span>: <span class="string">build</span>
+
+<span class="tex">build:
+  cljsc game.cljs <span class="command">\
+</span>      '<span class="special">{</span>:optimizations :simple :pretty-print true<span class="special">}</span>' <span class="command">\
+</span>      &gt; ./game.js
+
+develop:
+  cljs-watch game.cljs <span class="command">\
+</span>    '<span class="special">{</span>:optimizations :simple :pretty-print true :output-to "./game.js"<span class="special">}</span>'</span></code></pre>
+<p>Hacky, but if I type &quot;make develop&quot;, I can get on and write code without having to worry about compilation so I&#39;m happier with life, now I just make changes and hit refresh and they&#39;re there.</p>
+<p><strong>Reminding myself of where I was</strong></p>
+<p><em>First off, I specify that I&#39;m sticking this all in the namespace &#39;game&#39;</em></p>
+<pre><code class="lang-clojure">    <span class="list">(<span class="title"><span class="built_in">ns</span></span> game)</span></code></pre>
+<p><em>I define a method called &#39;context&#39;, which takes no args</em></p>
+<pre><code class="lang-clojure">    <span class="list">(<span class="title"><span class="built_in">defn</span></span> context <span class="collection">[]</span></code></pre>
+<p><em>I let &#39;target&#39; be thbe result of calling .getElementById (interop)</em></p>
+<pre><code class="lang-clojure">      <span class="list">(<span class="title"><span class="built_in">let</span></span> <span class="collection">[target <span class="list">(<span class="title">.getElementById</span> js/document <span class="string">"target"</span>)</span>]</span></code></pre>
+<p><em>Return a &#39;vector&#39; containing the context, the width, and the height</em></p>
+<pre><code class="lang-clojure">        [
+          (.getContext target &quot;2d&quot;) 
+          (. target -width)
+          (. target -height)
+        ]
+      )
+    )</code></pre>
+<p><em>Define a function called clearScreen, taking in a vector of &#39;ctx, width, height&#39; - see above</em></p>
+<pre><code class="lang-clojure">    <span class="list">(<span class="title"><span class="built_in">defn</span></span> clearScreen <span class="collection">[<span class="collection">[ctx width height]</span>]</span></code></pre>
+<p><em>Set a property on the context of fillStyle &#39;#FFF&#39;</em></p>
+<pre><code class="lang-clojure">      <span class="list">(<span class="title"><span class="built_in">set!</span></span> <span class="list">(<span class="title"><span class="built_in">.</span></span> ctx -fillStyle)</span> <span class="string">"#FFF"</span>)</span></code></pre>
+<p><em>Call clearRect on the context, with 0,0,width,height</em></p>
+<pre><code class="lang-clojure">      (.clearRect ctx 0 0 width height) 
+    )</code></pre>
+<p><em>Same again, only parameterised so we&#39;re drawing a square</em></p>
+<pre><code class="lang-clojure">    <span class="list">(<span class="title"><span class="built_in">defn</span></span> drawSquare <span class="collection">[<span class="collection">[ctx width height]</span> x y w h]</span>
+      <span class="list">(<span class="title"><span class="built_in">set!</span></span> <span class="list">(<span class="title"><span class="built_in">.</span></span> ctx -fillStyle)</span> <span class="string">"#FF0"</span>)</span>
+      <span class="list">(<span class="title">.fillRect</span> ctx x y w h)</span> 
+    )</span></code></pre>
+<p><em>Now we have a function called tick which will call clearScreen over and over again, with drawSquare over again</em></p>
+<pre><code class="lang-clojure">    <span class="list">(<span class="title"><span class="built_in">defn</span></span> tick <span class="collection">[x]</span>
+      <span class="list">(<span class="title"><span class="built_in">let</span></span> <span class="collection">[ctx <span class="list">(<span class="title">context</span>)</span>]</span> 
+        <span class="list">(<span class="title">clearScreen</span> ctx)</span> 
+        <span class="list">(<span class="title">drawSquare</span> ctx x<span class="number"> 0</span><span class="number"> 100</span><span class="number"> 100</span>)</span>  
+        <span class="list">(<span class="title"><span class="built_in">if</span></span> <span class="list">(<span class="title"><span class="built_in">&lt;=</span></span> x<span class="number"> 1000</span>)</span> 
+          <span class="list">(<span class="title">js/setTimeout</span> <span class="list">(<span class="title"><span class="built_in">fn</span></span> <span class="collection">[]</span></code></pre>
+<p><em>And every frame, we call tick with a new version of the state, in this case an increased &#39;x&#39;</em></p>
+<pre><code class="lang-clojure">            (tick (inc x)) 
+
+          ) 33  )
+        )
+      )
+    )</code></pre>
+<p><em>We export a function called &#39;init&#39; so I can call this from JS and make the game happen</em></p>
+<pre><code class="lang-clojure">    <span class="list">(<span class="title"><span class="built_in">defn</span></span> ^<span class="attribute">:export</span> init <span class="collection">[]</span>
+      <span class="list">(<span class="title">tick</span><span class="number"> 0</span>)</span> 
+    )</span></code></pre>
+<p>Wow. There is a lot to (re)-take in here.</p>
+<p>First off, some observations</p>
+<ul>
+<li>Dom interop is horrible</li>
+<li>I remember now that I had state issues, I think I had that question answered on Github though, so we&#39;ll have a look at that next</li>
+</ul>
+<p>ONWARDS WITH THIS PROJECT</p>
+]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---improving-my-workflow.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---improving-my-workflow.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 30 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[A comparison of various JS frameworks using cold hard data]]></title><description><![CDATA[<p>I went for lunch with the a friend the other day and he kindly gave me an idea for a blog post about JavaScript frameworks...</p>
   <blockquote>
     I keep an eye on StackOverflow/Github/etc and mentally tot up the popularity of all these JS frameworks...
   </blockquote>
@@ -16,62 +96,54 @@
 <h1>Number of questions and unanswered questions on StackOverflow</h1>
 <p>The Stackoverflow guys are amazing, and <a href="http://data.stackexchange.com/stackoverflow/queries">provide querying capabilities right there on their site</a>, which means I can get some numbers right off the bat for the various frameworks</p>
 <p>I ended up with the following parameterised query to get my data</p>
-  <div class="collapse">
+<pre><code class="lang-sql">    DECLARE @TagName varchar(128) = '%##TagName##%'
 
-    DECLARE @TagName varchar(128) = &#39;%##TagName##%&#39;
-
-    SELECT COUNT(<em>) from Posts P
-    WHERE P.Id IN (
-      SELECT DISTINCT(PostId) from PostTags 
-      WHERE PostTags.TagId In (
-        SELECT Id From Tags Where TagName LIKE @TagName
+    <span class="operator"><span class="keyword">SELECT</span> <span class="aggregate">COUNT</span>(*) <span class="keyword">from</span> Posts P
+    <span class="keyword">WHERE</span> P.Id <span class="keyword">IN</span> (
+      <span class="keyword">SELECT</span> <span class="keyword">DISTINCT</span>(PostId) <span class="keyword">from</span> PostTags 
+      <span class="keyword">WHERE</span> PostTags.TagId <span class="keyword">In</span> (
+        <span class="keyword">SELECT</span> Id <span class="keyword">From</span> Tags <span class="keyword">Where</span> TagName <span class="keyword">LIKE</span> @TagName
       )
     )
 
-    SELECT COUNT(</em>) from Posts P
-    WHERE P.Id IN (
-      SELECT DISTINCT(PostId) from PostTags 
-      WHERE PostTags.TagId In (
-        SELECT Id From Tags Where TagName LIKE @TagName
+    <span class="keyword">SELECT</span> <span class="aggregate">COUNT</span>(*) <span class="keyword">from</span> Posts P
+    <span class="keyword">WHERE</span> P.Id <span class="keyword">IN</span> (
+      <span class="keyword">SELECT</span> <span class="keyword">DISTINCT</span>(PostId) <span class="keyword">from</span> PostTags 
+      <span class="keyword">WHERE</span> PostTags.TagId <span class="keyword">In</span> (
+        <span class="keyword">SELECT</span> Id <span class="keyword">From</span> Tags <span class="keyword">Where</span> TagName <span class="keyword">LIKE</span> @TagName
       )
-    ) AND P.AcceptedAnswerId IS NOT NULL
+    ) <span class="keyword">AND</span> P.AcceptedAnswerId <span class="keyword">IS</span> <span class="keyword">NOT</span> <span class="keyword">NULL</span>
 
-    SELECT SUM(P.AnswerCount) from Posts P
-    WHERE P.Id IN (
-      SELECT DISTINCT(PostId) from PostTags 
-      WHERE PostTags.TagId In (
-        SELECT Id From Tags Where TagName LIKE @TagName
+    <span class="keyword">SELECT</span> <span class="aggregate">SUM</span>(P.AnswerCount) <span class="keyword">from</span> Posts P
+    <span class="keyword">WHERE</span> P.Id <span class="keyword">IN</span> (
+      <span class="keyword">SELECT</span> <span class="keyword">DISTINCT</span>(PostId) <span class="keyword">from</span> PostTags 
+      <span class="keyword">WHERE</span> PostTags.TagId <span class="keyword">In</span> (
+        <span class="keyword">SELECT</span> Id <span class="keyword">From</span> Tags <span class="keyword">Where</span> TagName <span class="keyword">LIKE</span> @TagName
       )
-    )
+    )</code></pre>
+<p>Doing this meant I got all the questions with all the tags in the eco-system around that framework, and the data I want is</p>
+<ul>
+<li>How many questions are there?</li>
+<li>How many of those questions have accepted answers?</li>
+<li><p>How mant answers do we get on average per question?</p>
+<table>
+  <thead>
+    <tr>
+      <td>Framework</td><td>Questions</td><td>Answered</td><td>%</td><td>Average answers per question</td>
+    </tr>
+  </thead>
+    <tr><td>backbone</td><td>8863</td><td>5741</td><td>64.7%</td><td>1.42</td></tr>
+    <tr><td>angular</td><td>5498</td><td>3401</td><td class="red">61.8%</td><td>1.32</td></tr>
+    <tr><td>knockout</td><td class="green">5624</td><td>3917</td><td class="green">69.6%</td><td>1.31</td></tr>
+    <tr><td>ember</td><td class="red">10086</td><td>6426</td><td>63.71%</td><td>1.63</td></tr>
+</table>
 
-  </div>
-Doing this meant I got all the questions with all the tags in the eco-system around that framework, and the data I want is
-
-- How many questions are there?
-- How many of those questions have accepted answers?
-- How mant answers do we get on average per question?
-
-  <table>
-    <thead>
-      <tr>
-        <td>Framework</td><td>Questions</td><td>Answered</td><td>%</td><td>Average answers per question</td>
-      </tr>
-    </thead>
-      <tr><td>backbone</td><td>8863</td><td>5741</td><td>64.7%</td><td>1.42</td></tr>
-      <tr><td>angular</td><td>5498</td><td>3401</td><td class="red">61.8%</td><td>1.32</td></tr>
-      <tr><td>knockout</td><td class="green">5624</td><td>3917</td><td class="green">69.6%</td><td>1.31</td></tr>
-      <tr><td>ember</td><td class="red">10086</td><td>6426</td><td>63.71%</td><td>1.63</td></tr>
-  </table>
-
-This in itself is quite interesting, as it doesn&#39;t seem like there is a lot of difference between them - although there are a lot more questions about Ember than I was expecting. Knockout is at the top of the heap as far as accept-rate goes but that might be indicative of the .NET-centric community found on StackOverflow?
-
-To get some sense of this data, we could do with looking elsewhere for some data...
-
-# Framework popularity
-
-For this, we can head to <a href="http://github.com">Github</a> as that&#39;s where all sensible OSS projects are hosted these days. Let&#39;s have a quick look at some basic stats about these projects. They&#39;re all actively using Github to track issues from the look of things so we can gleam a little bit about them from this data.
-
-
+</li>
+</ul>
+<p>This in itself is quite interesting, as it doesn&#39;t seem like there is a lot of difference between them - although there are a lot more questions about Ember than I was expecting. Knockout is at the top of the heap as far as accept-rate goes but that might be indicative of the .NET-centric community found on StackOverflow?</p>
+<p>To get some sense of this data, we could do with looking elsewhere for some data...</p>
+<h1>Framework popularity</h1>
+<p>For this, we can head to <a href="http://github.com">Github</a> as that&#39;s where all sensible OSS projects are hosted these days. Let&#39;s have a quick look at some basic stats about these projects. They&#39;re all actively using Github to track issues from the look of things so we can gleam a little bit about them from this data.</p>
   <table>
     <thead>
       <tr>
@@ -85,20 +157,13 @@ For this, we can head to <a href="http://github.com">Github</a> as that&#39;s wh
   </table>
 
 
-Backbone apparently by far the healthiest project amongst this bunch, with very few issues or pull requests left open (but with a similar amount of activity). I&#39;m surprised a more &quot;mature&quot; project like Angular has so much outstanding on it - but this might just be because of how they use Github issues.
-
-# Safety in numbers
-
-This data (when combined with the previous queries) begins to get a little bit more useful if we want to jump to some conclusions already; I&#39;d like to dig deeper into the history of these projects and see who exactly has contributed to them. I don&#39;t want to be choosing a framework just because it has a large number of users, I care about who is doing the development too!
-
-To do this, we have the Github API to look at 
-
-    <a href="https://api.github.com/repos/{user}/{repo}/contributors">https://api.github.com/repos/{user}/{repo}/contributors</a>
-
-What do the contribution distributions look like for these projects?
-
-### Top 10 contributors and their commit counts
-
+<p>Backbone apparently by far the healthiest project amongst this bunch, with very few issues or pull requests left open (but with a similar amount of activity). I&#39;m surprised a more &quot;mature&quot; project like Angular has so much outstanding on it - but this might just be because of how they use Github issues.</p>
+<h1>Safety in numbers</h1>
+<p>This data (when combined with the previous queries) begins to get a little bit more useful if we want to jump to some conclusions already; I&#39;d like to dig deeper into the history of these projects and see who exactly has contributed to them. I don&#39;t want to be choosing a framework just because it has a large number of users, I care about who is doing the development too!</p>
+<p>To do this, we have the Github API to look at </p>
+<pre><code><span class="label">https:</span>//api<span class="preprocessor">.github</span><span class="preprocessor">.com</span>/repos/{user}/{repo}/contributors</code></pre>
+<p>What do the contribution distributions look like for these projects?</p>
+<h3>Top 10 contributors and their commit counts</h3>
   <div id="contribution-graph">
 
   </div>
@@ -1208,213 +1273,4 @@ var data = {"Java":{"count":253580,"totaldifference":38238330856},"JavaScript":{
          .attr("height", function(d, i) { return 280 * scale(d.state.average) })
 </script>
 
-]]></description><link>http://codeofrob.com/entries/evented-github-adventure---temporal-averages.html</link><guid isPermaLink="true">http://codeofrob.com/entries/evented-github-adventure---temporal-averages.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 14 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Evented Github Adventure - Crossing the streams to gain real insights]]></title><description><![CDATA[<p>Carrying on in the EventStore series...</p>
-<ul>
-<li><a href="/entries/playing-with-the-eventstore.html">Introduction to the EventStore</a></li>
-<li><a href="/entries/pushing-data-into-streams-in-the-eventstore.html">Pushing data into the EventStore</a></li>
-<li><a href="/entries/basic-projections-in-the-eventstore.html">Projections in the EventStore</a></li>
-<li><a href="/entries/re-partitioning-streams-in-the-event-store-for-better-projections.html">Re-partitioning streams in the EventStore</a></li>
-<li><a href="/entries/creating-a-projection-per-stream-in-the-eventstore.html">Creating a projection per stream</a></li>
-<li><a href="/entries/less-abstract,-pumping-data-from-github-into-the-eventstore.html">Pumping data from Github into the EventStore</a></li>
-<li><a href="/entries/evented-github-adventure---emitting-commits-as-their-own-events.html">Emitting new events from a projection</a></li>
-<li><a href="/entries/evented-github-adventure---who-writes-the-sweariest-commit-messages.html">Who is the sweariest of them all?</a></li>
-<li><a href="/entries/evented-github-adventure---temporal-queries,-who-doesnt-trust-their-hardware.html">Temporal queries in the event store</a></li>
-<li>Projections from multiple streams</li>
-</ul>
-<p>It&#39;s not enough to just create a <a href="/entries/evented-github-adventure---temporal-queries,-who-doesnt-trust-their-hardware.html">stream of &#39;events&#39; from correlated actions over time</a>, although that <em>is</em> super cool, what we want to do is then use that stream to tell us something interesting about the activity of developers on Github.</p>
-<p>Like, given that we have this information about paranoid pushes, how do they stack up as a percentage to pushes overall when broken down by language?</p>
-<p><em>Problem</em>: This information is in completely different streams.</p>
-<p>Not to worry, this is where the Event Store&#39;s ability to re-partition and consume streams in a variety of ways comes to the rescue once more, want to consume the events from two different streams? Not a problem</p>
-<pre><code><span class="function"><span class="title">fromStreams</span><span class="params">([ <span class="string">"github"</span>, <span class="string">"paranoidpushes"</span> ])</span>
-   .<span class="title">when</span><span class="params">(<span class="tuple">{
-
-   }</span>)</span></code></pre>
-<p>First off, let&#39;s keep it simple and just find out as a percentage what the paranoid pushes are out of the overal Github stream.</p>
-<pre><code><span class="function"><span class="title">fromStreams</span><span class="params">([ <span class="string">"github"</span>, <span class="string">"paranoidpushes"</span> ])</span>
-   .<span class="title">when</span><span class="params">(<span class="tuple">{
-     <span class="string">"$init"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
-       return <span class="tuple">{ paranoid: <span class="number">0</span>, total: <span class="number">0</span> }</span>
-     }</span>,
-     <span class="string">"ParanoidPush"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
-       state.paranoid++
-     }</span>,
-     <span class="string">"PushEvent"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
-       state.total++
-     }</span>
-   })</code></pre>
-<p>So yeah, er - that was stupidly easy, I didn&#39;t even have to think about that one, we just get all the events from those streams as a unified collection and were able to generate stats from these.</p>
-<p>What does the result look like?</p>
-<pre><code>{"<span class="attribute">paranoid</span>":<span class="value"><span class="number">181423</span></span>,"<span class="attribute">total</span>": <span class="value"><span class="number">2272796</span>}</span></code></pre>
-<p>So, in fact around 8% of all pushes to Github happen within 2 minutes of the previous one - that&#39;s actually quite high - and my guess is that these are either people rectifying mistakes in previous commits (actually, there&#39;s an idea for another projection) or people who are new to git.</p>
-<p>Let&#39;s generate a result object by language and see what we get</p>
-<pre><code><span class="function"><span class="keyword">function</span> <span class="title">getPerLanguageState</span><span class="params">(state, ev)</span> {</span>
-  <span class="keyword">var</span> language = getLanguageFromEvent(ev)
-  <span class="keyword">var</span> langState = state[language]
-  <span class="keyword">if</span>(!langState) {
-    langState = { paranoid: <span class="number">0</span>, total: <span class="number">0</span> }
-    state[language] = langState
-  }
-  <span class="keyword">return</span> langState
-}
-
-<span class="function"><span class="keyword">function</span> <span class="title">getLanguageFromEvent</span><span class="params">(ev)</span> {</span>
-  <span class="keyword">if</span>(ev.body.repo)
-    <span class="keyword">return</span> ev.body.repo.language
-  <span class="keyword">if</span>(ev.body.first)
-    <span class="keyword">return</span> ev.body.first.body.repo.language
-}
-
-fromStreams([ <span class="string">"github"</span>, <span class="string">"paranoidpushes"</span> ])
-  .when({
-   <span class="string">"$init"</span>: <span class="keyword">function</span>() {
-     <span class="keyword">return</span> {}
-   },
-   <span class="string">"ParanoidPush"</span>: <span class="keyword">function</span>(state, ev) {
-     <span class="keyword">var</span> langState = getPerLanguageState(state, ev)
-     langState.paranoid++
-     <span class="keyword">return</span> state
-   },
-   <span class="string">"PushEvent"</span>: <span class="keyword">function</span>(state, ev) {
-     <span class="keyword">var</span> langState = getPerLanguageState(state, ev)
-     langState.total++
-     <span class="keyword">return</span> state
-   }
-  })</code></pre>
-<p>There is a lot to take in here, but we can see</p>
-<ul>
-<li>I can use custom functions in my projection definition to break down the work</li>
-<li>The custom functions simply work out what language my event is</li>
-<li>The custom functions return a per-language state object</li>
-<li>The projection just adds to the values in that per-language state object</li>
-</ul>
-<p>Anyway, the results of this?</p>
-<div id="notscaled"></div>
-
-<p>And scaled</p>
-<div id="scaled"></div>
-
-
-<p>So the old school Java and C++ developers can&#39;t get enough of that push-based action,  with nearly 16% of their pushes happening within a couple of minutes of their previous push.</p>
-<p>Matlab too (presumably they&#39;re not doing CI to heroku), maybe they&#39;re just worried about their university computer sessions crashing or something.</p>
-<p>Not terribly interesting results, but a good example of when it makes sense to combine two streams from the EventStore together.</p>
-<script type="text/javascript" src="/d3.v2.js"></script>
-<script type="text/javascript">
-
-
-var data = 
-{"Lua":{"paranoid":710,"total":9208},"Java":{"paranoid":34212,"total":298219},"C":{"paranoid":12549,"total":121676},"AutoHotkey":{"paranoid":14,"total":278},"null":{"paranoid":35773,"total":258170},"C++":{"paranoid":21271,"total":133376},"Ruby":{"paranoid":17924,"total":227354},"undefined":{"paranoid":0,"total":4858},"Python":{"paranoid":17700,"total":205053},"JavaScript":{"paranoid":45154,"total":454877},"PHP":{"paranoid":16789,"total":187223},"Emacs Lisp":{"paranoid":828,"total":11998},"Objective-C":{"paranoid":2715,"total":36117},"Shell":{"paranoid":6792,"total":69272},"Erlang":{"paranoid":541,"total":5643},"ColdFusion":{"paranoid":156,"total":1253},"CoffeeScript":{"paranoid":1489,"total":16010},"C#":{"paranoid":3597,"total":48749},"Groovy":{"paranoid":433,"total":5500},"Go":{"paranoid":868,"total":10820},"Rust":{"paranoid":253,"total":1944},"Arduino":{"paranoid":198,"total":2353},"Standard ML":{"paranoid":819,"total":3191},"R":{"paranoid":522,"total":7247},"Perl":{"paranoid":2069,"total":25325},"Haskell":{"paranoid":719,"total":10351},"Common Lisp":{"paranoid":151,"total":2120},"Verilog":{"paranoid":95,"total":1337},"Haxe":{"paranoid":103,"total":1220},"ooc":{"paranoid":11,"total":193},"VimL":{"paranoid":1625,"total":25894},"FORTRAN":{"paranoid":104,"total":1355},"Scala":{"paranoid":1070,"total":14685},"Clojure":{"paranoid":737,"total":8938},"ActionScript":{"paranoid":365,"total":4431},"Assembly":{"paranoid":170,"total":1755},"OCaml":{"paranoid":189,"total":2563},"ASP":{"paranoid":176,"total":2160},"Puppet":{"paranoid":536,"total":5874},"OpenEdge ABL":{"paranoid":31,"total":319},"HaXe":{"paranoid":24,"total":401},"Julia":{"paranoid":110,"total":1677},"D":{"paranoid":112,"total":1778},"Tcl":{"paranoid":59,"total":502},"Visual Basic":{"paranoid":137,"total":1893},"Racket":{"paranoid":112,"total":1552},"Delphi":{"paranoid":93,"total":1578},"Matlab":{"paranoid":1393,"total":8684},"Dart":{"paranoid":199,"total":2435},"Coq":{"paranoid":32,"total":556},"Vala":{"paranoid":55,"total":435},"Gosu":{"paranoid":5,"total":88},"F#":{"paranoid":86,"total":1186},"Logtalk":{"paranoid":3,"total":73},"Scheme":{"paranoid":162,"total":2117},"Prolog":{"paranoid":82,"total":1117},"Augeas":{"paranoid":1,"total":22},"PowerShell":{"paranoid":98,"total":1366},"VHDL":{"paranoid":56,"total":874},"Turing":{"paranoid":5,"total":28},"DCPU-16 ASM":{"paranoid":1,"total":59},"Smalltalk":{"paranoid":48,"total":490},"XQuery":{"paranoid":6,"total":142},"Dylan":{"paranoid":4,"total":103},"Objective-J":{"paranoid":11,"total":215},"Factor":{"paranoid":40,"total":504},"Ada":{"paranoid":40,"total":326},"Kotlin":{"paranoid":7,"total":129},"Rebol":{"paranoid":2,"total":45},"Io":{"paranoid":5,"total":83},"Nemerle":{"paranoid":40,"total":168},"Elixir":{"paranoid":29,"total":354},"Eiffel":{"paranoid":37,"total":463},"Boo":{"paranoid":3,"total":62},"SuperCollider":{"paranoid":14,"total":260},"AppleScript":{"paranoid":24,"total":176},"Parrot":{"paranoid":4,"total":75},"Scilab":{"paranoid":7,"total":93},"Apex":{"paranoid":14,"total":236},"Ceylon":{"paranoid":2,"total":45},"Bro":{"paranoid":1,"total":8},"Pure Data":{"paranoid":17,"total":149},"Max":{"paranoid":0,"total":1},"Fancy":{"paranoid":2,"total":5},"Lasso":{"paranoid":72,"total":641},"TypeScript":{"paranoid":164,"total":2189},"XML":{"paranoid":220,"total":2649},"LiveScript":{"paranoid":23,"total":288},"Awk":{"paranoid":13,"total":110},"Mirah":{"paranoid":0,"total":4},"Xtend":{"paranoid":4,"total":62},"Ioke":{"paranoid":1,"total":12},"Monkey":{"paranoid":3,"total":41},"Logos":{"paranoid":197,"total":2704},"eC":{"paranoid":0,"total":6},"Nimrod":{"paranoid":5,"total":75},"CLIPS":{"paranoid":1,"total":43},"Arc":{"paranoid":5,"total":22},"DOT":{"paranoid":39,"total":727},"Rouge":{"paranoid":0,"total":3},"Ecl":{"paranoid":0,"total":20},"Processing":{"paranoid":157,"total":1528},"Nu":{"paranoid":15,"total":73},"Forth":{"paranoid":0,"total":9},"PogoScript":{"paranoid":1,"total":18},"Pike":{"paranoid":0,"total":13},"TXL":{"paranoid":0,"total":1},"Fantom":{"paranoid":0,"total":21},"MoonScript":{"paranoid":3,"total":50},"Ragel in Ruby Host":{"paranoid":2,"total":22},"Opa":{"paranoid":0,"total":3},"ABAP":{"paranoid":0,"total":1}}
-
-   var filteredData = []
-   for(var i in data) {
-     if(data[i].total >= 5000) {
-       var datum = data[i]
-       datum.state = {
-        paranoid: data[i].paranoid,
-        total: data[i].total,
-        percentage: Math.floor((data[i].paranoid / data[i].total) * 10000) / 100
-       }
-       datum.key = i
-       filteredData.push(datum)
-     }
-   }
-</script>
-
-<script type="text/javascript">
-
-  var svg = d3.select("#notscaled").append("svg")
-          .attr("width", 640)
-          .attr("height", 480)
-
-
-   var scale = d3.scale.linear()
-     .domain([0, d3.max(filteredData, function(d) { return d.state.total })])
-     .range([0, 280]);
-
-   svg.selectAll("text")
-      .data(filteredData)
-      .enter()
-        .append("text")
-        .attr("transform", function(d, i) { 
-          var transform = "translate(" + i * (640 / filteredData.length) + "," + 380 + ") "
-          transform += "rotate(75) "
-          return transform
-        })
-        .attr("x", 0)
-        .attr("y", 0)
-        .text(function(d) { return d.key })
-
-   svg.selectAll(".total")
-     .data(filteredData)
-     .enter()
-       .append("rect")
-         .attr("class", "total")
-         .attr("fill", '#00A')
-         .attr("x", function(d, i) { return i * (640 / filteredData.length)})
-         .attr("y", function(d, i) { return 370 - scale(d.state.total); })
-         .attr("width", 640 / (filteredData.length + 1))
-         .attr("height", function(d, i) { return scale(d.state.total) })
-
-    svg.selectAll(".paranoid")
-     .data(filteredData)
-     .enter()
-       .append("rect")
-         .attr("class", "paranoid")
-         .attr("fill", '#AAF')
-         .attr("x", function(d, i) { return i * (640 / filteredData.length)})
-         .attr("y", function(d, i) { return 370 - scale(d.state.paranoid); })
-         .attr("width", 640 / (filteredData.length + 1))
-         .attr("height", function(d, i) { return scale(d.state.paranoid) })
-
-</script>
-
-<script type="text/javascript">
-
-  var svg = d3.select("#scaled").append("svg")
-          .attr("width", 800)
-          .attr("height", 480)
-
-   var scale = d3.scale.linear()
-     .domain([0, d3.max(filteredData, function(d) { return d.state.percentage })])
-     .range([0, 1]);
-
-   var maxPercentage = d3.max(filteredData, function(d) { return d.state.percentage });
-
-   svg.append("text")
-      .attr("fill", '#000')
-      .attr("x", 710)
-      .attr("y", 60)
-      .text(maxPercentage + "%")
-
-   svg.append("text")
-      .attr("fill", '#000')
-      .attr("x", 710)
-      .attr("y", 350)
-      .text(0 + "%")
-
-   svg.selectAll(".label")
-      .data(filteredData)
-      .enter()
-        .append("text")
-        .attr("class", "label")
-        .attr("transform", function(d, i) { 
-          var transform = "translate(" + i * (640 / filteredData.length) + "," + 380 + ") "
-          transform += "rotate(75) "
-          return transform
-        })
-        .attr("x", 0)
-        .attr("y", 0)
-        .text(function(d) { return d.key })
-
-    svg.selectAll(".paranoid")
-     .data(filteredData)
-     .enter()
-       .append("rect")
-         .attr("class", "paranoid")
-         .attr("fill", '#AAF')
-         .attr("x", function(d, i) { return i * (640 / filteredData.length)})
-         .attr("y", function(d, i) { return 370 - (280 * scale(d.state.percentage)) })
-         .attr("width", 640 / (filteredData.length + 1))
-         .attr("height", function(d, i) { return 280 * scale(d.state.percentage) })
-</script>
-
-]]></description><link>http://codeofrob.com/entries/evented-github-adventure---crossing-the-streams-to-gain-real-insights.html</link><guid isPermaLink="true">http://codeofrob.com/entries/evented-github-adventure---crossing-the-streams-to-gain-real-insights.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 13 May 2013 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/evented-github-adventure---temporal-averages.html</link><guid isPermaLink="true">http://codeofrob.com/entries/evented-github-adventure---temporal-averages.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 14 May 2013 09:30:00 GMT</pubDate></item></channel></rss>

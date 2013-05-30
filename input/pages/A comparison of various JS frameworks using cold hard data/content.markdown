@@ -21,8 +21,8 @@ The Stackoverflow guys are amazing, and [provide querying capabilities right the
 
 I ended up with the following parameterised query to get my data
 
-  <div class="collapse">
 
+```sql
     DECLARE @TagName varchar(128) = '%##TagName##%'
 
     SELECT COUNT(*) from Posts P
@@ -48,8 +48,9 @@ I ended up with the following parameterised query to get my data
         SELECT Id From Tags Where TagName LIKE @TagName
       )
     )
+```
 
-  </div>
+
 Doing this meant I got all the questions with all the tags in the eco-system around that framework, and the data I want is
 
 - How many questions are there?

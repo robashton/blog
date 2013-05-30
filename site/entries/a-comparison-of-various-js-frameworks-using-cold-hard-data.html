@@ -45,62 +45,54 @@
 <h1>Number of questions and unanswered questions on StackOverflow</h1>
 <p>The Stackoverflow guys are amazing, and <a href="http://data.stackexchange.com/stackoverflow/queries">provide querying capabilities right there on their site</a>, which means I can get some numbers right off the bat for the various frameworks</p>
 <p>I ended up with the following parameterised query to get my data</p>
-  <div class="collapse">
+<pre><code class="lang-sql">    DECLARE @TagName varchar(128) = '%##TagName##%'
 
-    DECLARE @TagName varchar(128) = &#39;%##TagName##%&#39;
-
-    SELECT COUNT(<em>) from Posts P
-    WHERE P.Id IN (
-      SELECT DISTINCT(PostId) from PostTags 
-      WHERE PostTags.TagId In (
-        SELECT Id From Tags Where TagName LIKE @TagName
+    <span class="operator"><span class="keyword">SELECT</span> <span class="aggregate">COUNT</span>(*) <span class="keyword">from</span> Posts P
+    <span class="keyword">WHERE</span> P.Id <span class="keyword">IN</span> (
+      <span class="keyword">SELECT</span> <span class="keyword">DISTINCT</span>(PostId) <span class="keyword">from</span> PostTags 
+      <span class="keyword">WHERE</span> PostTags.TagId <span class="keyword">In</span> (
+        <span class="keyword">SELECT</span> Id <span class="keyword">From</span> Tags <span class="keyword">Where</span> TagName <span class="keyword">LIKE</span> @TagName
       )
     )
 
-    SELECT COUNT(</em>) from Posts P
-    WHERE P.Id IN (
-      SELECT DISTINCT(PostId) from PostTags 
-      WHERE PostTags.TagId In (
-        SELECT Id From Tags Where TagName LIKE @TagName
+    <span class="keyword">SELECT</span> <span class="aggregate">COUNT</span>(*) <span class="keyword">from</span> Posts P
+    <span class="keyword">WHERE</span> P.Id <span class="keyword">IN</span> (
+      <span class="keyword">SELECT</span> <span class="keyword">DISTINCT</span>(PostId) <span class="keyword">from</span> PostTags 
+      <span class="keyword">WHERE</span> PostTags.TagId <span class="keyword">In</span> (
+        <span class="keyword">SELECT</span> Id <span class="keyword">From</span> Tags <span class="keyword">Where</span> TagName <span class="keyword">LIKE</span> @TagName
       )
-    ) AND P.AcceptedAnswerId IS NOT NULL
+    ) <span class="keyword">AND</span> P.AcceptedAnswerId <span class="keyword">IS</span> <span class="keyword">NOT</span> <span class="keyword">NULL</span>
 
-    SELECT SUM(P.AnswerCount) from Posts P
-    WHERE P.Id IN (
-      SELECT DISTINCT(PostId) from PostTags 
-      WHERE PostTags.TagId In (
-        SELECT Id From Tags Where TagName LIKE @TagName
+    <span class="keyword">SELECT</span> <span class="aggregate">SUM</span>(P.AnswerCount) <span class="keyword">from</span> Posts P
+    <span class="keyword">WHERE</span> P.Id <span class="keyword">IN</span> (
+      <span class="keyword">SELECT</span> <span class="keyword">DISTINCT</span>(PostId) <span class="keyword">from</span> PostTags 
+      <span class="keyword">WHERE</span> PostTags.TagId <span class="keyword">In</span> (
+        <span class="keyword">SELECT</span> Id <span class="keyword">From</span> Tags <span class="keyword">Where</span> TagName <span class="keyword">LIKE</span> @TagName
       )
-    )
+    )</code></pre>
+<p>Doing this meant I got all the questions with all the tags in the eco-system around that framework, and the data I want is</p>
+<ul>
+<li>How many questions are there?</li>
+<li>How many of those questions have accepted answers?</li>
+<li><p>How mant answers do we get on average per question?</p>
+<table>
+  <thead>
+    <tr>
+      <td>Framework</td><td>Questions</td><td>Answered</td><td>%</td><td>Average answers per question</td>
+    </tr>
+  </thead>
+    <tr><td>backbone</td><td>8863</td><td>5741</td><td>64.7%</td><td>1.42</td></tr>
+    <tr><td>angular</td><td>5498</td><td>3401</td><td class="red">61.8%</td><td>1.32</td></tr>
+    <tr><td>knockout</td><td class="green">5624</td><td>3917</td><td class="green">69.6%</td><td>1.31</td></tr>
+    <tr><td>ember</td><td class="red">10086</td><td>6426</td><td>63.71%</td><td>1.63</td></tr>
+</table>
 
-  </div>
-Doing this meant I got all the questions with all the tags in the eco-system around that framework, and the data I want is
-
-- How many questions are there?
-- How many of those questions have accepted answers?
-- How mant answers do we get on average per question?
-
-  <table>
-    <thead>
-      <tr>
-        <td>Framework</td><td>Questions</td><td>Answered</td><td>%</td><td>Average answers per question</td>
-      </tr>
-    </thead>
-      <tr><td>backbone</td><td>8863</td><td>5741</td><td>64.7%</td><td>1.42</td></tr>
-      <tr><td>angular</td><td>5498</td><td>3401</td><td class="red">61.8%</td><td>1.32</td></tr>
-      <tr><td>knockout</td><td class="green">5624</td><td>3917</td><td class="green">69.6%</td><td>1.31</td></tr>
-      <tr><td>ember</td><td class="red">10086</td><td>6426</td><td>63.71%</td><td>1.63</td></tr>
-  </table>
-
-This in itself is quite interesting, as it doesn&#39;t seem like there is a lot of difference between them - although there are a lot more questions about Ember than I was expecting. Knockout is at the top of the heap as far as accept-rate goes but that might be indicative of the .NET-centric community found on StackOverflow?
-
-To get some sense of this data, we could do with looking elsewhere for some data...
-
-# Framework popularity
-
-For this, we can head to <a href="http://github.com">Github</a> as that&#39;s where all sensible OSS projects are hosted these days. Let&#39;s have a quick look at some basic stats about these projects. They&#39;re all actively using Github to track issues from the look of things so we can gleam a little bit about them from this data.
-
-
+</li>
+</ul>
+<p>This in itself is quite interesting, as it doesn&#39;t seem like there is a lot of difference between them - although there are a lot more questions about Ember than I was expecting. Knockout is at the top of the heap as far as accept-rate goes but that might be indicative of the .NET-centric community found on StackOverflow?</p>
+<p>To get some sense of this data, we could do with looking elsewhere for some data...</p>
+<h1>Framework popularity</h1>
+<p>For this, we can head to <a href="http://github.com">Github</a> as that&#39;s where all sensible OSS projects are hosted these days. Let&#39;s have a quick look at some basic stats about these projects. They&#39;re all actively using Github to track issues from the look of things so we can gleam a little bit about them from this data.</p>
   <table>
     <thead>
       <tr>
@@ -114,20 +106,13 @@ For this, we can head to <a href="http://github.com">Github</a> as that&#39;s wh
   </table>
 
 
-Backbone apparently by far the healthiest project amongst this bunch, with very few issues or pull requests left open (but with a similar amount of activity). I&#39;m surprised a more &quot;mature&quot; project like Angular has so much outstanding on it - but this might just be because of how they use Github issues.
-
-# Safety in numbers
-
-This data (when combined with the previous queries) begins to get a little bit more useful if we want to jump to some conclusions already; I&#39;d like to dig deeper into the history of these projects and see who exactly has contributed to them. I don&#39;t want to be choosing a framework just because it has a large number of users, I care about who is doing the development too!
-
-To do this, we have the Github API to look at 
-
-    <a href="https://api.github.com/repos/{user}/{repo}/contributors">https://api.github.com/repos/{user}/{repo}/contributors</a>
-
-What do the contribution distributions look like for these projects?
-
-### Top 10 contributors and their commit counts
-
+<p>Backbone apparently by far the healthiest project amongst this bunch, with very few issues or pull requests left open (but with a similar amount of activity). I&#39;m surprised a more &quot;mature&quot; project like Angular has so much outstanding on it - but this might just be because of how they use Github issues.</p>
+<h1>Safety in numbers</h1>
+<p>This data (when combined with the previous queries) begins to get a little bit more useful if we want to jump to some conclusions already; I&#39;d like to dig deeper into the history of these projects and see who exactly has contributed to them. I don&#39;t want to be choosing a framework just because it has a large number of users, I care about who is doing the development too!</p>
+<p>To do this, we have the Github API to look at </p>
+<pre><code><span class="label">https:</span>//api<span class="preprocessor">.github</span><span class="preprocessor">.com</span>/repos/{user}/{repo}/contributors</code></pre>
+<p>What do the contribution distributions look like for these projects?</p>
+<h3>Top 10 contributors and their commit counts</h3>
   <div id="contribution-graph">
 
   </div>
