@@ -93,7 +93,7 @@ Mobile
   <span class="list">(<span class="title">let</span><span class="body"> [left <span class="list">(<span class="body">@key-states <span class="number">37</span>)</span></span>
         right <span class="list">(<span class="body">@key-states <span class="number">39</span>)</span></span>]
     <span class="list">(<span class="title">cond</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> left true)</span></span> <span class="list">(<span class="title">move</span><span class="body"> player <span class="list">(<span class="title">player-speed</span><span class="body"> level)</span></span>)</span></span>
-          <span class="list">(<span class="title">=</span><span class="body"> right true)</span></span> <span class="list">(<span class="title">move</span><span class="body"> player <span class="list">(<span class="title">negate</span><span class="body"> <span class="list">(<span class="title">player-speed</span><span class="body"> level)</span></span>)</span></span>
+          <span class="list">(<span class="title">=</span><span class="body"> right true)</span></span> <span class="list">(<span class="title">move</span><span class="body"> player <span class="list">(<span class="title">unchecked-negate-int</span><span class="body"> <span class="list">(<span class="title">player-speed</span><span class="body"> level)</span></span>)</span></span>
           <span class="keyword">:else</span> player)</span></span>)</span></span>)</span></span></code></pre>
 <p>This makes it really clear that this function is all about hte player, and needs the level to help with this work.</p>
 <p>Unfortunately this means that the responsibility for this is passed up the chain to my update function</p>
@@ -103,14 +103,9 @@ Mobile
       <span class="list">(<span class="title">update-player</span><span class="body">
         <span class="list">(<span class="title">update-enemies</span><span class="body">
           <span class="list">(<span class="title">update-direction</span><span class="body"> state)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>Oh well, this isn&#39;t the end of the world, I suspect this will get cleared out if I rinse and repeat towards the goal of having a &#39;collection of entities&#39; with polymorphic behaviours or whatever.</p>
-<pre><code class="lang-clojure">    <span class="list">(<span class="title"><span class="built_in">defn</span></span> update-state <span class="collection">[state]</span>
-      <span class="list">(<span class="title">validate-end-conditions</span>
-        <span class="list">(<span class="title">update-bullets</span>
-          <span class="list">(<span class="title"><span class="built_in">assoc</span></span> state <span class="attribute">:player</span> <span class="list">(<span class="title">update-player</span>
-            <span class="list">(<span class="title">update-enemies</span>
-              <span class="list">(<span class="title">update-direction</span> state)</span>)</span> <span class="list">(:<span class="title">level</span> state)</span>)</span>)</span>)</span>)</span>)</span></code></pre>
-<p><em>shudder</em>, this is a temporary state of affairs while I work this stuff out</p>
+<p>Which is currently (as previously discussed) a bunch of calls over &#39;state&#39;. I think I&#39;ll keep this as it is for now and stick in some indirection to make it sorely obvious where I&#39;m extracting keys from the overall state blob.</p>
+<p>I suspect this will get cleared out if I rinse and repeat towards the goal of having a &#39;collection of entities&#39; with polymorphic behaviours or whatever.</p>
 <h3>To its natural conclusion</h3>
 <p>I carry on with this process until all functions only take in the state they need to do their job, and also make quite a few functions in the process. </p>
 <p>This brings me to a file with the ugliness removed and another ugliness added in its place - I&#39;m hoping in the next entry when I go all polymorphic on its ass that this will go away.</p>
+<p>This might well turn out to be completely futile as a direction but I won&#39;t know until I try right?</p>

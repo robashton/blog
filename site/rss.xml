@@ -1,5 +1,62 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Thu, 30 May 2013 15:02:04 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Learn functional programming with me - improving my workflow]]></title><description><![CDATA[<p>So I ended up picking this up again towards the end of March (yes I know, it&#39;s near the end of May now, I&#39;ve ended up writing and doing a lot...)</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Wed, 05 Jun 2013 12:58:44 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Learn functional programming with me - Adding lots more state]]></title><description><![CDATA[<p>I&#39;ve got a single moving square and a small pile of Clojure written so far, but now what I want to do is have a collection of moving squares because no game of Space Invaders is complete without aliens, and last I checked there was more than one of them.</p>
+<ul>
+<li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Mission statement</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---moving-the-square.html">Moving the square</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---attributes-and-vectors.html">Attributes and vectors</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---improving-my-workflow.html">Improving my workflow</a></li>
+</ul>
+<p>Well, if I want lots of squares I&#39;m going to have to look at some means of representing collections in Clojure and my searches take me to <a href="http://clojuredocs.org/clojure_core/clojure.core/seq">Sequences</a></p>
+<p>To create a sequence, I can do something like this</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> createSeq []
+  <span class="list">(<span class="title">for</span><span class="body"> [x [<span class="number">0</span> <span class="number">1</span> <span class="number">2</span> <span class="number">3</span>]]
+    x
+  )</span></span>
+)</span></span></code></pre>
+<p>Which returns me a sequence containing 0 1 2 3, an important point here is (at least I think), is that this sequence is <em>lazy</em>, it has not been executed yet. </p>
+<p>Now, my collection of invaders will actually be 2D, so what I can actually do is</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> createSeq []
+  <span class="list">(<span class="title">for</span><span class="body"> [x [<span class="number">0</span> <span class="number">1</span> <span class="number">2</span> <span class="number">3</span>] y [<span class="number">0</span> <span class="number">1</span> <span class="number">2</span> <span class="number">3</span>]]
+    [x y]
+  )</span></span>
+)</span></span></code></pre>
+<p>Which returns me a sequence containing lots of [x y] pairs, so [0 0] [0 1] [0 2] etc.</p>
+<p>Of course, there are functions for me here, so I can make a range</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> createSeq []
+  <span class="list">(<span class="title">for</span><span class="body"> [x <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">100</span> <span class="number">10</span>)</span></span> 
+        y <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">100</span> <span class="number">10</span>)</span></span>]
+    [x y]
+  )</span></span>
+)</span></span></code></pre>
+<p>Pretty nifty if I do say so myself, so what I can start with if I want to draw a grid of yellow squares is something like</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> initState []
+ <span class="list">(<span class="title">for</span><span class="body"> [x <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">100</span> <span class="number">10</span>)</span></span>
+       y <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">100</span> <span class="number">10</span>)</span></span>]
+   [x y]
+ )</span></span>
+)</span></span></code></pre>
+<p>And I can call my initial tick method, passing in this state</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> ^<span class="keyword">:export</span> init []
+  <span class="list">(<span class="title">tick</span><span class="body"> <span class="list">(<span class="title">initState</span><span class="body">)</span></span>)</span></span> 
+)</span></span></code></pre>
+<p>And then loop through this</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> tick [enemies]
+  <span class="list">(<span class="title">let</span><span class="body"> [ctx <span class="list">(<span class="title">context</span><span class="body">)</span></span>] 
+    <span class="list">(<span class="title">clearScreen</span><span class="body"> ctx)</span></span> 
+    <span class="list">(<span class="title">doseq</span><span class="body"> [[x y] enemies] <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx x y <span class="number">5</span> <span class="number">5</span>)</span></span>)</span></span>
+    <span class="list">(<span class="title">js/setTimeout</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> []
+      <span class="list">(<span class="title">tick</span><span class="body"> enemies)</span></span> 
+    )</span></span> <span class="number">33</span>  )</span></span>
+  )</span></span>
+)</span></span></code></pre>
+<p>Note that I&#39;m able to expand the content of this sequence as part of the doseq call</p>
+<pre><code>  (doseq <span class="string">[[x y] enemies] (drawSquare ctx x y 5 5))</code></pre>
+<p>Gotta like that at least a little bit!</p>
+<p>About this doseq, this doseq is <em>explicitly</em> created to allow for side effects, I could have done</p>
+<pre><code>  (<span class="keyword">for</span> <span class="string">[[x y] enemies] (drawSquare ctx x y 5 5))</code></pre>
+<p>But nothing would happen because this is lazy too - had my head scratching for a while on that one...</p>
+]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---adding-lots-more-state.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---adding-lots-more-state.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 04 Jun 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Learn functional programming with me - improving my workflow]]></title><description><![CDATA[<p>So I ended up picking this up again towards the end of March (yes I know, it&#39;s near the end of May now, I&#39;ve ended up writing and doing a lot...)</p>
 <p>This is where I was up to last time:</p>
 <ul>
 <li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Mission statement</a></li>
@@ -1128,149 +1185,4 @@ var data =
 </script>
 
 
-]]></description><link>http://codeofrob.com/entries/evented-github-adventure---sentiment-analysis-of-github-commits.html</link><guid isPermaLink="true">http://codeofrob.com/entries/evented-github-adventure---sentiment-analysis-of-github-commits.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 15 May 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Evented Github Adventure - Temporal averages]]></title><description><![CDATA[<p>Carrying on in the EventStore series...</p>
-<ul>
-<li><a href="/entries/playing-with-the-eventstore.html">Introduction to the EventStore</a></li>
-<li><a href="/entries/pushing-data-into-streams-in-the-eventstore.html">Pushing data into the EventStore</a></li>
-<li><a href="/entries/basic-projections-in-the-eventstore.html">Projections in the EventStore</a></li>
-<li><a href="/entries/re-partitioning-streams-in-the-event-store-for-better-projections.html">Re-partitioning streams in the EventStore</a></li>
-<li><a href="/entries/creating-a-projection-per-stream-in-the-eventstore.html">Creating a projection per stream</a></li>
-<li><a href="/entries/less-abstract,-pumping-data-from-github-into-the-eventstore.html">Pumping data from Github into the EventStore</a></li>
-<li><a href="/entries/evented-github-adventure---emitting-commits-as-their-own-events.html">Emitting new events from a projection</a></li>
-<li><a href="/entries/evented-github-adventure---who-writes-the-sweariest-commit-messages.html">Who is the sweariest of them all?</a></li>
-<li><a href="/entries/evented-github-adventure---temporal-queries,-who-doesnt-trust-their-hardware.html">Temporal queries in the event store</a></li>
-<li><a href="/entries/evented-github-adventure---crossing-the-streams-to-gain-real-insights.html">Projections from multiple streams</a></li>
-<li>Temporal averages</li>
-</ul>
-<p>If we can <a href="/entries/evented-github-adventure---temporal-queries,-who-doesnt-trust-their-hardware.html">emit temporal events</a> by partitioning streams and building up state over time, then we can probably go a bit further and build up averages over &quot;How long things usually take&quot;, let&#39;s have a look at the temporal projection we used to emit time-based events:</p>
-<pre><code><span class="string">"PushEvent"</span>: function(<span class="keyword">state</span>, ev) {
-  <span class="keyword">if</span>(<span class="keyword">state</span>.lastPush) {
-    var newDate = new Date(ev.body.created_at)
-      , lastDate = new Date(<span class="keyword">state</span>.lastPush.body.created_at)
-      , difference = (newDate.getTime() - lastDate.getTime()) / <span class="number">1000</span>
-
-    <span class="keyword">if</span>(difference &lt; <span class="number">120</span>) {
-      emit(<span class="string">'paranoidpushes'</span>, <span class="string">"ParanoidPush"</span>, {
-        first: <span class="keyword">state</span>.lastPush,
-        <span class="keyword">next</span>: ev
-      })
-    }
-  }
-  <span class="keyword">state</span>.lastPush = ev
-  <span class="keyword">return</span> <span class="keyword">state</span>
-}</code></pre>
-<p>What we can actually do here is instead of checking for a difference, simply emit an event for every time we receive a PushEvent notification which happened after another one we already saw:</p>
-<pre><code><span class="function"><span class="title">fromCategory</span><span class="params">('pushesbyrepo')</span>
-  <span class="title">foreachStream</span><span class="params">()</span>
-  .<span class="title">when</span><span class="params">(<span class="tuple">{
-    $init: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
-      return <span class="tuple">{}</span>
-    }</span>,
-    <span class="string">"PushEvent"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
-      if(state.last<span class="variable">Push</span>) <span class="tuple">{
-        var new<span class="variable">Date</span> = new <span class="variable">Date</span>(ev.body.created_at)
-          , last<span class="variable">Date</span> = new <span class="variable">Date</span>(state.last<span class="variable">Push</span>.body.created_at)
-          , difference = (new<span class="variable">Date</span>.<span class="function_name">getTime</span>() - last<span class="variable">Date</span>.<span class="function_name">getTime</span>()) / <span class="number">1000</span>
-
-        <span class="function_name">emit</span>('successivepushes', <span class="string">"SuccessivePush"</span>, <span class="tuple">{
-          first: state.last<span class="variable">Push</span>,
-          next: ev,
-          difference: difference
-        })
-      }
-      state.last<span class="variable">Push</span> = ev
-      return state
-    }
-  })</code></pre>
-<p>This can actually lead to better analysis of our data, for example</p>
-<p><em>What are the average times between pushes across the different languages</em></p>
-<p>So, this time we&#39;ll partition by language and work out an average time between pushes per language</p>
-<pre><code><span class="function"><span class="title">fromStream</span><span class="params">('successivepushes')</span>
-  .<span class="title">when</span><span class="params">(<span class="tuple">{
-   <span class="string">"$init"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
-     return <span class="tuple">{}</span>
-   }</span>,
-   <span class="string">"SuccessivePush"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
-     var lang<span class="variable">State</span> = <span class="function_name">getPerLanguageState</span>(state, ev)
-     lang<span class="variable">State</span>.total++
-     lang<span class="variable">State</span>.totaltime += ev.body.difference
-     return state
-   }
-  })</code></pre>
-<p>Now how I got to re-use that per-repo stream I created earlier.</p>
-<div id="scaled"></div>
-
-<p>My old version of this chart had C# developers at the right hand of the chart, but more data showed this was not the case (which is a shame because I was going to make a snarky remark about build times)</p>
-<p>As it happens, the ML folk are the folk who push often and furiously - I can&#39;t explain why this is but this is from over 3000 pushes and is quite representative. (Anybody who works in standard ML care to comment? I didn&#39;t even know this was a popular thing...)</p>
-<p>VimL being on the right hand side makes a lot of sense - how often do we change our configs after all? :)</p>
-<script type="text/javascript" src="/d3.v2.js"></script>
-<script type="text/javascript">
-var data = {"Java":{"count":253580,"totaldifference":38238330856},"JavaScript":{"count":377205,"totaldifference":56632429808},"PHP":{"count":153121,"totaldifference":24771723876},"C":{"count":102470,"totaldifference":17105126095},"Python":{"count":166696,"totaldifference":28787843794},"null":{"count":172572,"totaldifference":14480451092},"Shell":{"count":55989,"totaldifference":10294378504},"Lua":{"count":7462,"totaldifference":1435117732},"C++":{"count":115765,"totaldifference":16678557230},"Ruby":{"count":176623,"totaldifference":27952013780},"ColdFusion":{"count":1079,"totaldifference":112788357},"Objective-C":{"count":26592,"totaldifference":5090102450},"C#":{"count":39300,"totaldifference":6771578404},"CoffeeScript":{"count":12882,"totaldifference":1958762763},"FORTRAN":{"count":1079,"totaldifference":257931768},"ActionScript":{"count":3559,"totaldifference":658819864},"Assembly":{"count":1410,"totaldifference":270141323},"Perl":{"count":19860,"totaldifference":3899985663},"R":{"count":5853,"totaldifference":1247020443},"Clojure":{"count":6951,"totaldifference":1281534272},"Arduino":{"count":1636,"totaldifference":378845394},"Go":{"count":8604,"totaldifference":1303815011},"Haskell":{"count":8268,"totaldifference":1718963984},"OpenEdge ABL":{"count":280,"totaldifference":49990984},"Erlang":{"count":4511,"totaldifference":838173598},"Julia":{"count":1390,"totaldifference":210414747},"VimL":{"count":18202,"totaldifference":6334893565},"Tcl":{"count":361,"totaldifference":107774886},"Common Lisp":{"count":1608,"totaldifference":319061186},"Rust":{"count":1753,"totaldifference":190856284},"Scala":{"count":11826,"totaldifference":2331705101},"Groovy":{"count":4365,"totaldifference":834385794},"Puppet":{"count":4504,"totaldifference":744092109},"Emacs Lisp":{"count":8986,"totaldifference":2641763583},"ASP":{"count":1885,"totaldifference":245957381},"Verilog":{"count":1180,"totaldifference":166834193},"Visual Basic":{"count":1476,"totaldifference":322967626},"AutoHotkey":{"count":197,"totaldifference":58191551},"Standard ML":{"count":3119,"totaldifference":62683634},"Matlab":{"count":7773,"totaldifference":978243889},"F#":{"count":961,"totaldifference":184019680},"Vala":{"count":356,"totaldifference":68369602},"Scheme":{"count":1781,"totaldifference":307656750},"D":{"count":1358,"totaldifference":347429358},"Racket":{"count":1249,"totaldifference":235521807},"OCaml":{"count":2135,"totaldifference":423226057},"Prolog":{"count":888,"totaldifference":198471986},"Dart":{"count":1978,"totaldifference":502985423},"ooc":{"count":179,"totaldifference":8666096},"HaXe":{"count":308,"totaldifference":64412989},"PowerShell":{"count":1015,"totaldifference":207512933},"Turing":{"count":20,"totaldifference":5009659},"Logtalk":{"count":71,"totaldifference":4315767},"Smalltalk":{"count":436,"totaldifference":59346112},"XQuery":{"count":102,"totaldifference":35513771},"Haxe":{"count":1045,"totaldifference":176098167},"Factor":{"count":491,"totaldifference":11389691},"Delphi":{"count":1359,"totaldifference":232268974},"VHDL":{"count":739,"totaldifference":141829947},"Ada":{"count":284,"totaldifference":42642935},"Kotlin":{"count":98,"totaldifference":19861112},"Rebol":{"count":32,"totaldifference":9488848},"Elixir":{"count":277,"totaldifference":43585554},"Bro":{"count":2,"totaldifference":389},"Coq":{"count":490,"totaldifference":76134746},"Parrot":{"count":71,"totaldifference":6472209},"DCPU-16 ASM":{"count":48,"totaldifference":9578220},"Eiffel":{"count":433,"totaldifference":47667533},"Objective-J":{"count":181,"totaldifference":44845404},"Scilab":{"count":69,"totaldifference":19688536},"Apex":{"count":152,"totaldifference":27645682},"Fancy":{"count":4,"totaldifference":3523197},"AppleScript":{"count":122,"totaldifference":28262738},"Ceylon":{"count":36,"totaldifference":14033292},"Pure Data":{"count":111,"totaldifference":26227613},"Io":{"count":70,"totaldifference":13317185},"Lasso":{"count":517,"totaldifference":53654351},"TypeScript":{"count":1922,"totaldifference":312329074},"XML":{"count":2200,"totaldifference":510073123},"LiveScript":{"count":249,"totaldifference":34549381},"Xtend":{"count":53,"totaldifference":12040358},"SuperCollider":{"count":209,"totaldifference":45851945},"Ioke":{"count":11,"totaldifference":2397847},"Dylan":{"count":81,"totaldifference":27279547},"Awk":{"count":90,"totaldifference":20843043},"Boo":{"count":50,"totaldifference":17946733},"Monkey":{"count":30,"totaldifference":7011348},"Nimrod":{"count":64,"totaldifference":14514326},"Logos":{"count":2398,"totaldifference":407157116},"Mirah":{"count":1,"totaldifference":3521},"CLIPS":{"count":37,"totaldifference":7394334},"Nemerle":{"count":147,"totaldifference":17242985},"DOT":{"count":671,"totaldifference":113091927},"Gosu":{"count":64,"totaldifference":10434170},"Augeas":{"count":14,"totaldifference":1169525},"Processing":{"count":1188,"totaldifference":206758704},"Nu":{"count":68,"totaldifference":3581684},"PogoScript":{"count":14,"totaldifference":3207543},"eC":{"count":5,"totaldifference":2925691},"Forth":{"count":7,"totaldifference":2797176},"Pike":{"count":6,"totaldifference":3902037},"TXL":{"count":1,"totaldifference":113769},"Fantom":{"count":18,"totaldifference":2346866},"Ecl":{"count":17,"totaldifference":2004560},"MoonScript":{"count":46,"totaldifference":6038229},"Ragel in Ruby Host":{"count":18,"totaldifference":1364124},"Rouge":{"count":1,"totaldifference":1833},"Opa":{"count":1,"totaldifference":648},"Arc":{"count":15,"totaldifference":5975508}}
-</script>
-
-<script type="text/javascript">
-
-   var filteredData = []
-   for(var i in data) {
-     if(i === 'null') continue
-     if(data[i].count >= 2500) {
-       var datum = data[i]
-       datum.state = datum
-       datum.key = i
-       datum.state.average = Math.floor(datum.state.totaldifference / datum.state.count) / (60 * 60)
-       filteredData.push(datum)
-     }
-   }
-
-   if(filteredData.sort)
-     filteredData = filteredData.sort(function(a,b) { return a.state.average - b.state.average })
-
-  var svg = d3.select("#scaled").append("svg")
-          .attr("width", 800)
-          .attr("height", 480)
-
-   var scale = d3.scale.linear()
-     .domain([0, d3.max(filteredData, function(d) { return d.state.average })])
-     .range([0, 1]);
-
-   var max = d3.max(filteredData, function(d) { return d.state.average });
-
-   svg.append("text")
-      .attr("fill", '#000')
-      .attr("x", 710)
-      .attr("y", 60)
-      .text(parseInt(max, 10) + " hours")
-
-   svg.append("text")
-      .attr("fill", '#000')
-      .attr("x", 710)
-      .attr("y", 350)
-      .text(0 + " hours")
-
-   svg.selectAll(".label")
-      .data(filteredData)
-      .enter()
-        .append("text")
-        .attr("class", "label")
-        .attr("transform", function(d, i) { 
-          var transform = "translate(" + i * (640 / filteredData.length) + "," + 380 + ") "
-          transform += "rotate(75) "
-          return transform
-        })
-        .attr("x", 0)
-        .attr("y", 0)
-        .text(function(d) { return d.key })
-
-    svg.selectAll(".time")
-     .data(filteredData)
-     .enter()
-       .append("rect")
-         .attr("class", "time")
-         .attr("fill", '#AAF')
-         .attr("x", function(d, i) { return i * (640 / filteredData.length)})
-         .attr("y", function(d, i) { return 370 - (280 * scale(d.state.average)) })
-         .attr("width", 640 / (filteredData.length + 1))
-         .attr("height", function(d, i) { return 280 * scale(d.state.average) })
-</script>
-
-]]></description><link>http://codeofrob.com/entries/evented-github-adventure---temporal-averages.html</link><guid isPermaLink="true">http://codeofrob.com/entries/evented-github-adventure---temporal-averages.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 14 May 2013 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/evented-github-adventure---sentiment-analysis-of-github-commits.html</link><guid isPermaLink="true">http://codeofrob.com/entries/evented-github-adventure---sentiment-analysis-of-github-commits.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 15 May 2013 09:30:00 GMT</pubDate></item></channel></rss>

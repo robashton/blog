@@ -119,7 +119,7 @@ I feel if I'm going to move towards this goal of "composability", then removing 
       (let [left (@key-states 37)
             right (@key-states 39)]
         (cond (= left true) (move player (player-speed level))
-              (= right true) (move player (negate (player-speed level))
+              (= right true) (move player (unchecked-negate-int (player-speed level))
               :else player)))
 
 This makes it really clear that this function is all about hte player, and needs the level to help with this work.
@@ -133,21 +133,16 @@ Unfortunately this means that the responsibility for this is passed up the chain
             (update-enemies
               (update-direction state))))))
 
-Oh well, this isn't the end of the world, I suspect this will get cleared out if I rinse and repeat towards the goal of having a 'collection of entities' with polymorphic behaviours or whatever.
+Which is currently (as previously discussed) a bunch of calls over 'state'. I think I'll keep this as it is for now and stick in some indirection to make it sorely obvious where I'm extracting keys from the overall state blob.
 
-```clojure
-    (defn update-state [state]
-      (validate-end-conditions
-        (update-bullets
-          (assoc state :player (update-player
-            (update-enemies
-              (update-direction state)) (:level state))))))
-```
-
-*shudder*, this is a temporary state of affairs while I work this stuff out
+I suspect this will get cleared out if I rinse and repeat towards the goal of having a 'collection of entities' with polymorphic behaviours or whatever.
 
 ### To its natural conclusion
 
 I carry on with this process until all functions only take in the state they need to do their job, and also make quite a few functions in the process. 
 
 This brings me to a file with the ugliness removed and another ugliness added in its place - I'm hoping in the next entry when I go all polymorphic on its ass that this will go away.
+
+This might well turn out to be completely futile as a direction but I won't know until I try right?
+
+
