@@ -4,13 +4,13 @@ You know the feeling, you're hacking away on some feature on the to-do list, hav
 
 # Hey, *everyone*, stand-up time
 
-Boom, just like that you're back to reality and detaching yourself from your game zone. You're breaking that conversation, you're turning off the music and worst of all you're leaving your *flow* so you can all talk about what everybody knows already because they've been talking about it the whole time they've been working.
+Boom, just like that you're back to reality and detaching yourself from your game zone. You're breaking up that conversation, you're turning off the music and worst of all you're leaving your *flow* so you can all talk about what everybody knows already because they've been talking about it the whole time they've been working.
 
 ### At one end of the spectrum
 
-Stand-ups in already-effective teams are at best a way to force some meat-space interaction between team members, and at worst a harmful distraction costing you hours of productivity in return for very little that couldn't have been achieved in the course of conversation over a beer at lunch.
+Stand-ups in already-effective teams are at best a way to force some meat-space interaction between team members, and at worst a harmful distraction costing you hours of combined productivity in return for very little that couldn't have been achieved in the course of conversation over a beer at lunch.
 
-In a good team, folk will have been pairing and watching the pull requests come in - people who aren't doing anything will tell you they aren't doing anything. People who are stuck will tell you that they're stuck. If someone isn't doing these things other developers will call them out on it because it's pretty obvious that nothing has come from their corner for a while.
+In a good team, folk will have been pairing and watching the pull requests come in - people who aren't doing anything will tell you they aren't doing anything. People who are stuck will tell you that they're stuck. If someone isn't doing these things other developers will call them out on it because it's pretty obvious that nothing has come from their corner for a while. 
 
 In short an effective team doesn't need this crap because they're already *doing* what they should be doing - getting work done and sharing information about the work they're doing.
 
@@ -24,7 +24,7 @@ Worst of all with daily stand-ups, crap teams with crap people on them won't eve
 
 ## Don't work at the wrong end of the spectrum
 
-Fine, you're in a crap team - go and make it a not-crap team. I'm not here to tell you how to do that, plenty of team management gurus are out there charging their thousands of dollars in order to give you a penny of their thoughts. I can tell you from experience that stand-ups won't fix your communication problems because in my experience they'll just get used as an excuse *not to communicate the rest of the time*. 
+Fine, you're in a crap team - go and make it a not-crap team. I'm not here to tell you how to do that, plenty of team management gurus are out there charging their thousands of dollars in order to give you a penny of their thoughts. I can tell you from experience that stand-ups won't fix your communication problems because in my experience they'll just get used as an excuse *not to communicate the rest of the time*.
 
 Or accept you're in a crap environment and carry on doing whatever. This blog post is not for you.
 
