@@ -30,7 +30,7 @@ Or accept you're in a crap environment and carry on doing whatever. This blog po
 
 ## If you are the better end of the spectrum you don't need that stand-up
 
-I've given up working for people who work at the wrong end of the spectrum, I'm not working for crappy enterprise companies that have all of their other bullshit problems as well - I'm hopefully never doing it again. My flitting about and [working for free](/i-am-not-looking-for-a-job.html) shone the light on the harm that was causing me.
+I've given up working for people who work at the wrong end of the spectrum, I'm not working for crappy enterprise companies that have all of their other bullshit problems as well - I'm hopefully never doing it again. My flitting about and [working for free](/entries/i-am-not-looking-for-a-job.html) shone the light on the harm that was causing me.
 
 Hopefully you've made that call too at some point - well done you beat me to it, now think about why you're still having those stand-ups and who they're for. Are they for you and the team or are they for somebody else and is there another way you can get them that information?
 
