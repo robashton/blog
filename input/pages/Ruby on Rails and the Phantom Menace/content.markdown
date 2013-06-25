@@ -8,4 +8,6 @@ I've been on that .NET platform thing for a while now, although I've been writin
 
 Only now I'm doing Ruby on Rails, and I've missed the first few iterations and the software I've found myself using is the programming equivalant of Jar Jar sodding binks.
 
+*TLDR*
 
+This was going to be a rant, but I got distracted by building stuff and never finished the entry. Oh well - I kinda like it like this.
