@@ -1,5 +1,192 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Tue, 25 Jun 2013 10:12:22 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Ruby on Rails and the Phantom Menace]]></title><description><![CDATA[<p>Remember when Star Wars came out? No - me neither, it was before my time but I watched it on the TV as I grew up never really knowing what a big deal it was to some people or why.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Fri, 28 Jun 2013 11:09:25 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Change it Up - A Tekpub thing]]></title><description><![CDATA[<p>Just a small thing and a moderately embarassing one at that.</p>
+<p>While I was in Hawaii towards the <a href="/entries/i-am-interested-in-talking-about-work.html">end of my travels</a> this year, I got coralled into doing an interview about <a href="/entries/i-am-not-looking-for-a-job.html">why I did what I did</a> and what prompted me to take action about &quot;changing things up&quot;.</p>
+<p>If you know me personally, then there is probably not anything too new in this video, but if you&#39;re interested in the thought process behind &quot;getting out of that rut&quot; and you&#39;re considering doing something about it yourself, I&#39;ve been told that this video will help :)</p>
+<p>You can find it at Tekpub over at <a href="http://tekpub.com/products/change-it-up"><a href="http://tekpub.com/products/change-it-up">http://tekpub.com/products/change-it-up</a></a>. If you haven&#39;t got a subscription then you should just go and get one, as Tekpub is pretty rad.</p>
+]]></description><link>http://codeofrob.com/entries/change-it-up---a-tekpub-thing.html</link><guid isPermaLink="true">http://codeofrob.com/entries/change-it-up---a-tekpub-thing.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 28 Jun 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Learn functional programming with me - more idiomatic Clojure]]></title><description><![CDATA[<p>I went through my code in the last entry and did a bit of re-factoring in an effort to get my state under control, I&#39;ve also had some feedback that some of my Clojure could be a bit more idiomatic so let&#39;s sort that out.</p>
+<ul>
+<li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Mission statement</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---moving-the-square.html">Moving the square</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---attributes-and-vectors.html">Attributes and vectors</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---improving-my-workflow.html">Improving my workflow</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---adding-lots-more-state.html">Creating lots of state</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---mutating-lots-of-state.html">Mutating lots of state</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---improving-our-data-structure-with-maps.html">Improving our data structure with maps</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---keyboard-input-for-our-red-square.html">Moving our red square with keyboard input</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---adding-items-to-a-sequence.html">Adding items to a sequence and firing bullets</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---refactoring-my-state-transitions.html">Refactoring my state transitions</a></li>
+</ul>
+<p><strong>assoc-in vs update-in</strong></p>
+<p>Here is some code I wrote</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> enemiesLogic [state]
+  <span class="list">(<span class="title">let</span><span class="body"> [direction <span class="list">(<span class="body"><span class="keyword">:direction</span> state)</span></span>
+        enemies <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>
+        func <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">=</span><span class="body"> direction <span class="number">1</span>)</span></span> inc dec)</span></span>
+       ]
+    <span class="list">(<span class="title">assoc</span><span class="body"> state <span class="keyword">:enemies</span>
+      <span class="list">(<span class="title">for</span><span class="body"> [enemy enemies]
+        <span class="list">(<span class="title">assoc</span><span class="body"> enemy <span class="keyword">:x</span> <span class="list">(<span class="title">func</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> enemy)</span></span>)</span></span>)</span></span>
+      )</span></span>
+    )</span></span>
+  )</span></span>
+)</span></span></code></pre>
+<p>What I&#39;m essentially doing is </p>
+<ul>
+<li>Selecting a function to apply based on the direction</li>
+<li>Creating a new enemies collection where that function has been applied to each enemy</li>
+</ul>
+<p>Well, why bother with this? We can do</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> enemiesLogic [state]
+  <span class="list">(<span class="title">let</span><span class="body"> [direction <span class="list">(<span class="body"><span class="keyword">:direction</span> state)</span></span>
+        enemies <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>
+        func <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">=</span><span class="body"> direction <span class="number">1</span>)</span></span> inc dec)</span></span>
+       ]
+    <span class="list">(<span class="title">assoc</span><span class="body"> state <span class="keyword">:enemies</span>
+      <span class="list">(<span class="title">for</span><span class="body"> [enemy enemies]
+        <span class="list">(<span class="title">update-in</span><span class="body"> enemy [<span class="keyword">:x</span>] func)</span></span>
+      )</span></span>
+    )</span></span>
+  )</span></span>
+)</span></span></code></pre>
+<p>update-in takes in a func to enact on the value, rather than the new value and saves us precious reading time. Thinking about it, we can actually save some effort here too.</p>
+<p>This makes a big difference in cases where I&#39;ve been lazy and done this</p>
+<pre><code><span class="list">(<span class="title">assoc</span><span class="body"> bullet <span class="keyword">:y</span> <span class="list">(<span class="title">dec</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> bullet)</span></span>)</span></span>)</span></span></code></pre>
+<p>Looks better like</p>
+<pre><code><span class="list">(<span class="title">update-in</span><span class="body"> bullet [<span class="keyword">:y</span>] dec)</span></span></code></pre>
+<p>Passing around functions seems pretty functional.</p>
+<p><strong>State doesn&#39;t define an object</strong></p>
+<p>Why do I have this?</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> initEnemy [x y w h]
+ {
+  <span class="keyword">:x</span> <span class="list">(<span class="title">*</span><span class="body"> x <span class="number">30</span>)</span></span>
+  <span class="keyword">:y</span> <span class="list">(<span class="title">*</span><span class="body"> y <span class="number">30</span>)</span></span>
+  <span class="keyword">:w</span> w
+  <span class="keyword">:h</span> h
+ }
+)</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> initPlayer [x y w h]
+ {
+  <span class="keyword">:x</span> x
+  <span class="keyword">:y</span> y
+  <span class="keyword">:w</span> w
+  <span class="keyword">:h</span> h
+ }
+)</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> initBullet [x y w h]
+ {
+  <span class="keyword">:x</span> x
+  <span class="keyword">:y</span> y
+  <span class="keyword">:w</span> w
+  <span class="keyword">:h</span> h
+ }
+)</span></span></code></pre>
+<p>Seems to me that everything in my game is a rect, and what changes between these everything is the behaviour that is performed over that state.</p>
+<p>So, death to these things and in with</p>
+<pre><code><span class="list">(<span class="title"><span class="built_in">defn</span></span> initRect <span class="collection">[x y w h]</span>
+ <span class="collection">{
+  <span class="attribute">:x</span> x
+  <span class="attribute">:y</span> y
+  <span class="attribute">:w</span> w
+  <span class="attribute">:h</span> h
+ }</span>
+)</span></code></pre>
+<p>Actually, I&#39;m pulling this structure apart in a number of places, such as my drawing functions</p>
+<pre><code><span class="list">(<span class="title">let</span><span class="body"> [{<span class="keyword">:keys</span> [x y w h]} bullet]
+  <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx x y w h <span class="string">"#000"</span>)</span></span>
+)</span></span></code></pre>
+<p>A solution to this would be to make drawSquare take in this map and de-construct it there. I&#39;ve established that this is a primitive I want in my application and I&#39;ll use it as such.</p>
+<p>I could further solidify this by turning it into a Record but I&#39;m not yet feeling any pain from not having it as one so I won&#39;t bother..</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> drawSquare [[ctx width height] rect c]
+  <span class="list">(<span class="title">set</span><span class="body">! <span class="list">(<span class="body">. ctx -fillStyle)</span></span> c)</span></span>
+  <span class="list">(<span class="title">let</span><span class="body"> [{<span class="keyword">:keys</span> [x y w h]} rect]
+    <span class="list">(<span class="body">.fillRect ctx x y w h)</span></span> 
+  )</span></span>
+)</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> enemiesRender [ctx state]
+  <span class="list">(<span class="title">let</span><span class="body"> [enemies <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>]
+    <span class="list">(<span class="title">doseq</span><span class="body"> [enemy enemies] 
+      <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx enemy <span class="string">"#FF0"</span>)</span></span>
+    )</span></span>
+  )</span></span>
+)</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> bulletsRender [ctx state]
+  <span class="list">(<span class="title">doseq</span><span class="body"> [bullet <span class="list">(<span class="body"><span class="keyword">:active</span> <span class="list">(<span class="body"><span class="keyword">:bullets</span> state)</span></span>)</span></span>] 
+    <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx bullet <span class="string">"#000"</span>)</span></span>
+  )</span></span>
+)</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> playerRender [ctx state]
+  <span class="list">(<span class="title">let</span><span class="body"> [player <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>]
+    <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx player <span class="string">"#F00"</span>)</span></span>
+  )</span></span>
+)</span></span></code></pre>
+<p>In other thoughts, these functions are all the same apart from the colour of the rect, it seems a bit daft to me, how about</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> renderRects [ctx rects colour]
+  <span class="list">(<span class="title">doseq</span><span class="body"> [rect rects] 
+    <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx enemy colour)</span></span>
+  )</span></span>
+)</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> enemiesRender [ctx state]
+  <span class="list">(<span class="title">renderRects</span><span class="body"> ctx <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span> <span class="string">"#FF0"</span>)</span></span>
+)</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> bulletsRender [ctx state]
+  <span class="list">(<span class="title">renderRects</span><span class="body"> ctx <span class="list">(<span class="title">get-in</span><span class="body"> state [<span class="keyword">:bullets</span> <span class="keyword">:active</span>])</span></span> <span class="string">"#000"</span>)</span></span>
+)</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> playerRender [ctx state]
+  <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span> <span class="string">"#F00"</span>)</span></span>
+)</span></span></code></pre>
+<p>Keeping the number of data structures to a minimum and re-using tiny little functions seems to be a thing in these parts.</p>
+<p><strong>Naming clojure constructs</strong></p>
+<p>I&#39;ve been a naughy boy and stuck to my JavaScript ways of doing things with the camelCase all up in the show.</p>
+<p>Turns out that Clojure fiends prefer hyphenation-on-their-names and I can kinda get behind that.</p>
+<p>I&#39;ll also take the opportunity to formally start using &#39;rect&#39; everywhere instead a combination of  &#39;square&#39; and &#39;rect&#39; etc, and do a general tidy up of names.</p>
+<p>I&#39;ll not show them all, but in essence </p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> bulletsRender [ctx state]
+  <span class="list">(<span class="title">renderRects</span><span class="body"> ctx <span class="list">(<span class="title">get-in</span><span class="body"> state [<span class="keyword">:bullets</span> <span class="keyword">:active</span>])</span></span> <span class="string">"#000"</span>)</span></span>
+)</span></span></code></pre>
+<p>Will become</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> render-bullets [ctx state]
+  <span class="list">(<span class="title">render-rects</span><span class="body"> ctx <span class="list">(<span class="title">get-in</span><span class="body"> state [<span class="keyword">:bullets</span> <span class="keyword">:active</span>])</span></span> <span class="string">"#000"</span>)</span></span>
+)</span></span></code></pre>
+<p>And so on (so don&#39;t get confused in latter entries where the names of things have changed!)</p>
+<p>The only downside to this arrangement is ctrl-p is now broken in vim for method names, this is a chance for the Emacs people to point and laugh at me.</p>
+<p><strong>Parenthesis white space</strong></p>
+<p>I&#39;m getting little value from new-lining my parentheses.</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> update-state [state]
+  <span class="list">(<span class="title">update-bullets</span><span class="body">
+    <span class="list">(<span class="title">update-player</span><span class="body">
+      <span class="list">(<span class="title">update-enemies</span><span class="body">
+        <span class="list">(<span class="title">update-direction</span><span class="body"> state)</span></span>
+      )</span></span>
+    )</span></span>
+  )</span></span>
+)</span></span></code></pre>
+<p>When re-factoring or moving code around, I&#39;m using the vim shortcuts </p>
+<ul>
+<li>vi(</li>
+<li>va(</li>
+<li>ci(</li>
+<li>ca(</li>
+</ul>
+<p>And so on, and actually it would be easier if I could just use left and right to move to the brace I want to grab the contents of.</p>
+<p>So, I&#39;m going to sort that out too and go with</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> update-state [state]
+  <span class="list">(<span class="title">update-bullets</span><span class="body">
+    <span class="list">(<span class="title">update-player</span><span class="body">
+      <span class="list">(<span class="title">update-enemies</span><span class="body">
+        <span class="list">(<span class="title">update-direction</span><span class="body"> state)</span></span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
+<p>Gasp. Radical. This will reduce my vertical space usage and allow me to see more context on my screen (I&#39;m a k+r person in C#/JS etc so I&#39;m totally up in this way of doing things)</p>
+<p>The fully tidied up source code can be found at <a href="https://github.com/robashton/clojure-spaceinvaders/blob/d7df1f4671ffe86dd2391d368e7b0169ab263fae/game.cljs">this snapshot on Github</a> if you want to catch up with where I am so far.</p>
+<p>With this, I can go and look at collision detection!</p>
+]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---more-idiomatic-clojure.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---more-idiomatic-clojure.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 27 Jun 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Ruby on Rails and the Phantom Menace]]></title><description><![CDATA[<p>Remember when Star Wars came out? No - me neither, it was before my time but I watched it on the TV as I grew up never really knowing what a big deal it was to some people or why.</p>
 <p>Then George Lucas announced he was going to make NEW STAR WARS, and everybody got excited - including people who hadn&#39;t really been <em>that</em> into it to begin with. We traipsed down to the cinema in droves to find out that in place of the epic star wars action we expected, we got Jar Jar Binks.</p>
 <p><em>That&#39;s how I feel now</em></p>
 <p>I&#39;ve been on that .NET platform thing for a while now, although I&#39;ve been writing JS for a long time and my heart has never really left the world of C and C++ I can definitely be considered as one of those people who cast an eye on the promised land of Ruby on Rails acknowledging that it was apparently very good but things were fine without it thankyou very much.</p>
@@ -893,141 +1080,4 @@ and I still have moving yellow squares in my browser.</p>
 <p>This all works, my squares go from left to right and back again and keep bouncing around.</p>
 <p><img src="/img/yellow_squares.png" alt="A load of yellow squares" title="Space invaders"></p>
 <p>I have another question at this point, which is &quot;how many times is this list being iterated, should I be optimising this some how?&quot;</p>
-]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---mutating-lots-of-state.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---mutating-lots-of-state.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 06 Jun 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Learn functional programming with me - Adding lots more state]]></title><description><![CDATA[<p>I&#39;ve got a single moving square and a small pile of Clojure written so far, but now what I want to do is have a collection of moving squares because no game of Space Invaders is complete without aliens, and last I checked there was more than one of them.</p>
-<ul>
-<li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Mission statement</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---moving-the-square.html">Moving the square</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---attributes-and-vectors.html">Attributes and vectors</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---improving-my-workflow.html">Improving my workflow</a></li>
-</ul>
-<p>Well, if I want lots of squares I&#39;m going to have to look at some means of representing collections in Clojure and my searches take me to <a href="http://clojuredocs.org/clojure_core/clojure.core/seq">Sequences</a></p>
-<p>To create a sequence, I can do something like this</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> createSeq []
-  <span class="list">(<span class="title">for</span><span class="body"> [x [<span class="number">0</span> <span class="number">1</span> <span class="number">2</span> <span class="number">3</span>]]
-    x
-  )</span></span>
-)</span></span></code></pre>
-<p>Which returns me a sequence containing 0 1 2 3, an important point here is (at least I think), is that this sequence is <em>lazy</em>, it has not been executed yet. </p>
-<p>Now, my collection of invaders will actually be 2D, so what I can actually do is</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> createSeq []
-  <span class="list">(<span class="title">for</span><span class="body"> [x [<span class="number">0</span> <span class="number">1</span> <span class="number">2</span> <span class="number">3</span>] y [<span class="number">0</span> <span class="number">1</span> <span class="number">2</span> <span class="number">3</span>]]
-    [x y]
-  )</span></span>
-)</span></span></code></pre>
-<p>Which returns me a sequence containing lots of [x y] pairs, so [0 0] [0 1] [0 2] etc.</p>
-<p>Of course, there are functions for me here, so I can make a range</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> createSeq []
-  <span class="list">(<span class="title">for</span><span class="body"> [x <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">100</span> <span class="number">10</span>)</span></span> 
-        y <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">100</span> <span class="number">10</span>)</span></span>]
-    [x y]
-  )</span></span>
-)</span></span></code></pre>
-<p>Pretty nifty if I do say so myself, so what I can start with if I want to draw a grid of yellow squares is something like</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> initState []
- <span class="list">(<span class="title">for</span><span class="body"> [x <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">100</span> <span class="number">10</span>)</span></span>
-       y <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">100</span> <span class="number">10</span>)</span></span>]
-   [x y]
- )</span></span>
-)</span></span></code></pre>
-<p>And I can call my initial tick method, passing in this state</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> ^<span class="keyword">:export</span> init []
-  <span class="list">(<span class="title">tick</span><span class="body"> <span class="list">(<span class="title">initState</span><span class="body">)</span></span>)</span></span> 
-)</span></span></code></pre>
-<p>And then loop through this</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> tick [enemies]
-  <span class="list">(<span class="title">let</span><span class="body"> [ctx <span class="list">(<span class="title">context</span><span class="body">)</span></span>] 
-    <span class="list">(<span class="title">clearScreen</span><span class="body"> ctx)</span></span> 
-    <span class="list">(<span class="title">doseq</span><span class="body"> [[x y] enemies] <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx x y <span class="number">5</span> <span class="number">5</span>)</span></span>)</span></span>
-    <span class="list">(<span class="title">js/setTimeout</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> []
-      <span class="list">(<span class="title">tick</span><span class="body"> enemies)</span></span> 
-    )</span></span> <span class="number">33</span>  )</span></span>
-  )</span></span>
-)</span></span></code></pre>
-<p>Note that I&#39;m able to expand the content of this sequence as part of the doseq call</p>
-<pre><code>  (doseq <span class="string">[[x y] enemies] (drawSquare ctx x y 5 5))</code></pre>
-<p>Gotta like that at least a little bit!</p>
-<p>About this doseq, this doseq is <em>explicitly</em> created to allow for side effects, I could have done</p>
-<pre><code>  (<span class="keyword">for</span> <span class="string">[[x y] enemies] (drawSquare ctx x y 5 5))</code></pre>
-<p>But nothing would happen because this is lazy too - had my head scratching for a while on that one...</p>
-]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---adding-lots-more-state.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---adding-lots-more-state.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 04 Jun 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Learn functional programming with me - improving my workflow]]></title><description><![CDATA[<p>So I ended up picking this up again towards the end of March (yes I know, it&#39;s near the end of May now, I&#39;ve ended up writing and doing a lot...)</p>
-<p>This is where I was up to last time:</p>
-<ul>
-<li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Mission statement</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---moving-the-square.html">Moving the square</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---attributes-and-vectors.html">Attributes and vectors</a></li>
-</ul>
-<p>And the Github repo is here: <a href="https://github.com/robashton/clojure-spaceinvaders">github.com/robashton/clojure-spaceinvaders</a></p>
-<p>I advise you pop back and read those if you&#39;re just tuning in, as I&#39;ve had to as well in order to start up again!</p>
-<p><strong>Improving my workflow</strong></p>
-<p>I&#39;m writing this after I&#39;ve learned a lot about managing my workflow to keep myself interested in tasks, and I&#39;m writing this after writing a silly number of posts about writing an <a href="/entries/ometa-odata-odear---polishing-it-off.html">OData parser in OMeta</a>, which reminded me an awful lot of what functional programming was like, so I came back here.</p>
-<p>So, what have I done to make my life easier with this Clojure malarkey?</p>
-<p>Well, I want faster feedback, I don&#39;t want to have to keep spawning up Java and I don&#39;t want any manaul build process.</p>
-<p>Here is what I came up with (I know there is a repl and stuff, but I honestly just want to get some Clojure written at this stage and this seemed nice)</p>
-<p>I&#39;m using <a href="https://github.com/ibdknox/cljs-watch">cljs-watch</a>, and I&#39;ve written a Makefile that looks like this:</p>
-<pre><code><span class="attribute">default</span>: <span class="string">build</span>
-<span class="attribute">all</span>: <span class="string">build</span>
-
-<span class="tex">build:
-  cljsc game.cljs <span class="command">\
-</span>      '<span class="special">{</span>:optimizations :simple :pretty-print true<span class="special">}</span>' <span class="command">\
-</span>      &gt; ./game.js
-
-develop:
-  cljs-watch game.cljs <span class="command">\
-</span>    '<span class="special">{</span>:optimizations :simple :pretty-print true :output-to "./game.js"<span class="special">}</span>'</span></code></pre>
-<p>Hacky, but if I type &quot;make develop&quot;, I can get on and write code without having to worry about compilation so I&#39;m happier with life, now I just make changes and hit refresh and they&#39;re there.</p>
-<p><strong>Reminding myself of where I was</strong></p>
-<p><em>First off, I specify that I&#39;m sticking this all in the namespace &#39;game&#39;</em></p>
-<pre><code class="lang-clojure">    <span class="list">(<span class="title"><span class="built_in">ns</span></span> game)</span></code></pre>
-<p><em>I define a method called &#39;context&#39;, which takes no args</em></p>
-<pre><code class="lang-clojure">    <span class="list">(<span class="title"><span class="built_in">defn</span></span> context <span class="collection">[]</span></code></pre>
-<p><em>I let &#39;target&#39; be thbe result of calling .getElementById (interop)</em></p>
-<pre><code class="lang-clojure">      <span class="list">(<span class="title"><span class="built_in">let</span></span> <span class="collection">[target <span class="list">(<span class="title">.getElementById</span> js/document <span class="string">"target"</span>)</span>]</span></code></pre>
-<p><em>Return a &#39;vector&#39; containing the context, the width, and the height</em></p>
-<pre><code class="lang-clojure">        [
-          (.getContext target &quot;2d&quot;) 
-          (. target -width)
-          (. target -height)
-        ]
-      )
-    )</code></pre>
-<p><em>Define a function called clearScreen, taking in a vector of &#39;ctx, width, height&#39; - see above</em></p>
-<pre><code class="lang-clojure">    <span class="list">(<span class="title"><span class="built_in">defn</span></span> clearScreen <span class="collection">[<span class="collection">[ctx width height]</span>]</span></code></pre>
-<p><em>Set a property on the context of fillStyle &#39;#FFF&#39;</em></p>
-<pre><code class="lang-clojure">      <span class="list">(<span class="title"><span class="built_in">set!</span></span> <span class="list">(<span class="title"><span class="built_in">.</span></span> ctx -fillStyle)</span> <span class="string">"#FFF"</span>)</span></code></pre>
-<p><em>Call clearRect on the context, with 0,0,width,height</em></p>
-<pre><code class="lang-clojure">      (.clearRect ctx 0 0 width height) 
-    )</code></pre>
-<p><em>Same again, only parameterised so we&#39;re drawing a square</em></p>
-<pre><code class="lang-clojure">    <span class="list">(<span class="title"><span class="built_in">defn</span></span> drawSquare <span class="collection">[<span class="collection">[ctx width height]</span> x y w h]</span>
-      <span class="list">(<span class="title"><span class="built_in">set!</span></span> <span class="list">(<span class="title"><span class="built_in">.</span></span> ctx -fillStyle)</span> <span class="string">"#FF0"</span>)</span>
-      <span class="list">(<span class="title">.fillRect</span> ctx x y w h)</span> 
-    )</span></code></pre>
-<p><em>Now we have a function called tick which will call clearScreen over and over again, with drawSquare over again</em></p>
-<pre><code class="lang-clojure">    <span class="list">(<span class="title"><span class="built_in">defn</span></span> tick <span class="collection">[x]</span>
-      <span class="list">(<span class="title"><span class="built_in">let</span></span> <span class="collection">[ctx <span class="list">(<span class="title">context</span>)</span>]</span> 
-        <span class="list">(<span class="title">clearScreen</span> ctx)</span> 
-        <span class="list">(<span class="title">drawSquare</span> ctx x<span class="number"> 0</span><span class="number"> 100</span><span class="number"> 100</span>)</span>  
-        <span class="list">(<span class="title"><span class="built_in">if</span></span> <span class="list">(<span class="title"><span class="built_in">&lt;=</span></span> x<span class="number"> 1000</span>)</span> 
-          <span class="list">(<span class="title">js/setTimeout</span> <span class="list">(<span class="title"><span class="built_in">fn</span></span> <span class="collection">[]</span></code></pre>
-<p><em>And every frame, we call tick with a new version of the state, in this case an increased &#39;x&#39;</em></p>
-<pre><code class="lang-clojure">            (tick (inc x)) 
-
-          ) 33  )
-        )
-      )
-    )</code></pre>
-<p><em>We export a function called &#39;init&#39; so I can call this from JS and make the game happen</em></p>
-<pre><code class="lang-clojure">    <span class="list">(<span class="title"><span class="built_in">defn</span></span> ^<span class="attribute">:export</span> init <span class="collection">[]</span>
-      <span class="list">(<span class="title">tick</span><span class="number"> 0</span>)</span> 
-    )</span></code></pre>
-<p>Wow. There is a lot to (re)-take in here.</p>
-<p>First off, some observations</p>
-<ul>
-<li>Dom interop is horrible</li>
-<li>I remember now that I had state issues, I think I had that question answered on Github though, so we&#39;ll have a look at that next</li>
-</ul>
-<p>ONWARDS WITH THIS PROJECT</p>
-]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---improving-my-workflow.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---improving-my-workflow.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 30 May 2013 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---mutating-lots-of-state.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---mutating-lots-of-state.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 06 Jun 2013 09:30:00 GMT</pubDate></item></channel></rss>
