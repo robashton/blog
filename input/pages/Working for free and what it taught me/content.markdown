@@ -50,7 +50,7 @@ I'm not the biggest fan of ASP.NET MVC, I'm not the biggest fan of Rails (as you
 
 A lot of teams don't feel that way, and as an external body I don't have a say in this matter, *"Oh you're using RequireJS? [BULLSHEEEEEEEEEEIT](/entries/why-i-stopped-using-amd.html)"*. It turns out if you leave your opinions at the door and just get on with crap, do things in a way that's idiomatic for that environment and keep asking "What's the best way to do this", then you can get stuff done quick.
 
-You'll still run into those edge cases that you get with frameworks (If you go vanilla, you don't have edge cases, you just have features), but these can be glossed over if you have control over the feature-set and then you will deliver. [Start-up in a week](/this-week,-lets-create-a-start-up---day-5.html)? NO PROBLEM SIR.
+You'll still run into those edge cases that you get with frameworks (If you go vanilla, you don't have edge cases, you just have features), but these can be glossed over if you have control over the feature-set and then you will deliver. [Start-up in a week](/entries/this-week,-lets-create-a-start-up---day-5.html)? NO PROBLEM SIR.
 
 As a bonus, bitching about all the crazy decisions made in that framework is fun on Twitter so it's nice to get the opportunity to do so...
 
