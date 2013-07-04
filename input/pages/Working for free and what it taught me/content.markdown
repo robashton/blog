@@ -71,6 +71,12 @@ So successful has this activity been, that even though I've now been in my new j
 
 Okay, it's hardly a complete stripping down of "material goods", and I'm still lugging around several thousand pounds worth of Apple gear, but it's nice to know that I can pack up and quit what I'm doing anytime I like and just skip country *like that*, with no baggage (literally).
 
+# Money isn't important
+
+I was offered pay for a number of roles while I was doing this, and turned it all done because I felt it would sully what I was trying to do. Also - I felt it would muck up the balance where the people I was working for *really* wanted me to be happy because it was all they were giving me. 
+
+Money to employers is an easy way to motivate employees and has been proven not to work, take it out of the equation and they have to work a lot harder - worth thinking about.
+
 # Happiness is so freakin' important
 
 So I've said in this [Tekpub video that I helped make](http://tekpub.com/products/change-it-up), I didn't realise how miserable I was until I went and did this. Spending half a year in a state of bliss would be hard to describe to the person that was slaving away in the enterprise a year ago.
