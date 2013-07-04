@@ -1,5 +1,113 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Fri, 28 Jun 2013 11:09:25 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Change it Up - A Tekpub thing]]></title><description><![CDATA[<p>Just a small thing and a moderately embarassing one at that.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Thu, 04 Jul 2013 08:36:05 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Learn functional programming with me - adding collision detection to the game]]></title><description><![CDATA[<p>Can&#39;t have a game without collision detection now can we? Let&#39;s see about getting our bullets to collide with the enemies and see what problems get in my way this time...</p>
+<ul>
+<li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Mission statement</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---moving-the-square.html">Moving the square</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---attributes-and-vectors.html">Attributes and vectors</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---improving-my-workflow.html">Improving my workflow</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---adding-lots-more-state.html">Creating lots of state</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---mutating-lots-of-state.html">Mutating lots of state</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---improving-our-data-structure-with-maps.html">Improving our data structure with maps</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---keyboard-input-for-our-red-square.html">Moving our red square with keyboard input</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---adding-items-to-a-sequence.html">Adding items to a sequence and firing bullets</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---refactoring-my-state-transitions.html">Refactoring my state transitions</a></li>
+<li><a href="/learn-functional-programming-with-me---more-idiomatic-clojure.html">More idiomatic clojure</a></li>
+</ul>
+<p><strong>The collision detection itself</strong></p>
+<p>Well, collision is a nice easy pure function to write and because I have my rect primitive I can pretty use these.</p>
+<p>My first stab looks like this</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> collides-with [one two]
+  <span class="list">(<span class="title">let</span><span class="body"> [one-left <span class="list">(<span class="body"><span class="keyword">:x</span> one)</span></span>
+        one-right <span class="list">(<span class="title">+</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> one)</span></span> <span class="list">(<span class="body"><span class="keyword">:w</span> one)</span></span>)</span></span>
+        one-top <span class="list">(<span class="body"><span class="keyword">:y</span> one)</span></span>
+        one-bottom <span class="list">(<span class="title">+</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> one)</span></span> <span class="list">(<span class="body"><span class="keyword">:h</span> one)</span></span>)</span></span>
+        two-left <span class="list">(<span class="body"><span class="keyword">:x</span> two)</span></span>
+        two-right <span class="list">(<span class="title">+</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> two)</span></span> <span class="list">(<span class="body"><span class="keyword">:w</span> two)</span></span>)</span></span>
+        two-top <span class="list">(<span class="body"><span class="keyword">:y</span> two)</span></span>
+        two-bottom <span class="list">(<span class="title">+</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> two)</span></span> <span class="list">(<span class="body"><span class="keyword">:h</span> two)</span></span>)</span></span>]
+    <span class="list">(<span class="title">cond</span><span class="body"> <span class="list">(<span class="title">&lt;</span><span class="body"> one-right two-left)</span></span> false
+          <span class="list">(<span class="title">&gt;</span><span class="body"> one-left two-right)</span></span> false
+          <span class="list">(<span class="title">&lt;</span><span class="body"> one-bottom two-top)</span></span> false
+          <span class="list">(<span class="title">&gt;</span><span class="body"> one-top two-bottom)</span></span> false
+          <span class="keyword">:else</span> true)</span></span>)</span></span>)</span></span></code></pre>
+<p>I kinda feel as if this is over-doing the point a little though, and those extra variables I&#39;ve gone and made could probably just be represented by functions.</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> rect-right [rect] <span class="list">(<span class="title">+</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> rect)</span></span> <span class="list">(<span class="body"><span class="keyword">:w</span> rect)</span></span>)</span></span>)</span></span>
+<span class="list">(<span class="title">defn</span><span class="body"> rect-bottom [rect] <span class="list">(<span class="title">+</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> rect)</span></span> <span class="list">(<span class="body"><span class="keyword">:h</span> rect)</span></span>)</span></span>)</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> collides-with [one two]
+    <span class="list">(<span class="title">cond</span><span class="body"> <span class="list">(<span class="title">&lt;</span><span class="body"> <span class="list">(<span class="title">rect-right</span><span class="body"> one)</span></span> <span class="list">(<span class="body"><span class="keyword">:x</span> two)</span></span>)</span></span> false
+          <span class="list">(<span class="title">&gt;</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> one)</span></span> <span class="list">(<span class="title">rect-right</span><span class="body"> two)</span></span>)</span></span> false
+          <span class="list">(<span class="title">&lt;</span><span class="body"> <span class="list">(<span class="title">rect-bottom</span><span class="body"> one)</span></span> <span class="list">(<span class="body"><span class="keyword">:y</span> two)</span></span>)</span></span> false
+          <span class="list">(<span class="title">&gt;</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> one)</span></span> <span class="list">(<span class="title">rect-bottom</span><span class="body"> two)</span></span>)</span></span> false
+          <span class="keyword">:else</span> true)</span></span>)</span></span></code></pre>
+<p>It&#39;s a small change, but if I want to use these concepts elsewhere then I&#39;ll be able to far easier and this is far easier on the eyes.</p>
+<p><strong>Using the collision detection</strong></p>
+<p>Okay so I&#39;m being quite lazy here, the efficient way to do collision detection across a scene is to use a linear hashmap and only test rects in adjacent cells. I only have a few space invaders though so I&#39;ll take the hit of a more brute force solution (although I think this would be quite fun to implement in a functional manner so I&#39;ll come back to it)</p>
+<p>So, obviously I need to adjust my sequences based on whether bullets are intersecting with aliens.</p>
+<p>This is probably the complicated bit, and I&#39;ll start off being really lazy about how I evaluate this.</p>
+<ul>
+<li>We need to remove bullets from the collection if they&#39;re intersecting</li>
+<li>We need to remove aliens from the collection if they&#39;re intersecting</li>
+<li><em>in the future we&#39;d need to increase points</em></li>
+<li><em>in the future we&#39;d need to show some animation</em></li>
+</ul>
+<p>I&#39;m getting the feeling that doing all of this with my ball of state is going to get un-wieldy and I might want to look into something more functional <a href="http://prog21.dadgum.com/23.html">like in this series</a>.</p>
+<p>Nevertheless, I&#39;ll press forwards with my current solution because I want something that works.</p>
+<p><strong>My first attempt</strong></p>
+<p>My first attempt was a failure, I thought it&#39;d be simple to just loop through several times and do something like</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> bullet-collides-with-enemy [bullet state]
+  <span class="list">(<span class="title">not</span><span class="body"> <span class="list">(<span class="title">not-any</span><span class="body">? 
+     <span class="list">(<span class="title">fn</span><span class="body"> [enemy] <span class="list">(<span class="title">collides-with</span><span class="body"> enemy bullet)</span></span>)</span></span> 
+     <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>)</span></span>)</span></span>)</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> enemy-collides-with-bullet [enemy state]
+  <span class="list">(<span class="title">not</span><span class="body"> <span class="list">(<span class="title">not-any</span><span class="body">? 
+     <span class="list">(<span class="title">fn</span><span class="body"> [bullet] <span class="list">(<span class="title">collides-with</span><span class="body"> bullet enemy)</span></span>)</span></span> 
+     <span class="list">(<span class="title">get-in</span><span class="body"> [<span class="keyword">:bullets</span> <span class="keyword">:active</span>] state)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
+<p>And filter out enemies/bullets in the seq for these things, this is an awful idea because of multiple iterations it&#39;s also an awful idea because written in this way it&#39;s hard to follow.</p>
+<p><strong>Second attempt</strong></p>
+<p>A better idea would be to iterate once, ask for all the colliisons that have taken place and then use this information to create a new version of the state without the affected enemies/bullets in it.</p>
+<p>This moves me closer in the direction described by the article I linked above so I&#39;ll give it a go.</p>
+<p>I can write a function that does this and returns a list of the collisions.</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> get-bullet-enemy-collisions [state]
+  <span class="list">(<span class="title">for</span><span class="body"> [bullet <span class="list">(<span class="title">active-bullets</span><span class="body"> state)</span></span>]
+    { <span class="keyword">:bullet</span> bullet
+      <span class="keyword">:alien</span> <span class="list">(<span class="title">first</span><span class="body"> <span class="list">(<span class="title">enemies-colliding-with-bullet</span><span class="body"> bullet state)</span></span>)</span></span>})</span></span>)</span></span></code></pre>
+<p>But this won&#39;t actually be effective I don&#39;t think, because I&#39;m returning a map of maps which would need comparing against the other maps in order to remove them from the collection they&#39;re in.</p>
+<p>By-reference comparison won&#39;t work, maps are (as I understand it) compared by value - and while this would work it&#39;s not &quot;correct&quot;. Identity is what we want to compare against here and our bullets and aliens don&#39;t have identies.</p>
+<p><strong>Third attempt</strong></p>
+<p>I&#39;ve found <a href="http://clojuredocs.org/clojure_core/clojure.core/map-indexed">map-indexed</a> and <a href="http://clojuredocs.org/clojure_core/clojure.core/keep-indexed">keep-indexed</a>, which will allow me to do pretty much the same as above but return a list of indexes into the collections which represent collisions.</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> get-bullet-enemy-collisions [state]
+  <span class="list">(<span class="title">keep-indexed</span><span class="body"> #<span class="list">(<span class="body">{ <span class="keyword">:bullet</span> %<span class="number">1</span>
+                    <span class="keyword">:alien</span> <span class="list">(<span class="title">first</span><span class="body"> <span class="list">(<span class="title">enemies-colliding-with-bullet</span><span class="body"> bullet state)</span></span>)</span></span>})</span></span>
+                <span class="list">(<span class="title">active-bullets</span><span class="body"> state)</span></span>)</span></span>)</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> enemies-colliding-with-bullet [bullet state]
+  <span class="list">(<span class="title">keep-indexed</span><span class="body"> #<span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">collides-with</span><span class="body"> %<span class="number">2</span> bullet)</span></span> %<span class="number">1</span>)</span></span> <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>)</span></span>)</span></span></code></pre>
+<p>I&#39;ve also discovered that little # symbol, which appears to be shorthand for an anonymous function with a 1-indexed list of arguments.</p>
+<p>Anyway, now I have a list of collisions that have taken place in my game world, I can filter out the items I don&#39;t want any more.</p>
+<p>I couldn&#39;t figure out an easy way of using this data though, so back to</p>
+<p><strong>Option one again</strong></p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> collide-bullets [state]
+  <span class="list">(<span class="title">assoc</span><span class="body"> 
+    <span class="list">(<span class="title">assoc-in</span><span class="body"> state [<span class="keyword">:bullets</span> <span class="keyword">:active</span>]
+      <span class="list">(<span class="title">remove</span><span class="body"> #<span class="list">(<span class="title">collides-with-any</span><span class="body"> % <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>)</span></span> <span class="list">(<span class="title">active-bullets</span><span class="body"> state)</span></span>)</span></span>)</span></span>
+    <span class="keyword">:enemies</span>
+      <span class="list">(<span class="title">remove</span><span class="body"> #<span class="list">(<span class="title">collides-with-any</span><span class="body"> % <span class="list">(<span class="title">active-bullets</span><span class="body"> state)</span></span>)</span></span> <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>)</span></span>)</span></span>)</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> collides-with-any [one, others]
+  <span class="list">(<span class="title">some</span><span class="body"> #<span class="list">(<span class="title">collides-with</span><span class="body"> % one)</span></span> others)</span></span>)</span></span></code></pre>
+<p>Iterate through the list twice and just remove any affected entities.</p>
+<p>Note I can use the old verson of the state when doing my <em>collides-with-any</em> calls, and stick the results into multiple calls on top of the new state. This is much easier to understand than my first attempt however so at least doesn&#39;t have the pitfall of being completely opaque.</p>
+<p>I&#39;m still really not liking this solution as it involves multiple iterations of the two collections:</p>
+<ul>
+<li>Compare each bullet against all the enemies</li>
+<li>Compare each enemy against all the bullets</li>
+</ul>
+<p>I&#39;ll come back to this no doubt when it comes to adding scoring, explosions and sound, because I&#39;m going to need to execute a lot more logic based on these collisions.</p>
+<p>I&#39;m going to press on and add some more gameplay though, as once I have an end-to-end game I&#39;ll hopefully have gained more understanding and be able to reason about all of this better.</p>
+]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---adding-collision-detection-to-the-game.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---adding-collision-detection-to-the-game.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 02 Jul 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Change it Up - A Tekpub thing]]></title><description><![CDATA[<p>Just a small thing and a moderately embarassing one at that.</p>
 <p>While I was in Hawaii towards the <a href="/entries/i-am-interested-in-talking-about-work.html">end of my travels</a> this year, I got coralled into doing an interview about <a href="/entries/i-am-not-looking-for-a-job.html">why I did what I did</a> and what prompted me to take action about &quot;changing things up&quot;.</p>
 <p>If you know me personally, then there is probably not anything too new in this video, but if you&#39;re interested in the thought process behind &quot;getting out of that rut&quot; and you&#39;re considering doing something about it yourself, I&#39;ve been told that this video will help :)</p>
 <p>You can find it at Tekpub over at <a href="http://tekpub.com/products/change-it-up"><a href="http://tekpub.com/products/change-it-up">http://tekpub.com/products/change-it-up</a></a>. If you haven&#39;t got a subscription then you should just go and get one, as Tekpub is pretty rad.</p>
@@ -953,131 +1061,4 @@ and I still have moving yellow squares in my browser.</p>
 <p><strong>Summary</strong></p>
 <p>I&#39;m slightly happier with maps, as it means the order in which I put data into these structures becomes irrelevant, my OO self is crying out though because I&#39;m passing around effectively property bags on which I&#39;m performing decisions and logic from.</p>
 <p>It feels as if I&#39;m going to be repeating myself a lot if I have to keep addressing state this way, and hopefully I&#39;ll discover a better way as I progress, as this just feels like procedural code written in Clojure.</p>
-]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---improving-our-data-structure-with-maps.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---improving-our-data-structure-with-maps.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 11 Jun 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Learn functional programming with me - Mutating lots of state]]></title><description><![CDATA[<p>It&#39;s all very well and good being able to render a load of squares based on a sequence of positions, but what I actually want to achieve now is moving all of those squares.</p>
-<ul>
-<li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Mission statement</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---moving-the-square.html">Moving the square</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---attributes-and-vectors.html">Attributes and vectors</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---improving-my-workflow.html">Improving my workflow</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---adding-lots-more-state.html">Creating lots of state</a></li>
-</ul>
-<p><strong>Mutating lots of state</strong></p>
-<p>Thing is, what I can&#39;t do is pop into that sequence and start <em>changing</em> state, what I want to do each frame is (I think), create a <em>new</em> sequence and pass that into the next call of &#39;tick&#39;, <em>erk</em>.</p>
-<p>Well, actually this shouldn&#39;t be such a big deal, how about creating a method that takes in a sequence and returns a new sequence where each item is slightly different from the original?</p>
-<pre><code>(defn doLogic [enemies]
-  (<span class="keyword">for</span> <span class="string">[[x y] enemies]
-    [(inc x) y]
-  )
-)</code></pre>
-<p>doLogic takes in a sequence of enemies, then uses a list comprehension to create a new list of enemies but with &#39;x&#39; increased by one.</p>
-<p>Now all we have to do is pass this new sequence into the next call of &#39;tick&#39;</p>
-<pre><code><span class="list">(<span class="title">tick</span><span class="body"> <span class="list">(<span class="title">doLogic</span><span class="body"> enemies)</span></span>)</span></span></code></pre>
-<p>Okay, that was <em>too</em> easy, from what I see here this is also going to be lazy up until the point we call &#39;doseq&#39;, it makes me feel kinda weird though that we&#39;re apparently creating a completely new sequence every single frame - memory-wise this has to be a bad idea and in the JS environment this is going to make me cry.</p>
-<p>I have no idea what is going on under the hood though, so if any Clojurescript guru can enlighten me I&#39;d appreciate it.</p>
-<p><strong>Making our invaders move left to right and back again</strong></p>
-<p>Well, the first thing I actually need to do is set up my invaders properly in some sort of known &#39;game space&#39;, this isn&#39;t really related to the functional programming bit so I&#39;m going to pretty much side-step over it by modifying the code and explaining what I&#39;ve done. (normally I&#39;d use a camera system and be a bit more clever, but not the point of this exercise)</p>
-<p><em>The first thing I&#39;ve done is moved the ctx call outside of tick</em></p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> ^<span class="keyword">:export</span> init []
-  <span class="list">(<span class="title">let</span><span class="body"> [ctx <span class="list">(<span class="title">context</span><span class="body">)</span></span>] 
-    <span class="list">(<span class="title">tick</span><span class="body"> ctx <span class="list">(<span class="title">initState</span><span class="body">)</span></span>)</span></span> 
-  )</span></span>
-)</span></span></code></pre>
-<p>And actually, I&#39;m going to specify the width and height as 640x480 and hard-code the whole thing</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> ^<span class="keyword">:export</span> init []
-  <span class="list">(<span class="title">let</span><span class="body"> [ctx <span class="list">(<span class="title">context</span><span class="body"> <span class="number">640</span> <span class="number">480</span>)</span></span>] 
-    <span class="list">(<span class="title">tick</span><span class="body"> ctx <span class="list">(<span class="title">initState</span><span class="body">)</span></span>)</span></span> 
-  )</span></span>
-)</span></span>
-
-<span class="list">(<span class="title">defn</span><span class="body"> context [width height]
-  <span class="list">(<span class="title">let</span><span class="body"> [target <span class="list">(<span class="body">.getElementById js/document <span class="string">"target"</span>)</span></span>]
-    [
-      <span class="list">(<span class="body">.getContext target <span class="string">"2d"</span>)</span></span> 
-      <span class="list">(<span class="title">set</span><span class="body">! <span class="list">(<span class="body">. target -width)</span></span> width)</span></span>
-      <span class="list">(<span class="title">set</span><span class="body">! <span class="list">(<span class="body">. target -height)</span></span> height)</span></span>
-    ]
-  )</span></span>
-)</span></span></code></pre>
-<p>And now I&#39;ve done this, I can do a little bit of maths and say that if I make my space invaders 20x20, then I can fit 8 of them on the screen horizontally and 4 vertically (leaving space for our good guy and between them!)</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> initState []
- <span class="list">(<span class="title">for</span><span class="body"> [x <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">16</span> <span class="number">2</span>)</span></span>
-       y <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">8</span> <span class="number">2</span>)</span></span>]
-   [<span class="list">(<span class="title">*</span><span class="body"> x <span class="number">30</span>)</span></span> <span class="list">(<span class="title">*</span><span class="body"> y <span class="number">30</span>)</span></span> <span class="number">20</span> <span class="number">20</span>]
- )</span></span>
-)</span></span></code></pre>
-<p>I&#39;m also now including a width and height with each of my little invaders, which means I&#39;ll need to modify my logic function</p>
-<pre><code>(defn doLogic [enemies]
-  (<span class="keyword">for</span> <span class="string">[[x y w h] enemies]
-    [(inc x) y w h]
-  )
-)</code></pre>
-<p>And rendering them now looks like this</p>
-<pre><code>(doseq <span class="string">[[x y w h] enemies] (drawSquare ctx x y w h))</code></pre>
-<p>Now this doesn&#39;t solve that what I want to do is change the direction of my squares when they reach the edge of the playing area, this is bit more interesting.</p>
-<p><strong>Variable state changes</strong></p>
-<p>Well, when do my space invaders switch direction? Well, I went on <a href="http://www.youtube.com/watch?v=437Ld_rKM2s">Youtube</a> to look at the original behaviour of space invaders and it seems that if you destroy a column of invaders then it won&#39;t switch direction until at least one invader has reached the edge of the screen.</p>
-<p>What&#39;s an efficient way of handling this I wonder, well I&#39;ll need a direction as part of my main game state so I&#39;ll get that in first</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> initState []
- [
-   <span class="number">1</span>
-   <span class="list">(<span class="title">for</span><span class="body"> [x <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">16</span> <span class="number">2</span>)</span></span>
-         y <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">8</span> <span class="number">2</span>)</span></span>]
-     [<span class="list">(<span class="title">*</span><span class="body"> x <span class="number">30</span>)</span></span> <span class="list">(<span class="title">*</span><span class="body"> y <span class="number">30</span>)</span></span> <span class="number">20</span> <span class="number">20</span>]
-   )</span></span>
- ]
-)</span></span></code></pre>
-<p>Okay, so now initState will return a vector containing a direction (1), and a sequence of enemies. I&#39;m really not confortable with these arbitrary lists of state so I&#39;ll look for some way to make them tidier shortly I think.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> tick [ctx state]
-  <span class="list">(<span class="title">let</span><span class="body"> [[dir enemies] state]
-    <span class="list">(<span class="title">clearScreen</span><span class="body"> ctx)</span></span> 
-    <span class="list">(<span class="title">doseq</span><span class="body"> [[x y w h] enemies] <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx x y w h)</span></span>)</span></span>
-    <span class="list">(<span class="title">js/setTimeout</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> []
-      <span class="list">(<span class="title">tick</span><span class="body"> ctx <span class="list">(<span class="title">doLogic</span><span class="body"> state)</span></span>)</span></span>
-    )</span></span> <span class="number">33</span>  )</span></span>
-  )</span></span>
-)</span></span></code></pre>
-<p>In my tick method, I&#39;ll use a destructuring assignment to unpack this vector into a direction and an enemies sequence so I can easily go through that sequence.</p>
-<pre><code>(defn doLogic <span class="string">[[direction enemies]]</span>
-  [
-    direction
-    (<span class="keyword">for</span> <span class="string">[[x y w h] enemies]
-      [(inc x) y w h]
-    )
-  ]
-)</code></pre>
-<p>And in my doLogic method, I&#39;ll simply re-return the diretion, and the modified sequence of enemies.</p>
-<p>All I need to do now is return a different direction if a certain condition is true</p>
-<ul>
-<li>Are we going right? Are any of the entities too far to the right?</li>
-<li>Are we going left? Are any of the entities too far to the left?</li>
-</ul>
-<p>Okay, how about</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> doLogic [[direction enemies]]
-  [
-    <span class="list">(<span class="title">getNextDirection</span><span class="body"> direction enemies)</span></span>
-    <span class="list">(<span class="title">for</span><span class="body"> [[x y w h] enemies]
-      <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">=</span><span class="body"> direction <span class="number">1</span>)</span></span>
-        [<span class="list">(<span class="title">inc</span><span class="body"> x)</span></span> y w h]
-        [<span class="list">(<span class="title">dec</span><span class="body"> x)</span></span> y w h]
-      )</span></span>
-    )</span></span>
-  ]
-)</span></span></code></pre>
-<p>We&#39;ll ask another function what the next direction is going to be, if the current direction is &#39;1&#39;, we&#39;ll inc x, anx if the current direction is not 1, we&#39;ll dec x.</p>
-<p>I can implement getNextDirection like so, taking in current and enemies</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> getNextDirection [current enemies]
-  <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> current <span class="number">1</span>)</span></span>
-    <span class="list">(<span class="title">let</span><span class="body"> [right <span class="list">(<span class="title">apply</span><span class="body"> max <span class="list">(<span class="title">map</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> [[x y w h] e] x)</span></span> enemies)</span></span>)</span></span>]
-      <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">&gt;</span><span class="body"> right <span class="number">600</span>)</span></span> <span class="number">-1</span> <span class="number">1</span>)</span></span>
-    )</span></span>
-    <span class="list">(<span class="title">let</span><span class="body"> [left <span class="list">(<span class="title">apply</span><span class="body"> min <span class="list">(<span class="title">map</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> [[x y w h] e] x)</span></span> enemies)</span></span>)</span></span>]
-      <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">&lt;</span><span class="body"> left <span class="number">0</span>)</span></span> <span class="number">1</span> <span class="number">-1</span>)</span></span>
-    )</span></span>
-  )</span></span>
-)</span></span></code></pre>
-<p>I can say, if we&#39;re going right, check out what the max x position is, and change direction if it&#39;s greater than 600, and vice versa if it&#39;s not.</p>
-<p>This all works, my squares go from left to right and back again and keep bouncing around.</p>
-<p><img src="/img/yellow_squares.png" alt="A load of yellow squares" title="Space invaders"></p>
-<p>I have another question at this point, which is &quot;how many times is this list being iterated, should I be optimising this some how?&quot;</p>
-]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---mutating-lots-of-state.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---mutating-lots-of-state.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 06 Jun 2013 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---improving-our-data-structure-with-maps.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---improving-our-data-structure-with-maps.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 11 Jun 2013 09:30:00 GMT</pubDate></item></channel></rss>
