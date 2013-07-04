@@ -73,7 +73,7 @@ Okay, it's hardly a complete stripping down of "material goods", and I'm still l
 
 # Money isn't important
 
-I was offered pay for a number of roles while I was doing this, and turned it all done because I felt it would sully what I was trying to do. Also - I felt it would muck up the balance where the people I was working for *really* wanted me to be happy because it was all they were giving me. 
+I was offered pay for a number of roles while I was doing this, and turned it all down because I felt it would sully what I was trying to do. Also - I felt it would muck up the balance where the people I was working for *really* wanted me to be happy because it was all they were giving me. 
 
 Money to employers is an easy way to motivate employees and has been proven not to work, take it out of the equation and they have to work a lot harder - worth thinking about.
 
