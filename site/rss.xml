@@ -1,5 +1,208 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Mon, 08 Jul 2013 11:46:12 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Working for free and what it taught me]]></title><description><![CDATA[<p>All the way back in November I <a href="/entries/i-am-not-looking-for-a-job.html">got fed up with the enterprise consulting lark</a> and because of that enterprise consulting lark I realised I had enough money to get by for a year without working quite easily.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Sat, 13 Jul 2013 12:04:10 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Learn functional programming with me - but rob, it needs to be more composable]]></title><description><![CDATA[<p>As I write my Clojure and the related blog posts, I&#39;ve been having them reviewed by <a href="http://twitter/bodil">@bodil</a> who is a proper functional programming neckbeard emacs type.</p>
+<ul>
+<li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Mission statement</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---moving-the-square.html">Moving the square</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---attributes-and-vectors.html">Attributes and vectors</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---improving-my-workflow.html">Improving my workflow</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---adding-lots-more-state.html">Creating lots of state</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---mutating-lots-of-state.html">Mutating lots of state</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---improving-our-data-structure-with-maps.html">Improving our data structure with maps</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---keyboard-input-for-our-red-square.html">Moving our red square with keyboard input</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---adding-items-to-a-sequence.html">Adding items to a sequence and firing bullets</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---refactoring-my-state-transitions.html">Refactoring my state transitions</a></li>
+<li><a href="/learn-functional-programming-with-me---more-idiomatic-clojure.html">More idiomatic clojure</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---adding-collision-detection-to-the-game.html">Adding collision detection</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---functional-difficulty-levels.html">Functional difficulty levels</a></li>
+</ul>
+<p>Her most recent piece of feedback was</p>
+  <blockquote>
+    What strikes me about your code right now is that it&#39;s not very composable
+  </blockquote>
+
+<p>Well I have to admit I had no idea what she meant by this, although it was in reference to a problem I was highlighting myself of <em>I&#39;m passing too much data around</em></p>
+<p>It turns out that this is pretty much what the FP guys mean when they say that code isn&#39;t composable.</p>
+<p>Obeerne of the beautiful things about the way languages like Clojure make you build up code, is that the functions you write are supposed to be re-usable across very basic and well-known data structures.</p>
+<h3>Composability and Types</h3>
+<p><a href="http://clojure.org/sequences">Sequences</a> are probably the best structures to be operating on top of, maybe with some primitives as directives of how to operate on them. </p>
+<p>User defined structures such as a &quot;vector&quot; probably come in next and then my big chunk of state as a hash... well that&#39;s the worst - especially if I&#39;m passing it around as one big thing all the time.</p>
+<p>With that in mind, suddenly we have a use for defined data structures like records (something I have been putting off for a while), and perhaps I can begin to solve my awkward relationship with that big ball of state. Something I have been muttering about for the past few blog entries.</p>
+<p>So, I&#39;ve read the <a href="http://clojure.org/datatypes">page on types</a> in Clojure and from what I understand it seems that deftype is for structures with no behaviour, and defrecord is for more OOP scenarios but there is also <a href="http://clojure.org/protocols">defprotocol</a> which is somehow related to both and will probably help me with my current data-ball-of-mud problem.</p>
+<p>To further confound me, the docs have snippets like this in them</p>
+  <blockquote>
+  Protocols are fully reified
+  </blockquote>
+
+<p>I&#39;ll need a dictionary and a copy of SICP to understand this and my brain is melting a bit so I go to find wine. Nice cool wine on a terrace overlooking St Pauls Cathedral and try to make sense of these docs a bit more.</p>
+<h3>Composability and Space Invaders</h3>
+<p>Starting at the other end of the problem - away from wordy confusion, it&#39;s very easy to see that there are some basic data types in my Space Invaders game and I have some basic operations over the top of them.</p>
+<p>First up, I&#39;m passing &#39;rects&#39; all over the place, and a rect is defined as </p>
+<pre><code><span class="title">x</span> : <span class="type">LHS</span> <span class="keyword">of</span> the rect
+<span class="title">y</span> : <span class="type">TOP</span> <span class="keyword">of</span> the rect
+<span class="title">w</span> : <span class="type">Width</span> <span class="keyword">of</span> the rect
+<span class="title">h</span> : <span class="type">Height</span> <span class="keyword">of</span> the rect</code></pre>
+<p>That&#39;s the state, and there are some basic operations over the top of this - some which involve mutation and some which do not</p>
+<ul>
+<li>Draw it (no mutation of internal state) </li>
+<li>bottom of the rect (no mutation)</li>
+<li>RHS of the rect (no mutation)</li>
+<li>move left/right/up/down (mutation - perhaps just &#39;move&#39;)</li>
+</ul>
+<p>From what I understand of the docs, I could probably get a lot done by defining a rect as a record, and exposing these as methods on that record, this might make some of the code easier to follow.</p>
+<p>I could also use a protocol to describe two things as being &#39;collideable&#39; (a suggestion from my tutor), which is the Clojure equivalent to an interface if I understand correctly.</p>
+<h3>No code here</h3>
+<p>I&#39;ll leave the implementation of this to the next post, as this is quite a lot of data to digest and I highly recommend reading the above docs if you&#39;re following along with my learning.</p>
+]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---but-rob,-it-needs-to-be-more-composable.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---but-rob,-it-needs-to-be-more-composable.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 11 Jul 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Learn functional programming with me - functional difficulty levels]]></title><description><![CDATA[<p>It&#39;s time to accelerate my efforts in getting the space invaders game have some sort of end-to-end story. Part of this is having the space invaders dropping down and firing back at our hero.</p>
+<ul>
+<li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Mission statement</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---moving-the-square.html">Moving the square</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---attributes-and-vectors.html">Attributes and vectors</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---improving-my-workflow.html">Improving my workflow</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---adding-lots-more-state.html">Creating lots of state</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---mutating-lots-of-state.html">Mutating lots of state</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---improving-our-data-structure-with-maps.html">Improving our data structure with maps</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---keyboard-input-for-our-red-square.html">Moving our red square with keyboard input</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---adding-items-to-a-sequence.html">Adding items to a sequence and firing bullets</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---refactoring-my-state-transitions.html">Refactoring my state transitions</a></li>
+<li><a href="/learn-functional-programming-with-me---more-idiomatic-clojure.html">More idiomatic clojure</a></li>
+<li><a href="/entries/learn-functional-programming-with-me---adding-collision-detection-to-the-game.html">Adding collision detection</a></li>
+</ul>
+<p><strong>I did a tidy up</strong></p>
+<p>I got rid of my stupid nested structures, and put the data for bullets into the top-level map, instead of</p>
+<pre><code>[<span class="symbol">:bullets</span> <span class="symbol">:active</span>]
+[<span class="symbol">:bullets</span> <span class="symbol">:lastFiringTicks</span>]</code></pre>
+<p>I now have</p>
+<pre><code>[<span class="symbol">:bullets</span>]
+[<span class="symbol">:last-firing-ticks</span>]</code></pre>
+<p>It makes things much simpler, the code at the start of this entry can be found <a href="https://github.com/robashton/clojure-spaceinvaders/blob/085c0249e54c19d189dfba6e006205c90914fc56/game.cljs">here</a>.</p>
+<p><strong>The space invaders need to invade some space</strong></p>
+<p>When the invaders reach the end of the row, their direction changes - they also need to drop down by a certain amount of space and thus attack the earth.</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> update-direction [state]
+  <span class="list">(<span class="title">let</span><span class="body"> [{<span class="keyword">:keys</span> [direction enemies]} state]
+    <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> direction <span class="number">1</span>)</span></span>
+      <span class="list">(<span class="title">let</span><span class="body"> [right <span class="list">(<span class="title">apply</span><span class="body"> max <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:x</span> enemies)</span></span>)</span></span>]
+        <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">&gt;</span><span class="body"> right <span class="number">600</span>)</span></span> <span class="list">(<span class="title">assoc</span><span class="body"> state <span class="keyword">:direction</span> <span class="number">-1</span>)</span></span> state)</span></span>)</span></span>
+      <span class="list">(<span class="title">let</span><span class="body"> [left <span class="list">(<span class="title">apply</span><span class="body"> min <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:x</span> enemies)</span></span>)</span></span>]
+        <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">&lt;</span><span class="body"> left <span class="number">0</span>)</span></span> <span class="list">(<span class="title">assoc</span><span class="body"> state <span class="keyword">:direction</span> <span class="number">1</span>)</span></span> state)</span></span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
+<p>I guess what I&#39;ll do here is break this up a bit (which I&#39;m okay with anyway because the above is quite hard to read)</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> rects-max-x [rects]
+  <span class="list">(<span class="title">apply</span><span class="body"> max <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:x</span> rects)</span></span>)</span></span>)</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> rects-min-x [rects]
+  <span class="list">(<span class="title">apply</span><span class="body"> min <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:x</span> rects)</span></span>)</span></span>)</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> enemies-reached-edge [enemies direction]
+  <span class="list">(<span class="title">cond</span><span class="body"> <span class="list">(<span class="title">and</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> direction <span class="number">1</span>)</span></span> <span class="list">(<span class="title">&gt;</span><span class="body"> <span class="list">(<span class="title">rects-max-x</span><span class="body"> enemies)</span></span> <span class="number">600</span>)</span></span>)</span></span> true
+        <span class="list">(<span class="title">and</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> direction <span class="number">-1</span>)</span></span> <span class="list">(<span class="title">&gt;</span><span class="body"> <span class="list">(<span class="title">rects-min-x</span><span class="body"> enemies)</span></span> <span class="number">0</span>)</span></span>)</span></span> true
+        <span class="keyword">:else</span> false)</span></span>)</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> invert-enemies-direction [state]
+  <span class="list">(<span class="title">assoc</span><span class="body"> state <span class="keyword">:direction</span> <span class="list">(<span class="title">*</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:direction</span> state)</span></span> <span class="number">-1</span>)</span></span>)</span></span>)</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> update-direction [state]
+  <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">enemies-reached-edge</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span> <span class="list">(<span class="body"><span class="keyword">:direction</span> state)</span></span>)</span></span>
+    <span class="list">(<span class="title">invert-enemies-direction</span><span class="body"> state)</span></span> state)</span></span>)</span></span></code></pre>
+<p>Now I&#39;ve done this, it should be fairly easy to update their y positions as part of that invert direction call.</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> invert-enemies-direction [state]
+  <span class="list">(<span class="title">assoc</span><span class="body"> state 
+         <span class="keyword">:direction</span> <span class="list">(<span class="title">*</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:direction</span> state)</span></span> <span class="number">-1</span>)</span></span>
+         <span class="keyword">:enemies</span> <span class="list">(<span class="title">map</span><span class="body"> 
+                    <span class="list">(<span class="title">fn</span><span class="body"> [enemy] <span class="list">(<span class="title">assoc</span><span class="body"> enemy <span class="keyword">:y</span> <span class="list">(<span class="title">+</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> enemy)</span></span> <span class="number">50</span>)</span></span>)</span></span>)</span></span>
+                      <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
+<p>Fairly sure there are some tricks I&#39;m missing here for making that sort of thing prettier, but it does the job pretty well and my invaders come to say hello. </p>
+<ul>
+<li>Associate this expression with the enemies field in the map</li>
+<li>The expression is a map of the current enemies field</li>
+<li>The map associates a modified &#39;y&#39; with each enemy</li>
+</ul>
+<p><strong>Ending conditions</strong></p>
+<p>Two basic conditions now present themselves for victory or defeat</p>
+<ul>
+<li>Enemies reach the bottom of the screen</li>
+<li>Enemies are all destroyed</li>
+</ul>
+<p>Taking the easiest approach here, I&#39;ll just perform a page re-direct on failure, and start the next level on success.</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> update-state [state]
+  <span class="list">(<span class="title">validate-end-conditions</span><span class="body">
+    <span class="list">(<span class="title">update-bullets</span><span class="body">
+      <span class="list">(<span class="title">update-player</span><span class="body">
+        <span class="list">(<span class="title">update-enemies</span><span class="body">
+          <span class="list">(<span class="title">update-direction</span><span class="body"> state)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
+<p>and</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> validate-end-conditions [state]
+  <span class="list">(<span class="title">cond</span><span class="body"> <span class="list">(<span class="title">enemies-are-all-dead</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>)</span></span> <span class="list">(<span class="title">start-next-level</span><span class="body">)</span></span>
+        <span class="list">(<span class="title">enemies-are-at-the-gate</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>)</span></span> <span class="list">(<span class="title">show-game-over</span><span class="body">)</span></span>
+        <span class="keyword">:else</span> state)</span></span>)</span></span></code></pre>
+<p>Now obviously <em>show-game-over</em> isn&#39;t going to actually return any state, but we&#39;ll be on a different page then so that&#39;s no big deal. <em>start-next-level</em> will have an opportunity to create completely new state for our next level so that works out nicely too.</p>
+<p><strong>Game over dude</strong></p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> enemies-are-at-the-gate [enemies]
+  <span class="list">(<span class="title">&gt;</span><span class="body"> <span class="list">(<span class="title">apply</span><span class="body"> max <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:y</span> enemies)</span></span>)</span></span> <span class="number">400</span>)</span></span>)</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> show-game-over []
+  <span class="list">(<span class="title">set</span><span class="body">! <span class="list">(<span class="body">. js/document -location)</span></span> <span class="string">"gameover.html"</span>)</span></span>)</span></span></code></pre>
+<p>This is another example of how delightfully terse Clojure can be at times :)</p>
+<p><strong>The enemies are dead, long live the enemies</strong></p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> enemies-are-all-dead [enemies]
+  <span class="list">(<span class="title">not</span><span class="body"> <span class="list">(<span class="title">first</span><span class="body"> enemies)</span></span>)</span></span>)</span></span></code></pre>
+<p>Apparently nil and false in Clojure are our only falsy values, so the above will work (first returns nil if the sequence is empty).</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> start-next-level []
+  <span class="list">(<span class="title">create-state</span><span class="body">)</span></span>)</span></span></code></pre>
+<p>For now, let&#39;s just go with a re-start of the whole thing when we&#39;ve killed all the enemies so everything starts from the beginning once more.</p>
+<p><strong>Difficulty levels</strong></p>
+<p>Now we have game over and next level, let&#39;s look at next level and what it means.</p>
+<p>Currently I have a few hard-coded values lying around</p>
+<ul>
+<li>How far do enemies drop down each pass</li>
+<li>How fast do enemies move from left to right?</li>
+<li>How frequently do our bullets fire?</li>
+<li>How fast are our bullets?</li>
+<li>How fast does our defender move?</li>
+</ul>
+<p>A lot of the time in my JS games, this is all modelled as state local to my entities and this is quite awkward. I can probably do better here.</p>
+<p>The only piece of state I need for any of this is &quot;current level&quot;, so I&#39;mma go ahead and stick that around</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> create-state [level]
+{ <span class="keyword">:direction</span> <span class="number">1</span>
+ <span class="keyword">:level</span> level
+ <span class="keyword">:enemies</span> <span class="list">(<span class="title">for</span><span class="body"> [x <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">480</span> <span class="number">60</span>)</span></span>
+                y <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">240</span> <span class="number">60</span>)</span></span>]
+            <span class="list">(<span class="title">create-rect</span><span class="body"> x y <span class="number">20</span> <span class="number">20</span>)</span></span>)</span></span>
+ <span class="keyword">:player</span> <span class="list">(<span class="title">create-rect</span><span class="body"> <span class="number">200</span> <span class="number">430</span> <span class="number">20</span> <span class="number">20</span>)</span></span>
+ <span class="keyword">:bullets</span> <span class="list">(<span class="body">)</span></span> 
+ <span class="keyword">:last-firing-ticks</span> <span class="number">0</span>})</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> start-next-level [state]
+  <span class="list">(<span class="title">create-state</span><span class="body"> <span class="list">(<span class="title">inc</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:level</span> state)</span></span>)</span></span>)</span></span>)</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> ^<span class="keyword">:export</span> init []
+  <span class="list">(<span class="title">hook-input-events</span><span class="body">)</span></span>
+  <span class="list">(<span class="title">let</span><span class="body"> [ctx <span class="list">(<span class="title">context</span><span class="body"> <span class="number">640</span> <span class="number">480</span>)</span></span>] 
+    <span class="list">(<span class="title">tick</span><span class="body"> ctx <span class="list">(<span class="title">create-state</span><span class="body"> <span class="number">1</span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
+<p>We&#39;ll start at level 1, and then when creating the new state for the new level, we&#39;ll pass in level+1.</p>
+<p>Now then, how to use this for firing rate?</p>
+<pre><code><span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> <span class="list">(<span class="title">rem</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:last-firing-ticks</span> state)</span></span> <span class="list">(<span class="title">firing-rate</span><span class="body"> state)</span></span>)</span></span> <span class="number">0</span>)</span></span></code></pre>
+<p>and enemy movement</p>
+<pre><code><span class="title">func</span> (if(= direction <span class="number">1</span>) <span class="comment">#(+ % (enemy-speed state)) #(- (enemy-speed state))</span></code></pre>
+<p>and bullet speed</p>
+<pre><code>(update-<span class="keyword">in</span> bullet [<span class="symbol">:y</span>] <span class="comment">#(- % (bullet-speed state))))))</span></code></pre>
+<p>and for the player movement?</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> update-player [state]
+  <span class="list">(<span class="title">let</span><span class="body"> [left <span class="list">(<span class="body">@key-states <span class="number">37</span>)</span></span>
+        right <span class="list">(<span class="body">@key-states <span class="number">39</span>)</span></span>]
+    <span class="list">(<span class="title">cond</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> left true)</span></span> <span class="list">(<span class="title">update-in</span><span class="body"> state [<span class="keyword">:player</span> <span class="keyword">:x</span>] #<span class="list">(<span class="title">-</span><span class="body"> % <span class="list">(<span class="title">player-speed</span><span class="body"> state)</span></span>)</span></span>)</span></span>
+          <span class="list">(<span class="title">=</span><span class="body"> right true)</span></span> <span class="list">(<span class="title">update-in</span><span class="body"> state [<span class="keyword">:player</span> <span class="keyword">:x</span>] #<span class="list">(<span class="title">+</span><span class="body"> % <span class="list">(<span class="title">player-speed</span><span class="body"> state)</span></span>)</span></span>)</span></span>
+          <span class="keyword">:else</span> state)</span></span>)</span></span>)</span></span></code></pre>
+<p>And the implementation (for now) </p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> firing-rate [state] <span class="list">(<span class="title">min</span><span class="body"> <span class="number">15</span> <span class="list">(<span class="title">-</span><span class="body"> <span class="number">30</span> <span class="list">(<span class="title">*</span><span class="body"> <span class="number">2</span> <span class="list">(<span class="body"><span class="keyword">:level</span> state)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>
+<span class="list">(<span class="title">defn</span><span class="body"> enemy-speed [state] <span class="list">(<span class="body"><span class="keyword">:level</span> state)</span></span>)</span></span>
+<span class="list">(<span class="title">defn</span><span class="body"> bullet-speed [state]<span class="list">(<span class="body"><span class="keyword">:level</span> state)</span></span>)</span></span>
+<span class="list">(<span class="title">defn</span><span class="body"> player-speed [state] <span class="list">(<span class="title">*</span><span class="body"> <span class="number">2</span> <span class="list">(<span class="body"><span class="keyword">:level</span> state)</span></span>)</span></span>)</span></span>
+<span class="list">(<span class="title">defn</span><span class="body"> enemy-descent-speed [state] <span class="number">25</span>)</span></span></code></pre>
+<p>This is quite tidy and gives me the ability to adjust these values easily when experimenting with the game. </p>
+<p>I&#39;m not so happy with passing the complete &#39;state&#39; into each of these methods, but pulling out the level at the point of invocation seems a greater evil in this case.</p>
+<p>Next up, I&#39;ll look at scoring as a side effect of enemy destruction, and re-visit how I manage the logic and state around that.</p>
+]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---functional-difficulty-levels.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---functional-difficulty-levels.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 09 Jul 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Working for free and what it taught me]]></title><description><![CDATA[<p>All the way back in November I <a href="/entries/i-am-not-looking-for-a-job.html">got fed up with the enterprise consulting lark</a> and because of that enterprise consulting lark I realised I had enough money to get by for a year without working quite easily.</p>
 <p>  <img src="/img/israel.jpg" width="300px" class="inline-right"></p>
 <p>Because I was so fed up, I decided I wanted to do something a bit different and because I like to meet new people and see new things, <a href="/entries/why-work-for-free.html">I offered up my time for free</a> providing my expenses were covered and I could therefore stretch a bit further.</p>
 <p>In that time I worked for a number of companies across the globe, heading as far east as Israel and heading as far west as Hawaii (primarily for the surfing), and had my plans not been altered by <a href="/entries/im-leaving-.net.html">finding a start-up I believe in</a> I would have probably ended up doing some work in Hong Kong and Australia too.</p>
@@ -735,218 +938,4 @@ Are we trying to fire?
 <p>At some point soon I&#39;ll start reading about these sequences, collections, maps etc and see how they&#39;re implemented - now I have some &quot;real&quot; examples of their usage.</p>
 <p><strong>The result</strong></p>
 <p><img src="/img/constant_flow.png"></p>
-]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---adding-items-to-a-sequence.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---adding-items-to-a-sequence.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 18 Jun 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Learn functional programming with me - keyboard input for our red square]]></title><description><![CDATA[<p>Now we have some enemies, let&#39;s add our player and see how we might achieve the handling of keyboard events to move him.</p>
-<ul>
-<li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Mission statement</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---moving-the-square.html">Moving the square</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---attributes-and-vectors.html">Attributes and vectors</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---improving-my-workflow.html">Improving my workflow</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---adding-lots-more-state.html">Creating lots of state</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---mutating-lots-of-state.html">Mutating lots of state</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---improving-our-data-structure-with-maps.html">Improving our data structure with maps</a></li>
-</ul>
-<p>Well, first off let&#39;s create the player</p>
-<pre><code> <span class="symbol">:player</span> (initPlayer <span class="number">0</span> <span class="number">430</span> <span class="number">20</span> <span class="number">20</span>)</code></pre>
-<p>Where</p>
-<pre><code><span class="list">(<span class="title"><span class="built_in">defn</span></span> initPlayer <span class="collection">[x y w h]</span>
- <span class="collection">{
-  <span class="attribute">:x</span> x
-  <span class="attribute">:y</span> y
-  <span class="attribute">:w</span> w
-  <span class="attribute">:h</span> h
- }</span>
-)</span></code></pre>
-<p>There are some similarities here between the player and the enemy, and perhaps I&#39;ll address that when I&#39;m a position to tell how.</p>
-<p>Now, I&#39;ll want to render that player, and I&#39;m actually going to take the bold step of pulling out a render function so my main loop now looks like this:</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> tick [ctx state]
-  <span class="list">(<span class="title">clearScreen</span><span class="body"> ctx)</span></span> 
-  <span class="list">(<span class="title">renderScene</span><span class="body"> ctx state)</span></span>
-  <span class="list">(<span class="title">js/setTimeout</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> []
-    <span class="list">(<span class="title">tick</span><span class="body"> ctx <span class="list">(<span class="title">doLogic</span><span class="body"> state)</span></span>)</span></span>
-  )</span></span> <span class="number">33</span>  )</span></span>
-)</span></span></code></pre>
-<p>Just keeping things tidy!</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> renderScene [ctx state]
-  <span class="list">(<span class="title">enemiesRender</span><span class="body"> ctx state)</span></span>
-)</span></span>
-
-<span class="list">(<span class="title">defn</span><span class="body"> enemiesRender [ctx state]
-  <span class="list">(<span class="title">let</span><span class="body"> [enemies <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>]
-    <span class="list">(<span class="title">doseq</span><span class="body"> [enemy enemies] 
-      <span class="list">(<span class="title">let</span><span class="body"> [{<span class="keyword">:keys</span> [x y w h]} enemy]
-        <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx x y w h)</span></span>
-      )</span></span>
-    )</span></span>
-  )</span></span>
-)</span></span></code></pre>
-<p>Right, so now I have a player, I may as well render it</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> renderScene [ctx state]
-  <span class="list">(<span class="title">enemiesRender</span><span class="body"> ctx state)</span></span>
-  <span class="list">(<span class="title">playerRender</span><span class="body"> ctx state)</span></span>
-)</span></span>
-
-<span class="list">(<span class="title">defn</span><span class="body"> playerRender [ctx state]
-  <span class="list">(<span class="title">let</span><span class="body"> [player <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>]
-    <span class="list">(<span class="title">let</span><span class="body"> [{<span class="keyword">:keys</span> [x y w h]} player]
-      <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx x y w h)</span></span>
-    )</span></span>
-  )</span></span>
-)</span></span></code></pre>
-<p>And I&#39;ll need to copy it across to the new state each iteration</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> doLogic [state]
-  {
-    <span class="keyword">:direction</span> <span class="list">(<span class="title">directionLogic</span><span class="body"> state)</span></span>
-    <span class="keyword">:enemies</span> <span class="list">(<span class="title">enemiesLogic</span><span class="body"> state)</span></span>
-    <span class="keyword">:player</span> <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>
-  }
-)</span></span></code></pre>
-<p>Nothing new here, this&#39;ll just give me an additional yellow square on my canvas...</p>
-<p><img src="/img/player_added.png" alt="An additional yellow square on a canvas" title="The player has been added"></p>
-<p><strong>Handling those input events</strong></p>
-<p>Now I want to move it though, and this is where things are going to get fun, from what I can <em>imagine</em> off the top of my head (I&#39;m currently sat on a plane at 35,000ft with no internet so I can&#39;t look anything up), my options are:</p>
-<ul>
-<li>Attempt to mutate player state directly as input events happen</li>
-<li>Keep some mutable state around to indicate whether certain keys are currently down, and apply these modifiers as part of logic</li>
-</ul>
-<p>I think I&#39;m going to opt for the second one and see how that plays out. It kinda makes sense to me in ignorant-land that isolating areas of mutable state from my (currently quite) clean program will be helpful.</p>
-<p>This is pretty much what the structure will look like:</p>
-<pre><code><span class="function"><span class="title">tick</span> <span class="params">(state)</span> =&gt;
-  <span class="title">inputs</span> = <span class="title">getCurrentInputs</span><span class="params">()</span>
-  <span class="title">tick</span> <span class="title">applyLogic</span><span class="params">(state, inputs)</span></code></pre>
-<p>I don&#39;t have to care that behind that getCurrentInputs is some horrible interop with the browser and piles of mutability, and if I work out how to do it better later it should limit the area of change needing to be applied.</p>
-<p>I can hook the events using the standard js interop, which looks like this</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> hookInputEvents []
-  <span class="list">(<span class="body">.addEventListener js/document <span class="string">"keydown"</span> 
-   <span class="list">(<span class="title">fn</span><span class="body"> [e]
-    <span class="list">(<span class="title">setKeyState</span><span class="body"> e.KeyCode true)</span></span>
-   )</span></span>
-  )</span></span>
-  <span class="list">(<span class="body">.addEventListener js/document <span class="string">"keyup"</span> 
-   <span class="list">(<span class="title">fn</span><span class="body"> [e]
-
-   )</span></span>
-  )</span></span>
-)</span></span></code></pre>
-<p>Okay, so what now? I need to get this information to the game somehow, and actually - the information I want is &quot;Is the key currently down&quot;, which is state I need to build up off those events.</p>
-<p><strong>Up and Atom</strong></p>
-<p>So I had to a bit of trawling to get this right, there is a notion of an &quot;atom&quot;, in Clojure which is effectively a mutable object with some synchronisation over the top of it.</p>
-<p>I&#39;ve tried to avoid having any of this trickery yet, but this is somewhere I think going to need it.</p>
-<p>So, an atom - I&#39;m putting this into my &#39;global&#39; scope (actually, it&#39;s namespaced into (ns game))</p>
-<p><em>Define some state called keyStates, assign to it an atom (initial value is an empty map)</em></p>
-<pre><code>(<span class="function"><span class="keyword">def</span> <span class="title">keyStates</span> <span class="params">(atom {})</span>)</code></pre>
-<p>Now, if I want to access the value of keyStates, I can de-rererence it thusly</p>
-<p><em>De-reference an atom</em></p>
-<pre><code><span class="variable">@keystates</span></code></pre>
-<p>I also wanted to know how to &quot;modify a single value of a map&quot;, for reasons that are about to become clear, the way to do this is</p>
-<p><em>Create a new map, with a single property changed</em></p>
-<pre><code><span class="list">(<span class="title">assoc</span><span class="body"> myMap <span class="keyword">:name</span> newValue)</span></span></code></pre>
-<p> This function returns a new map which is the same as the old one, but with that value changed (Hey, this is quite useful!)</p>
-<p>The final piece of my jigsaw is the ability to change the value of this mutable atom, to do this I can use &#39;swap&#39;</p>
-<pre><code><span class="list">(<span class="title">swap</span><span class="body">! myAtom <span class="list">(<span class="title">fn</span><span class="body"> [oldValue] newValue)</span></span>)</span></span></code></pre>
-<p> So how about that setKeyState function?</p>
-<p><em>Set the new keyStates to be the same as the old keyStates, but with a new value for the current keycode</em></p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> setKeyState [code, value]
-  <span class="list">(<span class="title">swap</span><span class="body">! keyStates assoc code value)</span></span>
-)</span></span></code></pre>
-<p>Swap will call assoc, passing in the old state and the other args specified (hey, this is quite functional!)</p>
-<p>Now I have a global state for my current input, which means I can ask questions of it and apply those answers to my state.</p>
-<p><strong>Applying input to my square</strong></p>
-<p>Well, I&#39;ll make a function whose job it is to take in the old state and return the new state and that seems to be working well for me so far.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> playerLogic [state]
-
-)</span></span>
-
-<span class="list">(<span class="title">defn</span><span class="body"> doLogic [state]
-  {
-    <span class="keyword">:direction</span> <span class="list">(<span class="title">directionLogic</span><span class="body"> state)</span></span>
-    <span class="keyword">:enemies</span> <span class="list">(<span class="title">enemiesLogic</span><span class="body"> state)</span></span>
-    <span class="keyword">:player</span> <span class="list">(<span class="title">playerLogic</span><span class="body"> state)</span></span>
-  }
-)</span></span></code></pre>
-<p>And in this, I&#39;ll work out from the input what to do to my state</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> playerLogic [state]
-  <span class="list">(<span class="title">let</span><span class="body"> [player <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>  
-        left <span class="list">(<span class="body">@keyStates <span class="number">37</span>)</span></span>
-        right <span class="list">(<span class="body">@keyStates <span class="number">39</span>)</span></span>
-       ]
-    <span class="list">(<span class="title">cond</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> left true)</span></span> <span class="list">(<span class="title">assoc</span><span class="body"> player <span class="keyword">:x</span> <span class="list">(<span class="title">dec</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> player)</span></span>)</span></span>)</span></span>
-          <span class="list">(<span class="title">=</span><span class="body"> right true)</span></span> <span class="list">(<span class="title">assoc</span><span class="body"> player <span class="keyword">:x</span> <span class="list">(<span class="title">inc</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> player)</span></span>)</span></span>)</span></span>
-          <span class="keyword">:else</span> player
-    )</span></span>
-  )</span></span>
-)</span></span></code></pre>
-<p> There is a whole lot to take where, but it boils down to</p>
-<ul>
-<li>Extract player from the state</li>
-<li>Extract &#39;left&#39; from the de-referenced keyStates (37)</li>
-<li>Extract &#39;right&#39; from the de-referenced keyStates (39)</li>
-<li>Decide what new state to return based on this value</li>
-</ul>
-<p>Let&#39;s look at that last bit closer:</p>
-<pre><code><span class="list">(<span class="title">cond</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> left true)</span></span> <span class="list">(<span class="title">assoc</span><span class="body"> player <span class="keyword">:x</span> <span class="list">(<span class="title">dec</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> player)</span></span>)</span></span>)</span></span>
-      <span class="list">(<span class="title">=</span><span class="body"> right true)</span></span> <span class="list">(<span class="title">assoc</span><span class="body"> player <span class="keyword">:x</span> <span class="list">(<span class="title">inc</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> player)</span></span>)</span></span>)</span></span>
-      <span class="keyword">:else</span> player</code></pre>
-<p> This is kinda equivalent to</p>
-<pre><code><span class="function"><span class="title">if</span><span class="params">(left)</span> { }
-<span class="title">else</span> <span class="title">if</span><span class="params">(right)</span> {}
-<span class="title">else</span> {}</code></pre>
-<p>The expressions on the RHS will be evaluated and returned if the LHS is true.</p>
-<p>We&#39;ve already looked at assoc, we recognise dec/inc and basically all I&#39;m doing is saying, &#39;return a new player with x changed, here is the new value of x, it&#39;s a modification of the current x&#39;</p>
-<p>I bet there is a tidier way of doing this actually, maybe a built-in but I came up with</p>
-<p><em>Please apply the specified function to the specified key in this map and return the result</em></p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> applyMod [m k func]
-  <span class="list">(<span class="title">assoc</span><span class="body"> m k <span class="list">(<span class="title">func</span><span class="body"> <span class="list">(<span class="title">m</span><span class="body"> k)</span></span>)</span></span>)</span></span>
-)</span></span></code></pre>
-<p><em>And in usage:</em></p>
-<pre><code><span class="list">(<span class="title">cond</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> left true)</span></span> <span class="list">(<span class="title">applyMod</span><span class="body"> player <span class="keyword">:x</span> dec)</span></span>
-      <span class="list">(<span class="title">=</span><span class="body"> right true)</span></span> <span class="list">(<span class="title">applyMod</span><span class="body"> player <span class="keyword">:x</span> inc)</span></span>
-      <span class="keyword">:else</span> player</code></pre>
-<p><strong>Paint our player Red</strong></p>
-<p>I said red square, and so far it&#39;s yellow, let&#39;s fix this problem.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> drawSquare [[ctx width height] x y w h c]
-  <span class="list">(<span class="title">set</span><span class="body">! <span class="list">(<span class="body">. ctx -fillStyle)</span></span> c)</span></span>
-  <span class="list">(<span class="body">.fillRect ctx x y w h)</span></span> 
-)</span></span>
-
-<span class="list">(<span class="title">defn</span><span class="body"> enemiesRender [ctx state]
-  <span class="list">(<span class="title">let</span><span class="body"> [enemies <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>]
-    <span class="list">(<span class="title">doseq</span><span class="body"> [enemy enemies] 
-      <span class="list">(<span class="title">let</span><span class="body"> [{<span class="keyword">:keys</span> [x y w h]} enemy]
-        <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx x y w h <span class="string">"#FF0"</span>)</span></span>
-      )</span></span>
-    )</span></span>
-  )</span></span>
-)</span></span>
-
-<span class="list">(<span class="title">defn</span><span class="body"> playerRender [ctx state]
-  <span class="list">(<span class="title">let</span><span class="body"> [player <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>]
-    <span class="list">(<span class="title">let</span><span class="body"> [{<span class="keyword">:keys</span> [x y w h]} player]
-      <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx x y w h <span class="string">"#F00"</span>)</span></span>
-    )</span></span>
-  )</span></span>
-)</span></span></code></pre>
-<p>The drawing square function and repetition across my two types of entity still bugs me, but I figure I&#39;ll yet manage to tidy this up.</p>
-<p><strong>The result</strong></p>
-<p>See, it&#39;s <em>almost</em> Space Invaders already.</p>
-<p><img src="/img/red_player.png" alt="Yellow invaders, red player" title="Red player"></p>
-]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---keyboard-input-for-our-red-square.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---keyboard-input-for-our-red-square.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 13 Jun 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Stand-ups are a crutch]]></title><description><![CDATA[<p><em>PUB RANT TIME</em></p>
-<p>You know the feeling, you&#39;re hacking away on some feature on the to-do list, having a conversation about it with the team in the team-chat of your preference and perhaps you&#39;re dancing to some of your favourite music whilst you flick between the two. You are in the zone.</p>
-<h1>Hey, <em>everyone</em>, stand-up time</h1>
-<p>Boom, just like that you&#39;re back to reality and detaching yourself from your game zone. You&#39;re breaking up that conversation, you&#39;re turning off the music and worst of all you&#39;re leaving your <em>flow</em> so you can all talk about what everybody knows already because they&#39;ve been talking about it the whole time they&#39;ve been working.</p>
-<h3>At one end of the spectrum</h3>
-<p>Stand-ups in already-effective teams are at best a way to force some meat-space interaction between team members, and at worst a harmful distraction costing you hours of combined productivity in return for very little that couldn&#39;t have been achieved in the course of conversation over a beer at lunch.</p>
-<p>In a good team, folk will have been pairing and watching the pull requests come in - people who aren&#39;t doing anything will tell you they aren&#39;t doing anything. People who are stuck will tell you that they&#39;re stuck. If someone isn&#39;t doing these things other developers will call them out on it because it&#39;s pretty obvious that nothing has come from their corner for a while. </p>
-<p>In short an effective team doesn&#39;t need this crap because they&#39;re already <em>doing</em> what they should be doing - getting work done and sharing information about the work they&#39;re doing.</p>
-<h3>At the other end of the spectrum</h3>
-<p>In teams that aren&#39;t being effective, stand-ups are often used as a way to force some mumblings out of developers towards what they&#39;ve done and what they&#39;re doing today - and usually that&#39;s pretty much all you&#39;ll get out of them because they sure as hell don&#39;t want to admit they&#39;ve just been pushing code around this week.</p>
-<p>Once they&#39;re back in their seats, they&#39;ll still not talk, they&#39;ll still not interact because hey, they had a stand-up and can get back to pushing meaningless code around.</p>
-<p>Worst of all with daily stand-ups, crap teams with crap people on them won&#39;t even do any work before that organised daily stand-up because hey - the stand-up is coming and they don&#39;t want to be interrupted right? But you can&#39;t start the stand-up until everyone is there so everybody ends up starting work at 10am - <em>golf clap</em>.</p>
-<h2>Don&#39;t work at the wrong end of the spectrum</h2>
-<p>Fine, you&#39;re in a crap team - go and make it a not-crap team. I&#39;m not here to tell you how to do that, plenty of team management gurus are out there charging their thousands of dollars in order to give you a penny of their thoughts. I can tell you from experience that stand-ups won&#39;t fix your communication problems because in my experience they&#39;ll just get used as an excuse <em>not to communicate the rest of the time</em>.</p>
-<p>Or accept you&#39;re in a crap environment and carry on doing whatever. This blog post is not for you.</p>
-<h2>If you are the better end of the spectrum you don&#39;t need that stand-up</h2>
-<p>I&#39;ve given up working for people who work at the wrong end of the spectrum, I&#39;m not working for crappy enterprise companies that have all of their other bullshit problems as well - I&#39;m hopefully never doing it again. My flitting about and <a href="/entries/i-am-not-looking-for-a-job.html">working for free</a> shone the light on the harm that was causing me.</p>
-<p>Hopefully you&#39;ve made that call too at some point - well done you beat me to it, now think about why you&#39;re still having those stand-ups and who they&#39;re for. Are they for you and the team or are they for somebody else and is there another way you can get them that information?</p>
-<p>In the modern age of distributed and online team-work, purposefully stopping what everybody is doing so they can stand in some sort of daily ritual circle is just plain bizarre.</p>
-]]></description><link>http://codeofrob.com/entries/stand-ups-are-a-crutch.html</link><guid isPermaLink="true">http://codeofrob.com/entries/stand-ups-are-a-crutch.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 12 Jun 2013 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---adding-items-to-a-sequence.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---adding-items-to-a-sequence.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 18 Jun 2013 09:30:00 GMT</pubDate></item></channel></rss>
