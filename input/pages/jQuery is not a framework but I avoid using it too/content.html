@@ -1,0 +1,71 @@
+<p>The very first thing I usually want to do with a project, is to do something with the dom.</p>
+<ul>
+<li><a href="/entries/look-ma,-no-frameworks.html">Look ma, no frameworks</a></li>
+<li><a href="/entries/grunt+browserify+npm+application=success.html">Grunt+browserify+npm+application=success</a></li>
+</ul>
+<p><em>What is jQuery?</em></p>
+<p>jQuery isn&#39;t a framework, it doesn&#39;t take over your entry point, doesn&#39;t force any sort of structure on you and doesn&#39;t have any of the other smells associated with frameworks in general; it is a general purpose glue library.</p>
+<p>Most people will by default pull it down and start using it on their page without giving it a second thought, most people shove the majority their code into the jQuery &quot;Dom ready&quot; callback, use the selectors to find their elements and start doing things without worrying about what is going on under the hood.</p>
+<p>That&#39;s cool, and it&#39;s a potentially easy way to success but it is not the only way.</p>
+<p><em>jQuery - it&#39;s not you, it&#39;s me</em></p>
+<p>It&#39;s not that I don&#39;t like jQuery, it solved many problems back in the day before JS was cool, and probably contributed in part to the rise of JS as the weapon of choice for most dev work.</p>
+<p>It&#39;s just, it solves <em>many</em> problems and has gotten quite confused over the years, <a href="http://api.jquery.com/category/events/event-handler-attachment/">look at how many ways we&#39;ve ended up with to listen to events</a> for example. </p>
+<p>A lot of these complaints are being dealt with as the project moves forward slowly but that&#39;s half of my conflict with it. The size and scope of the project and the number of people using it means that any change or improvement has to come gradually. The speed at which with small libraries I can either fork/patch/modify is pretty cool.</p>
+<p><em>Every line of code should be justified</em></p>
+<p>When you pull in a large library like jQuery, you&#39;re pulling in hundreds of methods to do <em>stuff</em>, and for me personally that&#39;s a bad way of working. In my perfect world, every method should have a reason to exist in my application.</p>
+<p>In short, jQuery is a 100kb swiss army knife and it&#39;s not my personal preference to work with such tools.</p>
+<p><em>A tangible example</em></p>
+<p>Okay, so first things first - how do I wait for the dom to be ready so I can do stuff with it?</p>
+<pre><code><span class="tag">&lt;<span class="title">html</span>&gt;</span>
+  <span class="tag">&lt;<span class="title">body</span>&gt;</span>
+    <span class="tag">&lt;<span class="title">div</span> <span class="attribute">id</span>=<span class="value">"content"</span>&gt;</span><span class="tag">&lt;/<span class="title">div</span>&gt;</span>
+    <span class="tag">&lt;<span class="title">script</span> <span class="attribute">src</span>=<span class="value">"type="</span><span class="attribute">text</span>/<span class="attribute">javascript</span>"&gt;</span><span class="javascript">
+      <span class="comment">// Do stuff with "content"</span>
+    </span><span class="tag">&lt;/<span class="title">script</span>&gt;</span>
+  <span class="tag">&lt;/<span class="title">body</span>&gt;</span></code></pre>
+<p><em>Trololol</em>, actually, you could read/write about this subject until the cows come home and enough people have, but I just wanted to make the point that sometimes you don&#39;t have to write any code and thinking about stuff before doing:</p>
+<pre><code><span class="variable">$(</span>function() {
+  <span class="regexp">//</span> <span class="constant">My</span> <span class="constant">Application</span>
+})</code></pre>
+<p>might hold some benefits.</p>
+<h1>Avoiding jQuery</h1>
+<p>Anyway, waiting for the DOM to be ready is still <a href="http://stackoverflow.com/questions/6902280/cross-browser-dom-ready">potentially complicated </a> and managing this stuff ourselves doesn&#39;t seem very worthwhile.</p>
+<h1>NPM to the rescue</h1>
+<pre><code class="lang-bash">npm install domready --save-dev
+vim client/app.js</code></pre>
+<pre><code class="lang-javascript"><span class="keyword">var</span> domready = require(<span class="string">'domready'</span>)
+
+domready(<span class="keyword">function</span>() {
+  <span class="comment">// Application code goes here</span>
+})</code></pre>
+<p>What happened here, is I decided for the entry point to my application I needed a cross browser dom ready function, so I pulled one down from NPM and used it.</p>
+<p>This is the preferred mode of working in this frameworkless environment.</p>
+<ul>
+<li>Start writing a feature</li>
+<li>Realise we need code that isn&#39;t directly related to that feature</li>
+<li>Find a library that does that specific thing</li>
+<li>Install it</li>
+<li>Carry on</li>
+</ul>
+<h1>It&#39;s not re-inventing the wheel</h1>
+<p>In the last blog entry, I was accused of <a href="/entries/look-ma,-no-frameworks.html">&quot;re-inventing the wheel&quot;</a>. This is as about as far from the truth as it could be - the best thing we can ever do when writing a feature, is to avoid writing code.</p>
+<p>However, building our feature on top of something that doesn&#39;t directly solve a problem we&#39;re facing is where the conflict lies. By limiting ourselves to single shot libraries such as domReady we should be able to avoid a lot of the disconnect we face when pulling in larger libraries or frameworks.</p>
+<h1>Discovering these small libraries in the first place</h1>
+<p><em>First, try searching on <a href="https://search.npmjs.org/">npmjs.org</a></em></p>
+<p>If we have a specific keyword to look for, this is usually good enough.  Searching for <em>domready</em> on this page will give us a collection of libraries to choose from.</p>
+<p><em>Next, try <a href="http://google.com">google.com</a></em></p>
+<p>Google is great at fuzzy searches - and generally if you include &quot;NPM&quot; in the search we&#39;ll get better results than using the NPM search itself if we&#39;re not too sure what we&#39;re looking for.</p>
+<h1>Choosing the library</h1>
+<p>There are a dozen domready libraries (and for most simple problems this is the case) - this is <em>great</em>, we just need to be able to pick which one to use. I like to ask the following questions</p>
+<ul>
+<li>How many libraries are using this one? (More is mostly better)</li>
+<li>How many libraries does it consume? (Less is mostly better)</li>
+<li>Does the documentation fit in a single README?</li>
+<li>Is there a link to Github?</li>
+<li>How many people watch  the project on Github?</li>
+<li>Is there a lot of code churn? (I don&#39;t want to see a lot of activity on the Github repo)</li>
+<li>Are there many outstanding issues?</li>
+</ul>
+<p>This might seem like a lot of work, but making that third party code justify itself in this way means that it&#39;ll be right for the project and not just some ad-hoc file in a directory somewhere.</p>
+<h1>Next steps</h1>
+<p>Next up, we&#39;ll have a look at some of the patterns I use when building a dom-intensive JS application.</p>

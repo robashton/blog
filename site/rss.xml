@@ -1,5 +1,221 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Sat, 13 Jul 2013 13:47:12 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Learn functional programming with me - but rob, it needs to be more composable]]></title><description><![CDATA[<p>As I write my Clojure and the related blog posts, I&#39;ve been having them reviewed by <a href="http://twitter/bodil">@bodil</a> who is a proper functional programming neckbeard emacs type.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Tue, 23 Jul 2013 12:48:17 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[jQuery is not a framework but I avoid using it too]]></title><description><![CDATA[<p>The very first thing I usually want to do with a project, is to do something with the dom.</p>
+<ul>
+<li><a href="/entries/look-ma,-no-frameworks.html">Look ma, no frameworks</a></li>
+<li><a href="/entries/grunt+browserify+npm+application=success.html">Grunt+browserify+npm+application=success</a></li>
+</ul>
+<p><em>What is jQuery?</em></p>
+<p>jQuery isn&#39;t a framework, it doesn&#39;t take over your entry point, doesn&#39;t force any sort of structure on you and doesn&#39;t have any of the other smells associated with frameworks in general; it is a general purpose glue library.</p>
+<p>Most people will by default pull it down and start using it on their page without giving it a second thought, most people shove the majority their code into the jQuery &quot;Dom ready&quot; callback, use the selectors to find their elements and start doing things without worrying about what is going on under the hood.</p>
+<p>That&#39;s cool, and it&#39;s a potentially easy way to success but it is not the only way.</p>
+<p><em>jQuery - it&#39;s not you, it&#39;s me</em></p>
+<p>It&#39;s not that I don&#39;t like jQuery, it solved many problems back in the day before JS was cool, and probably contributed in part to the rise of JS as the weapon of choice for most dev work.</p>
+<p>It&#39;s just, it solves <em>many</em> problems and has gotten quite confused over the years, <a href="http://api.jquery.com/category/events/event-handler-attachment/">look at how many ways we&#39;ve ended up with to listen to events</a> for example. </p>
+<p>A lot of these complaints are being dealt with as the project moves forward slowly but that&#39;s half of my conflict with it. The size and scope of the project and the number of people using it means that any change or improvement has to come gradually. The speed at which with small libraries I can either fork/patch/modify is pretty cool.</p>
+<p><em>Every line of code should be justified</em></p>
+<p>When you pull in a large library like jQuery, you&#39;re pulling in hundreds of methods to do <em>stuff</em>, and for me personally that&#39;s a bad way of working. In my perfect world, every method should have a reason to exist in my application.</p>
+<p>In short, jQuery is a 100kb swiss army knife and it&#39;s not my personal preference to work with such tools.</p>
+<p><em>A tangible example</em></p>
+<p>Okay, so first things first - how do I wait for the dom to be ready so I can do stuff with it?</p>
+<pre><code><span class="tag">&lt;<span class="title">html</span>&gt;</span>
+  <span class="tag">&lt;<span class="title">body</span>&gt;</span>
+    <span class="tag">&lt;<span class="title">div</span> <span class="attribute">id</span>=<span class="value">"content"</span>&gt;</span><span class="tag">&lt;/<span class="title">div</span>&gt;</span>
+    <span class="tag">&lt;<span class="title">script</span> <span class="attribute">src</span>=<span class="value">"type="</span><span class="attribute">text</span>/<span class="attribute">javascript</span>"&gt;</span><span class="javascript">
+      <span class="comment">// Do stuff with "content"</span>
+    </span><span class="tag">&lt;/<span class="title">script</span>&gt;</span>
+  <span class="tag">&lt;/<span class="title">body</span>&gt;</span></code></pre>
+<p><em>Trololol</em>, actually, you could read/write about this subject until the cows come home and enough people have, but I just wanted to make the point that sometimes you don&#39;t have to write any code and thinking about stuff before doing:</p>
+<pre><code><span class="variable">$(</span>function() {
+  <span class="regexp">//</span> <span class="constant">My</span> <span class="constant">Application</span>
+})</code></pre>
+<p>might hold some benefits.</p>
+<h1>Avoiding jQuery</h1>
+<p>Anyway, waiting for the DOM to be ready is still <a href="http://stackoverflow.com/questions/6902280/cross-browser-dom-ready">potentially complicated </a> and managing this stuff ourselves doesn&#39;t seem very worthwhile.</p>
+<h1>NPM to the rescue</h1>
+<pre><code class="lang-bash">npm install domready --save-dev
+vim client/app.js</code></pre>
+<pre><code class="lang-javascript"><span class="keyword">var</span> domready = require(<span class="string">'domready'</span>)
+
+domready(<span class="keyword">function</span>() {
+  <span class="comment">// Application code goes here</span>
+})</code></pre>
+<p>What happened here, is I decided for the entry point to my application I needed a cross browser dom ready function, so I pulled one down from NPM and used it.</p>
+<p>This is the preferred mode of working in this frameworkless environment.</p>
+<ul>
+<li>Start writing a feature</li>
+<li>Realise we need code that isn&#39;t directly related to that feature</li>
+<li>Find a library that does that specific thing</li>
+<li>Install it</li>
+<li>Carry on</li>
+</ul>
+<h1>It&#39;s not re-inventing the wheel</h1>
+<p>In the last blog entry, I was accused of <a href="/entries/look-ma,-no-frameworks.html">&quot;re-inventing the wheel&quot;</a>. This is as about as far from the truth as it could be - the best thing we can ever do when writing a feature, is to avoid writing code.</p>
+<p>However, building our feature on top of something that doesn&#39;t directly solve a problem we&#39;re facing is where the conflict lies. By limiting ourselves to single shot libraries such as domReady we should be able to avoid a lot of the disconnect we face when pulling in larger libraries or frameworks.</p>
+<h1>Discovering these small libraries in the first place</h1>
+<p><em>First, try searching on <a href="https://search.npmjs.org/">npmjs.org</a></em></p>
+<p>If we have a specific keyword to look for, this is usually good enough.  Searching for <em>domready</em> on this page will give us a collection of libraries to choose from.</p>
+<p><em>Next, try <a href="http://google.com">google.com</a></em></p>
+<p>Google is great at fuzzy searches - and generally if you include &quot;NPM&quot; in the search we&#39;ll get better results than using the NPM search itself if we&#39;re not too sure what we&#39;re looking for.</p>
+<h1>Choosing the library</h1>
+<p>There are a dozen domready libraries (and for most simple problems this is the case) - this is <em>great</em>, we just need to be able to pick which one to use. I like to ask the following questions</p>
+<ul>
+<li>How many libraries are using this one? (More is mostly better)</li>
+<li>How many libraries does it consume? (Less is mostly better)</li>
+<li>Does the documentation fit in a single README?</li>
+<li>Is there a link to Github?</li>
+<li>How many people watch  the project on Github?</li>
+<li>Is there a lot of code churn? (I don&#39;t want to see a lot of activity on the Github repo)</li>
+<li>Are there many outstanding issues?</li>
+</ul>
+<p>This might seem like a lot of work, but making that third party code justify itself in this way means that it&#39;ll be right for the project and not just some ad-hoc file in a directory somewhere.</p>
+<h1>Next steps</h1>
+<p>Next up, we&#39;ll have a look at some of the patterns I use when building a dom-intensive JS application.</p>
+]]></description><link>http://codeofrob.com/entries/jquery-is-not-a-framework-but-i-avoid-using-it-too.html</link><guid isPermaLink="true">http://codeofrob.com/entries/jquery-is-not-a-framework-but-i-avoid-using-it-too.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 23 Jul 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Grunt+browserify+npm+application=success]]></title><description><![CDATA[<p>Previous entries in this series:</p>
+<ul>
+<li><a href="/entries/look-ma,-no-frameworks.html">Look ma, no frameworks</a></li>
+</ul>
+<p>How do I start a project if I have no framework? What are the first things I do and how do I organise it? Let&#39;s have a look shall we?</p>
+<h1>Create the repo</h1>
+<p>I use git, no brainer.</p>
+<pre><code class="lang-bash">git init
+touch README.md
+git add README.md 
+git commit -m <span class="string">"Readme"</span>
+git remote add origin githubetc
+git push -u origin master</code></pre>
+<h1>Create a manifest</h1>
+<p>I use npm to manage my dependencies, makes sense</p>
+<pre><code class="lang-bash">npm init
+git add package.json 
+git commit -m <span class="string">"package.json"</span></code></pre>
+<h1>Install grunt</h1>
+<p>I use grunt to run my various build/test/deploy scripts, I could just use all the tools I use stand-alone but having a single build system with tasks is documentation we then haven&#39;t got to write. It&#39;s no fun if new joiners have to install and run crap.
+Grunt comes in two parts. the package itself (&quot;grunt&quot;) and the command line package for running it (&quot;grunt-cli&quot;)</p>
+<pre><code class="lang-bash">npm install grunt --save-dev
+npm install -g grunt-cli</code></pre>
+<p>Client/script/dev dependencies I usually stick in as dev dependencies ala above, we build and then we deploy the compiled assets so we don&#39;t need them in production.</p>
+<p>What I often do is put global dependencies like this as a pre-install script for the package.json so people haven&#39;t got to remember to install them (note, not in OSS stuff as that might annoy folk):</p>
+<pre><code class="lang-bash">vim package.json
+`</code></pre>
+<pre><code class="lang-json">{
+  &quot;name&quot;: &quot;awesome-app&quot;,
+  &quot;version&quot;: &quot;etc&quot;,
+  &quot;scripts&quot;: {
+    &quot;preinstall&quot;: &quot;npm install -g grunt-cli&quot;
+  },
+  &quot;etc&quot;
+}</code></pre>
+<p>Grunt needs a Gruntfile, this looks like this:</p>
+<pre><code class="lang-bash">vim Gruntfile.js</code></pre>
+<pre><code class="lang-javascript">module.exports = <span class="keyword">function</span>(grunt) {
+  grunt.initConfig({
+    pkg: grunt.file.readJSON(<span class="string">'package.json'</span>)
+  })
+}</code></pre>
+<pre><code class="lang-bash">git add Gruntfile.js 
+git commit -am <span class="string">"Grunt setup"</span></code></pre>
+<h1>Create the app</h1>
+<p>I&#39;ll usually have a folder called &quot;client&quot;, which contains all the HTMl/CSS/JS in it. The build script will take these assets and build them into a &quot;public&quot; directory which is empty by default. I say HTML/CSS, but I actually mean Jade/Stylus.</p>
+<p>I&#39;m not going to write about the server code for any of this, because I don&#39;t care if we&#39;re using ASP.NET/Ruby/Node - this is a client application and the server is irrelevant.</p>
+<p>What matters is that somehow these jade/stylus files can be rendered by the server or pre-built somehow.</p>
+<p>Then </p>
+<pre><code class="lang-bash">touch client/index.jade
+touch client/theme.styl
+touch client/app.js</code></pre>
+<p>I don&#39;t bother with elaborate folder hierarchies to begin with, lumping everything in a single folder to begin with makes perfect sense and when/if it gets too big it&#39;ll probably be split up by feature rather than by whether it&#39;s CSS or not.</p>
+<h1>Build script for my app.js</h1>
+<p>app.js is the entry point to my client application, it&#39;ll be imported in my HTML like so</p>
+<pre><code class="lang-xml"><span class="tag">&lt;<span class="title">script</span> <span class="attribute">type</span>=<span class="value">"text/javascript"</span> <span class="attribute">src</span>=<span class="value">"/app.js"</span>&gt;</span><span class="javascript"></span><span class="tag">&lt;/<span class="title">script</span>&gt;</span></code></pre>
+<p>I don&#39;t bother with <a href="/entries/why-i-stopped-using-amd.html">any of that AMD stuff</a> for the obvious reasons, but obviously I&#39;m not going to have everythingin the same file. I like to use Browserify cos that&#39;s kinda neat and encourages us to push code into modules and install them via npm.</p>
+<p>Now, we can get our web server to do this stuff on request, but I like to run a build script and get errors immediately when changing my files. I now have grunt, so I&#39;ll use the &quot;grunt-browserify&quot; package to make this part of my build.</p>
+<pre><code class="lang-bash">npm install grunt-browserify --save-dev
+vim Gruntfile.js</code></pre>
+<pre><code class="lang-javascript">module.exports = <span class="keyword">function</span>(grunt) {
+  grunt.initConfig({
+    pkg: grunt.file.readJSON(<span class="string">'package.json'</span>),
+    browserify: {
+      <span class="string">'/public/app.js'</span>: [<span class="string">'/client/app.js'</span>]
+    }
+  })
+  grunt.loadNpmTasks(<span class="string">'grunt-browserify'</span>)
+}</code></pre>
+<p>This now means I can run</p>
+<pre><code class="lang-bash">grunt browserify</code></pre>
+<p>And the application will be built from &quot;client/app&quot; to &quot;public/app&quot;</p>
+<p>This actually gets tedious after a while, so I often end up with another grunt module &quot;grunt-contrib-watch&quot;, to watch for changes and automatically r-erun this file.</p>
+<pre><code class="lang-bash">npm install grunt-contrib-watch --save-dev
+vim Gruntfile.js</code></pre>
+<pre><code class="lang-javascript">module.exports = <span class="keyword">function</span>(grunt) {
+  grunt.initConfig({
+    pkg: grunt.file.readJSON(<span class="string">'package.json'</span>),
+    browserify: {
+      <span class="string">'public/app.js'</span>: [<span class="string">'client/app.js'</span>]
+    }
+    watch: {
+      files: [ <span class="string">"client/**/*.js"</span>],
+      tasks: [ <span class="string">'browserify'</span> ]
+    }
+  })
+  grunt.loadNpmTasks(<span class="string">'grunt-browserify'</span>)
+  grunt.loadNpmTasks(<span class="string">'grunt-contrib-watch'</span>)
+}</code></pre>
+<p>This means I can now run</p>
+<pre><code class="lang-bash">grunt watch</code></pre>
+<p>And not think about this again.</p>
+<h1>Automate all the things</h1>
+<p>I actually go much further than the above, and use grunt to</p>
+<ul>
+<li>Run the web server</li>
+<li>Run the tests automatically (using grunt-contrib-watch again)</li>
+<li>Run any other servers needed (redis/phantomjs/etc)</li>
+</ul>
+<p>Modules I find useful for this</p>
+<ul>
+<li>grunt-nodemon</li>
+<li>grunt-concurrent</li>
+<li>grunt-exec</li>
+<li>grunt-env</li>
+</ul>
+<p>I&#39;ll register a custom task called &#39;develop&#39; which means all any developer needs to do in order to start any work on my project is type</p>
+<pre><code class="lang-bash">grunt develop</code></pre>
+<p>And they can get to work immediately.</p>
+<h1>This is quite a lot of set-up</h1>
+<p>I don&#39;t do this very often, this is a collection of tools/libraries that I really like and have come to appreciate very much. Anything is interchangeable for other things and I&#39;m not afraid to change any part of it at some point if something better comes up.</p>
+<p>I do have a repo which I clone which has these things already set up for a blank project - but this is personal to me and the way I want to work. In a team this might be different (compromise) and for you it&#39;ll be different too.</p>
+<p>So I won&#39;t be sharing it. Sorry :)</p>
+]]></description><link>http://codeofrob.com/entries/grunt+browserify+npm+application=success.html</link><guid isPermaLink="true">http://codeofrob.com/entries/grunt+browserify+npm+application=success.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 18 Jul 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Look ma, no frameworks]]></title><description><![CDATA[<p>Having a break from the FP series, I&#39;ve made a few statements in the past and had more than a few discussions with people about how I build JS applications and the most common question I get asked is</p>
+  <blockquote>How on earth can you build JS applications without a framework?</blockquote>
+
+<p>My favourite quote on this subject so far is...</p>
+  <blockquote>Typical cowboy bullshit</blockquote>
+
+<p>Which came from the <a href="http://www.reddit.com/r/programming/comments/1hqmyj/working_for_free_and_what_it_taught_me/cawyy87">Reddit thread</a> about <a href="/entries/working-for-free-and-what-it-taught-me.html">Working for free</a>, and is a a typical reaction when I&#39;m waving my arms around about how awesome not using frameworks is without really backing it up with info.</p>
+<p>So, here&#39;s the deal, I&#39;m going to go through a few of the libraries, patterns and techniques that I use over the next few entries to show my workflow/thinking/etc around this to supplement some of this arm waving with useful information.</p>
+<h1>First up, the arm-waving - why?</h1>
+<p><em>I don&#39;t like being told what to do</em></p>
+<p>I admit it, I&#39;m a bit of an anti-authority type. If I&#39;m told to do something by somebody and they&#39;ve not yet earned my respect, I&#39;m probably going to be having words. Admittedly this has gotten me into trouble in the past but hey ho... </p>
+<p>The same goes for frameworks, I hate being told what to do and where to put things from the get-go. Without discovering reasons for those decisions in the applications I&#39;m building. I&#39;m not saying I don&#39;t re-use patterns and ways of doing things that have served me well in previous applications (this is what this series is going to be about after all). </p>
+<p>The thing is that over time I&#39;ve come to the conclusion that a lot of the ways we do things in frameworks are <em>wrong</em> anyway.</p>
+<p>That brings me onto...</p>
+<p><em>I don&#39;t like forced abstractions</em></p>
+<p>Data binding? Logicless Templating? MVVM? MVC? Not my cup of tea most of the time, forcing your application into layers either on the server or the client before we even know what our requirements are takes away too much control and leaves little room for the more natural abstractions that a more vanilla approach will provide.</p>
+<p>It&#39;s hubris for a framework to suggest that it will somehow magically enable us to write &quot;Application Scale JavaScript&quot; (whatever this means). It is dangerous to think that by separating our application up in horizontal slices somehow yields in better, more manageable code.</p>
+<p>Abstractions should be used because there is a pain that needs solving, whether that be because you&#39;re talking to third party code, or slow remote calls that need hiding during testing or because there is complexity that needs hiding. Putting abstractions in before we feel any of this pain just means more code to wade through when trying to get stuff done - no thanks.</p>
+<p><em>I like power</em></p>
+<p>If I want to bulldoze my way through a feature, then I want to bulldoze my way through a feature. If this means taking a shotgun to the DOM then that&#39;s what I want to do. If it means abusing cookies/local storage for nefarious purposes then that&#39;s what I want to do.  If there is a module/library around that can help me I want to pull it in and <em>use</em> it.</p>
+<p>The power is mine to do these things. As soon as a framework starts imposing its will on me, this power often goes away and more importantly...</p>
+<p><em>I hate fighting</em></p>
+<p>I keep saying this - that Frameworks basically mean having to fight edge cases instead of actually writing feature code. </p>
+<p>I&#39;m not saying that you can&#39;t be faster if all you do is glue things together, but spending hours reading StackOverflow to find out how to insert Knob A into Hole B is not my idea of fun at all. As much as I value getting things done - I start getting pretty miserable when that tiny little feature I wanted to develop turns into hours of trying to fit incompatible abstractions together.</p>
+<p><em>Focus</em></p>
+<p>The problem with frameworks is not that they don&#39;t solve problems beacuse for some people they do. My problem with them is generally that they try to solve more than one problem and because of this there is often a conflict between what I want to get done application development vs what is provided in the framework. </p>
+<p>Focus is the key here, when I&#39;m pulling in a library that does something, I want to know that I can use it without its implementation getting in the way of the other things I want to do.</p>
+<p><em>I want control over my entry points</em></p>
+<p>I want an app.js which contains the code that sets up my application. (Frameworks don&#39;t necessarily prevent you doing this, Backbone is a good example). I want to be responsible for creating new objects/services and control their lifetimes from the outside in.</p>
+<p>Doing so means that isolating code I want to test is trivial, that everything remains explicit and readable from that point in, and at any point it&#39;s possible to change how the application works without fighting configuration or convention. I long the days when either we&#39;re not writing code because we&#39;ve hit the singularity or we&#39;ve moved past this notion of &quot;Drop some files in these arbitrary folders and honest we&#39;ll wire everything up for you&quot;</p>
+<h1>Onwards then...</h1>
+<p>I don&#39;t know where I&#39;m going with this, but I&#39;ll try to start from the beginning and take it from there.</p>
+]]></description><link>http://codeofrob.com/entries/look-ma,-no-frameworks.html</link><guid isPermaLink="true">http://codeofrob.com/entries/look-ma,-no-frameworks.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 16 Jul 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Learn functional programming with me - but rob, it needs to be more composable]]></title><description><![CDATA[<p>As I write my Clojure and the related blog posts, I&#39;ve been having them reviewed by <a href="http://twitter/bodil">@bodil</a> who is a proper functional programming neckbeard emacs type.</p>
 <ul>
 <li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Mission statement</a></li>
 <li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
@@ -559,383 +775,4 @@
 <p>Only now I&#39;m doing Ruby on Rails, and I&#39;ve missed the first few iterations and the software I&#39;ve found myself using is the programming equivalant of Jar Jar sodding binks.</p>
 <p><em>TLDR</em></p>
 <p>This was going to be a rant, but I got distracted by building stuff and never finished the entry. Oh well - I kinda like it like this.</p>
-]]></description><link>http://codeofrob.com/entries/ruby-on-rails-and-the-phantom-menace.html</link><guid isPermaLink="true">http://codeofrob.com/entries/ruby-on-rails-and-the-phantom-menace.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 25 Jun 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Company spotlight - Featurist]]></title><description><![CDATA[<p>So I mentioned that I&#39;d <a href="/entries/im-leaving-.net.html">joined a start-up in London</a>, what I didn&#39;t mention is that I&#39;m effectively employee #1 at this place even though they&#39;ve been going for quite a while now.</p>
-<p>So how have we managed to get this far without any full-time staff of our own?</p>
-<h3>Enter Featurist</h3>
-<p><a href="http://www.featurist.co.uk/">Featurist</a> are a band of contractors/consultants/hit-team/merry-men who join companies as a team and build software. Right now they&#39;ve been building stuff with us whilst working on other more enterprisy .NET contracts.</p>
-<p>Normally at companies who consider themselves &quot;.NET shops&quot;, you&#39;ll get one or two really good people and then a big pile of others who slow the whole thing down whether it be intentional or through general incompetence. Now I&#39;m sat in a room of half a dozen of these folks and it&#39;s completely bizarre to find yourself saying &quot;I believe in this one thing&quot;, and having a whole team of people presenting rational and thought out cases for and against your view point.</p>
-<p>Now, at this start-up we&#39;re pretty much slinging Ruby all over the show (And boy am I hating on the Ruby the past couple of weeks), and I&#39;m finding myself needing these guys a lot to help me do things the &quot;correct&quot; way in this environment. I whine and moan about this <em>all of the time</em> and they&#39;ve done a remarkable job of seeing through that and getting on and building stuff with me. (Did I mention I really hate ruby, and bundler, and rails? I do all the time in the office and on Twitter).</p>
-<p>What I&#39;ve not done is tell them all how amazing they are, and sadly whining and being negative about the 5% often outweighs the other 95% of positivity so I&#39;m sticking the positive stuff up in this blog entry for everybody to see.  (No, I&#39;m not on commission)</p>
-<h3>Featurist are great</h3>
-<ul>
-<li>Have a look at their <a href="https://github.com/featurist">Github</a>, this is not the standard .NET consultancy fare - they&#39;re out there <em>doing stuff</em> - both interesting and useful in a variety of technologies. They&#39;re busy having opinions and using those opinions to help companies build better software - it&#39;s pretty rad.</li>
-<li>As far as temperament goes, I&#39;ve never met a group who have managed to mix being &quot;chilled out about things&quot; with &quot;we still care about software and building software&quot; in quite the way they have (Unlike me who have the latter but not the former to my detriment)</li>
-<li>Quality? They&#39;ve got it - I might bitch about the rails monolith but truth be told this project is about 10000% better than most of the projects I&#39;ve ever come in onto this late in the game - and this is almost 100% down to the work of Featurist.</li>
-<li>Culture? Easy going, keeping things mixed up (I made fun of them for moving desks every day but it keeps things interesting and the cynic in me be damned), focused on keeping processes lightweight but visible and shipping regularly - all those things that are easy to say and hard to do.</li>
-</ul>
-<h3>Hire them</h3>
-<p>If your company needs help (whether you&#39;re a start-up or established software house), you could do far worse than to get in touch with Featurist to see how they could help you - it&#39;s worth it.</p>
-]]></description><link>http://codeofrob.com/entries/company-spotlight---featurist.html</link><guid isPermaLink="true">http://codeofrob.com/entries/company-spotlight---featurist.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 21 Jun 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Learn functional programming with me - refactoring my state transitions]]></title><description><![CDATA[<p>I&#39;m able to stream out a load of bullets in a long fish-poo like line, but what I need to do is rate limit these somehow...</p>
-<ul>
-<li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Mission statement</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---moving-the-square.html">Moving the square</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---attributes-and-vectors.html">Attributes and vectors</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---improving-my-workflow.html">Improving my workflow</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---adding-lots-more-state.html">Creating lots of state</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---mutating-lots-of-state.html">Mutating lots of state</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---improving-our-data-structure-with-maps.html">Improving our data structure with maps</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---keyboard-input-for-our-red-square.html">Moving our red square with keyboard input</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---adding-items-to-a-sequence.html">Adding items to a sequence and firing bullets</a></li>
-</ul>
-<p><strong>My state is... in a state</strong></p>
-<p>My bullets subsystem is just a list of bullets, and I actually need more state to represent this.</p>
-<p>So I had a little change to create a map which represented</p>
-<ul>
-<li>The bullets active within the scene</li>
-<li>The time since we last fired a bullet</li>
-</ul>
-<p>Not too complicated:</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> initBullets []
-  {
-    <span class="keyword">:lastFiringTicks</span> <span class="number">0</span>
-    <span class="keyword">:active</span> <span class="list">(<span class="body">)</span></span>
-  }
-)</span></span></code></pre>
-<p>Of course, this has made a bit of a mockery out of my bullets logic...</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> bulletsLogic [state]
-  <span class="list">(<span class="title">let</span><span class="body"> [player <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>
-        bullets <span class="list">(<span class="body"><span class="keyword">:bullets</span> state)</span></span>
-        existingBullets 
-        <span class="list">(<span class="title">for</span><span class="body"> [bullet <span class="list">(<span class="body"><span class="keyword">:active</span> bullets)</span></span>]
-          {
-            <span class="keyword">:x</span> <span class="list">(<span class="body"><span class="keyword">:x</span> bullet)</span></span>
-            <span class="keyword">:y</span> <span class="list">(<span class="title">dec</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> bullet)</span></span>)</span></span>
-            <span class="keyword">:w</span> <span class="list">(<span class="body"><span class="keyword">:w</span> bullet)</span></span>
-            <span class="keyword">:h</span> <span class="list">(<span class="body"><span class="keyword">:h</span> bullet)</span></span>
-          }
-        )</span></span>
-      ]
-    <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="body">@keyStates <span class="number">32</span>)</span></span>
-      {
-        <span class="keyword">:lastFiringTicks</span> <span class="list">(<span class="body"><span class="keyword">:lastFiringTicks</span> bullets)</span></span>
-        <span class="keyword">:active</span> <span class="list">(<span class="title">cons</span><span class="body"> 
-                {
-                 <span class="keyword">:x</span> <span class="list">(<span class="body"><span class="keyword">:x</span> <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>)</span></span>
-                 <span class="keyword">:y</span> <span class="list">(<span class="body"><span class="keyword">:y</span> <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>)</span></span>
-                 <span class="keyword">:w</span> <span class="number">5</span>
-                 <span class="keyword">:h</span> <span class="number">5</span>
-                }
-                existingBullets
-                )</span></span>
-      }
-      {
-        <span class="keyword">:lastFiringTicks</span> <span class="list">(<span class="body"><span class="keyword">:lastFiringTicks</span> bullets)</span></span>
-        <span class="keyword">:active</span> existingBullets
-      }
-    )</span></span>
-  )</span></span>
-)</span></span></code></pre>
-<p>So much for that statement about Functional Programming forcing you to write code that is easy to reason about, a fool will write foolish code in whatever language ;-)</p>
-<p><strong>Refactoring away from pain</strong></p>
-<p>I can refactor this of course - now I know that there is an ability to &#39;modify&#39; a single field within a map with &#39;assoc&#39;, I can create functions that don&#39;t need to know about the whole state and have little sub-functions for handling the logic of my bullets system.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> bulletsLogic [state]
-  <span class="list">(<span class="title">tryAndFire</span><span class="body">
-    <span class="list">(<span class="title">moveBullets</span><span class="body"> state)</span></span>
-  )</span></span>
-)</span></span></code></pre>
-<p>How about moving the bullets, and then passing whatever the state is after that point to the tryAndFire function, and then returning the state of that to the outside world?</p>
-<p>Moving the bullets becomes a matter of calling assoc on each bullet with a modified y, this is much nicer than having to copy across each property of the bullet.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> moveBullets [state]
-  <span class="list">(<span class="title">let</span><span class="body"> [bullets <span class="list">(<span class="body"><span class="keyword">:bullets</span> state)</span></span>
-        active <span class="list">(<span class="body"><span class="keyword">:active</span> bullets)</span></span>]
-    <span class="list">(<span class="title">assoc</span><span class="body"> state <span class="keyword">:bullets</span> 
-      <span class="list">(<span class="title">assoc</span><span class="body"> bullets <span class="keyword">:active</span>
-        <span class="list">(<span class="title">for</span><span class="body"> [bullet active]
-          <span class="list">(<span class="title">assoc</span><span class="body"> bullet <span class="keyword">:y</span> <span class="list">(<span class="title">dec</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> bullet)</span></span>)</span></span>)</span></span>
-        )</span></span>
-      )</span></span>
-    )</span></span>
-  )</span></span>
-)</span></span></code></pre>
-<p>And trying to fire becomes a matter of adding an item to the list, or just returning original state</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> tryAndFire [state]
-  <span class="list">(<span class="title">let</span><span class="body"> [bullets <span class="list">(<span class="body"><span class="keyword">:bullets</span> state)</span></span>
-        active <span class="list">(<span class="body"><span class="keyword">:active</span> bullets)</span></span>
-        player <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>]
-    <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="body">@keyStates <span class="number">32</span>)</span></span>
-      <span class="list">(<span class="title">assoc</span><span class="body"> state <span class="keyword">:bullets</span> 
-        <span class="list">(<span class="title">assoc</span><span class="body"> bullets <span class="keyword">:active</span>
-          <span class="list">(<span class="title">cons</span><span class="body"> 
-            {
-             <span class="keyword">:x</span> <span class="list">(<span class="body"><span class="keyword">:x</span> player)</span></span>
-             <span class="keyword">:y</span> <span class="list">(<span class="body"><span class="keyword">:y</span> player)</span></span>
-             <span class="keyword">:w</span> <span class="number">5</span>
-             <span class="keyword">:h</span> <span class="number">5</span>
-            }
-            active
-          )</span></span>
-        )</span></span>
-      )</span></span>
-      state
-    )</span></span>
-  )</span></span>
-)</span></span></code></pre>
-<p><strong>Refactoring towards readability</strong></p>
-<p> Of course this can be re-factored a bit further for readability by pulling out another function</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> tryAndFire [state]
-  <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="body">@keyStates <span class="number">32</span>)</span></span>
-    <span class="list">(<span class="title">fire</span><span class="body"> state)</span></span>
-    state
-  )</span></span>
-)</span></span></code></pre>
-<p>Keeping the activity of firing to its own little function</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> fire [state]
-  <span class="list">(<span class="title">let</span><span class="body"> [bullets <span class="list">(<span class="body"><span class="keyword">:bullets</span> state)</span></span>
-        active <span class="list">(<span class="body"><span class="keyword">:active</span> bullets)</span></span>
-        player <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>]
-    <span class="list">(<span class="title">assoc</span><span class="body"> state <span class="keyword">:bullets</span> 
-      <span class="list">(<span class="title">assoc</span><span class="body"> bullets <span class="keyword">:active</span>
-        <span class="list">(<span class="title">cons</span><span class="body"> 
-          <span class="list">(<span class="title">initBullet</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> player)</span></span> <span class="list">(<span class="body"><span class="keyword">:y</span> player)</span></span> <span class="number">5</span> <span class="number">5</span>)</span></span>
-          active
-        )</span></span>
-       )</span></span>
-     )</span></span>
-  )</span></span>
-)</span></span></code></pre>
-<p>And yes, I also pulled out the code for creating a new bullet to make it even more obvious what is going on.</p>
-<p>Now, actually because of my main logic function looking like this:</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> doLogic [state]
-  {
-    <span class="keyword">:direction</span> <span class="list">(<span class="title">directionLogic</span><span class="body"> state)</span></span>
-    <span class="keyword">:enemies</span> <span class="list">(<span class="title">enemiesLogic</span><span class="body"> state)</span></span>
-    <span class="keyword">:player</span> <span class="list">(<span class="title">playerLogic</span><span class="body"> state)</span></span>
-    <span class="keyword">:bullets</span> <span class="list">(<span class="title">bulletsLogic</span><span class="body"> state)</span></span>
-  }
-)</span></span></code></pre>
-<p>I&#39;ve got to do some contortions to return &#39;just the bullets&#39; from my bullets logic</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> bulletsLogic [state]
-  <span class="list">(<span class="body"><span class="keyword">:bullets</span> <span class="list">(<span class="title">tryAndFire</span><span class="body">
-    <span class="list">(<span class="title">moveBullets</span><span class="body"> state)</span></span>
-  )</span></span>)</span></span>
-)</span></span></code></pre>
-<p><strong>Refactoring away from the acrobatics</strong></p>
-<p>But how about taking my new pattern further and applying each sub-system&#39;s changes to the state as a sequence of modifications to the state</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> doLogic [state]
-  <span class="list">(<span class="title">bulletsLogic</span><span class="body">
-    <span class="list">(<span class="title">playerLogic</span><span class="body">
-      <span class="list">(<span class="title">enemiesLogic</span><span class="body">
-        <span class="list">(<span class="title">directionLogic</span><span class="body"> state)</span></span>
-      )</span></span>
-    )</span></span>
-  )</span></span>
-)</span></span></code></pre>
-<p>Overall I think I like this approach better than trying to make each system return its own state, and as most of the logic seems to require sections of state from all over the show having the state all readily accessible seems to make sense.</p>
-<p>That said, I&#39;d normally shy away from this sort of approach in an OO language/manner because shared data implies coupling. </p>
-<p>Of course my normal solution is often the duplication of state via events or some other in-direct means and the reason for this tends to be to avoid accidental mutation which isn&#39;t going to be such a problem here where it&#39;s such an explicit decision.</p>
-<p>I&#39;ll see how that plays out as I roll forwards, but now I&#39;ve applied this refactoring step I&#39;m in a much better position to get in the feature I wanted in the first place. </p>
-<p>If I end up not liking the current mutation capabilities, I can always change how I update the state from the outside-most part of my program by doing my assoc there. That mutation is such a visible decision in my code seems to be one of the bonuses of FP.</p>
-<p><strong>Updating nested data with assoc-in</strong></p>
-<p>I don&#39;t like all the nested assocs, so I hit up the Clojure docs now I&#39;m not on a plane and discover &#39;assoc-in&#39; and &#39;get-in&#39;, which do pretty much what you&#39;d expect.</p>
-<p>Instead of</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> fire [state]
-  <span class="list">(<span class="title">let</span><span class="body"> [bullets <span class="list">(<span class="body"><span class="keyword">:bullets</span> state)</span></span>
-        active <span class="list">(<span class="body"><span class="keyword">:active</span> bullets)</span></span>
-        player <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>]
-    <span class="list">(<span class="title">assoc</span><span class="body"> state <span class="keyword">:bullets</span> 
-      <span class="list">(<span class="title">assoc</span><span class="body"> bullets <span class="keyword">:active</span>
-        <span class="list">(<span class="title">cons</span><span class="body"> 
-          <span class="list">(<span class="title">initBullet</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> player)</span></span> <span class="list">(<span class="body"><span class="keyword">:y</span> player)</span></span> <span class="number">5</span> <span class="number">5</span>)</span></span>
-          active
-        )</span></span>
-       )</span></span>
-     )</span></span>
-  )</span></span>
-)</span></span></code></pre>
-<p>I can actually do</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> addBulletInPlayerLocation [state]
-  <span class="list">(<span class="title">let</span><span class="body"> [player <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>]
-    <span class="list">(<span class="title">assoc-in</span><span class="body"> state [<span class="keyword">:bullets</span> <span class="keyword">:active</span>]
-      <span class="list">(<span class="title">cons</span><span class="body"> 
-        <span class="list">(<span class="title">initBullet</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> player)</span></span> <span class="list">(<span class="body"><span class="keyword">:y</span> player)</span></span> <span class="number">5</span> <span class="number">5</span>)</span></span>
-        <span class="list">(<span class="title">get-in</span><span class="body"> state [<span class="keyword">:bullets</span> <span class="keyword">:active</span>])</span></span>
-      )</span></span>
-    )</span></span>
-  )</span></span>
-)</span></span></code></pre>
-<p>So I&#39;ve done that everywhere it makes sense to as it makes the code more readable.</p>
-<p><strong>Applying that time limiter</strong></p>
-<p>So, what kicked off my re-factoring efforts was the addition of a little bit of state to my map ala</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> initBullets []
-  {
-    <span class="keyword">:lastFiringTicks</span> <span class="number">0</span>
-    <span class="keyword">:active</span> <span class="list">(<span class="body">)</span></span>
-  }
-)</span></span></code></pre>
-<p>How to use this? Well, the algorithm goes something like this</p>
-<pre><code><span class="title">Is</span> <span class="built_in">last</span>Ticks nonZero? 
-  Increase <span class="built_in">last</span>Ticks
-  is <span class="built_in">last</span>Ticks equal to firing rate?
-    Set <span class="built_in">last</span>Ticks to Zero
-
-Are we trying to fire? 
-  Yes? Is <span class="built_in">last</span>Ticks <span class="number">0</span>?
-    Yes? Fire, increase <span class="built_in">last</span>Ticks</code></pre>
-<p>So we have two steps</p>
-<ul>
-<li>UpdateFiringTicks</li>
-<li>TryAndFire</li>
-</ul>
-<p><strong>Managing the firing ticks</strong></p>
-<p>Well first off, let&#39;s add this to the chain of logics we want to execute for our bullet logic</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> bulletsLogic [state]
-  <span class="list">(<span class="title">tryAndFire</span><span class="body">
-    <span class="list">(<span class="title">updateFiringTicks</span><span class="body">
-      <span class="list">(<span class="title">moveBullets</span><span class="body"> state)</span></span>
-    )</span></span>
-  )</span></span>
-)</span></span></code></pre>
-<p>And we can simply execute the logic described above here</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> updateFiringTicks [state]
-  <span class="list">(<span class="title">let</span><span class="body"> [bullets <span class="list">(<span class="body"><span class="keyword">:bullets</span> state)</span></span>
-        ticks <span class="list">(<span class="body"><span class="keyword">:lastFiringTicks</span> bullets)</span></span>]
-    <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> ticks <span class="number">0</span>)</span></span> 
-      state
-      <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> <span class="list">(<span class="title">rem</span><span class="body"> ticks <span class="number">30</span>)</span></span> <span class="number">0</span>)</span></span>
-        <span class="list">(<span class="title">assoc-in</span><span class="body"> state [<span class="keyword">:bullets</span> <span class="keyword">:lastFiringTicks</span>] <span class="number">0</span>)</span></span>
-        <span class="list">(<span class="title">assoc-in</span><span class="body"> state [<span class="keyword">:bullets</span> <span class="keyword">:lastFiringTicks</span>] <span class="list">(<span class="title">inc</span><span class="body"> ticks)</span></span>)</span></span>
-      )</span></span>
-    )</span></span>
-  )</span></span>
-)</span></span></code></pre>
-<p>And firing just needs to update this value now so...</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> fire [state]
-  <span class="list">(<span class="title">incrementFiringTicks</span><span class="body">
-    <span class="list">(<span class="title">addBulletInPlayerLocation</span><span class="body"> state)</span></span>
-  )</span></span>
-)</span></span>
-
-<span class="list">(<span class="title">defn</span><span class="body"> incrementFiringTicks [state]
-  <span class="list">(<span class="title">assoc-in</span><span class="body"> state [<span class="keyword">:bullets</span> <span class="keyword">:lastFiringTicks</span>] <span class="number">1</span>)</span></span>
-)</span></span></code></pre>
-<p>Now my little craft only fires about once a second, mission accomplished.</p>
-<p><strong>Summary</strong></p>
-<p>This was quite a lengthy process to add a simple feature, I got side-tracked by what I hope was useful learning. I&#39;m left a little uncomfortable with how I&#39;m dealing with state and I feel like there is something more elegant I could be doing. Maybe I&#39;ll discover this as I continue through.</p>
-]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---refactoring-my-state-transitions.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---refactoring-my-state-transitions.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 20 Jun 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Learn functional programming with me - Adding items to a sequence]]></title><description><![CDATA[<p>What good is Space Invaders if you can&#39;t shoot anyone?</p>
-<ul>
-<li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Mission statement</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---moving-the-square.html">Moving the square</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---attributes-and-vectors.html">Attributes and vectors</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---improving-my-workflow.html">Improving my workflow</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---adding-lots-more-state.html">Creating lots of state</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---mutating-lots-of-state.html">Mutating lots of state</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---improving-our-data-structure-with-maps.html">Improving our data structure with maps</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---keyboard-input-for-our-red-square.html">Moving our red square with keyboard input</a></li>
-</ul>
-<p>So far I have a fixed number of entities in my scene, which means the pattern</p>
-<pre><code><span class="function"><span class="title">logic</span><span class="params">(state)</span> =&gt; <span class="title">newState</span></code></pre>
-<p>Has been working great for me, but how might I manage a variable number of these entities? How might I hook up the creation of these entities to keyboard input?</p>
-<p>Well, actually I don&#39;t think it is going to be that hard - but we&#39;ll see as I give it a go...</p>
-<p><strong>The basics once again</strong></p>
-<p>The same deal as everything else so far (okay, my next entry might be on re-factoring all this to avoid duplication)</p>
-<p><em>This is how we create a bullet</em></p>
-<pre><code><span class="list">(<span class="title"><span class="built_in">defn</span></span> initBullet <span class="collection">[x y w h]</span>
- <span class="collection">{
-  <span class="attribute">:x</span> x
-  <span class="attribute">:y</span> y
-  <span class="attribute">:w</span> w
-  <span class="attribute">:h</span> h
- }</span>
-)</span></code></pre>
-<p><em>Bullets logic is taking the current sequence of bullets and moving them on the vertical axis</em></p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> bulletsLogic [state]
-  <span class="list">(<span class="title">for</span><span class="body"> [bullet <span class="list">(<span class="body"><span class="keyword">:bullets</span> state)</span></span>]
-    {
-      <span class="keyword">:x</span> <span class="list">(<span class="body"><span class="keyword">:x</span> bullet)</span></span>
-      <span class="keyword">:y</span> <span class="list">(<span class="title">dec</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> bullet)</span></span>)</span></span>
-      <span class="keyword">:w</span> <span class="list">(<span class="body"><span class="keyword">:w</span> bullet)</span></span>
-      <span class="keyword">:h</span> <span class="list">(<span class="body"><span class="keyword">:h</span> bullet)</span></span>
-    }
-  )</span></span>
-)</span></span></code></pre>
-<p><em>And I&#39;m going to draw a black square for each bullet</em></p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> bulletsRender [ctx state]
-  <span class="list">(<span class="title">doseq</span><span class="body"> [bullet <span class="list">(<span class="body"><span class="keyword">:bullets</span> state)</span></span>] 
-    <span class="list">(<span class="title">let</span><span class="body"> [{<span class="keyword">:keys</span> [x y w h]} bullet]
-      <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx x y w h <span class="string">"#000"</span>)</span></span>
-    )</span></span>
-  )</span></span>
-)</span></span></code></pre>
-<p>There is nothing special or new about the above, although I&#39;ve dropped the &#39;let&#39; (as compared to the enemies render function) and pulled the bullets out of the state as part of the doseq call.</p>
-<p>My bullets to begin with?</p>
-<p><em>Create an empty list</em></p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> initState []
- { 
-   <span class="keyword">:direction</span> <span class="number">1</span>
-   <span class="keyword">:enemies</span> <span class="list">(<span class="title">for</span><span class="body"> [x <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">16</span> <span class="number">2</span>)</span></span>
-                  y <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">8</span> <span class="number">2</span>)</span></span>]
-              <span class="list">(<span class="title">initEnemy</span><span class="body"> x y <span class="number">20</span> <span class="number">20</span>)</span></span>
-   )</span></span>
-   <span class="keyword">:player</span> <span class="list">(<span class="title">initPlayer</span><span class="body"> <span class="number">200</span> <span class="number">430</span> <span class="number">20</span> <span class="number">20</span>)</span></span>
-   <span class="keyword">:bullets</span> <span class="list">(<span class="body">)</span></span>
- } 
-)</span></span></code></pre>
-<p>I found out how to do that on Google so I think it&#39;s right.</p>
-<p>I also found out that apparently an empty list is not a sequence, although it is sequenceable which means I can safely do the above (I think)</p>
-<p><em>Calling the appropriate methods</em></p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> doLogic [state]
-  {
-    <span class="keyword">:direction</span> <span class="list">(<span class="title">directionLogic</span><span class="body"> state)</span></span>
-    <span class="keyword">:enemies</span> <span class="list">(<span class="title">enemiesLogic</span><span class="body"> state)</span></span>
-    <span class="keyword">:player</span> <span class="list">(<span class="title">playerLogic</span><span class="body"> state)</span></span>
-    <span class="keyword">:bullets</span> <span class="list">(<span class="title">bulletsLogic</span><span class="body"> state)</span></span>
-  }
-)</span></span>
-
-<span class="list">(<span class="title">defn</span><span class="body"> renderScene [ctx state]
-  <span class="list">(<span class="title">enemiesRender</span><span class="body"> ctx state)</span></span>
-  <span class="list">(<span class="title">playerRender</span><span class="body"> ctx state)</span></span>
-  <span class="list">(<span class="title">bulletsRender</span><span class="body"> ctx state)</span></span>
-)</span></span></code></pre>
-<p>Now, all of this achieves the square root of diddly squat, although if I run the program it doesn&#39;t fall over in a heap pile of flames so that&#39;s pretty good going for all of this code.</p>
-<p><strong>Hooking up some input events</strong></p>
-<p>Well okay, for now what I&#39;ll do is say is &quot;if the spacebar is pressed we&#39;ll fire a bullet&quot;, so we can do this in a similar manner to everything else thus far...</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> bulletsLogic [state]</code></pre>
-<p><em>Get the player out, and update the bullets into a seq called &#39;existingBullets&#39;</em></p>
-<pre><code>  <span class="list">(<span class="title">let</span><span class="body"> [player <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>
-        existingBullets 
-        <span class="list">(<span class="title">for</span><span class="body"> [bullet <span class="list">(<span class="body"><span class="keyword">:bullets</span> state)</span></span>]
-          {
-            <span class="keyword">:x</span> <span class="list">(<span class="body"><span class="keyword">:x</span> bullet)</span></span>
-            <span class="keyword">:y</span> <span class="list">(<span class="title">dec</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> bullet)</span></span>)</span></span>
-            <span class="keyword">:w</span> <span class="list">(<span class="body"><span class="keyword">:w</span> bullet)</span></span>
-            <span class="keyword">:h</span> <span class="list">(<span class="body"><span class="keyword">:h</span> bullet)</span></span>
-          }
-        )</span></span>
-      ]</code></pre>
-<p><em>If the space bar is down, then create a new sequence with a new bullet and the existing bullets</em></p>
-<pre><code>    <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="body">@keyStates <span class="number">32</span>)</span></span>
-      <span class="list">(<span class="title">cons</span><span class="body"> 
-        {
-         <span class="keyword">:x</span> <span class="list">(<span class="body"><span class="keyword">:x</span> <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>)</span></span>
-         <span class="keyword">:y</span> <span class="list">(<span class="body"><span class="keyword">:y</span> <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>)</span></span>
-         <span class="keyword">:w</span> <span class="number">5</span>
-         <span class="keyword">:h</span> <span class="number">5</span>
-        }
-        existingBullets
-      )</span></span></code></pre>
-<p><em>Else just return the existing bullets</em></p>
-<pre><code>      <span class="title">existingBullets</span>
-    )
-  )
-)</code></pre>
-<p>This is pretty messy, although it&#39;s my first iteration at this so that&#39;s okay, I suspect I can be a bit cleverer about this and probably will end up being so!</p>
-<p><strong>Don&#39;t change the collection, create a new one</strong></p>
-<p>What we can see though, is that I don&#39;t &quot;add the new bullet to the sequence&quot;, I instead &quot;create a new sequence out of the old one plus the new items&quot;. That&#39;s what <em>cons</em> does according to the Clojure docs.</p>
-<p>This is counter-intuitive to those of us used to our mutable collections, but apparently Clojure is quite clever about this stuff and I should trust that this is okay. (Just like so far I&#39;m trusting that everything else is going to be okay too).</p>
-<p>At some point soon I&#39;ll start reading about these sequences, collections, maps etc and see how they&#39;re implemented - now I have some &quot;real&quot; examples of their usage.</p>
-<p><strong>The result</strong></p>
-<p><img src="/img/constant_flow.png"></p>
-]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---adding-items-to-a-sequence.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---adding-items-to-a-sequence.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 18 Jun 2013 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/ruby-on-rails-and-the-phantom-menace.html</link><guid isPermaLink="true">http://codeofrob.com/entries/ruby-on-rails-and-the-phantom-menace.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 25 Jun 2013 09:30:00 GMT</pubDate></item></channel></rss>
