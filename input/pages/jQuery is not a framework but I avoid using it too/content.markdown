@@ -7,9 +7,9 @@ The very first thing I usually want to do with a project, is to do something wit
 
 jQuery isn't a framework, it doesn't take over your entry point, doesn't force any sort of structure on you and doesn't have any of the other smells associated with frameworks in general; it is a general purpose glue library.
 
-Most people will by default pull it down and start using it on their page without giving it a second thought, most people shove the majority their code into the jQuery "Dom ready" callback, use the selectors to find their elements and start doing things without worrying about what is going on under the hood.
+Most people will by default pull it down and start using it on their page without giving it a second thought, most people shove the majority their code into the jQuery "Dom ready" callback, use the selectors to find their elements and start doing things without worrying about what is going on under the hood. 
 
-That's cool, and it's a potentially easy way to success but it is not the only way.
+A lot of projects will also do this *all over the place* without thinking about it because it's so easy, and that's part of my problem *with* jQuery, it makes it too easy for developers to just zombie along without thinking about what we're doing.
 
 *jQuery - it's not you, it's me*
 
