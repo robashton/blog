@@ -1,5 +1,7 @@
 # Nice things people have said about me
 
+  <blockquote>This guy will code the shit out of all of your shit and that is a scientific fact</blockquote>
+  <span class="quotee">[Paul Barrett](https://twitter.com/paulbarrett79/status/359970978522079232) 2013</blockquote>
 
   <blockquote>Typical cowboy bullshit</blockquote>
   <span class="quotee">[crimson_chin](http://www.reddit.com/user/crimson_chin) (2013)</span>
