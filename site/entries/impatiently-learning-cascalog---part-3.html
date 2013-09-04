@@ -1,0 +1,81 @@
+<html>
+  <head>
+    <title id="title">Impatiently learning Cascalog - Part 3</title>
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
+    <link href='http://fonts.googleapis.com/css?family=Libre+Baskerville' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+    <link rel="alternate" type="application/atom+xml" href="http://feeds.feedblitz.com/robashton&x=1" title="Rob Ashton's blog" />
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <script type="text/javascript" src="/jquery.js"></script>
+    <script type="text/javascript" src="/post.js"></script>
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+
+    </script>
+  </head>
+  <body>
+    <a class="subscribe" href="http://feed.codeofrob.com/RobAshton">Subscribe to my blog</a>
+    <div id="blog-entry">
+      <h1 id="post-title">Impatiently learning Cascalog - Part 3</h1>
+      <h6>Published on <span class="date">2013-9-12</span></h6>
+      <div id="post"><p>Onwards to Part 3 of the Cascalog for the Impatient tutorial, now my JVM appears to be behaving itself and I&#39;m able to run the examples again.</p>
+<ul>
+<li><a href="/entries/impatiently-learning-cascalog---part-1.html">Part 1</a></li>
+<li><a href="/entries/impatiently-learning-cascalog---part-2.html">Part 2</a></li>
+</ul>
+<p>Part 3 seems to be pretty simple, adding a custom function to scrub text - written in a style I can actually understand thanks to the Clojure I&#39;ve written so far.</p>
+<pre><code class="lang-clojure">(defn scrub-text [s]
+  &quot;trim open whitespaces and lower case&quot;
+  ((comp s/trim s/lower-case) s))</code></pre>
+<p>The main point of this step of the guide seems to be about data sanitisation, and why you would use custom functions to do that - rather than anything new relating specifically to Cascalog.</p>
+<p>Being able to use vanilla Clojure functions to manipulate data comes with some benefits, the main one being that we can test this stuff independently and then import it into the Cascalog query where we know at least that bit works. </p>
+<p>This is pretty important because tidying up edge cases is generally a rather iterative process and you want the feedback loop to be fast (I can get behind that notion)</p>
+<p>This is used in the following manner</p>
+<pre><code class="lang-clojure">(defn -main [in out &amp; args]
+  (?&lt;- (hfs-delimited out)
+       [?word ?count]
+       ((hfs-delimited in :skip-header? true) _ ?line)
+       (split ?line :&gt; ?word-dirty)
+       (scrub-text ?word-dirty :&gt; ?word)
+       (c/count ?count)))</code></pre>
+<p>In this query, it&#39;s just another step - where we call the function with the output of the split function (which is <em>?word-dirty</em>), and then output the result of that as <em>?word</em></p>
+<p>This is starting to make sense now, and it no longer looks like vomit when I read it. I&#39;d like to see what is going on under the hood to satisfy my curiosity but that can wait until I&#39;ve finished the tutorial.</p>
+<p>Onwards to Part 4...</p>
+</div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="http://twitter.com/robashton">Follow me</a>
+      </div>
+      <div id="disqus">
+        <div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+      </div>
+    </div>
+    <div id="post-comments">
+
+    </div>
+  </body>
+</html>

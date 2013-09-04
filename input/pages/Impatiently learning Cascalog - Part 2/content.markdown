@@ -1,0 +1,100 @@
+I'm skimming through Cascalog for the Impatient and documenting my questions/learnings as I go for my future benefit.
+
+- [Part 1](/entries/impatiently-learning-cascalog---part-1.html)
+
+# Part 2
+
+Apparently in this part we're going to update our first code so as to count the words in our document and that's the first step towards implementing a [tf-idf](http://en.wikipedia.org/wiki/Tf*idf) implementation - cool story bro, I have no idea what one of those is but moving on.
+
+I quite like the explanation given at the beginning of the article for why it's important that we be able to copy data from one place to another, and why we'd use Cascalog for this. Basically we're talking about being able to make guarantees about this operation and that's going to be important when we're trying to write logic on top of this process.
+
+So anyway, we're given the following code
+
+```clojure
+(defmapcatop split [line]
+  "reads in a line of string and splits it by regex"
+    (s/split line #"[\[\]\\(\),.)\s]+"))
+```
+
+I guess that 'defmapcatop' is a macro for defining map operations, and this appears to be splitting a line by whitespace.
+
+Googling this doesn't appear to yield in the documentation, which is a bit unfortunate - but a bit of rummaging around finds a handy page for ["which def should I use"](http://entxtech.blogspot.co.uk/2010/12/which-operation-def-macro-should-i-use.html)  which suggests that I'm on the right track with that line of thought.
+
+
+Okay, so we can move on from this pretty swiftly and see how we're going to use this
+
+```clojure
+(defn -main [in out & args]
+  (?<- (hfs-delimited out)
+       [?word ?count]
+       ((hfs-delimited in :skip-header? true) _ ?line)
+       (split ?line :> ?word)
+       (c/count ?count)))
+```
+
+Well, I have to say I can barely read this - my Clojure-fu is not strong when mixed with the Cascalog.
+
+But, we can see
+
+- We're using the (?<- thingy again, so we're running this query now
+- We're 'sinking' our output, whatever that is to the 'out' path
+- This time, we're outputting the variables "word" and "count"
+- We're reading in from 'in', to the variables '_' and '?line'
+- I guess we're using '_' because we're ignoring that
+- We split the line into the ?word variable
+- The :> thingy seems to be a bit of magic to do that
+- And then we count that into the ?count variable
+
+I am mega-confused reading this because I can't actually tell how it maps to what I know about Clojure/Lisp.
+
+- It's weird because our output is on top, and takes in the variables ?word and ?count which aren't defined yet
+- That's weird because despite the output at the top, our predicates are written in the order they're going to be run
+- It's weird because of that :> thingy
+
+The way I understand the documentation is that Cascalog looks at the dependencies of each predicate and only runs them when they have been fulfilled. I guess the 'sink' relies on ?word and ?count being available and isn't run until they are or something like that.
+
+This is neatly explained by the Cascalog for the Impatient guide in terms of the "logic programming" paradigm so I'll accept that for now.
+
+I suspect that the *(?<-* thingy is actually a macro of some sort that re-writes this into something more sane, but who knows right?
+
+Running this with
+
+    lein uberjar
+    hadoop jar ./target/impatient.jar data/rain.txt output/wc
+
+Gives me a wonderful "out of memory exception", so I post a dump on the mailing list and have a look at my environment.
+
+Things I tried while I waited for a response
+
+- Re-install the hadoop package (1.2.1) but the x64 version
+- Edit the configuration files to force 2048mb of heap size
+- Clear my hadoop installation again
+- Download the raw tar.gz for hadoop
+- Configure that
+- Run that: Success
+- Run it again, failure
+- Restart laptop for the fifth time
+- Everything works, QUICK DON'T TOUCH IT ANY FURTHER
+- TLDR: I *still* really hate the JVM, or it hates me - whatever
+
+Side note: The project pages for Hadoop are *awful*, I had to go through a dozen links before I got to download anything - it felt like it was *trying* to make me feel stupid, but oh well - carrying on.
+
+The real output?
+
+    A	3
+    Australia	1
+    Broken	1
+    California's	1
+    DVD	1
+    Death	1
+    Land	1
+    Secrets	1
+    This	2
+    Two	1
+    Valley	1
+
+Etc - so I'm happy enough with that.
+
+I'm still not *that* happy with the crazy syntax of the Clojure, I'm grabbing at it and going with the rolling assumption that the logic-like-system is just a bunch of macros on top of vanilla Clojure and "just works", so "shut up and carry on Rob".
+
+Onto part 3 then...
