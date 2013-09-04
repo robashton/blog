@@ -1,2 +1,36 @@
-<p><a href="url">title</a>
-<img src="img" alt="alt"></p>
+<p>I&#39;m currently at <a href="https://www.mastodonc.com/">Mastodon C</a> and hacking on their <a href="https://github.com/CDECatapult/cdec.openhealthdata">Open Health Data Platform</a></p>
+<p><em>Impatient Cascalog</em></p>
+<ul>
+<li><a href="/entries/impatiently-learning-cascalog---part-1.html">For the impatient - Part 1</a></li>
+<li><a href="/entries/impatiently-learning-cascalog---part-2.html">For the impatient - Part 2</a></li>
+<li><a href="/entries/impatiently-learning-cascalog---part-3.html">For the impatient - Part 3</a></li>
+<li><a href="/entries/impatiently-learning-cascalog---part-4.html">For the impatient - Part 4</a></li>
+</ul>
+<p><em>The Open Health Care Data Series</em></p>
+<ul>
+<li><a href="/entries/an-introduction-to-the-ohd-platform-via-repl-driven-development.html">Repl driven development</a></li>
+<li>Getting running with the OHD platform</li>
+</ul>
+<p><em>So I&#39;ve pulled down the OHD code - where do I begin?</em></p>
+<p>My initial confusion over &quot;how do I run this stuff&quot; was answered by the presence of the commented out blocks of code <a href="/entries/an-introduction-to-the-ohd-platform-via-repl-driven-development.html">designed for execution</a> in the repl.</p>
+<p>Great, but what do I run?</p>
+<p>I settled for an innocuous looking expression</p>
+<pre><code class="lang-clojure">#_(?- (hfs-delimited &quot;./output/diabetes-per-head-per-gp-per-month&quot; :delimiter &quot;,&quot; :sinkmode :replace)
+      (diabetes-spend-per-head-per-gp-per-month
+       (diabetes-spend-per-gp-per-month
+        (diabetes-drugs
+         (prescriptions/gp-prescriptions
+          (hfs-delimited &quot;./input/prescriptions/pdpi&quot; :delimiter &quot;,&quot;))
+         (ods/current-practices (hfs-delimited &quot;./input/ods/gppractice/epraccur.csv&quot; :delimiter &quot;,&quot;))))
+       (prevalence/diabetes-prevalence-gp
+        (hfs-textline &quot;./input/diabetes-prevalence/&quot;)))
+      (:trap (stdout)))</code></pre>
+<p>This has a few input files that I don&#39;t have, so I decided to grep the files for anything beginning with &#39;http&#39; or &#39;https&#39; as the comments list the data required; then download the files specified manually. I also make a note to see about automating this process if it becomes a burden during my time on this task.</p>
+<p>I can see why this hasn&#39;t been done as it&#39;s a faff, and once you have the data you&#39;re just iterating in the repl so you don&#39;t gain much personally by automation.  Moving on...</p>
+<p>The files I found were as follows</p>
+<pre><code><span class="label">http:</span>//www<span class="preprocessor">.nice</span><span class="preprocessor">.org</span><span class="preprocessor">.uk</span>/usingguidance/commissioningguides/adhd/adhdassumptionsusedinestimatingapopulationbenchmark<span class="preprocessor">.jsp</span>
+<span class="label">http:</span>//systems<span class="preprocessor">.hscic</span><span class="preprocessor">.gov</span><span class="preprocessor">.uk</span>/data/ods/supportinginfo/filedescriptions<span class="preprocessor">#_Toc350757591</span>
+<span class="label">http:</span>//www<span class="preprocessor">.england</span><span class="preprocessor">.nhs</span><span class="preprocessor">.uk</span>/resources/ccg-directory/
+<span class="label">http:</span>//indicators<span class="preprocessor">.ic</span><span class="preprocessor">.nhs</span><span class="preprocessor">.uk</span>/webview/index<span class="preprocessor">.jsp</span>?v=<span class="number">2</span>&amp;submode=ddi&amp;study=http%<span class="number">3</span>A%<span class="number">2</span>F%<span class="number">2</span>Fhg-l-app-<span class="number">472.</span>ic<span class="preprocessor">.green</span><span class="preprocessor">.net</span>%<span class="number">3</span>A80%<span class="number">2</span>Fobj%<span class="number">2</span>FfStudy%<span class="number">2</span>FP01121&amp;mode=documentation&amp;top=yes
+<span class="label">https:</span>//indicators<span class="preprocessor">.ic</span><span class="preprocessor">.nhs</span><span class="preprocessor">.uk</span>/download/Demography/Data/QOF1011_Pracs_Prevalence_DiabetesMellitus<span class="preprocessor">.xls</span>
+<span class="label">http:</span>//www<span class="preprocessor">.hscic</span><span class="preprocessor">.gov</span><span class="preprocessor">.uk</span>/searchcatalogue?q=title:%<span class="number">22</span>GP+Practice+Prescribing+Presentation-Level+Data%<span class="number">22</span>&amp;area=&amp;size=<span class="number">100</span>&amp;sort=Relevance</code></pre>
