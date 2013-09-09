@@ -1,5 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Wed, 04 Sep 2013 20:16:21 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[An ode to Sebastien Lambla]]></title><description><![CDATA[<p>I had the pleasure of working directly with <a href="http://twitter.com/serialseb">@serialseb</a> for a period of nearly 10 months at a client we both worked at last year. I also shared (part-time) my apartment with the chap as the client was in Belgium and he lived in London and that seemed to work out pretty well for us all. (Getting pretty decent at bowling any way!)</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Mon, 09 Sep 2013 14:36:39 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Impatiently learning Cascalog - Part 1]]></title><description><![CDATA[<p>My client for the next 8-9 days is going to be <a href="https://www.mastodonc.com/">Mastodon C</a>, who have kindly agreed to let me work for them in order to get some real-world Clojure-ish experience and pick up whatever other skills are there to be picked up while I&#39;m at it in the field of data anlytics.</p>
+<p><a href="http://twitter.com/otfrom">@otfrom</a> has pointed me in the direction of &quot;<a href="https://github.com/Cascading/Impatient-Cascalog">Cascalog for the Impatient</a>&quot; and a the &quot;<a href="http://openhealthdata.cdehub.org/">CDEC Open Health Data Platform</a> (mapping diabetes across the UK)&quot; in preparation for my week working with them and before I turn up I&#39;m going to go through the tutorial and see what I understand and what I don&#39;t understand and write about my thought processes as I do it.</p>
+<p>Anybody else following the Cascalog for the Impatient tutorial for the first time might find my notes useful, but at any rate <em>I&#39;ll</em> be able to go back and look at them myself and that&#39;s worthwhile too.</p>
+<p>So...</p>
+<h2>Part 1</h2>
+<p>I git cloned the repo, and typed </p>
+<pre><code><span class="title">lein</span> uberjar</code></pre>
+<p>This built me a jar and I was able to run Hadoop with the following command:</p>
+<pre><code> hadoop jar target/impatient.jar <span class="typedef"><span class="keyword">data</span>/rain.txt output/rain</span></code></pre>
+<p>Which did something with the input &quot;rain.txt&quot; and dumped it in the specified output folder.</p>
+<p>This satisfied for me that my environment is sane and I could therefore carry on with the tutorial.</p>
+<p>First up, we are shown this code with some rough explanation of how it works</p>
+<pre><code class="lang-clojure">(defn -main [in out &amp; args]
+  (?&lt;- (hfs-delimited out)
+    [?doc ?line]
+    ((hfs-delimited in :skip-header? true) ?doc ?line)))</code></pre>
+<p>I find the tutorial at this point to make some assumptions about my knowledge of what is going on here, it states that</p>
+<ul>
+<li>We have a main method that takes in an &#39;input&#39; and &#39;output&#39; path</li>
+<li>We can create a <em>generator</em> over &#39;in&#39; using (hfs-delimited)</li>
+<li>We can create a <em>sink</em> over &#39;out&#39; using (hfs-delimited)</li>
+<li>We then name the vars from the generator with the ?doc ?line bits</li>
+</ul>
+<p>However, I have a few questions outstanding from this, chiefly</p>
+<ul>
+<li>Wtf is a generator</li>
+<li>Wtf is a sink</li>
+<li>Wtf is up with that <em>(?&lt;-</em> thingy</li>
+<li>How are we naming those vars, how come its different for the sink and the generator?</li>
+</ul>
+<p>Dumb questions I&#39;m sure - but I&#39;m happy enough to admit my ignorance and press on.</p>
+<p>I read the page linked in the impatient docs: <a href="https://github.com/nathanmarz/cascalog/wiki/How-cascalog-executes-a-query">How cascalog executes a query</a></p>
+<p>And I establish that (at least as a working hypothesis)</p>
+<ul>
+<li>A generator is just a predicate that gives you data?</li>
+<li>A sink is somewhere the output can be put (a query can just have an output specified and that&#39;s it)</li>
+<li>The (?&lt;- thingy is like the (&lt;- thingy, and what they are is simply<ul>
+<li>The one without a question mark is a definition of a query</li>
+<li>the one with a question mark is both the definition and an execution of a query</li>
+</ul>
+</li>
+<li>the naming of the vars - ... is just &quot;because&quot;, I&#39;ll take that at face value and move on</li>
+</ul>
+<h1>The result of running this thing</h1>
+<p>I see that in the output folder there is a file called part-0000 which has the same content as the input file. So it looks like our generator and our sink are effectively the same thing and we&#39;re just streaming the data from one place to another without changing it.</p>
+<p>Okay then, I guess I&#39;ll look at part two next and see if anything I&#39;ve made a guess about here is right at all.</p>
+]]></description><link>http://codeofrob.com/entries/impatiently-learning-cascalog---part-1.html</link><guid isPermaLink="true">http://codeofrob.com/entries/impatiently-learning-cascalog---part-1.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 05 Sep 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[An ode to Sebastien Lambla]]></title><description><![CDATA[<p>I had the pleasure of working directly with <a href="http://twitter.com/serialseb">@serialseb</a> for a period of nearly 10 months at a client we both worked at last year. I also shared (part-time) my apartment with the chap as the client was in Belgium and he lived in London and that seemed to work out pretty well for us all. (Getting pretty decent at bowling any way!)</p>
 <p>I therefore write this testimonial from a position of having worked with Seb and having spent time with him outside of work and growing our knowledge together outside of our client-work.</p>
 <p>He has recently become available and I thought I&#39;d write something about what I learned about Seb because he&#39;s a unique individual that any company should feel privileged to be able to hire.</p>
 <h1>Seb knows his stuff</h1>
@@ -561,112 +607,4 @@ vim Gruntfile.js</code></pre>
 <h1>People are generally okay</h1>
 <p>  <img src="/img/rainbow.jpg" width="300px" class="inline-left"></p>
 <p>To all the people who stopped their car to see if I was okay when I&#39;d crashed mine, to the lady who gave me a lift to the nearest town and gave me money for a bacon sandwich, to the multitude of people who offered me lifts when I was walking around in Hawaii or got me home from the bar, to everybody who gave me directions when they saw me ambling through the greek countryside, to the Israeli security who called her colleagues over to have a good laugh after asking why I had the Azerbaijan visa stamp in my passport, to the parents of the boss I&#39;d never met who let a stranger stay at their house for 2 weeks, to everybody who has offered me money to do interesting things, to the people that I let down but didn&#39;t moan about it and to all those people that I&#39;ve been drinking with over the past year - it has been a laugh and nobody has tried to do me over. You&#39;re all okay.</p>
-]]></description><link>http://codeofrob.com/entries/working-for-free-and-what-it-taught-me.html</link><guid isPermaLink="true">http://codeofrob.com/entries/working-for-free-and-what-it-taught-me.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 04 Jul 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Learn functional programming with me - adding collision detection to the game]]></title><description><![CDATA[<p>Can&#39;t have a game without collision detection now can we? Let&#39;s see about getting our bullets to collide with the enemies and see what problems get in my way this time...</p>
-<ul>
-<li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Mission statement</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---moving-the-square.html">Moving the square</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---attributes-and-vectors.html">Attributes and vectors</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---improving-my-workflow.html">Improving my workflow</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---adding-lots-more-state.html">Creating lots of state</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---mutating-lots-of-state.html">Mutating lots of state</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---improving-our-data-structure-with-maps.html">Improving our data structure with maps</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---keyboard-input-for-our-red-square.html">Moving our red square with keyboard input</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---adding-items-to-a-sequence.html">Adding items to a sequence and firing bullets</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---refactoring-my-state-transitions.html">Refactoring my state transitions</a></li>
-<li><a href="/learn-functional-programming-with-me---more-idiomatic-clojure.html">More idiomatic clojure</a></li>
-</ul>
-<p><strong>The collision detection itself</strong></p>
-<p>Well, collision is a nice easy pure function to write and because I have my rect primitive I can pretty use these.</p>
-<p>My first stab looks like this</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> collides-with [one two]
-  <span class="list">(<span class="title">let</span><span class="body"> [one-left <span class="list">(<span class="body"><span class="keyword">:x</span> one)</span></span>
-        one-right <span class="list">(<span class="title">+</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> one)</span></span> <span class="list">(<span class="body"><span class="keyword">:w</span> one)</span></span>)</span></span>
-        one-top <span class="list">(<span class="body"><span class="keyword">:y</span> one)</span></span>
-        one-bottom <span class="list">(<span class="title">+</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> one)</span></span> <span class="list">(<span class="body"><span class="keyword">:h</span> one)</span></span>)</span></span>
-        two-left <span class="list">(<span class="body"><span class="keyword">:x</span> two)</span></span>
-        two-right <span class="list">(<span class="title">+</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> two)</span></span> <span class="list">(<span class="body"><span class="keyword">:w</span> two)</span></span>)</span></span>
-        two-top <span class="list">(<span class="body"><span class="keyword">:y</span> two)</span></span>
-        two-bottom <span class="list">(<span class="title">+</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> two)</span></span> <span class="list">(<span class="body"><span class="keyword">:h</span> two)</span></span>)</span></span>]
-    <span class="list">(<span class="title">cond</span><span class="body"> <span class="list">(<span class="title">&lt;</span><span class="body"> one-right two-left)</span></span> false
-          <span class="list">(<span class="title">&gt;</span><span class="body"> one-left two-right)</span></span> false
-          <span class="list">(<span class="title">&lt;</span><span class="body"> one-bottom two-top)</span></span> false
-          <span class="list">(<span class="title">&gt;</span><span class="body"> one-top two-bottom)</span></span> false
-          <span class="keyword">:else</span> true)</span></span>)</span></span>)</span></span></code></pre>
-<p>I kinda feel as if this is over-doing the point a little though, and those extra variables I&#39;ve gone and made could probably just be represented by functions.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> rect-right [rect] <span class="list">(<span class="title">+</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> rect)</span></span> <span class="list">(<span class="body"><span class="keyword">:w</span> rect)</span></span>)</span></span>)</span></span>
-<span class="list">(<span class="title">defn</span><span class="body"> rect-bottom [rect] <span class="list">(<span class="title">+</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> rect)</span></span> <span class="list">(<span class="body"><span class="keyword">:h</span> rect)</span></span>)</span></span>)</span></span>
-
-<span class="list">(<span class="title">defn</span><span class="body"> collides-with [one two]
-    <span class="list">(<span class="title">cond</span><span class="body"> <span class="list">(<span class="title">&lt;</span><span class="body"> <span class="list">(<span class="title">rect-right</span><span class="body"> one)</span></span> <span class="list">(<span class="body"><span class="keyword">:x</span> two)</span></span>)</span></span> false
-          <span class="list">(<span class="title">&gt;</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> one)</span></span> <span class="list">(<span class="title">rect-right</span><span class="body"> two)</span></span>)</span></span> false
-          <span class="list">(<span class="title">&lt;</span><span class="body"> <span class="list">(<span class="title">rect-bottom</span><span class="body"> one)</span></span> <span class="list">(<span class="body"><span class="keyword">:y</span> two)</span></span>)</span></span> false
-          <span class="list">(<span class="title">&gt;</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> one)</span></span> <span class="list">(<span class="title">rect-bottom</span><span class="body"> two)</span></span>)</span></span> false
-          <span class="keyword">:else</span> true)</span></span>)</span></span></code></pre>
-<p>It&#39;s a small change, but if I want to use these concepts elsewhere then I&#39;ll be able to far easier and this is far easier on the eyes.</p>
-<p><strong>Using the collision detection</strong></p>
-<p>Okay so I&#39;m being quite lazy here, the efficient way to do collision detection across a scene is to use a linear hashmap and only test rects in adjacent cells. I only have a few space invaders though so I&#39;ll take the hit of a more brute force solution (although I think this would be quite fun to implement in a functional manner so I&#39;ll come back to it)</p>
-<p>So, obviously I need to adjust my sequences based on whether bullets are intersecting with aliens.</p>
-<p>This is probably the complicated bit, and I&#39;ll start off being really lazy about how I evaluate this.</p>
-<ul>
-<li>We need to remove bullets from the collection if they&#39;re intersecting</li>
-<li>We need to remove aliens from the collection if they&#39;re intersecting</li>
-<li><em>in the future we&#39;d need to increase points</em></li>
-<li><em>in the future we&#39;d need to show some animation</em></li>
-</ul>
-<p>I&#39;m getting the feeling that doing all of this with my ball of state is going to get un-wieldy and I might want to look into something more functional <a href="http://prog21.dadgum.com/23.html">like in this series</a>.</p>
-<p>Nevertheless, I&#39;ll press forwards with my current solution because I want something that works.</p>
-<p><strong>My first attempt</strong></p>
-<p>My first attempt was a failure, I thought it&#39;d be simple to just loop through several times and do something like</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> bullet-collides-with-enemy [bullet state]
-  <span class="list">(<span class="title">not</span><span class="body"> <span class="list">(<span class="title">not-any</span><span class="body">? 
-     <span class="list">(<span class="title">fn</span><span class="body"> [enemy] <span class="list">(<span class="title">collides-with</span><span class="body"> enemy bullet)</span></span>)</span></span> 
-     <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>)</span></span>)</span></span>)</span></span>
-
-<span class="list">(<span class="title">defn</span><span class="body"> enemy-collides-with-bullet [enemy state]
-  <span class="list">(<span class="title">not</span><span class="body"> <span class="list">(<span class="title">not-any</span><span class="body">? 
-     <span class="list">(<span class="title">fn</span><span class="body"> [bullet] <span class="list">(<span class="title">collides-with</span><span class="body"> bullet enemy)</span></span>)</span></span> 
-     <span class="list">(<span class="title">get-in</span><span class="body"> [<span class="keyword">:bullets</span> <span class="keyword">:active</span>] state)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>And filter out enemies/bullets in the seq for these things, this is an awful idea because of multiple iterations it&#39;s also an awful idea because written in this way it&#39;s hard to follow.</p>
-<p><strong>Second attempt</strong></p>
-<p>A better idea would be to iterate once, ask for all the colliisons that have taken place and then use this information to create a new version of the state without the affected enemies/bullets in it.</p>
-<p>This moves me closer in the direction described by the article I linked above so I&#39;ll give it a go.</p>
-<p>I can write a function that does this and returns a list of the collisions.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> get-bullet-enemy-collisions [state]
-  <span class="list">(<span class="title">for</span><span class="body"> [bullet <span class="list">(<span class="title">active-bullets</span><span class="body"> state)</span></span>]
-    { <span class="keyword">:bullet</span> bullet
-      <span class="keyword">:alien</span> <span class="list">(<span class="title">first</span><span class="body"> <span class="list">(<span class="title">enemies-colliding-with-bullet</span><span class="body"> bullet state)</span></span>)</span></span>})</span></span>)</span></span></code></pre>
-<p>But this won&#39;t actually be effective I don&#39;t think, because I&#39;m returning a map of maps which would need comparing against the other maps in order to remove them from the collection they&#39;re in.</p>
-<p>By-reference comparison won&#39;t work, maps are (as I understand it) compared by value - and while this would work it&#39;s not &quot;correct&quot;. Identity is what we want to compare against here and our bullets and aliens don&#39;t have identies.</p>
-<p><strong>Third attempt</strong></p>
-<p>I&#39;ve found <a href="http://clojuredocs.org/clojure_core/clojure.core/map-indexed">map-indexed</a> and <a href="http://clojuredocs.org/clojure_core/clojure.core/keep-indexed">keep-indexed</a>, which will allow me to do pretty much the same as above but return a list of indexes into the collections which represent collisions.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> get-bullet-enemy-collisions [state]
-  <span class="list">(<span class="title">keep-indexed</span><span class="body"> #<span class="list">(<span class="body">{ <span class="keyword">:bullet</span> %<span class="number">1</span>
-                    <span class="keyword">:alien</span> <span class="list">(<span class="title">first</span><span class="body"> <span class="list">(<span class="title">enemies-colliding-with-bullet</span><span class="body"> bullet state)</span></span>)</span></span>})</span></span>
-                <span class="list">(<span class="title">active-bullets</span><span class="body"> state)</span></span>)</span></span>)</span></span>
-
-<span class="list">(<span class="title">defn</span><span class="body"> enemies-colliding-with-bullet [bullet state]
-  <span class="list">(<span class="title">keep-indexed</span><span class="body"> #<span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">collides-with</span><span class="body"> %<span class="number">2</span> bullet)</span></span> %<span class="number">1</span>)</span></span> <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>)</span></span>)</span></span></code></pre>
-<p>I&#39;ve also discovered that little # symbol, which appears to be shorthand for an anonymous function with a 1-indexed list of arguments.</p>
-<p>Anyway, now I have a list of collisions that have taken place in my game world, I can filter out the items I don&#39;t want any more.</p>
-<p>I couldn&#39;t figure out an easy way of using this data though, so back to</p>
-<p><strong>Option one again</strong></p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> collide-bullets [state]
-  <span class="list">(<span class="title">assoc</span><span class="body"> 
-    <span class="list">(<span class="title">assoc-in</span><span class="body"> state [<span class="keyword">:bullets</span> <span class="keyword">:active</span>]
-      <span class="list">(<span class="title">remove</span><span class="body"> #<span class="list">(<span class="title">collides-with-any</span><span class="body"> % <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>)</span></span> <span class="list">(<span class="title">active-bullets</span><span class="body"> state)</span></span>)</span></span>)</span></span>
-    <span class="keyword">:enemies</span>
-      <span class="list">(<span class="title">remove</span><span class="body"> #<span class="list">(<span class="title">collides-with-any</span><span class="body"> % <span class="list">(<span class="title">active-bullets</span><span class="body"> state)</span></span>)</span></span> <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>)</span></span>)</span></span>)</span></span>
-
-<span class="list">(<span class="title">defn</span><span class="body"> collides-with-any [one, others]
-  <span class="list">(<span class="title">some</span><span class="body"> #<span class="list">(<span class="title">collides-with</span><span class="body"> % one)</span></span> others)</span></span>)</span></span></code></pre>
-<p>Iterate through the list twice and just remove any affected entities.</p>
-<p>Note I can use the old verson of the state when doing my <em>collides-with-any</em> calls, and stick the results into multiple calls on top of the new state. This is much easier to understand than my first attempt however so at least doesn&#39;t have the pitfall of being completely opaque.</p>
-<p>I&#39;m still really not liking this solution as it involves multiple iterations of the two collections:</p>
-<ul>
-<li>Compare each bullet against all the enemies</li>
-<li>Compare each enemy against all the bullets</li>
-</ul>
-<p>I&#39;ll come back to this no doubt when it comes to adding scoring, explosions and sound, because I&#39;m going to need to execute a lot more logic based on these collisions.</p>
-<p>I&#39;m going to press on and add some more gameplay though, as once I have an end-to-end game I&#39;ll hopefully have gained more understanding and be able to reason about all of this better.</p>
-]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---adding-collision-detection-to-the-game.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---adding-collision-detection-to-the-game.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 02 Jul 2013 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/working-for-free-and-what-it-taught-me.html</link><guid isPermaLink="true">http://codeofrob.com/entries/working-for-free-and-what-it-taught-me.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 04 Jul 2013 09:30:00 GMT</pubDate></item></channel></rss>
