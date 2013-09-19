@@ -1,5 +1,168 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Mon, 09 Sep 2013 15:04:42 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[The use of Clojure in the CDEC Open Health Data Platform]]></title><description><![CDATA[<p>I&#39;m currently at <a href="https://www.mastodonc.com/">Mastodon C</a> where I am learning new stuff, both for the pleasure of learning and also to pick up skills that will be useful to my clients in the future - I am also blogging about this in a series which has entries queued up for the next few weeks.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Thu, 19 Sep 2013 10:07:16 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Impatiently learning Cascalog - Part 4]]></title><description><![CDATA[<p>I&#39;m on Part 4 of Cascalog for the Impatient and I&#39;ve learned</p>
+<ul>
+<li>I still don&#39;t enjoy the JVM that much</li>
+<li>How to use generators and sinks </li>
+<li>What the <em>?&lt;-</em> and <em>&lt;-</em> thingies do (roughly)</li>
+<li>How to define map operations</li>
+<li>How to use vanilla Clojure to clean stuff up</li>
+</ul>
+<p>Great, so this is where we are.</p>
+<ul>
+<li><a href="/entries/impatiently-learning-cascalog---part-1.html">Part 1</a></li>
+<li><a href="/entries/impatiently-learning-cascalog---part-2.html">Part 2</a></li>
+<li><a href="/entries/impatiently-learning-cascalog---part-3.html">Part 3</a></li>
+</ul>
+<p>I&#39;ve opened up the source for part4 and it is doing something a bit different so I guess I should be a little less impatient and have a look at the tutorial to see what I&#39;m looking at...</p>
+<pre><code>Today's lesson takes <span class="keyword">that</span> same Word Count app <span class="keyword">and</span> expands <span class="function_start"><span class="keyword">on</span> <span class="title">it</span></span> <span class="keyword">to</span> implement a stop <span class="property">words</span> filter.</code></pre>
+<p>There is some waffle about the TF-IDF algorithm doing some of this for us, but we might want to do it ourselves because of swear-words. I suppose I should go and read about TD-IDF at some point but for now I&#39;m going to move on with this Cascalog stuff and accept that stuff exists and I don&#39;t know about it yet.</p>
+<h1>Left join</h1>
+<p>Feasibly we could write a custom filter method and check if a word is valid, but that&#39;s going to be a bit of a ball-ache. So, we&#39;re told that we&#39;re doing a left-join between the two sets of data.</p>
+<p>That&#39;s an interesting notion to me because we&#39;re in the world of Map/Reduce and that&#39;s not something I&#39;m used to reading in this world.</p>
+<p>So how does this work?</p>
+<pre><code class="lang-clojure">  <span class="list">(<span class="title"><span class="built_in">let</span></span> <span class="collection">[rain <span class="list">(<span class="title">hfs-delimited</span> in <span class="attribute">:skip-header?</span> <span class="literal">true</span>)</span>
+        stop <span class="list">(<span class="title">hfs-delimited</span> stop <span class="attribute">:skip-header?</span> <span class="literal">true</span>)</span>]</span></code></pre>
+<p>Unlike  in the previous codes, rather than simply invoke the generator with the variables, we stick it in a let block alongside another generator containing stop words.</p>
+<p>At this point in my mind I&#39;m viewing them as two tables of data, ripe for <em>doing stuff with</em>.</p>
+<p>The next line we start going about things the way we&#39;re used to</p>
+<pre><code class="lang-clojure">    <span class="list">(<span class="title">?&lt;-</span> <span class="list">(<span class="title">hfs-delimited</span> out)</span>
+         <span class="collection">[?word ?count]</span></code></pre>
+<p>So we&#39;re sinking words and counts into the destination file again - that&#39;s cool.</p>
+<p>We then invoke the rain generator and tidy it up like in the past two examples</p>
+<pre><code class="lang-clojure">    (rain _ ?line)
+    (split ?line :&gt; ?word-dirty)
+    ((c/comp s/trim s/lower-case) ?word-dirty :&gt; ?word)</code></pre>
+<p>I can&#39;t really see why we wouldn&#39;t just write this with the generator inline like this</p>
+<pre><code class="lang-clojure">    ((hfs-delimited in :skip-header? true) _ ?line)
+    (split ?line :&gt; ?word-dirty)
+    ((c/comp s/trim s/lower-case) ?word-dirty :&gt; ?word)</code></pre>
+<p>Other than I guess declaring the generators at the top just makes it clear to the reader where our data is coming from.</p>
+<p>The interesting bit is where we then invoke the stop word generator wit hteh word that we have</p>
+<pre><code class="lang-clojure"><span class="list">(<span class="title">stop</span> ?word <span class="attribute">:&gt;</span> <span class="literal">false</span>)</span></code></pre>
+<p>Well wow, I&#39;m not really sure what I&#39;m looking at here at all, I guess there is some more magic going on where it knows I&#39;ve used the <em>?word</em> as a field and it can work out that I want to do a join on these two things based on that. I&#39;m mapping the result of this to &#39;false&#39; which I assume means <em>I don&#39;t want that crap if it returns something</em>.</p>
+<p>The major difference between the files I&#39;m looking at here (the stop file, and the rain file) is that the rain file has two columns and the stop file has one column so it has to just be the fact that I used the same name here that made the magic happen.</p>
+<p>I don&#39;t find any of this intuitive - but I can take it at face value once more and accept that it works if I do it this way. My urge to go and see how this stuff is implemented is growing and there are only two more stages of this tutorial left for me to follow.</p>
+<p>The complete query looks like this by the way</p>
+<pre><code class="lang-clojure">(defn -main [in out stop &amp; args]
+  (let [rain (hfs-delimited in :skip-header? true)
+        stop (hfs-delimited stop :skip-header? true)]
+    (?&lt;- (hfs-delimited out)
+         [?word ?count]
+         (rain _ ?line)
+         (split ?line :&gt; ?word-dirty)
+         ((c/comp s/trim s/lower-case) ?word-dirty :&gt; ?word)
+         (stop ?word :&gt; false)
+         (c/count ?count))))</code></pre>
+<p>Running the demo with</p>
+<pre><code>~/build/hadoop-<span class="number">1.2</span><span class="number">.1</span>/bin/hadoop jar target/impatient.jar <span class="typedef"><span class="keyword">data</span>/rain.txt output/wc <span class="keyword">data</span>/en.stop</span></code></pre>
+<p>Seems to yield in a sensible word count being generated like so</p>
+<pre><code><span class="title">air</span>             <span class="number">1</span>
+<span class="title">area</span>            <span class="number">4</span>
+<span class="title">australia</span>       <span class="number">1</span>
+<span class="title">broken</span>          <span class="number">1</span>
+<span class="title">california's</span>    <span class="number">1</span>
+<span class="title">cause</span>           <span class="number">1</span></code></pre>
+<p>etc</p>
+<p>So, I guess the lesson here is that you can do joins between generators by using the same field name when running them. Neato.</p>
+<p>At this point I have to go away for the weekend to get drunk in a field, so I&#39;ll have to skip the rest of the tutorial and start work on something real at the Mastodon C office.</p>
+]]></description><link>http://codeofrob.com/entries/impatiently-learning-cascalog---part-4.html</link><guid isPermaLink="true">http://codeofrob.com/entries/impatiently-learning-cascalog---part-4.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 17 Sep 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Impatiently learning Cascalog - Part 3]]></title><description><![CDATA[<p>Onwards to Part 3 of the Cascalog for the Impatient tutorial, now my JVM appears to be behaving itself and I&#39;m able to run the examples again.</p>
+<ul>
+<li><a href="/entries/impatiently-learning-cascalog---part-1.html">Part 1</a></li>
+<li><a href="/entries/impatiently-learning-cascalog---part-2.html">Part 2</a></li>
+</ul>
+<p>Part 3 seems to be pretty simple, adding a custom function to scrub text - written in a style I can actually understand thanks to the Clojure I&#39;ve written so far.</p>
+<pre><code class="lang-clojure">(defn scrub-text [s]
+  &quot;trim open whitespaces and lower case&quot;
+  ((comp s/trim s/lower-case) s))</code></pre>
+<p>The main point of this step of the guide seems to be about data sanitisation, and why you would use custom functions to do that - rather than anything new relating specifically to Cascalog.</p>
+<p>Being able to use vanilla Clojure functions to manipulate data comes with some benefits, the main one being that we can test this stuff independently and then import it into the Cascalog query where we know at least that bit works. </p>
+<p>This is pretty important because tidying up edge cases is generally a rather iterative process and you want the feedback loop to be fast (I can get behind that notion)</p>
+<p>This is used in the following manner</p>
+<pre><code class="lang-clojure">(defn -main [in out &amp; args]
+  (?&lt;- (hfs-delimited out)
+       [?word ?count]
+       ((hfs-delimited in :skip-header? true) _ ?line)
+       (split ?line :&gt; ?word-dirty)
+       (scrub-text ?word-dirty :&gt; ?word)
+       (c/count ?count)))</code></pre>
+<p>In this query, it&#39;s just another step - where we call the function with the output of the split function (which is <em>?word-dirty</em>), and then output the result of that as <em>?word</em></p>
+<p>This is starting to make sense now, and it no longer looks like vomit when I read it. I&#39;d like to see what is going on under the hood to satisfy my curiosity but that can wait until I&#39;ve finished the tutorial.</p>
+<p>Onwards to Part 4...</p>
+]]></description><link>http://codeofrob.com/entries/impatiently-learning-cascalog---part-3.html</link><guid isPermaLink="true">http://codeofrob.com/entries/impatiently-learning-cascalog---part-3.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 12 Sep 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Impatiently learning Cascalog - Part 2]]></title><description><![CDATA[<p>I&#39;m skimming through Cascalog for the Impatient and documenting my questions/learnings as I go for my future benefit.</p>
+<ul>
+<li><a href="/entries/impatiently-learning-cascalog---part-1.html">Part 1</a></li>
+</ul>
+<h1>Part 2</h1>
+<p>Apparently in this part we&#39;re going to update our first code so as to count the words in our document and that&#39;s the first step towards implementing a <a href="http://en.wikipedia.org/wiki/Tf*idf">tf-idf</a> implementation - cool story bro, I have no idea what one of those is but moving on.</p>
+<p>I quite like the explanation given at the beginning of the article for why it&#39;s important that we be able to copy data from one place to another, and why we&#39;d use Cascalog for this. Basically we&#39;re talking about being able to make guarantees about this operation and that&#39;s going to be important when we&#39;re trying to write logic on top of this process.</p>
+<p>So anyway, we&#39;re given the following code</p>
+<pre><code class="lang-clojure"><span class="list">(<span class="title">defmapcatop</span> split <span class="collection">[line]</span>
+  <span class="string">"reads in a line of string and splits it by regex"</span>
+    <span class="list">(<span class="title">s/split</span> line #<span class="string">"[\[\]\\(\),.)\s]+"</span>)</span>)</span></code></pre>
+<p>I guess that &#39;defmapcatop&#39; is a macro for defining map operations, and this appears to be splitting a line by whitespace.</p>
+<p>Googling this doesn&#39;t appear to yield in the documentation, which is a bit unfortunate - but a bit of rummaging around finds a handy page for <a href="http://entxtech.blogspot.co.uk/2010/12/which-operation-def-macro-should-i-use.html">&quot;which def should I use&quot;</a>  which suggests that I&#39;m on the right track with that line of thought.</p>
+<p>Okay, so we can move on from this pretty swiftly and see how we&#39;re going to use this</p>
+<pre><code class="lang-clojure">(defn -main [in out &amp; args]
+  (?&lt;- (hfs-delimited out)
+       [?word ?count]
+       ((hfs-delimited in :skip-header? true) _ ?line)
+       (split ?line :&gt; ?word)
+       (c/count ?count)))</code></pre>
+<p>Well, I have to say I can barely read this - my Clojure-fu is not strong when mixed with the Cascalog.</p>
+<p>But, we can see</p>
+<ul>
+<li>We&#39;re using the (?&lt;- thingy again, so we&#39;re running this query now</li>
+<li>We&#39;re &#39;sinking&#39; our output, whatever that is to the &#39;out&#39; path</li>
+<li>This time, we&#39;re outputting the variables &quot;word&quot; and &quot;count&quot;</li>
+<li>We&#39;re reading in from &#39;in&#39;, to the variables &#39;_&#39; and &#39;?line&#39;</li>
+<li>I guess we&#39;re using &#39;_&#39; because we&#39;re ignoring that</li>
+<li>We split the line into the ?word variable</li>
+<li>The :&gt; thingy seems to be a bit of magic to do that</li>
+<li>And then we count that into the ?count variable</li>
+</ul>
+<p>I am mega-confused reading this because I can&#39;t actually tell how it maps to what I know about Clojure/Lisp.</p>
+<ul>
+<li>It&#39;s weird because our output is on top, and takes in the variables ?word and ?count which aren&#39;t defined yet</li>
+<li>That&#39;s weird because despite the output at the top, our predicates are written in the order they&#39;re going to be run</li>
+<li>It&#39;s weird because of that :&gt; thingy</li>
+</ul>
+<p>The way I understand the documentation is that Cascalog looks at the dependencies of each predicate and only runs them when they have been fulfilled. I guess the &#39;sink&#39; relies on ?word and ?count being available and isn&#39;t run until they are or something like that.</p>
+<p>This is neatly explained by the Cascalog for the Impatient guide in terms of the &quot;logic programming&quot; paradigm so I&#39;ll accept that for now.</p>
+<p>I suspect that the <em>(?&lt;-</em> thingy is actually a macro of some sort that re-writes this into something more sane, but who knows right?</p>
+<p>Running this with</p>
+<pre><code><span class="title">lein</span> uberjar
+<span class="title">hadoop</span> jar ./target/impatient.jar <span class="typedef"><span class="keyword">data</span>/rain.txt output/wc</span></code></pre>
+<p>Gives me a wonderful &quot;out of memory exception&quot;, so I post a dump on the mailing list and have a look at my environment.</p>
+<p>Things I tried while I waited for a response</p>
+<ul>
+<li>Re-install the hadoop package (1.2.1) but the x64 version</li>
+<li>Edit the configuration files to force 2048mb of heap size</li>
+<li>Clear my hadoop installation again</li>
+<li>Download the raw tar.gz for hadoop</li>
+<li>Configure that</li>
+<li>Run that: Success</li>
+<li>Run it again, failure</li>
+<li>Restart laptop for the fifth time</li>
+<li>Everything works, QUICK DON&#39;T TOUCH IT ANY FURTHER</li>
+<li>TLDR: I <em>still</em> really hate the JVM, or it hates me - whatever</li>
+</ul>
+<p>Side note: The project pages for Hadoop are <em>awful</em>, I had to go through a dozen links before I got to download anything - it felt like it was <em>trying</em> to make me feel stupid, but oh well - carrying on.</p>
+<p>The real output?</p>
+<pre><code><span class="title">A</span>    <span class="number">3</span>
+Australia    <span class="number">1</span>
+Broken    <span class="number">1</span>
+California<span class="string">'s    1
+DVD    1
+Death    1
+Land    1
+Secrets    1
+This    2
+Two    1
+Valley    1</code></pre>
+<p>Etc - so I&#39;m happy enough with that.</p>
+<p>I&#39;m still not <em>that</em> happy with the crazy syntax of the Clojure, I&#39;m grabbing at it and going with the rolling assumption that the logic-like-system is just a bunch of macros on top of vanilla Clojure and &quot;just works&quot;, so &quot;shut up and carry on Rob&quot;.</p>
+<p>Onto part 3 then...</p>
+]]></description><link>http://codeofrob.com/entries/impatiently-learning-cascalog---part-2.html</link><guid isPermaLink="true">http://codeofrob.com/entries/impatiently-learning-cascalog---part-2.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 10 Sep 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[The use of Clojure in the CDEC Open Health Data Platform]]></title><description><![CDATA[<p>I&#39;m currently at <a href="https://www.mastodonc.com/">Mastodon C</a> where I am learning new stuff, both for the pleasure of learning and also to pick up skills that will be useful to my clients in the future - I am also blogging about this in a series which has entries queued up for the next few weeks.</p>
 <p>As part of my time here, I am contributing work to the <a href="http://openhealthdata.cdehub.org/">CDEC Open Health Data Platform</a>, and came across a blog entry which suggested that the use of <a href="https://cde.catapult.org.uk/blogviews/-/asset_publisher/XwNC0wXN7ru2/blog/a-taste-of-things-to-come-so-how-do-we-write-our-own-recipes-?redirect=https://cde.catapult.org.uk/blogviews%3Fp_p_id%3D101_INSTANCE_XwNC0wXN7ru2%26p_p_lifecycle%3D0%26p_p_state%3Dnormal%26p_p_mode%3Dview%26p_p_col_id%3Dcolumn-2%26p_p_col_count%3D2">Clojure for this platform was a bad fit for a number of reasons</a>.</p>
 <p>So, putting the queued up blog entries to one side, and posting out of phase halfway through my work here I wish to respond to the article, based on my own experiences and interpretation of the project. (<em>I am not speaking for Mastodon, as any regular reader will know my words are always my own and I can&#39;t write things any other way!</em>)</p>
 <h3>The industry lacks the experience required to contribute to the CDEC platform</h3>
@@ -345,239 +508,4 @@ vim Gruntfile.js</code></pre>
 <p>I don&#39;t do this very often, this is a collection of tools/libraries that I really like and have come to appreciate very much. Anything is interchangeable for other things and I&#39;m not afraid to change any part of it at some point if something better comes up.</p>
 <p>I do have a repo which I clone which has these things already set up for a blank project - but this is personal to me and the way I want to work. In a team this might be different (compromise) and for you it&#39;ll be different too.</p>
 <p>So I won&#39;t be sharing it. Sorry :)</p>
-]]></description><link>http://codeofrob.com/entries/grunt+browserify+npm+application=success.html</link><guid isPermaLink="true">http://codeofrob.com/entries/grunt+browserify+npm+application=success.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 18 Jul 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Look ma, no frameworks]]></title><description><![CDATA[<p>Having a break from the FP series, I&#39;ve made a few statements in the past and had more than a few discussions with people about how I build JS applications and the most common question I get asked is</p>
-  <blockquote>How on earth can you build JS applications without a framework?</blockquote>
-
-<p>My favourite quote on this subject so far is...</p>
-  <blockquote>Typical cowboy bullshit</blockquote>
-
-<p>Which came from the <a href="http://www.reddit.com/r/programming/comments/1hqmyj/working_for_free_and_what_it_taught_me/cawyy87">Reddit thread</a> about <a href="/entries/working-for-free-and-what-it-taught-me.html">Working for free</a>, and is a a typical reaction when I&#39;m waving my arms around about how awesome not using frameworks is without really backing it up with info.</p>
-<p>So, here&#39;s the deal, I&#39;m going to go through a few of the libraries, patterns and techniques that I use over the next few entries to show my workflow/thinking/etc around this to supplement some of this arm waving with useful information.</p>
-<h1>First up, the arm-waving - why?</h1>
-<p><em>I don&#39;t like being told what to do</em></p>
-<p>I admit it, I&#39;m a bit of an anti-authority type. If I&#39;m told to do something by somebody and they&#39;ve not yet earned my respect, I&#39;m probably going to be having words. Admittedly this has gotten me into trouble in the past but hey ho... </p>
-<p>The same goes for frameworks, I hate being told what to do and where to put things from the get-go. Without discovering reasons for those decisions in the applications I&#39;m building. I&#39;m not saying I don&#39;t re-use patterns and ways of doing things that have served me well in previous applications (this is what this series is going to be about after all). </p>
-<p>The thing is that over time I&#39;ve come to the conclusion that a lot of the ways we do things in frameworks are <em>wrong</em> anyway.</p>
-<p>That brings me onto...</p>
-<p><em>I don&#39;t like forced abstractions</em></p>
-<p>Data binding? Logicless Templating? MVVM? MVC? Not my cup of tea most of the time, forcing your application into layers either on the server or the client before we even know what our requirements are takes away too much control and leaves little room for the more natural abstractions that a more vanilla approach will provide.</p>
-<p>It&#39;s hubris for a framework to suggest that it will somehow magically enable us to write &quot;Application Scale JavaScript&quot; (whatever this means). It is dangerous to think that by separating our application up in horizontal slices somehow yields in better, more manageable code.</p>
-<p>Abstractions should be used because there is a pain that needs solving, whether that be because you&#39;re talking to third party code, or slow remote calls that need hiding during testing or because there is complexity that needs hiding. Putting abstractions in before we feel any of this pain just means more code to wade through when trying to get stuff done - no thanks.</p>
-<p><em>I like power</em></p>
-<p>If I want to bulldoze my way through a feature, then I want to bulldoze my way through a feature. If this means taking a shotgun to the DOM then that&#39;s what I want to do. If it means abusing cookies/local storage for nefarious purposes then that&#39;s what I want to do.  If there is a module/library around that can help me I want to pull it in and <em>use</em> it.</p>
-<p>The power is mine to do these things. As soon as a framework starts imposing its will on me, this power often goes away and more importantly...</p>
-<p><em>I hate fighting</em></p>
-<p>I keep saying this - that Frameworks basically mean having to fight edge cases instead of actually writing feature code. </p>
-<p>I&#39;m not saying that you can&#39;t be faster if all you do is glue things together, but spending hours reading StackOverflow to find out how to insert Knob A into Hole B is not my idea of fun at all. As much as I value getting things done - I start getting pretty miserable when that tiny little feature I wanted to develop turns into hours of trying to fit incompatible abstractions together.</p>
-<p><em>Focus</em></p>
-<p>The problem with frameworks is not that they don&#39;t solve problems beacuse for some people they do. My problem with them is generally that they try to solve more than one problem and because of this there is often a conflict between what I want to get done application development vs what is provided in the framework. </p>
-<p>Focus is the key here, when I&#39;m pulling in a library that does something, I want to know that I can use it without its implementation getting in the way of the other things I want to do.</p>
-<p><em>I want control over my entry points</em></p>
-<p>I want an app.js which contains the code that sets up my application. (Frameworks don&#39;t necessarily prevent you doing this, Backbone is a good example). I want to be responsible for creating new objects/services and control their lifetimes from the outside in.</p>
-<p>Doing so means that isolating code I want to test is trivial, that everything remains explicit and readable from that point in, and at any point it&#39;s possible to change how the application works without fighting configuration or convention. I long the days when either we&#39;re not writing code because we&#39;ve hit the singularity or we&#39;ve moved past this notion of &quot;Drop some files in these arbitrary folders and honest we&#39;ll wire everything up for you&quot;</p>
-<h1>Onwards then...</h1>
-<p>I don&#39;t know where I&#39;m going with this, but I&#39;ll try to start from the beginning and take it from there.</p>
-]]></description><link>http://codeofrob.com/entries/look-ma,-no-frameworks.html</link><guid isPermaLink="true">http://codeofrob.com/entries/look-ma,-no-frameworks.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 16 Jul 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Learn functional programming with me - but rob, it needs to be more composable]]></title><description><![CDATA[<p>As I write my Clojure and the related blog posts, I&#39;ve been having them reviewed by <a href="http://twitter/bodil">@bodil</a> who is a proper functional programming neckbeard emacs type.</p>
-<ul>
-<li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Mission statement</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---moving-the-square.html">Moving the square</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---attributes-and-vectors.html">Attributes and vectors</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---improving-my-workflow.html">Improving my workflow</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---adding-lots-more-state.html">Creating lots of state</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---mutating-lots-of-state.html">Mutating lots of state</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---improving-our-data-structure-with-maps.html">Improving our data structure with maps</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---keyboard-input-for-our-red-square.html">Moving our red square with keyboard input</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---adding-items-to-a-sequence.html">Adding items to a sequence and firing bullets</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---refactoring-my-state-transitions.html">Refactoring my state transitions</a></li>
-<li><a href="/learn-functional-programming-with-me---more-idiomatic-clojure.html">More idiomatic clojure</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---adding-collision-detection-to-the-game.html">Adding collision detection</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---functional-difficulty-levels.html">Functional difficulty levels</a></li>
-</ul>
-<p>Her most recent piece of feedback was</p>
-  <blockquote>
-    What strikes me about your code right now is that it&#39;s not very composable
-  </blockquote>
-
-<p>Well I have to admit I had no idea what she meant by this, although it was in reference to a problem I was highlighting myself of <em>I&#39;m passing too much data around</em></p>
-<p>It turns out that this is pretty much what the FP guys mean when they say that code isn&#39;t composable.</p>
-<p>Obeerne of the beautiful things about the way languages like Clojure make you build up code, is that the functions you write are supposed to be re-usable across very basic and well-known data structures.</p>
-<h3>Composability and Types</h3>
-<p><a href="http://clojure.org/sequences">Sequences</a> are probably the best structures to be operating on top of, maybe with some primitives as directives of how to operate on them. </p>
-<p>User defined structures such as a &quot;vector&quot; probably come in next and then my big chunk of state as a hash... well that&#39;s the worst - especially if I&#39;m passing it around as one big thing all the time.</p>
-<p>With that in mind, suddenly we have a use for defined data structures like records (something I have been putting off for a while), and perhaps I can begin to solve my awkward relationship with that big ball of state. Something I have been muttering about for the past few blog entries.</p>
-<p>So, I&#39;ve read the <a href="http://clojure.org/datatypes">page on types</a> in Clojure and from what I understand it seems that deftype is for structures with no behaviour, and defrecord is for more OOP scenarios but there is also <a href="http://clojure.org/protocols">defprotocol</a> which is somehow related to both and will probably help me with my current data-ball-of-mud problem.</p>
-<p>To further confound me, the docs have snippets like this in them</p>
-  <blockquote>
-  Protocols are fully reified
-  </blockquote>
-
-<p>I&#39;ll need a dictionary and a copy of SICP to understand this and my brain is melting a bit so I go to find wine. Nice cool wine on a terrace overlooking St Pauls Cathedral and try to make sense of these docs a bit more.</p>
-<h3>Composability and Space Invaders</h3>
-<p>Starting at the other end of the problem - away from wordy confusion, it&#39;s very easy to see that there are some basic data types in my Space Invaders game and I have some basic operations over the top of them.</p>
-<p>First up, I&#39;m passing &#39;rects&#39; all over the place, and a rect is defined as </p>
-<pre><code><span class="title">x</span> : <span class="type">LHS</span> <span class="keyword">of</span> the rect
-<span class="title">y</span> : <span class="type">TOP</span> <span class="keyword">of</span> the rect
-<span class="title">w</span> : <span class="type">Width</span> <span class="keyword">of</span> the rect
-<span class="title">h</span> : <span class="type">Height</span> <span class="keyword">of</span> the rect</code></pre>
-<p>That&#39;s the state, and there are some basic operations over the top of this - some which involve mutation and some which do not</p>
-<ul>
-<li>Draw it (no mutation of internal state) </li>
-<li>bottom of the rect (no mutation)</li>
-<li>RHS of the rect (no mutation)</li>
-<li>move left/right/up/down (mutation - perhaps just &#39;move&#39;)</li>
-</ul>
-<p>From what I understand of the docs, I could probably get a lot done by defining a rect as a record, and exposing these as methods on that record, this might make some of the code easier to follow.</p>
-<p>I could also use a protocol to describe two things as being &#39;collideable&#39; (a suggestion from my tutor), which is the Clojure equivalent to an interface if I understand correctly.</p>
-<h3>No code here</h3>
-<p>I&#39;ll leave the implementation of this to the next post, as this is quite a lot of data to digest and I highly recommend reading the above docs if you&#39;re following along with my learning.</p>
-]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---but-rob,-it-needs-to-be-more-composable.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---but-rob,-it-needs-to-be-more-composable.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 11 Jul 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Learn functional programming with me - functional difficulty levels]]></title><description><![CDATA[<p>It&#39;s time to accelerate my efforts in getting the space invaders game have some sort of end-to-end story. Part of this is having the space invaders dropping down and firing back at our hero.</p>
-<ul>
-<li><a href="/entries/learn-functional-programming-with-me---a-mission-statement.html">Mission statement</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---drawing-a-square.html">Drawing a square</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---moving-the-square.html">Moving the square</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---attributes-and-vectors.html">Attributes and vectors</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---improving-my-workflow.html">Improving my workflow</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---adding-lots-more-state.html">Creating lots of state</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---mutating-lots-of-state.html">Mutating lots of state</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---improving-our-data-structure-with-maps.html">Improving our data structure with maps</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---keyboard-input-for-our-red-square.html">Moving our red square with keyboard input</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---adding-items-to-a-sequence.html">Adding items to a sequence and firing bullets</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---refactoring-my-state-transitions.html">Refactoring my state transitions</a></li>
-<li><a href="/learn-functional-programming-with-me---more-idiomatic-clojure.html">More idiomatic clojure</a></li>
-<li><a href="/entries/learn-functional-programming-with-me---adding-collision-detection-to-the-game.html">Adding collision detection</a></li>
-</ul>
-<p><strong>I did a tidy up</strong></p>
-<p>I got rid of my stupid nested structures, and put the data for bullets into the top-level map, instead of</p>
-<pre><code>[<span class="symbol">:bullets</span> <span class="symbol">:active</span>]
-[<span class="symbol">:bullets</span> <span class="symbol">:lastFiringTicks</span>]</code></pre>
-<p>I now have</p>
-<pre><code>[<span class="symbol">:bullets</span>]
-[<span class="symbol">:last-firing-ticks</span>]</code></pre>
-<p>It makes things much simpler, the code at the start of this entry can be found <a href="https://github.com/robashton/clojure-spaceinvaders/blob/085c0249e54c19d189dfba6e006205c90914fc56/game.cljs">here</a>.</p>
-<p><strong>The space invaders need to invade some space</strong></p>
-<p>When the invaders reach the end of the row, their direction changes - they also need to drop down by a certain amount of space and thus attack the earth.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> update-direction [state]
-  <span class="list">(<span class="title">let</span><span class="body"> [{<span class="keyword">:keys</span> [direction enemies]} state]
-    <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> direction <span class="number">1</span>)</span></span>
-      <span class="list">(<span class="title">let</span><span class="body"> [right <span class="list">(<span class="title">apply</span><span class="body"> max <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:x</span> enemies)</span></span>)</span></span>]
-        <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">&gt;</span><span class="body"> right <span class="number">600</span>)</span></span> <span class="list">(<span class="title">assoc</span><span class="body"> state <span class="keyword">:direction</span> <span class="number">-1</span>)</span></span> state)</span></span>)</span></span>
-      <span class="list">(<span class="title">let</span><span class="body"> [left <span class="list">(<span class="title">apply</span><span class="body"> min <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:x</span> enemies)</span></span>)</span></span>]
-        <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">&lt;</span><span class="body"> left <span class="number">0</span>)</span></span> <span class="list">(<span class="title">assoc</span><span class="body"> state <span class="keyword">:direction</span> <span class="number">1</span>)</span></span> state)</span></span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>I guess what I&#39;ll do here is break this up a bit (which I&#39;m okay with anyway because the above is quite hard to read)</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> rects-max-x [rects]
-  <span class="list">(<span class="title">apply</span><span class="body"> max <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:x</span> rects)</span></span>)</span></span>)</span></span>
-
-<span class="list">(<span class="title">defn</span><span class="body"> rects-min-x [rects]
-  <span class="list">(<span class="title">apply</span><span class="body"> min <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:x</span> rects)</span></span>)</span></span>)</span></span>
-
-<span class="list">(<span class="title">defn</span><span class="body"> enemies-reached-edge [enemies direction]
-  <span class="list">(<span class="title">cond</span><span class="body"> <span class="list">(<span class="title">and</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> direction <span class="number">1</span>)</span></span> <span class="list">(<span class="title">&gt;</span><span class="body"> <span class="list">(<span class="title">rects-max-x</span><span class="body"> enemies)</span></span> <span class="number">600</span>)</span></span>)</span></span> true
-        <span class="list">(<span class="title">and</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> direction <span class="number">-1</span>)</span></span> <span class="list">(<span class="title">&gt;</span><span class="body"> <span class="list">(<span class="title">rects-min-x</span><span class="body"> enemies)</span></span> <span class="number">0</span>)</span></span>)</span></span> true
-        <span class="keyword">:else</span> false)</span></span>)</span></span>
-
-<span class="list">(<span class="title">defn</span><span class="body"> invert-enemies-direction [state]
-  <span class="list">(<span class="title">assoc</span><span class="body"> state <span class="keyword">:direction</span> <span class="list">(<span class="title">*</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:direction</span> state)</span></span> <span class="number">-1</span>)</span></span>)</span></span>)</span></span>
-
-<span class="list">(<span class="title">defn</span><span class="body"> update-direction [state]
-  <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">enemies-reached-edge</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span> <span class="list">(<span class="body"><span class="keyword">:direction</span> state)</span></span>)</span></span>
-    <span class="list">(<span class="title">invert-enemies-direction</span><span class="body"> state)</span></span> state)</span></span>)</span></span></code></pre>
-<p>Now I&#39;ve done this, it should be fairly easy to update their y positions as part of that invert direction call.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> invert-enemies-direction [state]
-  <span class="list">(<span class="title">assoc</span><span class="body"> state 
-         <span class="keyword">:direction</span> <span class="list">(<span class="title">*</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:direction</span> state)</span></span> <span class="number">-1</span>)</span></span>
-         <span class="keyword">:enemies</span> <span class="list">(<span class="title">map</span><span class="body"> 
-                    <span class="list">(<span class="title">fn</span><span class="body"> [enemy] <span class="list">(<span class="title">assoc</span><span class="body"> enemy <span class="keyword">:y</span> <span class="list">(<span class="title">+</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> enemy)</span></span> <span class="number">50</span>)</span></span>)</span></span>)</span></span>
-                      <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>Fairly sure there are some tricks I&#39;m missing here for making that sort of thing prettier, but it does the job pretty well and my invaders come to say hello. </p>
-<ul>
-<li>Associate this expression with the enemies field in the map</li>
-<li>The expression is a map of the current enemies field</li>
-<li>The map associates a modified &#39;y&#39; with each enemy</li>
-</ul>
-<p><strong>Ending conditions</strong></p>
-<p>Two basic conditions now present themselves for victory or defeat</p>
-<ul>
-<li>Enemies reach the bottom of the screen</li>
-<li>Enemies are all destroyed</li>
-</ul>
-<p>Taking the easiest approach here, I&#39;ll just perform a page re-direct on failure, and start the next level on success.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> update-state [state]
-  <span class="list">(<span class="title">validate-end-conditions</span><span class="body">
-    <span class="list">(<span class="title">update-bullets</span><span class="body">
-      <span class="list">(<span class="title">update-player</span><span class="body">
-        <span class="list">(<span class="title">update-enemies</span><span class="body">
-          <span class="list">(<span class="title">update-direction</span><span class="body"> state)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>and</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> validate-end-conditions [state]
-  <span class="list">(<span class="title">cond</span><span class="body"> <span class="list">(<span class="title">enemies-are-all-dead</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>)</span></span> <span class="list">(<span class="title">start-next-level</span><span class="body">)</span></span>
-        <span class="list">(<span class="title">enemies-are-at-the-gate</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>)</span></span> <span class="list">(<span class="title">show-game-over</span><span class="body">)</span></span>
-        <span class="keyword">:else</span> state)</span></span>)</span></span></code></pre>
-<p>Now obviously <em>show-game-over</em> isn&#39;t going to actually return any state, but we&#39;ll be on a different page then so that&#39;s no big deal. <em>start-next-level</em> will have an opportunity to create completely new state for our next level so that works out nicely too.</p>
-<p><strong>Game over dude</strong></p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> enemies-are-at-the-gate [enemies]
-  <span class="list">(<span class="title">&gt;</span><span class="body"> <span class="list">(<span class="title">apply</span><span class="body"> max <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:y</span> enemies)</span></span>)</span></span> <span class="number">400</span>)</span></span>)</span></span>
-
-<span class="list">(<span class="title">defn</span><span class="body"> show-game-over []
-  <span class="list">(<span class="title">set</span><span class="body">! <span class="list">(<span class="body">. js/document -location)</span></span> <span class="string">"gameover.html"</span>)</span></span>)</span></span></code></pre>
-<p>This is another example of how delightfully terse Clojure can be at times :)</p>
-<p><strong>The enemies are dead, long live the enemies</strong></p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> enemies-are-all-dead [enemies]
-  <span class="list">(<span class="title">not</span><span class="body"> <span class="list">(<span class="title">first</span><span class="body"> enemies)</span></span>)</span></span>)</span></span></code></pre>
-<p>Apparently nil and false in Clojure are our only falsy values, so the above will work (first returns nil if the sequence is empty).</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> start-next-level []
-  <span class="list">(<span class="title">create-state</span><span class="body">)</span></span>)</span></span></code></pre>
-<p>For now, let&#39;s just go with a re-start of the whole thing when we&#39;ve killed all the enemies so everything starts from the beginning once more.</p>
-<p><strong>Difficulty levels</strong></p>
-<p>Now we have game over and next level, let&#39;s look at next level and what it means.</p>
-<p>Currently I have a few hard-coded values lying around</p>
-<ul>
-<li>How far do enemies drop down each pass</li>
-<li>How fast do enemies move from left to right?</li>
-<li>How frequently do our bullets fire?</li>
-<li>How fast are our bullets?</li>
-<li>How fast does our defender move?</li>
-</ul>
-<p>A lot of the time in my JS games, this is all modelled as state local to my entities and this is quite awkward. I can probably do better here.</p>
-<p>The only piece of state I need for any of this is &quot;current level&quot;, so I&#39;mma go ahead and stick that around</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> create-state [level]
-{ <span class="keyword">:direction</span> <span class="number">1</span>
- <span class="keyword">:level</span> level
- <span class="keyword">:enemies</span> <span class="list">(<span class="title">for</span><span class="body"> [x <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">480</span> <span class="number">60</span>)</span></span>
-                y <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">240</span> <span class="number">60</span>)</span></span>]
-            <span class="list">(<span class="title">create-rect</span><span class="body"> x y <span class="number">20</span> <span class="number">20</span>)</span></span>)</span></span>
- <span class="keyword">:player</span> <span class="list">(<span class="title">create-rect</span><span class="body"> <span class="number">200</span> <span class="number">430</span> <span class="number">20</span> <span class="number">20</span>)</span></span>
- <span class="keyword">:bullets</span> <span class="list">(<span class="body">)</span></span> 
- <span class="keyword">:last-firing-ticks</span> <span class="number">0</span>})</span></span>
-
-<span class="list">(<span class="title">defn</span><span class="body"> start-next-level [state]
-  <span class="list">(<span class="title">create-state</span><span class="body"> <span class="list">(<span class="title">inc</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:level</span> state)</span></span>)</span></span>)</span></span>)</span></span>
-
-<span class="list">(<span class="title">defn</span><span class="body"> ^<span class="keyword">:export</span> init []
-  <span class="list">(<span class="title">hook-input-events</span><span class="body">)</span></span>
-  <span class="list">(<span class="title">let</span><span class="body"> [ctx <span class="list">(<span class="title">context</span><span class="body"> <span class="number">640</span> <span class="number">480</span>)</span></span>] 
-    <span class="list">(<span class="title">tick</span><span class="body"> ctx <span class="list">(<span class="title">create-state</span><span class="body"> <span class="number">1</span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>We&#39;ll start at level 1, and then when creating the new state for the new level, we&#39;ll pass in level+1.</p>
-<p>Now then, how to use this for firing rate?</p>
-<pre><code><span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> <span class="list">(<span class="title">rem</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:last-firing-ticks</span> state)</span></span> <span class="list">(<span class="title">firing-rate</span><span class="body"> state)</span></span>)</span></span> <span class="number">0</span>)</span></span></code></pre>
-<p>and enemy movement</p>
-<pre><code><span class="title">func</span> (if(= direction <span class="number">1</span>) <span class="comment">#(+ % (enemy-speed state)) #(- (enemy-speed state))</span></code></pre>
-<p>and bullet speed</p>
-<pre><code>(update-<span class="keyword">in</span> bullet [<span class="symbol">:y</span>] <span class="comment">#(- % (bullet-speed state))))))</span></code></pre>
-<p>and for the player movement?</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> update-player [state]
-  <span class="list">(<span class="title">let</span><span class="body"> [left <span class="list">(<span class="body">@key-states <span class="number">37</span>)</span></span>
-        right <span class="list">(<span class="body">@key-states <span class="number">39</span>)</span></span>]
-    <span class="list">(<span class="title">cond</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> left true)</span></span> <span class="list">(<span class="title">update-in</span><span class="body"> state [<span class="keyword">:player</span> <span class="keyword">:x</span>] #<span class="list">(<span class="title">-</span><span class="body"> % <span class="list">(<span class="title">player-speed</span><span class="body"> state)</span></span>)</span></span>)</span></span>
-          <span class="list">(<span class="title">=</span><span class="body"> right true)</span></span> <span class="list">(<span class="title">update-in</span><span class="body"> state [<span class="keyword">:player</span> <span class="keyword">:x</span>] #<span class="list">(<span class="title">+</span><span class="body"> % <span class="list">(<span class="title">player-speed</span><span class="body"> state)</span></span>)</span></span>)</span></span>
-          <span class="keyword">:else</span> state)</span></span>)</span></span>)</span></span></code></pre>
-<p>And the implementation (for now) </p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> firing-rate [state] <span class="list">(<span class="title">min</span><span class="body"> <span class="number">15</span> <span class="list">(<span class="title">-</span><span class="body"> <span class="number">30</span> <span class="list">(<span class="title">*</span><span class="body"> <span class="number">2</span> <span class="list">(<span class="body"><span class="keyword">:level</span> state)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>
-<span class="list">(<span class="title">defn</span><span class="body"> enemy-speed [state] <span class="list">(<span class="body"><span class="keyword">:level</span> state)</span></span>)</span></span>
-<span class="list">(<span class="title">defn</span><span class="body"> bullet-speed [state]<span class="list">(<span class="body"><span class="keyword">:level</span> state)</span></span>)</span></span>
-<span class="list">(<span class="title">defn</span><span class="body"> player-speed [state] <span class="list">(<span class="title">*</span><span class="body"> <span class="number">2</span> <span class="list">(<span class="body"><span class="keyword">:level</span> state)</span></span>)</span></span>)</span></span>
-<span class="list">(<span class="title">defn</span><span class="body"> enemy-descent-speed [state] <span class="number">25</span>)</span></span></code></pre>
-<p>This is quite tidy and gives me the ability to adjust these values easily when experimenting with the game. </p>
-<p>I&#39;m not so happy with passing the complete &#39;state&#39; into each of these methods, but pulling out the level at the point of invocation seems a greater evil in this case.</p>
-<p>Next up, I&#39;ll look at scoring as a side effect of enemy destruction, and re-visit how I manage the logic and state around that.</p>
-]]></description><link>http://codeofrob.com/entries/learn-functional-programming-with-me---functional-difficulty-levels.html</link><guid isPermaLink="true">http://codeofrob.com/entries/learn-functional-programming-with-me---functional-difficulty-levels.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 09 Jul 2013 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/grunt+browserify+npm+application=success.html</link><guid isPermaLink="true">http://codeofrob.com/entries/grunt+browserify+npm+application=success.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 18 Jul 2013 09:30:00 GMT</pubDate></item></channel></rss>
