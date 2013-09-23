@@ -16,9 +16,9 @@ I've been quite strict about taking work from clients that we keep it to very sh
 - It encourages focus from me - *I must ship it*
 - It allows for me to get involved with a bigger variety of teams/technologies/products
 
-That said, I feel as if I left a bit of a trail behind me at of my clients when I handed over what I'd done but hadn't spent sufficient time (with a very busy team) making sure everybody understood what I had done, how far I was through it and what work was still remaining.
+That said, I feel as if I left a bit of a trail behind me at one of my clients when I handed over what I'd done but hadn't spent sufficient time (with a very busy team) making sure everybody understood what I had done, how far I was through it and what work was still remaining.
 
-I feel as if I should be more flexible about this and under the right circumstances I think I'll be happy to take on a greater duration of work providing the reasons for this area claer.
+I feel as if I should be more flexible about this and under the right circumstances I think I'll be happy to take on a greater duration of work providing the reasons for this are clearly discussed.
 
 **Folk only get fragments of my opinion over the internet**
 
@@ -39,5 +39,5 @@ Well, I've got a few months now until the end of the year, and I'm really enjoyi
 
 I think I'd be happy to take on some longer term stuff (up to 6 weeks) for the right people, so please do get in touch if you have something. (Anywhere in Europe is good, I'm also thinking I wouldn't mind getting out of London/England for a little bit too).
 
-My hiring details can be found on my [/hire.html](availability page), just drop me an email at [mailto:robashton@codeofrob.com](robashton@codeofrob.com) and we'll see what we can do together.
+My hiring details can be found on my [availability page](/hire.html), just drop me an email at [robashton@codeofrob.com](mailto:robashton@codeofrob.com) and we'll see what we can do together.
 
