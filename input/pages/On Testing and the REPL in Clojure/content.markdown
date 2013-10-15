@@ -48,9 +48,9 @@ It is difficult sometimes when I break functionality to not start falling into t
 
 This process helps ensure:
 
-1) The internals are still easy enough to use within a REPL
-2) I still understand the internals (as a developer new to the project, this would be how they learned I guess)
-3) I don't spend time shotgun debugging issues
+- The internals are still easy enough to use within a REPL
+- I still understand the internals (as a developer new to the project, this would be how they learned I guess)
+- I don't spend time shotgun debugging issues
 
 ### Fin
 
