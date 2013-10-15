@@ -40,6 +40,7 @@ And get that regression suite almost for free.
 - I don't spend a lot of time fixing the regression suite because of internal structure changes as they're more dependent on the overall results than internal set-up.
 - They do save me a lot of time in regressions because I'm discovering better ways to write my internals all the time and I'm not always capable of keeping the whole system in my head when practising those better ways.
 - They *do* seem quite high in volume, but I've not found that the line count in my tests is quite as indicative of bad code as it would be in the main code base (most of it is just descriptions of what the tests do rather than big chunks of code that I'll have to maintain.
+- Sometimes fixing an issue is just a matter of turning debug logging on and running a test, I like that as a result of *log all the things*
 
 
 ### I do have to be careful though
