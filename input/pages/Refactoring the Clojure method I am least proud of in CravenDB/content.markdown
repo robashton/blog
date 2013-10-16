@@ -125,7 +125,7 @@ What I really want is the ability to skip through pages of the index and not kee
 
 An alternative might be to just assoc the paging values into the map itself and create a next-page function like so
 
-```
+```clojure
 (defn lucene-page 
   ([producer page-size] (lucene-page producer 0 page-size))
   ([producer current-offset page-size]
@@ -145,65 +145,59 @@ But I quite like the little function and it's smaller so I'm rolling with it unt
 With this, I can consume the results I have and and simply call "next" to get the next lucene page without worrying about the accumulators in the loop function, this means I'm now left with quite a stripped down loop:
 
 
-```clojure
-(defn perform-query 
-  [producer offset amount]
-  (loop [results ()
-         page (lucene-page producer amount)]
-      (let [new-results (take amount (concat results (:results page)))
-            new-total (count new-results)]
+    (defn perform-query 
+      [producer offset amount]
+      (loop [results ()
+            page (lucene-page producer amount)]
+          (let [new-results (take amount (concat results (:results page)))
+                new-total (count new-results)]
 
-           (if (and (= (count (:results pager)) 0)
-                    (not= new-total amount))
-             (recur new-results 
-                    ((:next page)))
-             new-results))))
-```
+              (if (and (= (count (:results pager)) 0)
+                        (not= new-total amount))
+                (recur new-results 
+                        ((:next page)))
+                new-results))))
 
 ### To the recursive lazy sequence
 
 Now I've pulled out the important bits of this code into two different stages (pulling data from lucene, paging data over that), it's quite trivial to convert the loop into a lazy sequence
 
-```clojure
-(defn lucene-seq 
-  ([page] (lucene-seq page (:results page)))
-  ([page src]
-   (cond
-     (empty? (:results page)) ()
-     (empty? src) (lucene-seq ((:next page)))
-     :else (cons (first src) (lazy-seq (lucene-seq page (rest src)))))))
-```
+    (defn lucene-seq 
+      ([page] (lucene-seq page (:results page)))
+      ([page src]
+      (cond
+        (empty? (:results page)) ()
+        (empty? src) (lucene-seq ((:next page)))
+        :else (cons (first src) (lazy-seq (lucene-seq page (rest src)))))))
 
 I'm pretty pleased with this, tidying up the rest of the code around the rest of the file reduces my line count by 50% and leaves the complete solution looking like this:
 
-```clojure
-(defn lucene-producer [tx reader opts]
-  (fn [offset amount]
-    (->> 
-      (lucene/query reader 
-                    (:query opts) 
-                    (+ offset amount) 
-                    (:sort-by opts) 
-                    (:sort-order opts)) 
-      (drop offset) 
-      (valid-documents tx))))
+    (defn lucene-producer [tx reader opts]
+      (fn [offset amount]
+        (->> 
+          (lucene/query reader 
+                        (:query opts) 
+                        (+ offset amount) 
+                        (:sort-by opts) 
+                        (:sort-order opts)) 
+          (drop offset) 
+          (valid-documents tx))))
 
-(defn lucene-page 
-  ([producer page-size] (lucene-page producer 0 page-size))
-  ([producer current-offset page-size]
-   {
-    :results (producer current-offset page-size)
-    :next (fn [] (lucene-page producer (+ current-offset page-size) page-size))
-   }))
+    (defn lucene-page 
+      ([producer page-size] (lucene-page producer 0 page-size))
+      ([producer current-offset page-size]
+      {
+        :results (producer current-offset page-size)
+        :next (fn [] (lucene-page producer (+ current-offset page-size) page-size))
+      }))
 
-(defn lucene-seq 
-  ([page] (lucene-seq page (:results page)))
-  ([page src]
-   (cond
-     (empty? (:results page)) ()
-     (empty? src) (lucene-seq ((:next page)))
-     :else (cons (first src) (lazy-seq (lucene-seq page (rest src)))))))
-```
+    (defn lucene-seq 
+      ([page] (lucene-seq page (:results page)))
+      ([page src]
+      (cond
+        (empty? (:results page)) ()
+        (empty? src) (lucene-seq ((:next page)))
+        :else (cons (first src) (lazy-seq (lucene-seq page (rest src)))))))
 
 No doubt a seasoned Clojure developer would further reduce this (and there are probably a couple of snafus), but I'm pretty pleased that the interface I'm now exposing to the rest of my code is just a plain old sequence and even if I go and play golf with the underlying code the behaviour of that sequence shouldn't change. 
 

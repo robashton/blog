@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Wed, 16 Oct 2013 08:49:46 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Refactoring the Clojure method I am least proud of in CravenDB]]></title><description><![CDATA[<p>I&#39;ve had a bit of a duck in my <a href="http://github.com/robashton/cravendb">database</a> for a while (and I&#39;m not making reference to the read-strings that were in there for months while I got on with more important things).</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Wed, 16 Oct 2013 08:54:50 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Refactoring the Clojure method I am least proud of in CravenDB]]></title><description><![CDATA[<p>I&#39;ve had a bit of a duck in my <a href="http://github.com/robashton/cravendb">database</a> for a while (and I&#39;m not making reference to the read-strings that were in there for months while I got on with more important things).</p>
 <p>The duck came in the form of this method</p>
 <pre><code class="lang-clojure"><span class="list">(<span class="title"><span class="built_in">defn</span></span> perform-query 
   <span class="collection">[tx reader query offset amount sort-field sort-order]</span>
@@ -90,68 +90,68 @@
     <span class="attribute">:next</span> <span class="list">(<span class="title"><span class="built_in">fn</span></span> <span class="collection">[]</span> <span class="list">(<span class="title">lucene-page</span> producer <span class="list">(<span class="title"><span class="built_in">+</span></span> current-offset page-size)</span> page-size)</span>)</span>
    }</span>)</span>)</span></code></pre>
 <p>An alternative might be to just assoc the paging values into the map itself and create a next-page function like so</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> lucene-page 
-  <span class="list">(<span class="body">[producer page-size] <span class="list">(<span class="title">lucene-page</span><span class="body"> producer <span class="number">0</span> page-size)</span></span>)</span></span>
-  <span class="list">(<span class="body">[producer current-offset page-size]
-   {
-    <span class="keyword">:producer</span> producer
-    <span class="keyword">:offset</span> current-offset
-    <span class="keyword">:page-size</span> page-size
-    <span class="keyword">:results</span> <span class="list">(<span class="title">producer</span><span class="body"> current-offset page-size)</span></span>
-   })</span></span>)</span></span>
+<pre><code class="lang-clojure"><span class="list">(<span class="title"><span class="built_in">defn</span></span> lucene-page 
+  <span class="list">([<span class="title">producer</span> page-size] <span class="list">(<span class="title">lucene-page</span> producer<span class="number"> 0</span> page-size)</span>)</span>
+  <span class="list">([<span class="title">producer</span> current-offset page-size]
+   <span class="collection">{
+    <span class="attribute">:producer</span> producer
+    <span class="attribute">:offset</span> current-offset
+    <span class="attribute">:page-size</span> page-size
+    <span class="attribute">:results</span> <span class="list">(<span class="title">producer</span> current-offset page-size)</span>
+   }</span>)</span>)</span>
 
-<span class="list">(<span class="title">defn</span><span class="body"> next-page [{<span class="keyword">:keys</span> [producer offset page-size]}]
-  <span class="list">(<span class="title">lucene-page</span><span class="body"> producer <span class="list">(<span class="title">+</span><span class="body"> offset page-size)</span></span> page-size)</span></span>)</span></span></code></pre>
+<span class="list">(<span class="title"><span class="built_in">defn</span></span> next-page <span class="collection">[<span class="collection">{<span class="attribute">:keys</span> <span class="collection">[producer offset page-size]</span>}</span>]</span>
+  <span class="list">(<span class="title">lucene-page</span> producer <span class="list">(<span class="title"><span class="built_in">+</span></span> offset page-size)</span> page-size)</span>)</span></code></pre>
 <p>But I quite like the little function and it&#39;s smaller so I&#39;m rolling with it until I&#39;m told that it&#39;s a bad thing and I&#39;m a naughty boy.</p>
 <p>With this, I can consume the results I have and and simply call &quot;next&quot; to get the next lucene page without worrying about the accumulators in the loop function, this means I&#39;m now left with quite a stripped down loop:</p>
-<pre><code class="lang-clojure">(defn perform-query 
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> perform-query 
   [producer offset amount]
-  (loop [results ()
-         page (lucene-page producer amount)]
-      (let [new-results (take amount (concat results (:results page)))
-            new-total (count new-results)]
+  <span class="list">(<span class="title">loop</span><span class="body"> [results <span class="list">(<span class="body">)</span></span>
+        page <span class="list">(<span class="title">lucene-page</span><span class="body"> producer amount)</span></span>]
+      <span class="list">(<span class="title">let</span><span class="body"> [new-results <span class="list">(<span class="title">take</span><span class="body"> amount <span class="list">(<span class="title">concat</span><span class="body"> results <span class="list">(<span class="body"><span class="keyword">:results</span> page)</span></span>)</span></span>)</span></span>
+            new-total <span class="list">(<span class="title">count</span><span class="body"> new-results)</span></span>]
 
-           (if (and (= (count (:results pager)) 0)
-                    (not= new-total amount))
-             (recur new-results 
-                    ((:next page)))
-             new-results))))</code></pre>
+          <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">and</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> <span class="list">(<span class="title">count</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:results</span> pager)</span></span>)</span></span> <span class="number">0</span>)</span></span>
+                    <span class="list">(<span class="title">not=</span><span class="body"> new-total amount)</span></span>)</span></span>
+            <span class="list">(<span class="title">recur</span><span class="body"> new-results 
+                    <span class="list">(<span class="body"><span class="list">(<span class="body"><span class="keyword">:next</span> page)</span></span>)</span></span>)</span></span>
+            new-results)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
 <h3>To the recursive lazy sequence</h3>
 <p>Now I&#39;ve pulled out the important bits of this code into two different stages (pulling data from lucene, paging data over that), it&#39;s quite trivial to convert the loop into a lazy sequence</p>
-<pre><code class="lang-clojure">(defn lucene-seq 
-  ([page] (lucene-seq page (:results page)))
-  ([page src]
-   (cond
-     (empty? (:results page)) ()
-     (empty? src) (lucene-seq ((:next page)))
-     :else (cons (first src) (lazy-seq (lucene-seq page (rest src)))))))</code></pre>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> lucene-seq 
+  <span class="list">(<span class="body">[page] <span class="list">(<span class="title">lucene-seq</span><span class="body"> page <span class="list">(<span class="body"><span class="keyword">:results</span> page)</span></span>)</span></span>)</span></span>
+  <span class="list">(<span class="body">[page src]
+  <span class="list">(<span class="title">cond</span><span class="body">
+    <span class="list">(<span class="title">empty</span><span class="body">? <span class="list">(<span class="body"><span class="keyword">:results</span> page)</span></span>)</span></span> <span class="list">(<span class="body">)</span></span>
+    <span class="list">(<span class="title">empty</span><span class="body">? src)</span></span> <span class="list">(<span class="title">lucene-seq</span><span class="body"> <span class="list">(<span class="body"><span class="list">(<span class="body"><span class="keyword">:next</span> page)</span></span>)</span></span>)</span></span>
+    <span class="keyword">:else</span> <span class="list">(<span class="title">cons</span><span class="body"> <span class="list">(<span class="title">first</span><span class="body"> src)</span></span> <span class="list">(<span class="title">lazy-seq</span><span class="body"> <span class="list">(<span class="title">lucene-seq</span><span class="body"> page <span class="list">(<span class="title">rest</span><span class="body"> src)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
 <p>I&#39;m pretty pleased with this, tidying up the rest of the code around the rest of the file reduces my line count by 50% and leaves the complete solution looking like this:</p>
-<pre><code class="lang-clojure">(defn lucene-producer [tx reader opts]
-  (fn [offset amount]
-    (-&gt;&gt; 
-      (lucene/query reader 
-                    (:query opts) 
-                    (+ offset amount) 
-                    (:sort-by opts) 
-                    (:sort-order opts)) 
-      (drop offset) 
-      (valid-documents tx))))
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> lucene-producer [tx reader opts]
+  <span class="list">(<span class="title">fn</span><span class="body"> [offset amount]
+    <span class="list">(<span class="title">-&gt;&gt;</span><span class="body"> 
+      <span class="list">(<span class="title">lucene/query</span><span class="body"> reader 
+                    <span class="list">(<span class="body"><span class="keyword">:query</span> opts)</span></span> 
+                    <span class="list">(<span class="title">+</span><span class="body"> offset amount)</span></span> 
+                    <span class="list">(<span class="body"><span class="keyword">:sort-by</span> opts)</span></span> 
+                    <span class="list">(<span class="body"><span class="keyword">:sort-order</span> opts)</span></span>)</span></span> 
+      <span class="list">(<span class="title">drop</span><span class="body"> offset)</span></span> 
+      <span class="list">(<span class="title">valid-documents</span><span class="body"> tx)</span></span>)</span></span>)</span></span>)</span></span>
 
-(defn lucene-page 
-  ([producer page-size] (lucene-page producer 0 page-size))
-  ([producer current-offset page-size]
-   {
-    :results (producer current-offset page-size)
-    :next (fn [] (lucene-page producer (+ current-offset page-size) page-size))
-   }))
+<span class="list">(<span class="title">defn</span><span class="body"> lucene-page 
+  <span class="list">(<span class="body">[producer page-size] <span class="list">(<span class="title">lucene-page</span><span class="body"> producer <span class="number">0</span> page-size)</span></span>)</span></span>
+  <span class="list">(<span class="body">[producer current-offset page-size]
+  {
+    <span class="keyword">:results</span> <span class="list">(<span class="title">producer</span><span class="body"> current-offset page-size)</span></span>
+    <span class="keyword">:next</span> <span class="list">(<span class="title">fn</span><span class="body"> [] <span class="list">(<span class="title">lucene-page</span><span class="body"> producer <span class="list">(<span class="title">+</span><span class="body"> current-offset page-size)</span></span> page-size)</span></span>)</span></span>
+  })</span></span>)</span></span>
 
-(defn lucene-seq 
-  ([page] (lucene-seq page (:results page)))
-  ([page src]
-   (cond
-     (empty? (:results page)) ()
-     (empty? src) (lucene-seq ((:next page)))
-     :else (cons (first src) (lazy-seq (lucene-seq page (rest src)))))))</code></pre>
+<span class="list">(<span class="title">defn</span><span class="body"> lucene-seq 
+  <span class="list">(<span class="body">[page] <span class="list">(<span class="title">lucene-seq</span><span class="body"> page <span class="list">(<span class="body"><span class="keyword">:results</span> page)</span></span>)</span></span>)</span></span>
+  <span class="list">(<span class="body">[page src]
+  <span class="list">(<span class="title">cond</span><span class="body">
+    <span class="list">(<span class="title">empty</span><span class="body">? <span class="list">(<span class="body"><span class="keyword">:results</span> page)</span></span>)</span></span> <span class="list">(<span class="body">)</span></span>
+    <span class="list">(<span class="title">empty</span><span class="body">? src)</span></span> <span class="list">(<span class="title">lucene-seq</span><span class="body"> <span class="list">(<span class="body"><span class="list">(<span class="body"><span class="keyword">:next</span> page)</span></span>)</span></span>)</span></span>
+    <span class="keyword">:else</span> <span class="list">(<span class="title">cons</span><span class="body"> <span class="list">(<span class="title">first</span><span class="body"> src)</span></span> <span class="list">(<span class="title">lazy-seq</span><span class="body"> <span class="list">(<span class="title">lucene-seq</span><span class="body"> page <span class="list">(<span class="title">rest</span><span class="body"> src)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
 <p>No doubt a seasoned Clojure developer would further reduce this (and there are probably a couple of snafus), but I&#39;m pretty pleased that the interface I&#39;m now exposing to the rest of my code is just a plain old sequence and even if I go and play golf with the underlying code the behaviour of that sequence shouldn&#39;t change. </p>
 ]]></description><link>http://codeofrob.com/entries/refactoring-the-clojure-method-i-am-least-proud-of-in-cravendb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/refactoring-the-clojure-method-i-am-least-proud-of-in-cravendb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 03 Oct 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[On Testing and the REPL in Clojure]]></title><description><![CDATA[<p>I&#39;m currently at <a href="http://euroclojure.com/2013/">Euroclojure</a> where I have the pleasure to have been meeting and chatting to people about Clojure and related ponies for the past day or so - and I&#39;ve learned a few things and got a much better feel for what the Clojure community is about.</p>
 <p>One theme that keeps coming up is the ugly one of testing, and its association with the obsession over tests in other communities, whether it be TDD or some other variant of making yourself feel good through automatic code exercise.</p>
