@@ -1,5 +1,159 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Tue, 15 Oct 2013 11:17:41 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[On Testing and the REPL in Clojure]]></title><description><![CDATA[<p>I&#39;m currently at <a href="http://euroclojure.com/2013/">Euroclojure</a> where I have the pleasure to have been meeting and chatting to people about Clojure and related ponies for the past day or so - and I&#39;ve learned a few things and got a much better feel for what the Clojure community is about.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>NodeJS RSS Module</generator><lastBuildDate>Wed, 16 Oct 2013 08:49:46 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><item><title><![CDATA[Refactoring the Clojure method I am least proud of in CravenDB]]></title><description><![CDATA[<p>I&#39;ve had a bit of a duck in my <a href="http://github.com/robashton/cravendb">database</a> for a while (and I&#39;m not making reference to the read-strings that were in there for months while I got on with more important things).</p>
+<p>The duck came in the form of this method</p>
+<pre><code class="lang-clojure"><span class="list">(<span class="title"><span class="built_in">defn</span></span> perform-query 
+  <span class="collection">[tx reader query offset amount sort-field sort-order]</span>
+  <span class="list">(<span class="title"><span class="built_in">loop</span></span> <span class="collection">[results <span class="list">()</span>
+         current-offset offset
+         total-collected<span class="number"> 0</span>
+         attempt<span class="number"> 0</span> ]</span>
+         <span class="list">(<span class="title"><span class="built_in">let</span></span> <span class="collection">[requested-amount <span class="list">(<span class="title"><span class="built_in">+</span></span> current-offset <span class="list">(<span class="title"><span class="built_in">max</span></span> amount<span class="number"> 100</span>)</span>)</span>
+               raw-results <span class="list">(<span class="title">lucene/query</span> reader query requested-amount sort-field sort-order)</span>
+               document-results <span class="list">(<span class="title">convert-results-to-documents</span> tx <span class="list">(<span class="title"><span class="built_in">drop</span></span> current-offset raw-results)</span>)</span>
+               new-results <span class="list">(<span class="title"><span class="built_in">take</span></span> amount <span class="list">(<span class="title"><span class="built_in">concat</span></span> results document-results)</span>)</span>
+               new-total <span class="list">(<span class="title"><span class="built_in">count</span></span> new-results)</span> 
+               new-offset <span class="list">(<span class="title"><span class="built_in">+</span></span> current-offset requested-amount)</span>]</span>
+
+           <span class="list">(<span class="title">debug</span> <span class="string">"Requested"</span> requested-amount 
+                    <span class="string">"CurrentTotal"</span> total-collected 
+                    <span class="string">"Skipped"</span> current-offset <span class="string">"Of"</span>
+                    <span class="string">"Received"</span> <span class="list">(<span class="title"><span class="built_in">count</span></span> raw-results)</span>)</span>
+           <span class="list">(<span class="title"><span class="built_in">if</span></span> <span class="list">(<span class="title"><span class="built_in">and</span></span> <span class="list">(<span class="title"><span class="built_in">=</span></span> <span class="list">(<span class="title"><span class="built_in">count</span></span> raw-results)</span> requested-amount)</span>
+                    <span class="list">(<span class="title"><span class="built_in">not=</span></span> new-total amount)</span>
+                    <span class="list">(<span class="title">&gt;</span><span class="number"> 10</span> attempt)</span>)</span>
+             <span class="list">(<span class="title"><span class="built_in">recur</span></span> new-results 
+                    new-offset 
+                    new-total
+                    <span class="list">(<span class="title"><span class="built_in">inc</span></span> attempt)</span>)</span>
+             new-results)</span>)</span>)</span>)</span></code></pre>
+<p>Essentially we have a lucene reader and we want to</p>
+<ul>
+<li>Query it for some results (offset + amount-ish)</li>
+<li>Pull those results through as documents</li>
+<li>If we don&#39;t have enough documents and there are some left, query again</li>
+<li>Keep going until either we have enough, or there are no more left</li>
+</ul>
+<p>It&#39;s fairly simple, but what we can see in the method is</p>
+<ul>
+<li>I&#39;m using &#39;loop&#39;, this usually indicates other non-functional problems</li>
+<li>I&#39;m effectively building &#39;take&#39;, &#39;skip&#39;, etc myself</li>
+</ul>
+<p>One thing I&#39;ve learned so far in Clojure that if you have a abnormal construct (in this case my lucene reader), is that we should try and get that into either a <em>map</em> or a <em>sequence</em> as early on as possible so as to be able to leverage all the Clojure built-ins on it.</p>
+<h3>What I want here, is a lazy sequence built up with recursion</h3>
+<p>I wrote a quick proof of concept of that sort of thing, it looks like this:</p>
+<pre><code class="lang-clojure">(defn number-seq 
+  ([] (number-seq 0))
+  ([i]
+  (cons (inc i) (lazy-seq (form-sequence (inc i))))))</code></pre>
+<p>What I have here is a function I can call with all the usual suspects like</p>
+<pre><code class="lang-clojure"><span class="list">(<span class="title"><span class="built_in">take</span></span><span class="number"> 100</span> <span class="list">(<span class="title">number-seq</span>)</span>)</span> <span class="comment">;; Get me 0 to 100</span>
+<span class="list">(<span class="title"><span class="built_in">drop</span></span><span class="number"> 10</span> <span class="list">(<span class="title"><span class="built_in">take</span></span><span class="number"> 100</span> <span class="list">(<span class="title">number-seq</span>)</span>)</span> <span class="comment">;; Get me 10 to 100</span>
+<span class="comment">;; etc</span></code></pre>
+<p>And it&#39;s fully lazy and potentially infinite and all those things. The whole &quot;cons a value onto a lazy sequence&quot; trick is the solution to quite a few of the Clojure koans and had I done them perhaps I&#39;d not have written the above loop.</p>
+<h3>First step - reduce the arguments</h3>
+<p>Before ripping apart this loop, I thought it better to jump in the repl to create the constructs that go into the loop, then sit there and pull the loop apart into its constituent parts before using them in a recursive function.</p>
+<p>Looking at the query method, I&#39;m passing quite a lot in to it</p>
+<ul>
+<li>tx: the current transaction we&#39;re pulling data from</li>
+<li>reader: a wrapper around a lucene reader</li>
+<li>query: the query itself</li>
+<li>offset: the number of values to skip in the page</li>
+<li>amount: the number of values to pull from the reader</li>
+<li>sort-field: the field we&#39;re sorting on</li>
+<li>sort-order: the order of sorting</li>
+</ul>
+<p>It is quite clear that only two of these values actually change during the recursive loop, and the rest are only used with a single object (reader) the same way over and over again.</p>
+<p>My first step in C# would probably be to &quot;create another object&quot;, in this case here though a producer function of some sort is what springs to mind</p>
+<pre><code class="lang-clojure"><span class="list">(<span class="title"><span class="built_in">defn</span></span> lucene-producer <span class="collection">[tx reader query sort-field sort-order]</span>
+
+  <span class="list">(<span class="title"><span class="built_in">fn</span></span> <span class="collection">[offset amount]</span>
+    <span class="list">(<span class="title">-&gt;&gt;</span> 
+      <span class="list">(<span class="title">lucene/query</span> reader 
+                    query 
+                    <span class="list">(<span class="title"><span class="built_in">+</span></span> offset amount)</span> 
+                    sort-field 
+                    sort-order)</span> 
+      <span class="list">(<span class="title"><span class="built_in">drop</span></span> offset)</span> 
+      <span class="list">(<span class="title">convert-results-to-documents</span> tx)</span>)</span>)</span>)</span></code></pre>
+<p>I actually go a bit further and bring in the loading of the documents as well, now I can call this over again like so</p>
+<pre><code class="lang-clojure"><span class="list">(<span class="title">producer</span><span class="number"> 0</span><span class="number"> 100</span>)</span> <span class="comment">;; Get me the first 100 items in the index</span>
+<span class="list">(<span class="title">producer</span><span class="number"> 10</span><span class="number"> 100</span>)</span> <span class="comment">;; Get me the items 10-100 in the index</span></code></pre>
+<p>Now of course, this producer function might not actually return the requested number of results because the underlying code is doing de-duping and removing documents that have been deleted and not yet cleared from the index.</p>
+<p>I slot this into my original loop function, verify it all still works and then look at the next step:</p>
+<h3>Second step - split out the paging</h3>
+<p>What I really want is the ability to skip through pages of the index and not keep accumulators around in the loop itself, I can employ a similar trick and write a function that knows about the current page and how to get the next page. I&#39;ll store the results in a map and a function to get the next page in the map as well.</p>
+<pre><code class="lang-clojure"><span class="list">(<span class="title"><span class="built_in">defn</span></span> lucene-page 
+  <span class="list">([<span class="title">producer</span> page-size] <span class="list">(<span class="title">lucene-page</span> producer<span class="number"> 0</span> page-size)</span>)</span>
+  <span class="list">([<span class="title">producer</span> current-offset page-size]
+   <span class="collection">{
+    <span class="attribute">:results</span> <span class="list">(<span class="title">producer</span> current-offset page-size)</span>
+    <span class="attribute">:next</span> <span class="list">(<span class="title"><span class="built_in">fn</span></span> <span class="collection">[]</span> <span class="list">(<span class="title">lucene-page</span> producer <span class="list">(<span class="title"><span class="built_in">+</span></span> current-offset page-size)</span> page-size)</span>)</span>
+   }</span>)</span>)</span></code></pre>
+<p>An alternative might be to just assoc the paging values into the map itself and create a next-page function like so</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> lucene-page 
+  <span class="list">(<span class="body">[producer page-size] <span class="list">(<span class="title">lucene-page</span><span class="body"> producer <span class="number">0</span> page-size)</span></span>)</span></span>
+  <span class="list">(<span class="body">[producer current-offset page-size]
+   {
+    <span class="keyword">:producer</span> producer
+    <span class="keyword">:offset</span> current-offset
+    <span class="keyword">:page-size</span> page-size
+    <span class="keyword">:results</span> <span class="list">(<span class="title">producer</span><span class="body"> current-offset page-size)</span></span>
+   })</span></span>)</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> next-page [{<span class="keyword">:keys</span> [producer offset page-size]}]
+  <span class="list">(<span class="title">lucene-page</span><span class="body"> producer <span class="list">(<span class="title">+</span><span class="body"> offset page-size)</span></span> page-size)</span></span>)</span></span></code></pre>
+<p>But I quite like the little function and it&#39;s smaller so I&#39;m rolling with it until I&#39;m told that it&#39;s a bad thing and I&#39;m a naughty boy.</p>
+<p>With this, I can consume the results I have and and simply call &quot;next&quot; to get the next lucene page without worrying about the accumulators in the loop function, this means I&#39;m now left with quite a stripped down loop:</p>
+<pre><code class="lang-clojure">(defn perform-query 
+  [producer offset amount]
+  (loop [results ()
+         page (lucene-page producer amount)]
+      (let [new-results (take amount (concat results (:results page)))
+            new-total (count new-results)]
+
+           (if (and (= (count (:results pager)) 0)
+                    (not= new-total amount))
+             (recur new-results 
+                    ((:next page)))
+             new-results))))</code></pre>
+<h3>To the recursive lazy sequence</h3>
+<p>Now I&#39;ve pulled out the important bits of this code into two different stages (pulling data from lucene, paging data over that), it&#39;s quite trivial to convert the loop into a lazy sequence</p>
+<pre><code class="lang-clojure">(defn lucene-seq 
+  ([page] (lucene-seq page (:results page)))
+  ([page src]
+   (cond
+     (empty? (:results page)) ()
+     (empty? src) (lucene-seq ((:next page)))
+     :else (cons (first src) (lazy-seq (lucene-seq page (rest src)))))))</code></pre>
+<p>I&#39;m pretty pleased with this, tidying up the rest of the code around the rest of the file reduces my line count by 50% and leaves the complete solution looking like this:</p>
+<pre><code class="lang-clojure">(defn lucene-producer [tx reader opts]
+  (fn [offset amount]
+    (-&gt;&gt; 
+      (lucene/query reader 
+                    (:query opts) 
+                    (+ offset amount) 
+                    (:sort-by opts) 
+                    (:sort-order opts)) 
+      (drop offset) 
+      (valid-documents tx))))
+
+(defn lucene-page 
+  ([producer page-size] (lucene-page producer 0 page-size))
+  ([producer current-offset page-size]
+   {
+    :results (producer current-offset page-size)
+    :next (fn [] (lucene-page producer (+ current-offset page-size) page-size))
+   }))
+
+(defn lucene-seq 
+  ([page] (lucene-seq page (:results page)))
+  ([page src]
+   (cond
+     (empty? (:results page)) ()
+     (empty? src) (lucene-seq ((:next page)))
+     :else (cons (first src) (lazy-seq (lucene-seq page (rest src)))))))</code></pre>
+<p>No doubt a seasoned Clojure developer would further reduce this (and there are probably a couple of snafus), but I&#39;m pretty pleased that the interface I&#39;m now exposing to the rest of my code is just a plain old sequence and even if I go and play golf with the underlying code the behaviour of that sequence shouldn&#39;t change. </p>
+]]></description><link>http://codeofrob.com/entries/refactoring-the-clojure-method-i-am-least-proud-of-in-cravendb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/refactoring-the-clojure-method-i-am-least-proud-of-in-cravendb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 03 Oct 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[On Testing and the REPL in Clojure]]></title><description><![CDATA[<p>I&#39;m currently at <a href="http://euroclojure.com/2013/">Euroclojure</a> where I have the pleasure to have been meeting and chatting to people about Clojure and related ponies for the past day or so - and I&#39;ve learned a few things and got a much better feel for what the Clojure community is about.</p>
 <p>One theme that keeps coming up is the ugly one of testing, and its association with the obsession over tests in other communities, whether it be TDD or some other variant of making yourself feel good through automatic code exercise.</p>
 <p>Another theme that keeps coming up is that the JVM (particularly under Clojure) has a heavy start-up time of quite a few seconds, so that practising a strict TDD feedback loop as you change your code is impractical without installing hacky workarounds like drip or associated (pre-warming the JVM for example). This is reminiscent of what the Rails folk do with Spork/related and comes with a whole suite of interesting problems.</p>
 <p>Another more concerning theme is the derision I&#39;ve been feeling from a lot of corners as a result of the first theme on tests themselves - some of it is joking around, and some of it is almost describing tests as a set of crutches to get around the fact that some code is hard to manipulate in the REPL for example.</p>
@@ -329,50 +483,4 @@ Valley    1</code></pre>
 <p>I am excited about the Open Health Data Platform and its purpose, and I am excited about the technology being used.</p>
 <p>Like the original author, I am also excited about the way in which this project is being developed in the open and pushed out on regular intervals forfeedback such as that.</p>
 <p>I have four more days left at Mastodon (out of a total of 5 so far), and hopefully I can contribute many more examples to the project between now and then to help other people follow in these footsteps in the future!</p>
-]]></description><link>http://codeofrob.com/entries/the-use-of-clojure-in-the-cdec-open-health-data-platform.html</link><guid isPermaLink="true">http://codeofrob.com/entries/the-use-of-clojure-in-the-cdec-open-health-data-platform.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 09 Sep 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Impatiently learning Cascalog - Part 1]]></title><description><![CDATA[<p>My client for the next 8-9 days is going to be <a href="https://www.mastodonc.com/">Mastodon C</a>, who have kindly agreed to let me work for them in order to get some real-world Clojure-ish experience and pick up whatever other skills are there to be picked up while I&#39;m at it in the field of data anlytics.</p>
-<p><a href="http://twitter.com/otfrom">@otfrom</a> has pointed me in the direction of &quot;<a href="https://github.com/Cascading/Impatient-Cascalog">Cascalog for the Impatient</a>&quot; and a the &quot;<a href="http://openhealthdata.cdehub.org/">CDEC Open Health Data Platform</a> (mapping diabetes across the UK)&quot; in preparation for my week working with them and before I turn up I&#39;m going to go through the tutorial and see what I understand and what I don&#39;t understand and write about my thought processes as I do it.</p>
-<p>Anybody else following the Cascalog for the Impatient tutorial for the first time might find my notes useful, but at any rate <em>I&#39;ll</em> be able to go back and look at them myself and that&#39;s worthwhile too.</p>
-<p>So...</p>
-<h2>Part 1</h2>
-<p>I git cloned the repo, and typed </p>
-<pre><code><span class="title">lein</span> uberjar</code></pre>
-<p>This built me a jar and I was able to run Hadoop with the following command:</p>
-<pre><code> hadoop jar target/impatient.jar <span class="typedef"><span class="keyword">data</span>/rain.txt output/rain</span></code></pre>
-<p>Which did something with the input &quot;rain.txt&quot; and dumped it in the specified output folder.</p>
-<p>This satisfied for me that my environment is sane and I could therefore carry on with the tutorial.</p>
-<p>First up, we are shown this code with some rough explanation of how it works</p>
-<pre><code class="lang-clojure">(defn -main [in out &amp; args]
-  (?&lt;- (hfs-delimited out)
-    [?doc ?line]
-    ((hfs-delimited in :skip-header? true) ?doc ?line)))</code></pre>
-<p>I find the tutorial at this point to make some assumptions about my knowledge of what is going on here, it states that</p>
-<ul>
-<li>We have a main method that takes in an &#39;input&#39; and &#39;output&#39; path</li>
-<li>We can create a <em>generator</em> over &#39;in&#39; using (hfs-delimited)</li>
-<li>We can create a <em>sink</em> over &#39;out&#39; using (hfs-delimited)</li>
-<li>We then name the vars from the generator with the ?doc ?line bits</li>
-</ul>
-<p>However, I have a few questions outstanding from this, chiefly</p>
-<ul>
-<li>Wtf is a generator</li>
-<li>Wtf is a sink</li>
-<li>Wtf is up with that <em>(?&lt;-</em> thingy</li>
-<li>How are we naming those vars, how come its different for the sink and the generator?</li>
-</ul>
-<p>Dumb questions I&#39;m sure - but I&#39;m happy enough to admit my ignorance and press on.</p>
-<p>I read the page linked in the impatient docs: <a href="https://github.com/nathanmarz/cascalog/wiki/How-cascalog-executes-a-query">How cascalog executes a query</a></p>
-<p>And I establish that (at least as a working hypothesis)</p>
-<ul>
-<li>A generator is just a predicate that gives you data?</li>
-<li>A sink is somewhere the output can be put (a query can just have an output specified and that&#39;s it)</li>
-<li>The (?&lt;- thingy is like the (&lt;- thingy, and what they are is simply<ul>
-<li>The one without a question mark is a definition of a query</li>
-<li>the one with a question mark is both the definition and an execution of a query</li>
-</ul>
-</li>
-<li>the naming of the vars - ... is just &quot;because&quot;, I&#39;ll take that at face value and move on</li>
-</ul>
-<h1>The result of running this thing</h1>
-<p>I see that in the output folder there is a file called part-0000 which has the same content as the input file. So it looks like our generator and our sink are effectively the same thing and we&#39;re just streaming the data from one place to another without changing it.</p>
-<p>Okay then, I guess I&#39;ll look at part two next and see if anything I&#39;ve made a guess about here is right at all.</p>
-]]></description><link>http://codeofrob.com/entries/impatiently-learning-cascalog---part-1.html</link><guid isPermaLink="true">http://codeofrob.com/entries/impatiently-learning-cascalog---part-1.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 05 Sep 2013 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/the-use-of-clojure-in-the-cdec-open-health-data-platform.html</link><guid isPermaLink="true">http://codeofrob.com/entries/the-use-of-clojure-in-the-cdec-open-health-data-platform.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 09 Sep 2013 09:30:00 GMT</pubDate></item></channel></rss>
