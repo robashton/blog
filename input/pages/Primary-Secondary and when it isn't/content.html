@@ -1,0 +1,47 @@
+<p>I was recently called in to do an emergency consult at a new client because their RavenDB instance was in a bit of a pickle and anybody they <em>might</em> have wanted to call in was already busy so I got the call ;-)</p>
+<h2>The situation</h2>
+<ul>
+<li>I arrived bleary eyed at 9am, and I had less than four hours until I had to leave to get on a plane to Geneva(!!)</li>
+<li>&quot;We have conflict documents all over the place in our secondary database&quot;</li>
+<li>&quot;We have documents that exist in the secondary and not the primary&quot;</li>
+</ul>
+<p>Ruh oh!</p>
+<p>My immediate assumption on hearing that their secondary was full of documents that weren&#39;t on the primary was that they were actually running a primary/primary set-up by accident, but in actual fact it was slightly more involved than that.</p>
+<h2>The RavenDB Replication Bundle</h2>
+<p>RavenDB replication is set up by telling a server that it has a replication destination, that is a primary is told about the secondary and instructed to push documents over there when it can get the chance. It uses etags to determine which documents need to go over and uses etags to detect conflicts and create mulitiple versions of a conflicted document.</p>
+<p>The different between primary/primary or primary/secondary is simply whether you set up both servers with a replication destination or just one of them.</p>
+<p><em>So far so good</em></p>
+<ul>
+<li>The thing is, the client has the ability to failover automatically when the primary stops being reachable for whatever reason. </li>
+<li>By default the client isn&#39;t allowed to write to the secondary and it is an explicit option to turn that on.</li>
+<li>The assumption is that if the primary goes down, the system should go into <em>read only</em> mode and prevent further damage</li>
+</ul>
+<p>This is quite a sensible set-up, and a very reasonable one because you don&#39;t know what caused that failure, don&#39;t want the failure to repeat on the secondary and a diminished functionality is still better than no functionality at all.</p>
+<p>A primary/secondary set-up is conceptually a lot easier to deal with than a primary/primary or cluster-setup because you never have to deal with conflicts. Conflicts in a lot of state-based systems are painful to deal with so if we can avoid dealing with them then we should.</p>
+<p>RavenDB also has the option to allow writes to secondary and <em>this is where the fun begins</em>.</p>
+<ul>
+<li>The application is writing to the primary</li>
+<li>The primary becomes unreachable for some reason</li>
+<li>The application starts writing to secondary</li>
+<li>The primary becomes reachable once more</li>
+<li>The application starts writing to primary</li>
+<li>There are documents left orphaned on secondary!!!</li>
+<li>Eventually, conflicts (or in this client&#39;s case, pretty quickly because <em>batch processes</em>)</li>
+</ul>
+<p>What we&#39;re saying here actually, is that if you are writing to secondary on failure, what you actually have is a primary/primary with the wrong name.</p>
+<p>It&#39;s left in userland to determine what to do here, we could:</p>
+<ul>
+<li>Set up a replication target for the secondary so when this happens we get write-backs once primary returns</li>
+<li>Manually trigger a copy of the data back to primary once we establish that primary is &quot;okay&quot;</li>
+<li>Etc</li>
+</ul>
+<p>The essence of this though is that if we&#39;re going to be allowing writes to secondary during failure, then we need to have some form of conflict resolution set up because it&#39;s not <em>really</em> a primary/secondary relationship these servers have.</p>
+<h2>Their fix</h2>
+<p>We have two choices, we can </p>
+<ul>
+<li>Have a read-only failure mode</li>
+<li>Have a write-on-failure mode but handle conflicts gracefully</li>
+</ul>
+<p>Opting for the latter because their internal consumer <em>always</em> wants to be able to write, the easiest approach was to write a &quot;last write wins&quot; conflict resolver. Not always advisable but in this case there were few side effects from adopting such a position.</p>
+<h2>The summary</h2>
+<p>You should think about your topology and what you actually want to support when setting this up. This is usually always a business decision, as it revolves around what levels of availability they need to do their job.</p>
