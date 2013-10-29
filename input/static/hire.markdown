@@ -13,7 +13,9 @@ Drop me an e-mail at [robashton@codeofrob.com](mailto:robashton@codeofrob.com) t
 - I travel a lot, I like to work remote from coffee shops
 - I enjoy spending time on-site too, so desk space is appreciated
 - I am in theory London based, always very happy to fly out on location for a few weeks
-- I charge a flat fee of £500 a day, but this is negotiable for the right work
+- I charge a flat fee of £500 a day (for development work) but this is negotiable if you're a start-up or similar
+- I charge double that for consultancy, depending on timescale. 
+- I prefer development work to consultancy - please be honest about what you want me to do
 - My ideal contract length is between 2-6 weeks, this gets the best for both of us
 
 ## Not convinced?
