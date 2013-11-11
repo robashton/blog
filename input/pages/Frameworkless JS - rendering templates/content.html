@@ -1,0 +1,52 @@
+<p>Continuing then..</p>
+<ul>
+<li><a href="/entries/look-ma,-no-frameworks.html">Look ma no Frameworks</a></li>
+<li><a href="/entries/frameworkless-js---an-example.html">An example</a></li>
+<li><a href="/entries/starting-the-frameworkless-js-project.html">Getting started</a></li>
+</ul>
+<p>Now, I&#39;m <a href="/entries/anti-templating-languages.html">no real fan of pull-based templating systems</a>, but I lost the war on this a while ago and I&#39;m not going to impose this one on this system today. (Remember, this was a walkthrough for a client with specific questions and not about me trying to impose my own opinions on a team I wasn&#39;t going to stay with)</p>
+<p>So we picked a templating engine at random, and went with Mustache.. because no reason.</p>
+<pre><code><span class="comment">npm</span> <span class="comment">install</span> <span class="comment">mustache</span> <span class="literal">-</span><span class="literal">-</span><span class="comment">save</code></pre>
+<p>Great! There were celebrations in the street as we wrote the following code...</p>
+<pre><code>var mustache = require('mustache')
+  , domReady = require('domready')
+
+var template = "<span class="tag">&lt;<span class="title">p</span>&gt;</span>Hello <span class="variable">{{name}}</span><span class="tag">&lt;/<span class="title">p</span>&gt;</span>"
+
+domReady(function() {
+  var container = document.getElementById('container')
+  container.innerHtml = mustache.render(template, { name: "Bob" })
+})</code></pre>
+<p><em>Waaait a minute, what is going on here - why have you just stuck stuff in a string that is cheating Rob Ashton how dare you.</em></p>
+<p>Guilty as charged, clearly this isn&#39;t going to scale well over time (although it&#39;s probably going to be better than building up strings of html using the &quot;+&quot; operator).</p>
+<p>What we need here clearly is something that can give us a template from an external source and allow us to use it from there now if only such a thing existed.</p>
+<p>The temptation is there to download these things as needed from the server - and in some cases this is certainly an option (although in those cases a server-side rendering approach might not be a bad idea either).</p>
+<p>Instead, how about writing code like this?</p>
+<pre><code><span class="keyword">var</span> mustache = <span class="keyword">require</span>(<span class="string">'mustache'</span>)
+  , domReady = <span class="keyword">require</span>(<span class="string">'domready'</span>)
+  , fs = <span class="keyword">require</span>(<span class="string">'fs'</span>)
+
+<span class="keyword">var</span> template = fs.readFileSync(__dirname + <span class="string">"/myfunkytemplate.html"</span>)
+
+domReady(function() {
+  <span class="keyword">var</span> container = document.getElementById(<span class="string">'container'</span>)
+  container.innerHtml = mustache.render(template, { name: <span class="string">"Bob"</span> })
+})</code></pre>
+<p>What on earth? What is this even? Magic? <em>fs</em> is a module you didn&#39;t see me install because normally this is a server-side module in node.js - and right now the example above does absolutely nothing.</p>
+<p>You will recall our process for building the output file looked like this:</p>
+<pre><code>browserify app<span class="variable">.js</span> -o <span class="keyword">public</span>/app<span class="variable">.js</span></code></pre>
+<p>Now, if only there was something smart enough to see that <em>readFileSync</em> call and replace that with inline content from our template file...</p>
+<pre><code><span class="comment">npm</span> <span class="comment">install</span> <span class="comment">brfs</span> <span class="literal">-</span><span class="literal">-</span><span class="comment">save</code></pre>
+<p>Boom, headshot. This is a transformer for browserify, something that can take the output of browserify and do something with it. If we use it like so</p>
+<pre><code>browserify -t brfs app<span class="variable">.js</span> -o <span class="keyword">public</span>/app<span class="variable">.js</span></code></pre>
+<p>Then just like magic, the un-optimised output will look like this</p>
+<pre><code>var mustache = require('mustache')
+  , domReady = require('domready')
+
+var template = "<span class="tag">&lt;<span class="title">p</span>&gt;</span>Hello <span class="variable">{{name}}</span><span class="tag">&lt;/<span class="title">p</span>&gt;</span>"
+
+domReady(function() {
+  var container = document.getElementById('container')
+  container.innerHtml = mustache.render(template, { name: "Bob" })
+})</code></pre>
+<p>Which was just like the initial example where we started. Neat huh?</p>
