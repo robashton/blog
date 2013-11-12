@@ -1,4 +1,4 @@
-Continuing then..
+Continuing then with the ["look no ma no frameworks"](https://github.com/robashton/look-ma-no-frameworks/) series...
 
 - [Look ma no Frameworks](/entries/look-ma,-no-frameworks.html)
 - [An example](/entries/frameworkless-js---an-example.html)
