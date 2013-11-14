@@ -4,6 +4,7 @@ Continuing then with the ["look no ma no frameworks"](https://github.com/robasht
 - [Look ma no Frameworks](/entries/look-ma,-no-frameworks.html)
 - [An example](/entries/frameworkless-js---an-example.html)
 - [Getting started](/entries/starting-the-frameworkless-js-project.html)
+- [Templating stuff](/entries/frameworkless-js---rendering-templates.html)
 
 What about when we really want to use something like Knockout in our application...
 
@@ -61,11 +62,11 @@ With the following application code in *app.js*
       container.innerHtml = mustache.render(template, testdata)
     })
 
-Notice that we use a relative path in our require statement to bring in whatever was exported via *module.exports* in the testdata.js file. Other than that, there is nothing new here so moving on.
+Notice that we use a relative path in our require statement to bring in whatever code was exported via *module.exports* in the testdata.js file. Other than that, there is nothing new here so moving on.
 
 *Filtering the list of customers*
 
-I want a dropdown to do this with and for now I'm going to add that to the customers template - we'll see later on in this series why that might be a bad idea but right now I'm going for the prize and don't know anything about my future problems.
+I want a dropdown to do this with and for now I'm going to add that to the customers template - we'll see shortly why that might be a bad idea but right now I'm going for the prize and don't know anything about future problems.
 
     <select name="bank" data-bind="options: banks, value: selectedBank">
     <table>
@@ -74,11 +75,11 @@ I want a dropdown to do this with and for now I'm going to add that to the custo
       {{/customers}}
     </table>
 
-
 Hooking this up in our *app.js* is just the standard Knockout code that we've all seen before, and that I *always* have to go onto the documentation website to remember how to do ;-)
 
     var mustache = require('mustache')
       , domReady = require('domready')
+      , ko = require('knockout')
       , testdata = require('./testdata')
       , fs = require('fs')
 
@@ -110,11 +111,12 @@ And we bind to the bank selection in a standard way
 
     function onBankSelected(bank) {
       ko.cleanNode(container)
-
+      renderCustomers(filterCustomersByBank(bank))
     }
 
+*this is a bit crap*
 
+Yeah - so this is the spaghetti code we're talking about occuring if you're not using a framework. Re-rendering the whole page just to update a list of customers? Why re-render the select control at all? Why have we got two rendering systems slamming into what is effectively a global dom element with global data?
 
+Clearly there has to be a better way to have our cake *and* eat it and we'll talk about that in the next blog entry about building composable widgets.
 
-
-TODO: Finish this
