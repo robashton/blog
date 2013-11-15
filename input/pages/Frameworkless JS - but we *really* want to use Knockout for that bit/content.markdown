@@ -106,7 +106,7 @@ And we bind to the bank selection in a standard way
         selectedBank = ko.observable()
       }
       ko.applyBindings(model, container)
-      model.selectedValue.subscribe(onBankSelected)
+      model.selectedBank.subscribe(onBankSelected)
     }
 
     function onBankSelected(bank) {
