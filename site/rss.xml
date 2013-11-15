@@ -1,5 +1,96 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Thu, 14 Nov 2013 06:57:27 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Frameworkless JS - rendering templates]]></title><description><![CDATA[<p>Continuing then with the <a href="https://github.com/robashton/look-ma-no-frameworks/">&quot;look no ma no frameworks&quot;</a> series...</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Fri, 15 Nov 2013 06:24:57 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Frameworkless JS - but we *really* want to use Knockout for that bit]]></title><description><![CDATA[<p>Continuing then with the <a href="https://github.com/robashton/look-ma-no-frameworks/">&quot;look no ma no frameworks&quot;</a> series...</p>
+<ul>
+<li><a href="/entries/look-ma,-no-frameworks.html">Look ma no Frameworks</a></li>
+<li><a href="/entries/frameworkless-js---an-example.html">An example</a></li>
+<li><a href="/entries/starting-the-frameworkless-js-project.html">Getting started</a></li>
+<li><a href="/entries/frameworkless-js---rendering-templates.html">Templating stuff</a></li>
+</ul>
+<p>What about when we really want to use something like Knockout in our application...</p>
+<p>In actual fact, the issue I was being specifically asked to address at this client was that they had chosen to use Knockout on their projects and were generally being quite successful with it until they ran into a situation where getting it to fit was causing issues.</p>
+<p><em>How can we build an application which uses Knockout except when it doesn&#39;t</em></p>
+<p>A slightly different question and on the surface really obvious but the temptation is there to treat KO as a framework rather than a library and let it rule our application.</p>
+<p><em>The difference between a framework and a library is that you use a library, whereas a framework uses you</em></p>
+<p>So okay then, let&#39;s pull in Knockout</p>
+<pre><code><span class="comment">npm</span> <span class="comment">install</span> <span class="comment">knockout</span> <span class="literal">-</span><span class="literal">-</span><span class="comment">save</code></pre>
+<p><em>gasp</em>, yes indeed - it is shipped as a self-contained NPM module which is pretty pleasing if you&#39;re wanting to develop applications in this way.</p>
+<pre><code><span class="keyword">var</span> ko = <span class="keyword">require</span>(<span class="string">'ko'</span>)</code></pre>
+<p>Being that we only had a couple of hours to complete this programming exercise we needed something simple to apply this to and went for the overly simplistic example of &quot;binding to a select list&quot;. This is a bit unrealistic and I apologise for this - binding to the events of a single element isn&#39;t really the best excuse for importing a large library like KO into your application(!!).</p>
+<h1>Building the customer list</h1>
+<p>First we can shove some test data into a file <em>testdata.js</em>. </p>
+<pre><code>module.exports = {
+  <span class="method">banks:</span> [ <span class="comment">"spv"</span>, <span class="comment">"fana"</span>, <span class="comment">"lloyds"</span> ],
+  <span class="method">customers:</span> [
+    { <span class="method">bank:</span> <span class="comment">"spv"</span>, <span class="method">name:</span> <span class="comment">"bob"</span> , <span class="method">desc:</span> <span class="comment">"bob is a late payer"</span>},
+    { <span class="method">bank:</span> <span class="comment">"fana"</span>, <span class="method">name:</span> <span class="comment">"alice"</span>, <span class="method">desc:</span> <span class="comment">"alice always pays on time"</span>},
+    { <span class="method">bank:</span> <span class="comment">"lloyds"</span>, <span class="method">name:</span> <span class="comment">"craig"</span>, <span class="method">desc:</span> <span class="comment">"craig is chillin on sunday"</span>  },
+    // etc
+  ]
+}</code></pre>
+<p>And we can bind this to a template that looks like this</p>
+<pre><code><span class="tag">&lt;<span class="title">table</span>&gt;</span>
+  <span class="variable">{{#customers}}</span>
+    <span class="tag">&lt;<span class="title">tr</span>&gt;</span><span class="tag">&lt;<span class="title">td</span>&gt;</span><span class="variable">{{name}}</span><span class="tag">&lt;/<span class="title">td</span>&gt;</span><span class="tag">&lt;<span class="title">td</span>&gt;</span><span class="variable">{{bank}}</span><span class="tag">&lt;/<span class="title">td</span>&gt;</span><span class="tag">&lt;/<span class="title">tr</span>&gt;</span>
+  <span class="variable">{{/customers}}</span>
+<span class="tag">&lt;/<span class="title">table</span>&gt;</span></code></pre>
+<p>With the following application code in <em>app.js</em></p>
+<pre><code><span class="keyword">var</span> mustache = <span class="keyword">require</span>(<span class="string">'mustache'</span>)
+  , domReady = <span class="keyword">require</span>(<span class="string">'domready'</span>)
+  , testdata = <span class="keyword">require</span>(<span class="string">'./testdata'</span>)
+  , fs = <span class="keyword">require</span>(<span class="string">'fs'</span>)
+
+<span class="keyword">var</span> template = fs.readFileSync(__dirname + <span class="string">"/customers.html"</span>)
+
+domReady(function() {
+  <span class="keyword">var</span> container = document.getElementById(<span class="string">'container'</span>)
+  container.innerHtml = mustache.render(template, testdata)
+})</code></pre>
+<p>Notice that we use a relative path in our require statement to bring in whatever code was exported via <em>module.exports</em> in the testdata.js file. Other than that, there is nothing new here so moving on.</p>
+<p><em>Filtering the list of customers</em></p>
+<p>I want a dropdown to do this with and for now I&#39;m going to add that to the customers template - we&#39;ll see shortly why that might be a bad idea but right now I&#39;m going for the prize and don&#39;t know anything about future problems.</p>
+<pre><code><span class="tag">&lt;<span class="title">select</span> <span class="attribute">name</span>=<span class="value">"bank"</span> <span class="attribute">data-bind</span>=<span class="value">"options: banks, value: selectedBank"</span>&gt;</span>
+<span class="tag">&lt;<span class="title">table</span>&gt;</span>
+  <span class="variable">{{#customers}}</span>
+    <span class="tag">&lt;<span class="title">tr</span>&gt;</span><span class="tag">&lt;<span class="title">td</span>&gt;</span><span class="variable">{{name}}</span><span class="tag">&lt;/<span class="title">td</span>&gt;</span><span class="tag">&lt;<span class="title">td</span>&gt;</span><span class="variable">{{bank}}</span><span class="tag">&lt;/<span class="title">td</span>&gt;</span><span class="tag">&lt;/<span class="title">tr</span>&gt;</span>
+  <span class="variable">{{/customers}}</span>
+<span class="tag">&lt;/<span class="title">table</span>&gt;</span></code></pre>
+<p>Hooking this up in our <em>app.js</em> is just the standard Knockout code that we&#39;ve all seen before, and that I <em>always</em> have to go onto the documentation website to remember how to do ;-)</p>
+<pre><code><span class="keyword">var</span> mustache = <span class="keyword">require</span>(<span class="string">'mustache'</span>)
+  , domReady = <span class="keyword">require</span>(<span class="string">'domready'</span>)
+  , ko = <span class="keyword">require</span>(<span class="string">'knockout'</span>)
+  , testdata = <span class="keyword">require</span>(<span class="string">'./testdata'</span>)
+  , fs = <span class="keyword">require</span>(<span class="string">'fs'</span>)
+
+<span class="keyword">var</span> template = fs.readFileSync(__dirname + <span class="string">"/customers.html"</span>)
+  , container = <span class="keyword">null</span>
+
+domReady(function() {
+  container = document.getElementById(<span class="string">'container'</span>)
+  renderCustomers(customers)
+})</code></pre>
+<p>So I&#39;ve broken this up a bit and I&#39;m passing in a custom model</p>
+<pre><code><span class="function"><span class="keyword">function</span> <span class="title">renderCustomers</span><span class="params">(customers)</span> {</span>
+  <span class="transposed_variable">container.</span>innerHtml = <span class="transposed_variable">mustache.</span>render(template, <span class="cell">{ customers:  customers }</span>)
+  bindBankSelection()
+}</code></pre>
+<p>And we bind to the bank selection in a standard way</p>
+<pre><code><span class="function"><span class="keyword">function</span> <span class="title">bindBankSelection</span><span class="params">()</span> <span class="comment">{
+  var model = {
+    banks: ko.observableArray(testdata.banks),
+    selectedBank = ko.observable()
+  }</span>
+  <span class="title">ko</span>.<span class="title">applyBindings</span><span class="params">(model, container)</span>
+  <span class="title">model</span>.<span class="title">selectedValue</span>.<span class="title">subscribe</span><span class="params">(onBankSelected)</span>
+}
+
+<span class="title">function</span> <span class="title">onBankSelected</span><span class="params">(bank)</span> <span class="comment">{
+  ko.cleanNode(container)
+  renderCustomers(filterCustomersByBank(bank))
+}</span></code></pre>
+<p><em>this is a bit crap</em></p>
+<p>Yeah - so this is the spaghetti code we&#39;re talking about occuring if you&#39;re not using a framework. Re-rendering the whole page just to update a list of customers? Why re-render the select control at all? Why have we got two rendering systems slamming into what is effectively a global dom element with global data?</p>
+<p>Clearly there has to be a better way to have our cake <em>and</em> eat it and we&#39;ll talk about that in the next blog entry about building composable widgets.</p>
+]]></description><link>http://codeofrob.com/entries/frameworkless-js---but-we-*really*-want-to-use-knockout-for-that-bit.html</link><guid isPermaLink="true">http://codeofrob.com/entries/frameworkless-js---but-we-*really*-want-to-use-knockout-for-that-bit.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 14 Nov 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Frameworkless JS - rendering templates]]></title><description><![CDATA[<p>Continuing then with the <a href="https://github.com/robashton/look-ma-no-frameworks/">&quot;look no ma no frameworks&quot;</a> series...</p>
 <ul>
 <li><a href="/entries/look-ma,-no-frameworks.html">Look ma no Frameworks</a></li>
 <li><a href="/entries/frameworkless-js---an-example.html">An example</a></li>
@@ -504,55 +595,4 @@ domReady(function() {
 <p>I don&#39;t let the worry consume me because I&#39;ve spent many years now putting myself into worrying situations and things haven&#39;t fallen apart yet. </p>
 <p>Worry has proven itself to give me nothing in return for the space in the head that I afford it, and by refusing to acknowledge it and just press on with what I <em>want</em> to do regardless I&#39;ve found that I can get along just fine.</p>
 <p>But don&#39;t make the assumption that I don&#39;t worry and I&#39;m not scared - it&#39;s just the things I worry and fear are privileged white male software developer things to worry and fear and I&#39;m lucky to be doing what I&#39;m doing and getting away with it.</p>
-]]></description><link>http://codeofrob.com/entries/i-worry-too.html</link><guid isPermaLink="true">http://codeofrob.com/entries/i-worry-too.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 25 Sep 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[An introduction to the OHD platform via REPL driven development]]></title><description><![CDATA[<p>As mentioned at the start of my little bit of Cascalog wandering, I&#39;ve asked <a href="https://www.mastodonc.com/">Mastodon C</a> to let me come and work with them for a couple of weeks in the assumption that they&#39;ll have some tasks I can get on and do and pick up information as I go along.</p>
-<p>In preparation for this, I went through the Cascalog for the Impatient walkthrough (or at least the first 75%) while I was sat in a pub, and now I&#39;m at the office and finding out what I am going to be getting on with!</p>
-<ul>
-<li><a href="/entries/impatiently-learning-cascalog---part-1.html">For the impatient - Part 1</a></li>
-<li><a href="/entries/impatiently-learning-cascalog---part-2.html">For the impatient - Part 2</a></li>
-<li><a href="/entries/impatiently-learning-cascalog---part-3.html">For the impatient - Part 3</a></li>
-<li><a href="/entries/impatiently-learning-cascalog---part-4.html">For the impatient - Part 4</a></li>
-</ul>
-<p>I&#39;ve been asked to look at the <a href="http://openhealthdata.cdehub.org/">CDEC Open Health Data Platform</a> which takes data from the <a href="http://www.hscic.gov.uk/">HSCIC</a> to work out a few things such as the cost to the health service for Diabetes, or breakdowns across regions for the costs/prevalence of diabetes.</p>
-<p>It&#39;s a nice example of what can be done with <a href="https://github.com/nathanmarz/cascalog">Cascalog</a>, although diving into it can be daunting as you&#39;re immediately met with walls of Clojure that look like this</p>
-<pre><code class="lang-clojure"><span class="list">(<span class="title"><span class="built_in">defn</span></span> diabetes-spend-per-head-per-ccg-per-month <span class="collection">[gp-spend gp-prevalence]</span>
-  <span class="list">(<span class="title">&lt;-</span> <span class="collection">[?ccg ?year ?month ?ccg-registered-patients ?ccg-diabetes-patients ?ccg-total-net-ingredient-cost ?spend-per-head]</span>
-      <span class="list">(<span class="title">gp-spend</span> <span class="attribute">:&gt;</span> ?ccg ?practice ?year ?month ?gp-total-net-ingredient-cost)</span>
-      <span class="list">(<span class="title">gp-prevalence</span> <span class="attribute">:&gt;</span> ?practice ?gp-name ?gp-registered-patients ?gp-diabetes-patients ?gp-prevalence)</span>
-      <span class="list">(<span class="title">ops/sum</span> ?gp-registered-patients <span class="attribute">:&gt;</span> ?ccg-registered-patients)</span>
-      <span class="list">(<span class="title">ops/sum</span> ?gp-diabetes-patients <span class="attribute">:&gt;</span> ?ccg-diabetes-patients)</span>
-      <span class="list">(<span class="title">ops/sum</span> ?gp-total-net-ingredient-cost <span class="attribute">:&gt;</span> ?ccg-total-net-ingredient-cost)</span>
-      <span class="list">(<span class="title">has-patients?</span> ?ccg-diabetes-patients)</span>
-      <span class="list">(<span class="title">spend-per-head</span> ?ccg-total-net-ingredient-cost ?ccg-diabetes-patients <span class="attribute">:&gt;</span> ?spend-per-head)</span>)</span>)</span></code></pre>
-<p>This actually makes sense if you&#39;re familiar with logic-based programming or have followed the impatient tutorial so I&#39;m relieved to be able to read through most of this code. If you&#39;ve not been doing this, or it&#39;s 8am and you don&#39;t do this for a living then seeing a codebase of this causes insteant headaches and nausea. An application of coffee later and it all makes sense.</p>
-<p>I am however, on running it met with a couple of problems:</p>
-<ul>
-<li>Where is the data supposed to come from?</li>
-<li>How do I run this stuff?</li>
-</ul>
-<h3>Repl driven development</h3>
-<p>The way I&#39;ve been writing Clojure is via tests and a tight feedback loop built up around those tests. I have however been told on numerous occasions that I should be using the repl more and this codebase is an example of where the author is clearly a big fan of the repl!</p>
-<p>There is also little automation in place for getting the data or executing the code because if you&#39;re familiar with the repl and you have the data already, then throwing code at the repl is the fastest way to put this together and that is what has been done.</p>
-<p>So what does this look like? Littered through the codebase are paragraphs of Clojure that look like this:</p>
-<pre><code class="lang-clojure">;; month,total_spend
-#_ (?- (hfs-delimited &quot;./output/diabetes-total-spend-per-month-england&quot; :delimiter &quot;,&quot; :sinkmode :replace)
-       (total-spend-per-month-england
-        (diabetes-spend-per-ccg-per-month
-         (diabetes-drugs
-          (prescriptions/gp-prescriptions
-           (hfs-delimited &quot;./input/prescriptions/pdpi&quot; :delimiter &quot;,&quot;))
-          (ods/current-practices (hfs-delimited &quot;./input/ods/gppractice/epraccur.csv&quot; :delimiter &quot;,&quot;))))))</code></pre>
-<p>See that <em>#_</em> stuff? That&#39;s a comment which means this code isn&#39;t compiled at all normally, but it&#39;s there so a hardy Emacs user can just execute the code by sending it from the editor to the Repl.</p>
-<p><strong>I&#39;m a vim user, get me out of here</strong></p>
-<p>So there&#39;s that.  Thankfully, a few people have written plug-ins to make Clojure development a bit more dreamy in Vim and a good starting point is the <a href="https://github.com/ctford/vim-fireplace-easy/">vim-fireplace-easy</a> repository put together by <a href="https://twitter.com/ctford">@ctford</a> which brings together a few plug-ins.</p>
-<p><em>vim-fireplace</em></p>
-<p>Vim-fireplace means that I get handy short-cuts for sending code to the repl for execution, I simply fire up a repl in one terminal, and vim in another terminal and then sticking my cursor over an expression and typing &#39;cpp&#39; means that expression being evaluated in that repl.</p>
-<pre><code>  <span class="list">(<span class="title">+</span><span class="body"> <span class="number">4</span> <span class="number">5</span>)</span></span></code></pre>
-<p>So, sending this to the repl would mean I&#39;d be given the answer &#39;9&#39;, or putting the cursor over the big expression above would result in a query being sent through Cascalog.</p>
-<p><em>vim-clojure-static</em></p>
-<p>This just brings in lots of good behaviour when dealing with braces/highlighting/etc - a must for any developer witing clojure in vim.</p>
-<p><em>paredit</em></p>
-<p>This will automatically force my parens to be balanced, as well as vectors, sets and double quotes - it also brings in handy keyboard shortcuts such as (LEADER+W) for surrounding my current selection with parens, or (LEADER+w &quot;) to surround it with double quotes.</p>
-<h3>Doing it their way</h3>
-<p>So, over the next few days I&#39;m going to do it <em>their</em> way, by building up a program bit by bit and sending it to the repl for evaluation. </p>
-<p>In the next entry, I&#39;ll look at my task and how I start going about it.</p>
-]]></description><link>http://codeofrob.com/entries/an-introduction-to-the-ohd-platform-via-repl-driven-development.html</link><guid isPermaLink="true">http://codeofrob.com/entries/an-introduction-to-the-ohd-platform-via-repl-driven-development.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 24 Sep 2013 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/i-worry-too.html</link><guid isPermaLink="true">http://codeofrob.com/entries/i-worry-too.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 25 Sep 2013 09:30:00 GMT</pubDate></item></channel></rss>
