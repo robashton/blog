@@ -26,9 +26,8 @@ function compileStatics(cb) {
     for(var i = 0; i < files.length; i++) {
       var file = files[i]
       var fullpath = path.join('input/static', files[i])
-      var htmlfilename = path.join('site', file.substr(0, file.length-"markdown".length) + 'html')
-      var mdcontent = fs.readFileSync(fullpath, 'utf8'); 
-      var html = markdown(mdcontent);
+      var htmlfilename = path.join('site', file)
+      var html = fs.readFileSync(fullpath, 'utf8'); 
       var statichtml = plates.bind(statictemplate, { body: html });
       fs.writeFileSync(htmlfilename, statichtml , 'utf8');
     }
@@ -123,7 +122,8 @@ common.getAllPostsInfo(function(posts) {
   for(var i = 0 ; i < newposts.length; i++) {
     var post = newposts[i]
     if(post.date < now) {
-      listHtml += '<li><a href="entries/' + common.titleToPage(post.title) + '">' + post.title + '</a></li>\n';
+      if(i < 10)
+        listHtml += '<li><a href="entries/' + common.titleToPage(post.title) + '">' + post.title + '</a></li>\n';
     } else
       unpublishedposts++
     
@@ -132,7 +132,7 @@ common.getAllPostsInfo(function(posts) {
   
   // In essence doesn't do anything any more, but maybe in the future
   var indexHtml = plates.bind(indexTemplate, { entrylist: listHtml, unpublishedposts: unpublishedposts || "none"});
-  fs.writeFileSync('./site/index.html', indexHtml, 'utf8');
+  fs.writeFileSync('./site/blog.html', indexHtml, 'utf8');
   fs.writeFileSync('./site/allposts.txt', allEntries, 'utf8')
   compilePosts(newposts);
   compileStatics(function() {

@@ -1,0 +1,188 @@
+<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->  
+<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->  
+<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->  
+<!--[if !ie]><!--> 
+<html lang="en"> <!--<![endif]-->  
+<head>
+    <title>Rob Ashton - Freelance Developer</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <meta name="author" content="">
+    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
+    <link rel="stylesheet" href="assets/plugins/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/headers/header1.css">
+    <link rel="stylesheet" href="assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
+    <link rel="stylesheet" href="assets/css/style_responsive.css">
+    <link rel="shortcut icon" href="favicon.ico">        
+    <link rel="stylesheet" href="assets/plugins/font-awesome/css/font-awesome.css">
+    <link rel="stylesheet" href="assets/css/themes/default.css">
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+</head>	
+  <body>
+    <div class="header">               
+        <div class="container"> 
+            <div class="logo">                                             
+              <h2><a href="index.html">Rob Ashton</a></h2>
+            </div>
+            <div class="navbar">                                
+                <div class="navbar-inner">                                  
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </a>
+                    <div class="nav-collapse collapse">                                     
+                        <ul class="nav top-2">
+                          <li>
+                                <a href="/">Home</a>
+                            </li>
+                            <li>
+                                <a href="/blog.html">Blog</a>
+                            </li>
+                            <li>
+                                <a href="/testimonials.html">Testimonials</a>
+                            </li>
+                            <li>
+                                <a href="/hire.html">Hire Me</a>
+                            </li>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="body"><div class="row-fluid breadcrumbs margin-bottom-40">
+  <div class="container">
+    <h1 class="pull-left">Testimonials</h1>
+  </div><!--/container-->
+</div>
+
+[Hire me](/hire.html)
+
+<div class="container-fluid one-page">
+    <div class="container one-default">
+      <div class="row-fluid margin-bottom-0">
+          <div class="span12">
+*Ayende Rahien*, *Wizard*, *Hibernating Rhinos Ltd*
+
+The first time I met Rob, he was spouting some utter nonsensical drivel. So I did the proper thing and told him that what he suggested wasn't possible, and if he thought it was, he could go and code it. 
+
+That ended the conversation as far as I was concerned, and I was quite sure that I'd never hear from him again. Less than 24 hours, he was back, and he had a solution coded, for the problem I considered impossible. After I picked my jaw off the floor, I was quite impressed.
+
+That feature is now one of the major distinguishing feature for RavenDB (dynamic queries). Since then, I have had the pleasure of working with Rob on several occasions. It has been a pleasure, because there is zero nonsense to deal with, just a lot of good code, flying by very quickly.
+
+The last time I had a chance to work with Rob, he stayed for a week, and we worked for six months to catch up. Large parts of the RavenDB 2.5 release was written by Rob during that single week. 
+
+He is one of the people in the short list I would go to if I needed help or feedback, from "how do I design this distributed system to be reliable & fast" to "can you help me trace this race condition?". 
+      </div><!--/row-fluid-->
+    </div>
+  </div>
+
+
+*Alexandros Marinos, Founder/Director Rulemotion Ltd*
+
+Rob is one of those rare developers that combines excellent skill, communication ability, long-term technical vision, and justified confidence in his skills. 
+
+During his time with us, we gave him a project that we hoped he would make some early progress on, and he proceeded to produce a working prototype. This project included having to learn an esoteric parsing language, for which he wrote a tutorial at the same time. 
+
+In addition, he left our organisation with some long-term improvements in our architecture and testing approach. I can hardly reccommend working with Rob more.
+
+*Samuel Jack, Founder of Truthvine*
+
+Rob gave our project a great boost. Thanks to his intense focus and pragmatic approach we got a high quality minimal viable product launched in just a week.
+
+*Ian Battersby, Contractor at GTI Online Solutions (2009)*
+
+Having worked on a large greeenfield project with Rob I can testify to his unbounding enthusiasm and expansive knowledge that combined act as a driving force in moving a team towards delivery. 
+
+His uncomprising approach to quality and standards leave team members assured they are producing something truly robust and worthy of their effort.
+
+Given his ability to bring knowledge and energy to a project I once described Rob akin to Nuclear Fusion, handled carefully you can harness great power and yield amazing results, but failure to meet expectations of passion and excellence can have serious fallout. Use him wisely ;-)
+
+[Hire me](/hire.html)
+</div>
+
+<div class="footer" style="margin-top: 0px">
+    <div class="container">
+        <div class="row-fluid">
+            <div class="span3">
+                <div class="headline"><h3>Get In Touch</h3></div>
+                <address class="address">
+                    <ul class="icons-ul">
+                        <li><i class="icon-li icon-envelope"></i>Email: <a href="mailto:robashton@codeofrob.com" class="">robashton@codeofrob.com</a></li>
+                        <li><i class="icon-li icon-envelope"></i>Skype: <a href="skype:rob_ashton" class="">rob_ashton</a></li>
+                    </ul>
+                </address>
+            </div><!--/span3-->
+            <div class="span5">
+                <div class="headline"><h3>Subscribe</h3></div>
+                <p>I publish an <a href="http://feed.codeofrob.com/RobAshton">RSS feed</a> from my blog and some other activities</p>
+            </div>
+            <div class="span4">
+                <div class="posts">
+                  <div class="headline"><h3>Find me...</h3></div>
+                  <p><a href="http://twitter.com/robashton"><img src="/assets/img/twitter.jpg" alt="" />
+                  <a href="http://github.com/robashton"><img src="/assets/img/github.png" alt="" /></a></p>
+                </div>
+            </div><!--/span4-->
+        </div><!--/row-fluid-->
+    </div><!--/container-->
+</div><!--/footer-->
+<!--=== End Footer ===-->
+
+<!--=== Copyright ===-->
+<div class="copyright">
+    <div class="container">
+        <div class="row-fluid">
+            <div class="span2">
+              <a href="/">Rob Ashton</a>
+            </div>
+            <div class="span6">
+              <p class="terms">2013 © Rob Ashton. ALL Rights Reserved.</p>
+            </div>
+        </div><!--/row-fluid-->
+    </div><!--/container-->
+</div><!--/copyright-->
+<!--=== End Copyright ===-->
+
+<!-- JS Global Compulsory -->			
+<script type="text/javascript" src="assets/js/jquery-1.8.2.min.js"></script>
+<script type="text/javascript" src="assets/js/modernizr.custom.js"></script>		
+<script type="text/javascript" src="assets/plugins/bootstrap/js/bootstrap.min.js"></script>	
+<!-- JS Implementing Plugins -->           
+<script type="text/javascript" src="assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+<script type="text/javascript" src="assets/plugins/parallax-slider/js/modernizr.js"></script>
+<script type="text/javascript" src="assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+<script type="text/javascript" src="assets/plugins/back-to-top.js"></script>
+<script type="text/javascript" src="assets/plugins/jquery.sticky.js"></script>
+<script type="text/javascript" src="assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+<!-- JS Page Level -->           
+<script type="text/javascript" src="assets/js/app.js"></script>
+<script type="text/javascript" src="assets/js/pages/index.js"></script>
+<script type="text/javascript">
+    jQuery(document).ready(function() {
+      	App.init();
+        App.initFancybox();
+        App.initSliders();
+        Index.initParallaxSlider();
+    });
+</script>
+<!--[if lt IE 9]>
+    <script src="assets/js/respond.js"></script>
+<![endif]-->
+  </body>
+</html>
+
