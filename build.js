@@ -26,9 +26,8 @@ function compileStatics(cb) {
     for(var i = 0; i < files.length; i++) {
       var file = files[i]
       var fullpath = path.join('input/static', files[i])
-      var htmlfilename = path.join('site', file.substr(0, file.length-"markdown".length) + 'html')
-      var mdcontent = fs.readFileSync(fullpath, 'utf8'); 
-      var html = markdown(mdcontent);
+      var htmlfilename = path.join('site', file)
+      var html = fs.readFileSync(fullpath, 'utf8'); 
       var statichtml = plates.bind(statictemplate, { body: html });
       fs.writeFileSync(htmlfilename, statichtml , 'utf8');
     }

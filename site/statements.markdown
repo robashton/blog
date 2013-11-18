@@ -64,7 +64,56 @@
         </div>
     </div>
 
-    <div id="body"></div>
+    <div id="body"><div class="row-fluid breadcrumbs margin-bottom-40">
+  <div class="container">
+    <h1 class="pull-left">Testimonials</h1>
+  </div><!--/container-->
+</div>
+
+[Hire me](/hire.html)
+
+<div class="container-fluid one-page">
+    <div class="container one-default">
+      <div class="row-fluid margin-bottom-0">
+          <div class="span12">
+*Ayende Rahien*, *Wizard*, *Hibernating Rhinos Ltd*
+
+The first time I met Rob, he was spouting some utter nonsensical drivel. So I did the proper thing and told him that what he suggested wasn't possible, and if he thought it was, he could go and code it. 
+
+That ended the conversation as far as I was concerned, and I was quite sure that I'd never hear from him again. Less than 24 hours, he was back, and he had a solution coded, for the problem I considered impossible. After I picked my jaw off the floor, I was quite impressed.
+
+That feature is now one of the major distinguishing feature for RavenDB (dynamic queries). Since then, I have had the pleasure of working with Rob on several occasions. It has been a pleasure, because there is zero nonsense to deal with, just a lot of good code, flying by very quickly.
+
+The last time I had a chance to work with Rob, he stayed for a week, and we worked for six months to catch up. Large parts of the RavenDB 2.5 release was written by Rob during that single week. 
+
+He is one of the people in the short list I would go to if I needed help or feedback, from "how do I design this distributed system to be reliable & fast" to "can you help me trace this race condition?". 
+      </div><!--/row-fluid-->
+    </div>
+  </div>
+
+
+*Alexandros Marinos, Founder/Director Rulemotion Ltd*
+
+Rob is one of those rare developers that combines excellent skill, communication ability, long-term technical vision, and justified confidence in his skills. 
+
+During his time with us, we gave him a project that we hoped he would make some early progress on, and he proceeded to produce a working prototype. This project included having to learn an esoteric parsing language, for which he wrote a tutorial at the same time. 
+
+In addition, he left our organisation with some long-term improvements in our architecture and testing approach. I can hardly reccommend working with Rob more.
+
+*Samuel Jack, Founder of Truthvine*
+
+Rob gave our project a great boost. Thanks to his intense focus and pragmatic approach we got a high quality minimal viable product launched in just a week.
+
+*Ian Battersby, Contractor at GTI Online Solutions (2009)*
+
+Having worked on a large greeenfield project with Rob I can testify to his unbounding enthusiasm and expansive knowledge that combined act as a driving force in moving a team towards delivery. 
+
+His uncomprising approach to quality and standards leave team members assured they are producing something truly robust and worthy of their effort.
+
+Given his ability to bring knowledge and energy to a project I once described Rob akin to Nuclear Fusion, handled carefully you can harness great power and yield amazing results, but failure to meet expectations of passion and excellence can have serious fallout. Use him wisely ;-)
+
+[Hire me](/hire.html)
+</div>
 
 <div class="footer" style="margin-top: 0px">
     <div class="container">
