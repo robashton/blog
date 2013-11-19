@@ -90,7 +90,73 @@
 </ul>
 <p>Not so brilliant, something we can all probably agree on.</p>
 <p><em>What to do about it</em></p>
-<p>Encapsulation. </p>
+<p>Well in a nutshell this is about ownership. If a bit of code wants to render something to an element, then it should be responsible for binding anything to that element or anything underneath that element. Touching anything outside of that should be strongly discouraged.</p>
+<p>This is one of the ideas that a lot of frameworks tend to push for good reason - and there are a million and one ways to do it. In this entry, we&#39;ll just take the most straight forward route of keeping the code in this single file and demonstrating the principle of ownership.</p>
+<p>This is the code we currently have:</p>
+<pre><code><span class="keyword">var</span> mustache = <span class="keyword">require</span>(<span class="string">'mustache'</span>)
+  , domReady = <span class="keyword">require</span>(<span class="string">'domready'</span>)
+  , ko = <span class="keyword">require</span>(<span class="string">'knockout'</span>)
+  , testdata = <span class="keyword">require</span>(<span class="string">'./testdata'</span>)
+  , fs = <span class="keyword">require</span>(<span class="string">'fs'</span>)
+
+<span class="keyword">var</span> template = fs.readFileSync(__dirname + <span class="string">"/customers.html"</span>)
+  , container = <span class="keyword">null</span>
+
+domReady(function() {
+  container = document.getElementById(<span class="string">'container'</span>)
+  renderCustomers(customers)
+})
+
+<span class="function"><span class="keyword">function</span> <span class="title">renderCustomers</span><span class="params">(customers)</span> {</span>
+  container.innerHTML = mustache.render(template, { customers:  customers })
+  bindBankSelection()
+}
+
+<span class="function"><span class="keyword">function</span> <span class="title">bindBankSelection</span><span class="params">()</span> {</span>
+  <span class="keyword">var</span> model = {
+    banks: ko.observableArray(testdata.banks),
+    selectedBank = ko.observable()
+  }
+  ko.applyBindings(model, container)
+  model.selectedBank.subscribe(onBankSelected)
+}
+
+<span class="function"><span class="keyword">function</span> <span class="title">onBankSelected</span><span class="params">(bank)</span> {</span>
+  ko.cleanNode(container)
+  renderCustomers(filterCustomersByBank(bank))
+}</code></pre>
+<p>The problem at the root of all this, is that both the customer list and the bank selection are hammering on the top level element (container) and it&#39;s not clear who owns what.</p>
+<p>How about instead of this, we say that our top-level function takes in the top level container, and then gives a sub-element to both the customer list and the bank selection code?</p>
+<pre><code>var model = <span class="cell">{
+  customers: testdata.customers,
+  banks: testdata.customers
+  selectedBank = ko.observable()
+}</span>
+
+domReady(<span class="keyword">function</span>() <span class="cell">{
+  banks(container.getElementsByClassName(<span class="string">'banks'</span>)[<span class="number">0</span>])
+  customers(container.getElementsByClassName(<span class="string">'customers'</span>)[<span class="number">0</span>])
+}</span>)
+
+<span class="function"><span class="keyword">function</span> <span class="title">banks</span><span class="params">(el)</span> {</span>
+  <span class="transposed_variable">el.</span>innerHTML = <span class="transposed_variable">mustache.</span>render(bankstemplate, model)
+  <span class="transposed_variable">ko.</span>applyBindings(model, el)
+  <span class="transposed_variable">model.</span><span class="transposed_variable">selectedBank.</span>subscribe(onBankSelected)
+}
+
+<span class="function"><span class="keyword">function</span> <span class="title">onBankSelected</span><span class="params">(bank)</span> {</span>
+  <span class="transposed_variable">model.</span>customers = filterByBank(<span class="transposed_variable">testdata.</span>customers)
+  customers(<span class="transposed_variable">container.</span>getElementsByClassName(<span class="string">'customers'</span>)<span class="matrix">[<span class="number">0</span>]</span>)
+}
+
+<span class="function"><span class="keyword">function</span> <span class="title">customers</span><span class="params">(el)</span> {</span>
+  <span class="transposed_variable">el.</span>innerHTML = <span class="transposed_variable">mustache.</span>render(customerstemplate, model)
+}</code></pre>
+<p>Something like that.</p>
+<p><em>Yuck, still a mess</em></p>
+<p>Yep, we solved the main problem which was the ownership of elements but we&#39;re using a weird shared model and not really encapsulating anything else.</p>
+<p>I want to approach the topic of encapsulation slowly and with the demonstration of the actual problems we&#39;re trying to solve. It&#39;s very easy to run into a &quot;let&#39;s use this pattern everywhere&quot; and I want to put across the notion of shared modules that don&#39;t have to have a homogeneous setup.</p>
+<p>Next up, we&#39;ll take the next steps towards that by looking at the heady days of &quot;<em>what jquery did right</em>&quot;.</p>
 </div>
       <div id="links">
         <a href="/">Index</a>
