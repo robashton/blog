@@ -1,0 +1,66 @@
+<p>We are in a bit of a pickle. We have a little bit of code which does things to the dom and has interactivity, but how do we organise that so we don&#39;t just have a pile of code in a file?</p>
+<ul>
+<li><a href="/entries/look-ma,-no-frameworks.html">Look ma no Frameworks</a></li>
+<li><a href="/entries/frameworkless-js---an-example.html">An example</a></li>
+<li><a href="/entries/starting-the-frameworkless-js-project.html">Getting started</a></li>
+<li><a href="/entries/frameworkless-js---rendering-templates.html">Templating stuff</a></li>
+<li><a href="/entries/frameworkless-js---but-we-*really*-want-to-use-knockout-for-that-bit.html">Demanding Knockout</a></li>
+<li><a href="/entries/frameworkless-js---encapsulation-of-views.html">Encapsulation of views</a></li>
+</ul>
+<p>Well, a few of you are wanting me to <em>get to the point already</em> and I&#39;mma let you finish but first I&#39;mma tell you that jQuery is the greatest library of all time, ALL TIME.</p>
+<h3>jQuery</h3>
+<p>In the beginning there were a pile of JS files included into a pile of html files and executed in whatever order we felt like including them. If we were lucky there might be a common.js or a utils.js to wrap up various inconsistencies between browsers and then everything else just used those to hijack bits of the dom and do all manners of wicked things in our application.</p>
+<pre><code class="lang-javascript">my.org.has.a.bigger.namespace.than.you.utils.getElementById(<span class="string">"foo"</span>)</code></pre>
+<p>Then jQuery was born and we suddenly had a magical dollar symbol which gave us a way to use the dom without going through all those headaches. We saw that it was good and there were joyous celebrations across the land as the word spread and jQuery allowed us to write more spaghetti code and even faster than ever before.</p>
+<pre><code class="lang-javascript">$(<span class="string">'#foo'</span>)</code></pre>
+<p>And lo, for the jQuery team did see that perhaps not everything should be part of jQuery itself and they created a plug-in system whereby you could attach functions to the almighty dollar symbol and a sprawling ecosystem was born whereby everybody and their dogs were writing jQuery plugins to perform magic on web pages across the intarwebs.</p>
+<pre><code class="lang-javascript">$(<span class="string">'#foo'</span>).magic()</code></pre>
+<p>There was no standard. There was no dependency management. There were very few rules. We had jQuery plug-ins to handle touch events on a dom element, to convert a list into a tabbed UI, to create image sliders on your marketing homepage, to create and track various animations. The only commonality was that </p>
+<ul>
+<li>You included jQuery</li>
+<li>You then included jQuery plug-ins</li>
+<li>You then included your app which then used those plug-ins</li>
+</ul>
+<p>Some jQuery plugins would let you hook events through their configuration set-up</p>
+<pre><code class="lang-javascript">$(<span class="string">'#foo'</span>).setupWidget({
+  onActivated: <span class="keyword">function</span>() {
+  },
+  onDeactivated: <span class="keyword">function</span>() {
+
+  },
+  onMagic: <span class="keyword">function</span>() {
+
+  }
+})</code></pre>
+<p>Some jQuery plug-ins would simply raise their events through the element itself once activated:</p>
+<pre><code class="lang-javascript">$(<span class="string">'#foo'</span>).widget().on(<span class="string">'activated'</span>, <span class="keyword">function</span>() {})</code></pre>
+<p>As a bonus to that lack of dependency management, jQuery plug-ins tended to be very standalone (in as much as they could be given their dependency on jQuery itself!), and they&#39;d commonly be pretty single purpose (do one thing and do it well...). </p>
+<p>These plug-ins could</p>
+<ul>
+<li>Render a whole tree of HTML under the element(s) you selected</li>
+<li>Attach CSS to that HTML</li>
+<li>Expose semantic events over the top of that element</li>
+</ul>
+<pre><code class="lang-javascript">$(<span class="string">'ul.tabs'</span>).tabs() <span class="comment">// my favourite</span></code></pre>
+<p>This sounds a lot like the desired encapsulation I&#39;ve been talking about in the last couple of entries.</p>
+<h3>Pushing it to its limit</h3>
+<p>And indeed, on a couple of projects I saw this pushed as far as it possibly could. The guidance being <em>If you like it then stick it in a plug-in</em>. The entire app therefore became a collection of jQuery plug-ins whose use was orchestrated by the entry point (app.js). Each widget would be responsible for managing the element it was given, all of the HTML below it and for pushing events back up which meant something in the app.</p>
+<p>Each plug-in would have its own repository, its own documentation which was usually a single page, as more than that would mean the plug-in probably did too much. Using them meant you&#39;d RTFM for that plug-in to see how to make it work its magic. This experience was to a lesser extent mirrored in the general ecosystem outside too - for a couple of years an approach to client-side web development would mean reaching automatically to see <em>is there a jQuery plug-in that does that?</em></p>
+<h3>This was pretty neat</h3>
+<p>Does it sound familiar? We managed to build some pretty big apps this way, the downsides being</p>
+<ul>
+<li>No dependency management meant either documenting <em>spit</em> dependencies or not having any at all</li>
+<li>No explicit path for knowing &quot;where code came from&quot;</li>
+<li>Callstacks would often involve jQuery which was just fubarred</li>
+</ul>
+<p><em>What&#39;s this got to do with view encapsulation in js using npm modules?</em></p>
+<p>I probably don&#39;t need to answer this question, but in essence I&#39;d say quite a lot.  If instead of jQuery plug-ins we think about modules in commonjs (where a module is either a package in NPM or just a single file included via &quot;require&quot;), and for documentation we think readme files on Github then we&#39;re almost there.</p>
+<p>If we want a bit of functionality and our approach is to <em>add more code to our application&#39;s main file</em> then we&#39;ve already lost. If our approach is to write a standalone module which exposes a single documented function and use those to compose our application with then we&#39;ve probably got more legs.</p>
+<p>As a bonus over those jQuery times (which looking back actually weren&#39;t <em>that</em> great), we get</p>
+<ul>
+<li>dependency management meaning we can potentially create even smaller modules(!)</li>
+<li>an explicit dependency resolution path, code doesn&#39;t get invoked unless you invoke it</li>
+<li>Sensible callstacks that exist entirely in &quot;ordinary&quot; code</li>
+</ul>
+<h3>Next steps</h3>
+<p>Now that we&#39;ve had a brief history lesson, we&#39;ll look at emulating this inside an npm/browserify style application (for better or for worse).</p>
