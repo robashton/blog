@@ -1,0 +1,111 @@
+<p>So we&#39;ve learned from jQuery that we can hide the details of interaction with the dom behind a single function and it <em>does</em> work and <em>has</em> worked for many years so...</p>
+<ul>
+<li><a href="/entries/look-ma,-no-frameworks.html">Look ma no Frameworks</a></li>
+<li><a href="/entries/frameworkless-js---an-example.html">An example</a></li>
+<li><a href="/entries/starting-the-frameworkless-js-project.html">Getting started</a></li>
+<li><a href="/entries/frameworkless-js---rendering-templates.html">Templating stuff</a></li>
+<li><a href="/entries/frameworkless-js---but-we-*really*-want-to-use-knockout-for-that-bit.html">Demanding Knockout</a></li>
+<li><a href="/entries/frameworkless-js---encapsulation-of-views.html">Encapsulation of views</a></li>
+<li><a href="/entries/frameworkless-js---what-jquery-did-right.html">A lesson from jQuery</a></li>
+</ul>
+<p>Let&#39;s do it ourselves.</p>
+<h3>Creating our customer list as a module</h3>
+<p>I&#39;m going to do things a bit differently in this blog series to the example on Github to make the point that it&#39;s entirely up to us to do things how feel like. In the example on Github the modules are exposed as an instantiable object in a presenter-ish pattern.</p>
+<p>Instead, this module is going to be exposed as a single function like so</p>
+<p><em>customerlist/index.js</em></p>
+<pre><code class="lang-javascript">module.exports = <span class="keyword">function</span>(element) {
+
+}</code></pre>
+<p>In this, we need to render the customers, so our whole module will look something like this</p>
+<p><em>customerlist/index.js</em></p>
+<pre><code class="lang-javascript">
+<span class="keyword">var</span> mustache = require(<span class="string">'mustache'</span>)
+  , testdata = require(<span class="string">'../testdata'</span>)
+  , fs = require(<span class="string">'fs'</span>)
+
+<span class="keyword">var</span> template = fs.readFileSync(__dirname + <span class="string">"/template.html"</span>)
+
+<span class="function"><span class="keyword">function</span> <span class="title">render</span><span class="params">(element, customers)</span> {</span>
+  element.innerHTML = mustache.render(template, { customers:  customers })
+}
+
+module.exports = <span class="keyword">function</span>(element) {
+  render(element, testdata.customers)
+}</code></pre>
+<p><em>customerlist/template.html</em></p>
+<pre><code>  <span class="tag">&lt;<span class="title">table</span>&gt;</span>
+    <span class="variable">{{#customers}}</span>
+      <span class="tag">&lt;<span class="title">tr</span>&gt;</span><span class="tag">&lt;<span class="title">td</span>&gt;</span><span class="variable">{{name}}</span><span class="tag">&lt;/<span class="title">td</span>&gt;</span><span class="tag">&lt;<span class="title">td</span>&gt;</span><span class="variable">{{bank}}</span><span class="tag">&lt;/<span class="title">td</span>&gt;</span><span class="tag">&lt;/<span class="title">tr</span>&gt;</span>
+    <span class="variable">{{/customers}}</span>
+  <span class="tag">&lt;/<span class="title">table</span>&gt;</span></code></pre>
+<p>One thing that is immediately apparent is that I&#39;ve bundled both the presentation logic and the template together in a single folder and exposed only a single function to represent that.</p>
+<h3>Creating our bank dropdown as a module</h3>
+<p>We can do the same for the bank dropdown and have that in its own little folder too.</p>
+<p><em>bankdropdown/index.js</em></p>
+<pre><code class="lang-javascript"><span class="keyword">var</span> ko = require(<span class="string">'knockout'</span>)
+  , mustache = require(<span class="string">'mustache'</span>)
+  , testdata = require(<span class="string">'../testdata'</span>)
+  , fs = require(<span class="string">'fs'</span>)
+  , html = fs.readfileSync(__dirname + <span class="string">"/template.html"</span>)
+
+module.exports = <span class="keyword">function</span>(element) {
+  <span class="keyword">var</span> model = {
+    banks: ko.observableArray(testdata.banks),
+    selectedBank = ko.observable()
+  }
+  element.innerHTML = html
+  ko.applyBindings(model, element)
+  model.selectedBank.subscribe(<span class="keyword">function</span>(bank) {
+
+  })
+}</code></pre>
+<p><em>bankdropdown/template.html</em></p>
+<pre><code><span class="tag">&lt;<span class="title">select</span> <span class="attribute">name</span>=<span class="value">"banks"</span> <span class="attribute">data-bind</span>=<span class="value">"options: banks, value: selectedBank"</span>&gt;</span><span class="tag">&lt;/<span class="title">select</span>&gt;</span></code></pre>
+<h3>Using these modules</h3>
+<p>Ignoring that I&#39;m not handling the above events yet, our <em>app.js</em> now looks a bit like this</p>
+<pre><code>var customerlist = require(<span class="comment">'./customerlist')</span>
+  , bankselection = require(./bankselection<span class="comment">')</span>
+  , domReady = require(<span class="comment">'domready')</span>
+
+domReady(<span class="keyword">function</span>() {
+  customerlist(document.getElementById(<span class="comment">'customer-list'))</span>
+  bankselection(document.getElementById(<span class="comment">'bank-selection'))</span>
+})</code></pre>
+<p>Assuming in this case that those elements exist in our document somewhere on start-up. Of course, they could equally be rendered from a template, or I could be using a document fragment for this and doing it detached... well yes - options, we have options.</p>
+<h3>Communication between modules</h3>
+<p>One thing we&#39;ve not done yet is re-enabled that dropdown to re-render that customer list. One guideline I tend to follow (although not strictly) is that these little self contained widgets shouldn&#39;t  generally be nested too deeply or be too coupled to each other.</p>
+<p>For the customer list, there is no reason why it should know about the bank selection dropdown, as there are number of reasons why you might choose to filter the data being displayed there. </p>
+<p>For the bank selection, there is no reason why it should know about the customer list, as we might have a bank selection widget anywhere else in our app.</p>
+<p>So for now we&#39;ll write the code for this in our <em>app.js</em></p>
+<pre><code class="lang-javascript">
+var customerlist = require(&#39;./customerlist&#39;)
+  , bankselection = require(./bankselection&#39;)
+  , domReady = require(&#39;domready&#39;)
+
+domReady(function() {
+  var customers = customerlist(document.getElementById(&#39;customer-list&#39;))
+    , banks = bankselection(document.getElementById(&#39;bank-selection&#39;))
+
+  banks.on(&#39;bank-selected&#39;, function(bank) {
+    customers.filterByBank(bank)
+  })
+})</code></pre>
+<p>I&#39;ve not written the code to support this yet, but this acts as a statement of intent, that my bank selection widget is going to raise domain specific events and I&#39;m going to issue commands to the customer list based on those events. This is pleasantly explicit and from app.js easy to navigate into the approprate widgets to see what they do and how they work.</p>
+<p>To support that, I need to issue events from the bank widget</p>
+<pre><code class="lang-javascript"><span class="keyword">var</span> EventEmitter = require(<span class="string">'events'</span>).EventEmitter
+
+module.exports = <span class="keyword">function</span>(element) {
+  <span class="comment">// Other stuff</span>
+
+  <span class="keyword">var</span> events = <span class="keyword">new</span> EventEmitter()
+  model.selectedBank.subscribe(<span class="keyword">function</span>(bank) {
+    events.emit(<span class="string">'bank-selected'</span>, bank)
+  })
+  <span class="keyword">return</span> events
+}</code></pre>
+<p>EventEmitter is just a built-in node thing which I don&#39;t like all that much but it&#39;ll do in this example. I could have gone and found an alternative module in NPM for doing events but I don&#39;t have a strong opinion on how this is supposed to work.</p>
+<p>The filtering code in customerlist is pretty obvious and just re-renders the HTML inside the element</p>
+<h3>We could go further</h3>
+<p>In the real world we might decide to package these up as their own modules and stick them in our own private NPM repository (or a git repository).  This would mean they&#39;d come with their own package.json and their own README. We might leave them in their little folder and stick a README inside there instead - that works too, although more discipline might be required to keep things isolated from each other.</p>
+<p>The documentation on what these widgets returned and the small surface area they expose could fit in a single markdown file in that repository and each widget would be easily re-writeable if we decided to do things differently. Consistency doesn&#39;t necessarily have to be enforced and each widget can be done in its own style quite happily. </p>
+<p>Next up let&#39;s see what we can do about perhaps supporting some client-side navigation, as that&#39;s all the rage these days apparently.</p>
