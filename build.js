@@ -131,7 +131,7 @@ common.getAllPostsInfo(function(posts) {
   }
   
   // In essence doesn't do anything any more, but maybe in the future
-  var indexHtml = plates.bind(indexTemplate, { entrylist: listHtml, unpublishedposts: unpublishedposts || "none"});
+  var indexHtml = plates.bind(indexTemplate, { entrylist: listHtml, unpublishedposts: unpublishedposts || "zero"});
   fs.writeFileSync('./site/blog.html', indexHtml, 'utf8');
   fs.writeFileSync('./site/allposts.txt', allEntries, 'utf8')
   compilePosts(newposts);
