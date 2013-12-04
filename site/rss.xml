@@ -1,5 +1,122 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Tue, 26 Nov 2013 09:22:16 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Frameworkless JS - What jQuery did right]]></title><description><![CDATA[<p>We are in a bit of a pickle. We have a little bit of code which does things to the dom and has interactivity, but how do we organise that so we don&#39;t just have a pile of code in a file?</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Wed, 04 Dec 2013 09:02:18 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Clojure dojo-ing at NDC London]]></title><description><![CDATA[<p>I&#39;m sat at NDC London working on my presentation on a completely re-paved laptop and that&#39;s my entire day sorted for Wednesday.</p>
+<p>However, there is <em>Thursday</em> and <em>Friday</em> and while there are a couple of sessions I&#39;ll probably attend, I think I&#39;m going to sit/stand around near the Twilio coffee machine and give Clojure 101s to anybody who fancies doing something a bit different.</p>
+<p>The format? Bring your laptop and let&#39;s get you set up with a working Clojure environment. Let&#39;s pull down something fun to work on and let&#39;s build something. </p>
+<p>Just come and find me, tweet me <a href="@robashton"><a href="http://twitter.com/robashton">http://twitter.com/robashton</a></a> to find out where I am or otherwise holla.</p>
+<p>If you don&#39;t have a laptop I&#39;m happy to do some informal lessons on my own machine but obviously there is a limit to the number of people we can crowd around my laptop and how much we can engage on that.</p>
+<p>Let&#39;s create some more Clojure devs!</p>
+]]></description><link>http://codeofrob.com/entries/clojure-dojo-ing-at-ndc-london.html</link><guid isPermaLink="true">http://codeofrob.com/entries/clojure-dojo-ing-at-ndc-london.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 28 Nov 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Frameworkless JS - A module per widget]]></title><description><![CDATA[<p>So we&#39;ve learned from jQuery that we can hide the details of interaction with the dom behind a single function and it <em>does</em> work and <em>has</em> worked for many years so...</p>
+<ul>
+<li><a href="/entries/look-ma,-no-frameworks.html">Look ma no Frameworks</a></li>
+<li><a href="/entries/frameworkless-js---an-example.html">An example</a></li>
+<li><a href="/entries/starting-the-frameworkless-js-project.html">Getting started</a></li>
+<li><a href="/entries/frameworkless-js---rendering-templates.html">Templating stuff</a></li>
+<li><a href="/entries/frameworkless-js---but-we-*really*-want-to-use-knockout-for-that-bit.html">Demanding Knockout</a></li>
+<li><a href="/entries/frameworkless-js---encapsulation-of-views.html">Encapsulation of views</a></li>
+<li><a href="/entries/frameworkless-js---what-jquery-did-right.html">A lesson from jQuery</a></li>
+</ul>
+<p>Let&#39;s do it ourselves.</p>
+<h3>Creating our customer list as a module</h3>
+<p>I&#39;m going to do things a bit differently in this blog series to the example on Github to make the point that it&#39;s entirely up to us to do things how feel like. In the example on Github the modules are exposed as an instantiable object in a presenter-ish pattern.</p>
+<p>Instead, this module is going to be exposed as a single function like so</p>
+<p><em>customerlist/index.js</em></p>
+<pre><code class="lang-javascript">module.exports = <span class="keyword">function</span>(element) {
+
+}</code></pre>
+<p>In this, we need to render the customers, so our whole module will look something like this</p>
+<p><em>customerlist/index.js</em></p>
+<pre><code class="lang-javascript">
+<span class="keyword">var</span> mustache = require(<span class="string">'mustache'</span>)
+  , testdata = require(<span class="string">'../testdata'</span>)
+  , fs = require(<span class="string">'fs'</span>)
+
+<span class="keyword">var</span> template = fs.readFileSync(__dirname + <span class="string">"/template.html"</span>)
+
+<span class="function"><span class="keyword">function</span> <span class="title">render</span><span class="params">(element, customers)</span> {</span>
+  element.innerHTML = mustache.render(template, { customers:  customers })
+}
+
+module.exports = <span class="keyword">function</span>(element) {
+  render(element, testdata.customers)
+}</code></pre>
+<p><em>customerlist/template.html</em></p>
+<pre><code>  <span class="tag">&lt;<span class="title">table</span>&gt;</span>
+    <span class="variable">{{#customers}}</span>
+      <span class="tag">&lt;<span class="title">tr</span>&gt;</span><span class="tag">&lt;<span class="title">td</span>&gt;</span><span class="variable">{{name}}</span><span class="tag">&lt;/<span class="title">td</span>&gt;</span><span class="tag">&lt;<span class="title">td</span>&gt;</span><span class="variable">{{bank}}</span><span class="tag">&lt;/<span class="title">td</span>&gt;</span><span class="tag">&lt;/<span class="title">tr</span>&gt;</span>
+    <span class="variable">{{/customers}}</span>
+  <span class="tag">&lt;/<span class="title">table</span>&gt;</span></code></pre>
+<p>One thing that is immediately apparent is that I&#39;ve bundled both the presentation logic and the template together in a single folder and exposed only a single function to represent that.</p>
+<h3>Creating our bank dropdown as a module</h3>
+<p>We can do the same for the bank dropdown and have that in its own little folder too.</p>
+<p><em>bankdropdown/index.js</em></p>
+<pre><code class="lang-javascript"><span class="keyword">var</span> ko = require(<span class="string">'knockout'</span>)
+  , mustache = require(<span class="string">'mustache'</span>)
+  , testdata = require(<span class="string">'../testdata'</span>)
+  , fs = require(<span class="string">'fs'</span>)
+  , html = fs.readfileSync(__dirname + <span class="string">"/template.html"</span>)
+
+module.exports = <span class="keyword">function</span>(element) {
+  <span class="keyword">var</span> model = {
+    banks: ko.observableArray(testdata.banks),
+    selectedBank = ko.observable()
+  }
+  element.innerHTML = html
+  ko.applyBindings(model, element)
+  model.selectedBank.subscribe(<span class="keyword">function</span>(bank) {
+
+  })
+}</code></pre>
+<p><em>bankdropdown/template.html</em></p>
+<pre><code><span class="tag">&lt;<span class="title">select</span> <span class="attribute">name</span>=<span class="value">"banks"</span> <span class="attribute">data-bind</span>=<span class="value">"options: banks, value: selectedBank"</span>&gt;</span><span class="tag">&lt;/<span class="title">select</span>&gt;</span></code></pre>
+<h3>Using these modules</h3>
+<p>Ignoring that I&#39;m not handling the above events yet, our <em>app.js</em> now looks a bit like this</p>
+<pre><code>var customerlist = require(<span class="comment">'./customerlist')</span>
+  , bankselection = require(./bankselection<span class="comment">')</span>
+  , domReady = require(<span class="comment">'domready')</span>
+
+domReady(<span class="keyword">function</span>() {
+  customerlist(document.getElementById(<span class="comment">'customer-list'))</span>
+  bankselection(document.getElementById(<span class="comment">'bank-selection'))</span>
+})</code></pre>
+<p>Assuming in this case that those elements exist in our document somewhere on start-up. Of course, they could equally be rendered from a template, or I could be using a document fragment for this and doing it detached... well yes - options, we have options.</p>
+<h3>Communication between modules</h3>
+<p>One thing we&#39;ve not done yet is re-enabled that dropdown to re-render that customer list. One guideline I tend to follow (although not strictly) is that these little self contained widgets shouldn&#39;t  generally be nested too deeply or be too coupled to each other.</p>
+<p>For the customer list, there is no reason why it should know about the bank selection dropdown, as there are number of reasons why you might choose to filter the data being displayed there. </p>
+<p>For the bank selection, there is no reason why it should know about the customer list, as we might have a bank selection widget anywhere else in our app.</p>
+<p>So for now we&#39;ll write the code for this in our <em>app.js</em></p>
+<pre><code class="lang-javascript">
+var customerlist = require(&#39;./customerlist&#39;)
+  , bankselection = require(./bankselection&#39;)
+  , domReady = require(&#39;domready&#39;)
+
+domReady(function() {
+  var customers = customerlist(document.getElementById(&#39;customer-list&#39;))
+    , banks = bankselection(document.getElementById(&#39;bank-selection&#39;))
+
+  banks.on(&#39;bank-selected&#39;, function(bank) {
+    customers.filterByBank(bank)
+  })
+})</code></pre>
+<p>I&#39;ve not written the code to support this yet, but this acts as a statement of intent, that my bank selection widget is going to raise domain specific events and I&#39;m going to issue commands to the customer list based on those events. This is pleasantly explicit and from app.js easy to navigate into the approprate widgets to see what they do and how they work.</p>
+<p>To support that, I need to issue events from the bank widget</p>
+<pre><code class="lang-javascript"><span class="keyword">var</span> EventEmitter = require(<span class="string">'events'</span>).EventEmitter
+
+module.exports = <span class="keyword">function</span>(element) {
+  <span class="comment">// Other stuff</span>
+
+  <span class="keyword">var</span> events = <span class="keyword">new</span> EventEmitter()
+  model.selectedBank.subscribe(<span class="keyword">function</span>(bank) {
+    events.emit(<span class="string">'bank-selected'</span>, bank)
+  })
+  <span class="keyword">return</span> events
+}</code></pre>
+<p>EventEmitter is just a built-in node thing which I don&#39;t like all that much but it&#39;ll do in this example. I could have gone and found an alternative module in NPM for doing events but I don&#39;t have a strong opinion on how this is supposed to work.</p>
+<p>The filtering code in customerlist is pretty obvious and just re-renders the HTML inside the element</p>
+<h3>We could go further</h3>
+<p>In the real world we might decide to package these up as their own modules and stick them in our own private NPM repository (or a git repository).  This would mean they&#39;d come with their own package.json and their own README. We might leave them in their little folder and stick a README inside there instead - that works too, although more discipline might be required to keep things isolated from each other.</p>
+<p>The documentation on what these widgets returned and the small surface area they expose could fit in a single markdown file in that repository and each widget would be easily re-writeable if we decided to do things differently. Consistency doesn&#39;t necessarily have to be enforced and each widget can be done in its own style quite happily. </p>
+<p>Next up let&#39;s see what we can do about perhaps supporting some client-side navigation, as that&#39;s all the rage these days apparently.</p>
+]]></description><link>http://codeofrob.com/entries/frameworkless-js---a-module-per-widget.html</link><guid isPermaLink="true">http://codeofrob.com/entries/frameworkless-js---a-module-per-widget.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 26 Nov 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Frameworkless JS - What jQuery did right]]></title><description><![CDATA[<p>We are in a bit of a pickle. We have a little bit of code which does things to the dom and has interactivity, but how do we organise that so we don&#39;t just have a pile of code in a file?</p>
 <ul>
 <li><a href="/entries/look-ma,-no-frameworks.html">Look ma no Frameworks</a></li>
 <li><a href="/entries/frameworkless-js---an-example.html">An example</a></li>
@@ -527,199 +644,4 @@ domReady(function() {
 </ul>
 <p>I&#39;m currently <a href="https://github.com/robashton/cravendb">writing my own database</a> in a different managed platform and I&#39;m strongly considering sticking indexing into its own process to avoid this sort of long-term build up of issues. That said - the JVM doesn&#39;t do per-process GC so that might not help that much.</p>
 <p>Either way it&#39;s interesting and points to one of the limitations of writing a database or any high throughput system in a managed environment if you&#39;re going to be expecting big chunks of data that can&#39;t be broken up somehow. (Okay, this is quite specific, and will rarely catch anybody out).</p>
-]]></description><link>http://codeofrob.com/entries/this-consultant-shows-you-one-weird-trick-to-take-down-a-managed-database.html</link><guid isPermaLink="true">http://codeofrob.com/entries/this-consultant-shows-you-one-weird-trick-to-take-down-a-managed-database.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 29 Oct 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Refactoring the Clojure method I am least proud of in CravenDB]]></title><description><![CDATA[<p>I&#39;ve had a bit of a duck in my <a href="http://github.com/robashton/cravendb">database</a> for a while (and I&#39;m not making reference to the read-strings that were in there for months while I got on with more important things).</p>
-<p>The duck came in the form of this method</p>
-<pre><code class="lang-clojure"><span class="list">(<span class="title"><span class="built_in">defn</span></span> perform-query 
-  <span class="collection">[tx reader query offset amount sort-field sort-order]</span>
-  <span class="list">(<span class="title"><span class="built_in">loop</span></span> <span class="collection">[results <span class="list">()</span>
-         current-offset offset
-         total-collected<span class="number"> 0</span>
-         attempt<span class="number"> 0</span> ]</span>
-         <span class="list">(<span class="title"><span class="built_in">let</span></span> <span class="collection">[requested-amount <span class="list">(<span class="title"><span class="built_in">+</span></span> current-offset <span class="list">(<span class="title"><span class="built_in">max</span></span> amount<span class="number"> 100</span>)</span>)</span>
-               raw-results <span class="list">(<span class="title">lucene/query</span> reader query requested-amount sort-field sort-order)</span>
-               document-results <span class="list">(<span class="title">convert-results-to-documents</span> tx <span class="list">(<span class="title"><span class="built_in">drop</span></span> current-offset raw-results)</span>)</span>
-               new-results <span class="list">(<span class="title"><span class="built_in">take</span></span> amount <span class="list">(<span class="title"><span class="built_in">concat</span></span> results document-results)</span>)</span>
-               new-total <span class="list">(<span class="title"><span class="built_in">count</span></span> new-results)</span> 
-               new-offset <span class="list">(<span class="title"><span class="built_in">+</span></span> current-offset requested-amount)</span>]</span>
-
-           <span class="list">(<span class="title">debug</span> <span class="string">"Requested"</span> requested-amount 
-                    <span class="string">"CurrentTotal"</span> total-collected 
-                    <span class="string">"Skipped"</span> current-offset <span class="string">"Of"</span>
-                    <span class="string">"Received"</span> <span class="list">(<span class="title"><span class="built_in">count</span></span> raw-results)</span>)</span>
-           <span class="list">(<span class="title"><span class="built_in">if</span></span> <span class="list">(<span class="title"><span class="built_in">and</span></span> <span class="list">(<span class="title"><span class="built_in">=</span></span> <span class="list">(<span class="title"><span class="built_in">count</span></span> raw-results)</span> requested-amount)</span>
-                    <span class="list">(<span class="title"><span class="built_in">not=</span></span> new-total amount)</span>
-                    <span class="list">(<span class="title">&gt;</span><span class="number"> 10</span> attempt)</span>)</span>
-             <span class="list">(<span class="title"><span class="built_in">recur</span></span> new-results 
-                    new-offset 
-                    new-total
-                    <span class="list">(<span class="title"><span class="built_in">inc</span></span> attempt)</span>)</span>
-             new-results)</span>)</span>)</span>)</span></code></pre>
-<p>Essentially we have a lucene reader and we want to</p>
-<ul>
-<li>Query it for some results (offset + amount-ish)</li>
-<li>Pull those results through as documents</li>
-<li>If we don&#39;t have enough documents and there are some left, query again</li>
-<li>Keep going until either we have enough, or there are no more left</li>
-</ul>
-<p>It&#39;s fairly simple, but what we can see in the method is</p>
-<ul>
-<li>I&#39;m using &#39;loop&#39;, this usually indicates other non-functional problems</li>
-<li>I&#39;m effectively building &#39;take&#39;, &#39;skip&#39;, etc myself</li>
-</ul>
-<p>One thing I&#39;ve learned so far in Clojure that if you have a abnormal construct (in this case my lucene reader), is that we should try and get that into either a <em>map</em> or a <em>sequence</em> as early on as possible so as to be able to leverage all the Clojure built-ins on it.</p>
-<h3>What I want here, is a lazy sequence built up with recursion</h3>
-<p>I wrote a quick proof of concept of that sort of thing, it looks like this:</p>
-<pre><code class="lang-clojure">(defn number-seq 
-  ([] (number-seq 0))
-  ([i]
-  (cons (inc i) (lazy-seq (form-sequence (inc i))))))</code></pre>
-<p>What I have here is a function I can call with all the usual suspects like</p>
-<pre><code class="lang-clojure"><span class="list">(<span class="title"><span class="built_in">take</span></span><span class="number"> 100</span> <span class="list">(<span class="title">number-seq</span>)</span>)</span> <span class="comment">;; Get me 0 to 100</span>
-<span class="list">(<span class="title"><span class="built_in">drop</span></span><span class="number"> 10</span> <span class="list">(<span class="title"><span class="built_in">take</span></span><span class="number"> 100</span> <span class="list">(<span class="title">number-seq</span>)</span>)</span> <span class="comment">;; Get me 10 to 100</span>
-<span class="comment">;; etc</span></code></pre>
-<p>And it&#39;s fully lazy and potentially infinite and all those things. The whole &quot;cons a value onto a lazy sequence&quot; trick is the solution to quite a few of the Clojure koans and had I done them perhaps I&#39;d not have written the above loop.</p>
-<h3>First step - reduce the arguments</h3>
-<p>Before ripping apart this loop, I thought it better to jump in the repl to create the constructs that go into the loop, then sit there and pull the loop apart into its constituent parts before using them in a recursive function.</p>
-<p>Looking at the query method, I&#39;m passing quite a lot in to it</p>
-<ul>
-<li>tx: the current transaction we&#39;re pulling data from</li>
-<li>reader: a wrapper around a lucene reader</li>
-<li>query: the query itself</li>
-<li>offset: the number of values to skip in the page</li>
-<li>amount: the number of values to pull from the reader</li>
-<li>sort-field: the field we&#39;re sorting on</li>
-<li>sort-order: the order of sorting</li>
-</ul>
-<p>It is quite clear that only two of these values actually change during the recursive loop, and the rest are only used with a single object (reader) the same way over and over again.</p>
-<p>My first step in C# would probably be to &quot;create another object&quot;, in this case here though a producer function of some sort is what springs to mind</p>
-<pre><code class="lang-clojure"><span class="list">(<span class="title"><span class="built_in">defn</span></span> lucene-producer <span class="collection">[tx reader query sort-field sort-order]</span>
-
-  <span class="list">(<span class="title"><span class="built_in">fn</span></span> <span class="collection">[offset amount]</span>
-    <span class="list">(<span class="title">-&gt;&gt;</span> 
-      <span class="list">(<span class="title">lucene/query</span> reader 
-                    query 
-                    <span class="list">(<span class="title"><span class="built_in">+</span></span> offset amount)</span> 
-                    sort-field 
-                    sort-order)</span> 
-      <span class="list">(<span class="title"><span class="built_in">drop</span></span> offset)</span> 
-      <span class="list">(<span class="title">convert-results-to-documents</span> tx)</span>)</span>)</span>)</span></code></pre>
-<p>I actually go a bit further and bring in the loading of the documents as well, now I can call this over again like so</p>
-<pre><code class="lang-clojure"><span class="list">(<span class="title">producer</span><span class="number"> 0</span><span class="number"> 100</span>)</span> <span class="comment">;; Get me the first 100 items in the index</span>
-<span class="list">(<span class="title">producer</span><span class="number"> 10</span><span class="number"> 100</span>)</span> <span class="comment">;; Get me the items 10-100 in the index</span></code></pre>
-<p>Now of course, this producer function might not actually return the requested number of results because the underlying code is doing de-duping and removing documents that have been deleted and not yet cleared from the index.</p>
-<p>I slot this into my original loop function, verify it all still works and then look at the next step:</p>
-<h3>Second step - split out the paging</h3>
-<p>What I really want is the ability to skip through pages of the index and not keep accumulators around in the loop itself, I can employ a similar trick and write a function that knows about the current page and how to get the next page. I&#39;ll store the results in a map and a function to get the next page in the map as well.</p>
-<pre><code class="lang-clojure"><span class="list">(<span class="title"><span class="built_in">defn</span></span> lucene-page 
-  <span class="list">([<span class="title">producer</span> page-size] <span class="list">(<span class="title">lucene-page</span> producer<span class="number"> 0</span> page-size)</span>)</span>
-  <span class="list">([<span class="title">producer</span> current-offset page-size]
-   <span class="collection">{
-    <span class="attribute">:results</span> <span class="list">(<span class="title">producer</span> current-offset page-size)</span>
-    <span class="attribute">:next</span> <span class="list">(<span class="title"><span class="built_in">fn</span></span> <span class="collection">[]</span> <span class="list">(<span class="title">lucene-page</span> producer <span class="list">(<span class="title"><span class="built_in">+</span></span> current-offset page-size)</span> page-size)</span>)</span>
-   }</span>)</span>)</span></code></pre>
-<p>An alternative might be to just assoc the paging values into the map itself and create a next-page function like so</p>
-<pre><code class="lang-clojure"><span class="list">(<span class="title"><span class="built_in">defn</span></span> lucene-page 
-  <span class="list">([<span class="title">producer</span> page-size] <span class="list">(<span class="title">lucene-page</span> producer<span class="number"> 0</span> page-size)</span>)</span>
-  <span class="list">([<span class="title">producer</span> current-offset page-size]
-   <span class="collection">{
-    <span class="attribute">:producer</span> producer
-    <span class="attribute">:offset</span> current-offset
-    <span class="attribute">:page-size</span> page-size
-    <span class="attribute">:results</span> <span class="list">(<span class="title">producer</span> current-offset page-size)</span>
-   }</span>)</span>)</span>
-
-<span class="list">(<span class="title"><span class="built_in">defn</span></span> next-page <span class="collection">[<span class="collection">{<span class="attribute">:keys</span> <span class="collection">[producer offset page-size]</span>}</span>]</span>
-  <span class="list">(<span class="title">lucene-page</span> producer <span class="list">(<span class="title"><span class="built_in">+</span></span> offset page-size)</span> page-size)</span>)</span></code></pre>
-<p>But I quite like the little function and it&#39;s smaller so I&#39;m rolling with it until I&#39;m told that it&#39;s a bad thing and I&#39;m a naughty boy.</p>
-<p>With this, I can consume the results I have and and simply call &quot;next&quot; to get the next lucene page without worrying about the accumulators in the loop function, this means I&#39;m now left with quite a stripped down loop:</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> perform-query 
-  [producer offset amount]
-  <span class="list">(<span class="title">loop</span><span class="body"> [results <span class="list">(<span class="body">)</span></span>
-        page <span class="list">(<span class="title">lucene-page</span><span class="body"> producer amount)</span></span>]
-      <span class="list">(<span class="title">let</span><span class="body"> [new-results <span class="list">(<span class="title">take</span><span class="body"> amount <span class="list">(<span class="title">concat</span><span class="body"> results <span class="list">(<span class="body"><span class="keyword">:results</span> page)</span></span>)</span></span>)</span></span>
-            new-total <span class="list">(<span class="title">count</span><span class="body"> new-results)</span></span>]
-
-          <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">and</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> <span class="list">(<span class="title">count</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:results</span> pager)</span></span>)</span></span> <span class="number">0</span>)</span></span>
-                    <span class="list">(<span class="title">not=</span><span class="body"> new-total amount)</span></span>)</span></span>
-            <span class="list">(<span class="title">recur</span><span class="body"> new-results 
-                    <span class="list">(<span class="body"><span class="list">(<span class="body"><span class="keyword">:next</span> page)</span></span>)</span></span>)</span></span>
-            new-results)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<h3>To the recursive lazy sequence</h3>
-<p>Now I&#39;ve pulled out the important bits of this code into two different stages (pulling data from lucene, paging data over that), it&#39;s quite trivial to convert the loop into a lazy sequence</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> lucene-seq 
-  <span class="list">(<span class="body">[page] <span class="list">(<span class="title">lucene-seq</span><span class="body"> page <span class="list">(<span class="body"><span class="keyword">:results</span> page)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="body">[page src]
-  <span class="list">(<span class="title">cond</span><span class="body">
-    <span class="list">(<span class="title">empty</span><span class="body">? <span class="list">(<span class="body"><span class="keyword">:results</span> page)</span></span>)</span></span> <span class="list">(<span class="body">)</span></span>
-    <span class="list">(<span class="title">empty</span><span class="body">? src)</span></span> <span class="list">(<span class="title">lucene-seq</span><span class="body"> <span class="list">(<span class="body"><span class="list">(<span class="body"><span class="keyword">:next</span> page)</span></span>)</span></span>)</span></span>
-    <span class="keyword">:else</span> <span class="list">(<span class="title">cons</span><span class="body"> <span class="list">(<span class="title">first</span><span class="body"> src)</span></span> <span class="list">(<span class="title">lazy-seq</span><span class="body"> <span class="list">(<span class="title">lucene-seq</span><span class="body"> page <span class="list">(<span class="title">rest</span><span class="body"> src)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>I&#39;m pretty pleased with this, tidying up the rest of the code around the rest of the file reduces my line count by 50% and leaves the complete solution looking like this:</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> lucene-producer [tx reader opts]
-  <span class="list">(<span class="title">fn</span><span class="body"> [offset amount]
-    <span class="list">(<span class="title">-&gt;&gt;</span><span class="body"> 
-      <span class="list">(<span class="title">lucene/query</span><span class="body"> reader 
-                    <span class="list">(<span class="body"><span class="keyword">:query</span> opts)</span></span> 
-                    <span class="list">(<span class="title">+</span><span class="body"> offset amount)</span></span> 
-                    <span class="list">(<span class="body"><span class="keyword">:sort-by</span> opts)</span></span> 
-                    <span class="list">(<span class="body"><span class="keyword">:sort-order</span> opts)</span></span>)</span></span> 
-      <span class="list">(<span class="title">drop</span><span class="body"> offset)</span></span> 
-      <span class="list">(<span class="title">valid-documents</span><span class="body"> tx)</span></span>)</span></span>)</span></span>)</span></span>
-
-<span class="list">(<span class="title">defn</span><span class="body"> lucene-page 
-  <span class="list">(<span class="body">[producer page-size] <span class="list">(<span class="title">lucene-page</span><span class="body"> producer <span class="number">0</span> page-size)</span></span>)</span></span>
-  <span class="list">(<span class="body">[producer current-offset page-size]
-  {
-    <span class="keyword">:results</span> <span class="list">(<span class="title">producer</span><span class="body"> current-offset page-size)</span></span>
-    <span class="keyword">:next</span> <span class="list">(<span class="title">fn</span><span class="body"> [] <span class="list">(<span class="title">lucene-page</span><span class="body"> producer <span class="list">(<span class="title">+</span><span class="body"> current-offset page-size)</span></span> page-size)</span></span>)</span></span>
-  })</span></span>)</span></span>
-
-<span class="list">(<span class="title">defn</span><span class="body"> lucene-seq 
-  <span class="list">(<span class="body">[page] <span class="list">(<span class="title">lucene-seq</span><span class="body"> page <span class="list">(<span class="body"><span class="keyword">:results</span> page)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="body">[page src]
-  <span class="list">(<span class="title">cond</span><span class="body">
-    <span class="list">(<span class="title">empty</span><span class="body">? <span class="list">(<span class="body"><span class="keyword">:results</span> page)</span></span>)</span></span> <span class="list">(<span class="body">)</span></span>
-    <span class="list">(<span class="title">empty</span><span class="body">? src)</span></span> <span class="list">(<span class="title">lucene-seq</span><span class="body"> <span class="list">(<span class="body"><span class="list">(<span class="body"><span class="keyword">:next</span> page)</span></span>)</span></span>)</span></span>
-    <span class="keyword">:else</span> <span class="list">(<span class="title">cons</span><span class="body"> <span class="list">(<span class="title">first</span><span class="body"> src)</span></span> <span class="list">(<span class="title">lazy-seq</span><span class="body"> <span class="list">(<span class="title">lucene-seq</span><span class="body"> page <span class="list">(<span class="title">rest</span><span class="body"> src)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>No doubt a seasoned Clojure developer would further reduce this (and there are probably a couple of snafus), but I&#39;m pretty pleased that the interface I&#39;m now exposing to the rest of my code is just a plain old sequence and even if I go and play golf with the underlying code the behaviour of that sequence shouldn&#39;t change. </p>
-]]></description><link>http://codeofrob.com/entries/refactoring-the-clojure-method-i-am-least-proud-of-in-cravendb.html</link><guid isPermaLink="true">http://codeofrob.com/entries/refactoring-the-clojure-method-i-am-least-proud-of-in-cravendb.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 03 Oct 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[On Testing and the REPL in Clojure]]></title><description><![CDATA[<p>I&#39;m currently at <a href="http://euroclojure.com/2013/">Euroclojure</a> where I have the pleasure to have been meeting and chatting to people about Clojure and related ponies for the past day or so - and I&#39;ve learned a few things and got a much better feel for what the Clojure community is about.</p>
-<p>One theme that keeps coming up is the ugly one of testing, and its association with the obsession over tests in other communities, whether it be TDD or some other variant of making yourself feel good through automatic code exercise.</p>
-<p>Another theme that keeps coming up is that the JVM (particularly under Clojure) has a heavy start-up time of quite a few seconds, so that practising a strict TDD feedback loop as you change your code is impractical without installing hacky workarounds like drip or associated (pre-warming the JVM for example). This is reminiscent of what the Rails folk do with Spork/related and comes with a whole suite of interesting problems.</p>
-<p>Another more concerning theme is the derision I&#39;ve been feeling from a lot of corners as a result of the first theme on tests themselves - some of it is joking around, and some of it is almost describing tests as a set of crutches to get around the fact that some code is hard to manipulate in the REPL for example.</p>
-<p>As I&#39;ve been writing <a href="https://github.com/robashton/cravendb">CravenDB</a>, and during my time at MastodonC I have been adjusting my patterns and attitudes around this subject and I&#39;d like to describe where I&#39;m currently at with testing, tdd, the repl and Clojure.</p>
-<h3>The REPL <em>IS</em> TDD</h3>
-<p>The REPL has taken over as my primary way of exploring a new problem or a new feature, and this seems to be due to the following reasons:</p>
-<ul>
-<li>I quite like manipulating a bit of code once I already have state in memory and repeating a small bit of code over and over until the algorithm is just right</li>
-<li>Running tiny tests around that sort of thing would be time consuming, because JVM/Clojure start-up time</li>
-<li>Most code written in Clojure seems to be very honest in that it&#39;s just about transforming state to get some sort of result, and this is usually as a result of composing little functions in a chain (often through experimentation) to get the result we ewant.</li>
-</ul>
-<p>If I was in another platform where the REPL isn&#39;t quite as good (so anything else really), I think I&#39;d still be writing lots of small tests to build up my understanding around a problem. If I was in another platform where the process of finding a result wasn&#39;t so... functional, I&#39;d probably have a lot more code and I&#39;d have to hide it behind classes which require setup/teardown and tests are a good way of repeating that process in a consistent way.</p>
-<p>The separation of state from behaviour in a functional language like Clojure combined with the dynamic nature of Clojure makes the practice of repeatedly editing little bits of that behaviour then sending state through that behaviour a stonkingly easy thing to do, so it&#39;s of course a happy path.</p>
-<p>Once I&#39;ve done this, I clear the REPL and my job is done because...</p>
-<h3>I would only throw those tests away anyway</h3>
-<p>If I&#39;m doing TDD (which I rarely do because most enterprise code is so stupidly simple), I build up quite a suite of tests around  tiny pieces of understanding and can end up with a very feel-good number of tests that do very little but get in my way once written.</p>
-<p>What generally happens is that I&#39;ll end up with very much an outside-in set of tests around the actual features/functionality and I&#39;ll delete all the tiny tests because their only purpose was to help build my understanding and my more functional tests are more about testing the final result.</p>
-<p>I&#39;ve found that while writing my <a href="https://github.com/robashton/cravendb">database in Clojure</a>, that once I&#39;ve finished building up a set of functions around some state to get ma new version of that state, that writing a couple of tests around that whole set of functions that test maybe a positive and a negative case is a reasonable thing to do because I end up leaning on that test in the future when adding new features to prevent regressions against my overall functionality.</p>
-<p>What also seems to be the case, is I can often just transplant the code I&#39;ve built up in the REPL into </p>
-<ul>
-<li>The code base</li>
-<li>The tests</li>
-</ul>
-<p>And get that regression suite almost for free.</p>
-<ul>
-<li>I don&#39;t spend a lot of time fixing the regression suite because of internal structure changes as they&#39;re more dependent on the overall results than internal set-up.</li>
-<li>They do save me a lot of time in regressions because I&#39;m discovering better ways to write my internals all the time and I&#39;m not always capable of keeping the whole system in my head when practising those better ways.</li>
-<li>They <em>do</em> seem quite high in volume, but I&#39;ve not found that the line count in my tests is quite as indicative of bad code as it would be in the main code base (most of it is just descriptions of what the tests do rather than big chunks of code that I&#39;ll have to maintain.</li>
-<li>Sometimes fixing an issue is just a matter of turning debug logging on and running a test, I like that as a result of <em>log all the things</em></li>
-</ul>
-<h3>I do have to be careful though</h3>
-<p>It is difficult sometimes when I break functionality to not start falling into the trap of repeatedly running the tests and &quot;fixing&quot; things until the tests pass. I&#39;ve set a hard rule for myself for the moment that if I can&#39;t get the tests to pass with-in a couple of iterations that I have to drop back to the REPL and start exploring the problem from the inside-out.</p>
-<p>This process helps ensure:</p>
-<ul>
-<li>The internals are still easy enough to use within a REPL</li>
-<li>I still understand the internals (as a developer new to the project, this would be how they learned I guess)</li>
-<li>I don&#39;t spend time shotgun debugging issues</li>
-</ul>
-<h3>Fin</h3>
-<p>That&#39;s my process anyway, I&#39;ve enjoyed telling people I have 1500 lines of code in my tests and hearing that sharp in-take of breath at this conference, but of this project I have to say they&#39;re the bit I&#39;m least ashamed of. Some of my loops on the other hand....</p>
-]]></description><link>http://codeofrob.com/entries/on-testing-and-the-repl-in-clojure.html</link><guid isPermaLink="true">http://codeofrob.com/entries/on-testing-and-the-repl-in-clojure.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 01 Oct 2013 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/this-consultant-shows-you-one-weird-trick-to-take-down-a-managed-database.html</link><guid isPermaLink="true">http://codeofrob.com/entries/this-consultant-shows-you-one-weird-trick-to-take-down-a-managed-database.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 29 Oct 2013 09:30:00 GMT</pubDate></item></channel></rss>
