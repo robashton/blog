@@ -111,10 +111,12 @@ There is no inherent shame in doing it wrong, it's okay - we all make mistakes, 
 
 ## What the fuck is wrong with you people?
 
-We had a good thing, you ruined it. We had an escape route from that ridiculous enterprise hand-holding bullshit and instead of learning how to fucking code you've just brought your factory provider providers with you into what was once an okay place to write code.
+We had a good thing, you ruined it. We had an escape route from that ridiculous enterprise hand-holding bullshit and instead of learning how to fucking code you've just brought your factory provider providers with you into what was once an okay place to get stuff done.
 
 ### Screw you guys, I'm going home
 
-It's okay, I don't really do enterprise any more. I showed this question and answer to my colleagues and we all had a good laugh at your expense because this stupidity is fucking hilarious. But you know what? When you've all stopped digging this hole and you've realised what a bottomless pit really looks like, I'll still be stood outside laughing at you because it's your own fucking fault.
+It's okay, I don't really do enterprise any more. I showed this question and answer to my colleagues and we all had a good laugh at your expense because this stupidity is fucking hilarious. But you know what? When you've all stopped digging this hole and you've realised what a bottomless pit really looks like, I'll be stood outside laughing at you because it's still your own fucking fault.
 
 Start thinking for yourselves, ditch this shit before it's too late and learn how to write some actual fucking code. The information is out there, you can do it. If you need handholding with factories and providers and service provider factories then consider that the world doesn't need your bullshit code and go and get a job you're actually good at. Stop ruining it for the rest of us.
+
+
