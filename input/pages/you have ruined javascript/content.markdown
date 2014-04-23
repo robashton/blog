@@ -26,9 +26,9 @@ Okay, that's not so bad, but let's go and look at the [top-voted answer](http://
 
   <blockquote>Wow! Thanks for the detailed explanation. You made it easy and crystal clear mate. Well done!!</blockquote>
 
-If I was being kind, I'd say that this comment is sarcastic and the whole thing is just a really good example of Poe's law, but on reading the whole thing I don't think this is the case and let's carry on to see what is what.
+If I was being kind, I'd say that this comment is ironic and the whole thing is just a really good example of Poe's law, but on reading the whole thing I don't think this is the case and my frown has not turned upside down.
 
-So the first thing we see is a quote from the freaking Angular docs which looks like this
+So... the first thing we see is a quote from the freaking Angular docs which looks like this
 
   <blockquote>An Angular "service" is a singleton object created by a "service factory".  These service factories are functions which, in turn, are created by a "service provider". "The service providers are constructor functions".  When instantiated they must contain a property called $get, which holds the service factory function.</blockquote>
 
@@ -36,17 +36,17 @@ What the actual fuck *is* this? I read this as *"in order to do a hello world, y
 
   <blockquote>Whaaaaaaat? Am I reading a thesis? It is very confusing.</blockquote>
 
-No, you are not reading a thesis, you are reading the angular docs apparently.
+No, you are not reading a thesis, you *are* reading the angular docs apparently.
 
-If it were a thesis it would probably be trying to explain a solution to some sort of problem instead of describing a made up solution to a made up problem. (Actually, that's not strictly true, but close enough).
+If it were a thesis it would probably be trying to explain a solution to some sort of problem instead of describing a made up solution to a made up problem. (Actually, that's not strictly true because academics are in a world of their own too but close enough).
 
   <blockquote>The following is a real world example made up for this question.</blockquote>
 
-Presumably most of the scenarios used for creating Angular are made up because it's the only reason we would ever need all these factories, proxies, services in the front-end. The kind of code and explanation we're about to go through comes straight from la la land.
+Presumably most of the scenarios used for creating Angular are made up because it's the only reason we would ever need all these factories, proxies, services in the front-end. The kind of code and explanation we're about to go through comes straight from la la land and it's hard to believe that it's not a joke.
 
   <blockquote>Service, Factory, and Provider can be the same.</blockquote>
 
-What? No of course they can be, they're all just functions that return a value but okay, let's carry on with this madness to see where it leads.
+What? No of course they can be, they're all just functions that return a value but okay, let's carry on with this madness to see where it leads...
 
 We get an example of "car instantiation", with the premise
 
@@ -60,7 +60,7 @@ No. Oh God. WHAT. *WHAT THE FUCK*.
 
     var car = new Car({ cylinders: 4 })
 
-The freaking 'new' keyword.  We had these arguments in the enteprise back-end world so many times and to see the same bullshit repeated for JS galls me right to the fucking core. This is the same old shit in what used to be my go-to excape hatch from that hideous crap.
+The freaking 'new' keyword.  We had these arguments in the enteprise back-end world so many times and to see the same bullshit repeated for JS galls me right to the fucking core. This is the same old shit in what used to be my go-to escape hatch from that hideous crap.
 
   <blockquote>Provider can be configured for your application</blockquote>
 
