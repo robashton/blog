@@ -27,7 +27,7 @@ function compileStatics(cb) {
       var file = files[i]
       var fullpath = path.join('input/static', files[i])
       var htmlfilename = path.join('site', file)
-      var html = fs.readFileSync(fullpath, 'utf8'); 
+      var html = fs.readFileSync(fullpath, 'utf8');
       var statichtml = plates.bind(statictemplate, { body: html });
       fs.writeFileSync(htmlfilename, statichtml , 'utf8');
     }
@@ -53,7 +53,7 @@ var compilePosts = function(posts) {
     var htmlfilename = 'input/pages/' + folder + '/content.html';
     var mdstat = path.existsSync(mdfilename);
     if(mdstat) {
-      var mdcontent = fs.readFileSync(mdfilename, 'utf8'); 
+      var mdcontent = fs.readFileSync(mdfilename, 'utf8');
       var html = markdown(mdcontent);
       fs.writeFileSync(htmlfilename, html , 'utf8');
     }
@@ -69,13 +69,13 @@ var compilePosts = function(posts) {
     var inputHtml = readPageHtmlSync(common.titleToFolder(post.title));
     var commentHtml = '';
     var inputComments = JSON.parse(fs.readFileSync('input/pages/' + common.titleToFolder(post.title) + '/comments.json', 'utf8'));
-    
+
     if( rssItems < 10 && post.date < now) {
       rssItems++
       feed.item({
           title:  post.title,
           url: 'http://codeofrob.com/entries/' + common.titleToPage(post.title),
-          description: inputHtml.replace(/\<!\[CDATA\[/gm, '').replace(/\]\]\>/gm, ''), 
+          description: inputHtml.replace(/\<!\[CDATA\[/gm, '').replace(/\]\]\>/gm, ''),
           date: post.date
       });
     }
@@ -96,12 +96,12 @@ var compilePosts = function(posts) {
     datestr += post.date.getFullYear() + '-'
     datestr += (post.date.getMonth() + 1) + '-'
     datestr += post.date.getDate()
-    
+
     var pageHtml = plates.bind(pageTemplate, { post: inputHtml, title: post.title, "post-title": post.title,  date: datestr, "post-comments": commentHtml });
     fs.writeFileSync(outputFilename, pageHtml, 'utf8');
     console.log('Entry written', outputFilename)
   }
-  
+
   var rssFeed = feed.xml();
   fs.writeFileSync('site/rss.xml', rssFeed, 'utf8');
   console.log('RSS written')
@@ -119,17 +119,18 @@ common.getAllPostsInfo(function(posts) {
   var now = new Date()
 
   var allEntries = ''
+  ,  found = 0
   for(var i = 0 ; i < newposts.length; i++) {
     var post = newposts[i]
     if(post.date < now) {
-      if(i < 10)
+      if(found++ < 10)
         listHtml += '<li><a href="entries/' + common.titleToPage(post.title) + '">' + post.title + '</a></li>\n';
     } else
       unpublishedposts++
-    
+
     allEntries += post.date + ': http://codeofrob.com/entries/' + common.titleToPage(post.title) + '\r\n'
   }
-  
+
   // In essence doesn't do anything any more, but maybe in the future
   var indexHtml = plates.bind(indexTemplate, { entrylist: listHtml, unpublishedposts: unpublishedposts || "zero"});
   fs.writeFileSync('./site/blog.html', indexHtml, 'utf8');
