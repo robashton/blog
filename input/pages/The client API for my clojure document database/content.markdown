@@ -63,7 +63,7 @@ I ended up using a couple of packages from Clojars to do the hard work for me he
 - *[http.async.client](https://github.com/neotyk/http.async.client)*: This was an arbitrary choice, I just wanted a HTTP client that worked and supported async
 - *[cemerick.url](https://github.com/cemerick/url)*: I'm only using this for url encoding, but it seemed more sensible than trying to use the Java ones
 
-I have some pretty hideous functions for building URLs, there are some jars for this, I should have probably used them.
+I have some pretty hideous functions for building URLs, I wrote these before I brought the URL library in, I could/should/would have changed them to use it.
 
     (defn url-for-doc-id [url id]
       (str url "/document/" id))
