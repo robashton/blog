@@ -1,4 +1,4 @@
-Let's start our little foray into seeing what code I cooked up by looking at how I did the Client API for CRavenDB as it'll give us a good indication as to the sort of features I wanted to support.
+Let's start our little foray into seeing what code I cooked up by looking at how I did the Client API for CravenDB as it'll give us a good indication as to the sort of features I wanted to support.
 
 - [I wrote a document database in Clojure](/entries/i-wrote-a-document-database-in-clojure.html)
 
