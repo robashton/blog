@@ -73,8 +73,47 @@
     <div id="blog-entry">
       <h1 id="post-title">The client API for my clojure document database</h1>
       <h6>Published on <span class="date">2014-5-1</span></h6>
-      <div id="post"><p><a href="url">title</a>
-<img src="img" alt="alt"></p>
+      <div id="post"><p>Let&#39;s start our little foray into seeing what code I cooked up by looking at how I did the Client API for CRavenDB as it&#39;ll give us a good indication as to the sort of features I wanted to support.</p>
+<ul>
+<li><a href="/entries/i-wrote-a-document-database-in-clojure.html">I wrote a document database in Clojure</a></li>
+</ul>
+<p>Just like RavenDB I decided that I wanted the same interface for talking to the database regardless of whether I was using a remote database over HTTP, an embedded database, or an in-memory database for testing.</p>
+<p>For this, it seems that protocols are the best option we have in Clojure as it&#39;s essentially what they&#39;re for. This also gives me a convenient place to shove documentation and surface the Official Public API.</p>
+<p>So I ended up with <a href="https://github.com/robashton/cravendb/blob/80314f64f25ff4af8906e7d3117cec9566d80ed0/src/cravendb/database.clj">this</a>, also listed below without the documentation for brevity.</p>
+<pre><code><span class="list">(<span class="title">ns</span><span class="body"> cravendb.database)</span></span>
+
+<span class="list">(<span class="title">defprotocol</span><span class="body"> DocumentDatabase
+  <span class="list">(<span class="title">close</span><span class="body"> [this])</span></span>
+  <span class="list">(<span class="title">load-document-metadata</span><span class="body"> [this id])</span></span>
+  <span class="list">(<span class="title">query</span><span class="body"> [this opts])</span></span>
+  <span class="list">(<span class="title">clear-conflicts</span><span class="body"> [this id])</span></span>
+  <span class="list">(<span class="title">conflicts</span><span class="body"> [this])</span></span>
+  <span class="list">(<span class="title">put-document</span><span class="body"> [this id document metadata])</span></span>
+  <span class="list">(<span class="title">load-document</span><span class="body"> [this id])</span></span>
+  <span class="list">(<span class="title">delete-document</span><span class="body"> [this id metadata])</span></span>
+  <span class="list">(<span class="title">bulk</span><span class="body"> [this operations])</span></span>
+  <span class="list">(<span class="title">put-index</span><span class="body"> [this index])</span></span>
+  <span class="list">(<span class="title">load-index-metadata</span><span class="body"> [this id])</span></span>
+  <span class="list">(<span class="title">delete-index</span><span class="body"> [this id])</span></span>
+  <span class="list">(<span class="title">load-index</span><span class="body"> [this id])</span></span>)</span></span></code></pre>
+<p>This is a low level interface obviously, the key operations being</p>
+<ul>
+<li>put-document</li>
+<li>load-document</li>
+<li>delete-document</li>
+<li>query</li>
+</ul>
+<p>I wanted to support transactions with this database too, so a <em>bulk</em> operation is supported which is just a combination of the above operations.</p>
+<p>The great thing about this low level interface is that I can make various implementations of it, and then pass a &quot;database&quot; around without worrying what it is pointing at.</p>
+<p>So we have the ability to do</p>
+<pre><code><span class="comment">; In-memory</span>
+<span class="list">(<span class="title">def</span><span class="body"> instance <span class="list">(<span class="title">embedded/create</span><span class="body">)</span></span>)</span></span>
+<span class="comment">; Embedded on disk</span>
+<span class="list">(<span class="title">def</span><span class="body"> instance <span class="list">(<span class="title">embedded/create</span><span class="body"> <span class="string">"var/db"</span>)</span></span>)</span></span>
+<span class="comment">; Remote via HTTP</span>
+<span class="list">(<span class="title">def</span><span class="body"> instance <span class="list">(<span class="title">remote/create</span><span class="body"> <span class="string">"http://example.host:8000"</span>)</span></span>)</span></span></code></pre>
+<p>And then each of those implementations supports the above operations transparently.</p>
+<p>Everything else is about</p>
 </div>
       <div id="links">
         <a href="/">Index</a>
