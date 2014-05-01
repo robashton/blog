@@ -72,7 +72,7 @@
   <body>
     <div id="blog-entry">
       <h1 id="post-title">The client API for my clojure document database</h1>
-      <h6>Published on <span class="date">2014-5-1</span></h6>
+      <h6>Published on <span class="date">2014-5-6</span></h6>
       <div id="post"><p>Let&#39;s start our little foray into seeing what code I cooked up by looking at how I did the Client API for CravenDB as it&#39;ll give us a good indication as to the sort of features I wanted to support.</p>
 <ul>
 <li><a href="/entries/i-wrote-a-document-database-in-clojure.html">I wrote a document database in Clojure</a></li>
@@ -156,6 +156,12 @@
 <p>The embedded implementation is obviously the heart and soul of the whole database, everything comes through this (it sits behind the HTTP interface we&#39;ll see in the next post).</p>
 <pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> EmbeddedDatabase [storage index-engine ifh counters]</code></pre>
 <p>The constructor for this record takes in the underlying storage engine, index engine, the in-flight transaction system and some performance counters. This wasn&#39;t really what I had in mind when I through it together, but the <a href="https://github.com/robashton/cravendb/blob/master/src/cravendb/embedded.clj#L24">code itself</a> is quite concise as it mostly just farms out the work to modules responsible for managing document operations, indexing operations and etc.</p>
+<p>For example</p>
+<pre><code><span class="list">(<span class="title">put-index</span><span class="body"> [this index]
+  <span class="list">(<span class="title">with-open</span><span class="body"> [tx <span class="list">(<span class="title">s/ensure-transaction</span><span class="body"> storage)</span></span>]
+    <span class="list">(<span class="title">s/commit</span><span class="body">! <span class="list">(<span class="title">indexes/put-index</span><span class="body"> tx index {<span class="keyword">:synctag</span> <span class="list">(<span class="title">s/next-synctag</span><span class="body"> tx)</span></span>})</span></span>)</span></span>)</span></span>
+  <span class="list">(<span class="title">ie/notify-of-new-index</span><span class="body"> index-engine index)</span></span>)</span></span></code></pre>
+<p>In this case (and most of the other cases), the code sitting in the record is just coordinating the actions between a few different modules.</p>
 <h3>Lessons learned about Protocols and Records</h3>
 <p>It seems from this (and it carries across into other places I&#39;ve used protocols too). I tend to end up using a protocol for the polymorphism and the records to hold some handles/state and then delegate the work out into pure functions.</p>
 <p>I could probably have used multi-methods for this (based on some property in the state), but I found them to be a bit messy because it meant bundling several implementations in the same file. I quickly moved away from the attempts where I did this when it got hard to follow.</p>

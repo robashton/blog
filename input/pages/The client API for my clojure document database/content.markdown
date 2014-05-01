@@ -102,6 +102,15 @@ The embedded implementation is obviously the heart and soul of the whole databas
 
 The constructor for this record takes in the underlying storage engine, index engine, the in-flight transaction system and some performance counters. This wasn't really what I had in mind when I through it together, but the [code itself](https://github.com/robashton/cravendb/blob/master/src/cravendb/embedded.clj#L24) is quite concise as it mostly just farms out the work to modules responsible for managing document operations, indexing operations and etc.
 
+For example
+
+    (put-index [this index]
+      (with-open [tx (s/ensure-transaction storage)]
+        (s/commit! (indexes/put-index tx index {:synctag (s/next-synctag tx)})))
+      (ie/notify-of-new-index index-engine index))
+
+In this case (and most of the other cases), the code sitting in the record is just coordinating the actions between a few different modules.
+
 ### Lessons learned about Protocols and Records
 
 It seems from this (and it carries across into other places I've used protocols too). I tend to end up using a protocol for the polymorphism and the records to hold some handles/state and then delegate the work out into pure functions.
