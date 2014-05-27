@@ -1,2 +1,124 @@
-<p><a href="url">title</a>
-<img src="img" alt="alt"></p>
+<p>Having shown how we take most of the work and keep it common across different storage implementations, let&#39;s dive into an actual implementation of this storage protocol and look at the LevelDB implementation.</p>
+<ul>
+<li><a href="/entries/i-wrote-a-document-database-in-clojure.html">I wrote a document database in Clojure</a></li>
+<li><a href="/entries/the-client-api-for-my-clojure-document-database.html">The Client API for my Clojure document database</a></li>
+<li><a href="/entries/the-http-api-for-my-clojure-document-database.html">The HTTP API for my Clojure document database</a></li>
+<li><a href="/entries/the-core-storage-protocols-for-my-clojure-document-database.html">The core storage protocols for the Clojure document database</a></li>
+</ul>
+<p>All of the code for the LevelDB storage can be found in the file <em>levelstorage.clj</em> and it clocks in at just under 100 lines of code which isn&#39;t too shabby at all.</p>
+<p>LevelDB is actually a native code project, and I found myself using a wrapper that some folks have kindly written and open sourced for Java, thus we have the first of our Java Interop imports in this database.</p>
+<pre><code>(:<span class="import"><span class="keyword">import</span> <span class="container">(<span class="title">org</span>.<span class="title">iq80</span>.<span class="title">leveldb</span> <span class="type">Options</span> <span class="type">ReadOptions</span> <span class="type">WriteOptions</span> <span class="type">DBIterator</span>)</span></span>
+          (org.fusesource.leveldbjni <span class="type">JniDBFactory</span>)
+          (java.io <span class="type">File</span>)
+          (java.nio <span class="type">ByteBuffer</span>)))</code></pre>
+<p>Lovely lovely classes.</p>
+<p>I mentioned in the previous entry that we ended up with some simple protocols describing what we expect from our storage implementation</p>
+<p><strong>storageops.clj</strong></p>
+<pre><code><span class="list">(<span class="title">defprotocol</span><span class="body"> Reader
+  <span class="list">(<span class="title">open-iterator</span><span class="body"> [this])</span></span>
+  <span class="list">(<span class="title">from-db</span><span class="body"> [this id])</span></span>)</span></span>
+
+<span class="list">(<span class="title">defprotocol</span><span class="body"> Writer
+  <span class="list">(<span class="title">commit</span><span class="body">! [this])</span></span>)</span></span>
+
+<span class="list">(<span class="title">defprotocol</span><span class="body"> Iterator
+  <span class="list">(<span class="title">seek</span><span class="body">! [this k])</span></span>
+  <span class="list">(<span class="title">as-seq</span><span class="body"> [this])</span></span>)</span></span>
+
+<span class="list">(<span class="title">defprotocol</span><span class="body"> Storage
+  <span class="list">(<span class="title">ensure-transaction</span><span class="body"> [this])</span></span>)</span></span></code></pre>
+<p>In the <em>levelstorage.clj</em>, these are implemented as thinly as possible before farming out the actual work to pure clojure methods, thus we have</p>
+<p>Our core storage record</p>
+<pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> LevelStorage [path db]
+  java.io.Closeable
+  Reader
+  Storage
+  <span class="list">(<span class="title">ensure-transaction</span><span class="body"> [ops]
+    <span class="list">(<span class="title">debug</span><span class="body"> <span class="string">"Opening transaction"</span>)</span></span>
+    <span class="list">(<span class="title">let</span><span class="body"> [options <span class="list">(<span class="title">ReadOptions</span><span class="body">.)</span></span>
+          snapshot <span class="list">(<span class="body">.getSnapshot <span class="list">(<span class="body"><span class="keyword">:db</span> ops)</span></span>)</span></span>]
+      <span class="list">(<span class="body">.snapshot options snapshot)</span></span>
+      <span class="list">(<span class="title">LevelTransaction</span><span class="body">. <span class="list">(<span class="body"><span class="keyword">:db</span> ops)</span></span> options <span class="list">(<span class="body"><span class="keyword">:path</span> ops)</span></span>)</span></span>)</span></span>)</span></span>
+  <span class="list">(<span class="title">from-db</span><span class="body"> [this id] <span class="list">(<span class="title">from-storage</span><span class="body"> this id)</span></span>)</span></span>
+  <span class="list">(<span class="title">open-iterator</span><span class="body"> [this] <span class="list">(<span class="title">get-iterator</span><span class="body"> this)</span></span>)</span></span>
+  <span class="list">(<span class="title">close</span><span class="body"> [this]
+    <span class="list">(<span class="body">.close db)</span></span>
+    <span class="literal">nil</span>)</span></span>)</span></span></code></pre>
+<p>Our transaction record</p>
+<pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> LevelTransaction [db options path]
+  java.io.Closeable
+  Writer
+  Reader
+  <span class="list">(<span class="title">open-iterator</span><span class="body"> [this] <span class="list">(<span class="title">get-iterator</span><span class="body"> this)</span></span>)</span></span>
+  <span class="list">(<span class="title">from-db</span><span class="body"> [this id] <span class="list">(<span class="title">from-storage</span><span class="body"> this id)</span></span>)</span></span>
+  <span class="list">(<span class="title">commit</span><span class="body">! [this] <span class="list">(<span class="title">commit</span><span class="body">! this)</span></span>)</span></span>
+  <span class="list">(<span class="title">close</span><span class="body"> [this]
+    <span class="list">(<span class="body">.close <span class="list">(<span class="body">.snapshot options)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
+<p>And our iterator</p>
+<pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> LevelIterator [inner]
+  java.io.Closeable
+  Iterator
+  <span class="list">(<span class="title">seek</span><span class="body">! [this value] <span class="list">(<span class="body">.seek inner <span class="list">(<span class="title">to-db</span><span class="body"> value)</span></span>)</span></span>)</span></span>
+  <span class="list">(<span class="title">as-seq</span><span class="body"> [this]
+    <span class="list">(<span class="title">-&gt;&gt;</span><span class="body"> <span class="list">(<span class="title">iterator-seq</span><span class="body"> inner)</span></span> <span class="list">(<span class="title">map</span><span class="body"> expand-iterator-str)</span></span>)</span></span>)</span></span>
+  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="list">(<span class="body">.close inner)</span></span>)</span></span>)</span></span></code></pre>
+<p>First off, we can see that all these records implement &quot;Closeable&quot;, this is so that they can be used within the <em>with-open</em> built-in macro, which ensures that anything opened gets closed, regardless of exceptions or whatever.</p>
+<p>We can also see that the transaction and storage implement the same methods and farm the actual work out to pretty much the same functions.</p>
+<p><strong>Getting an object</strong></p>
+<p>This is the method called by both the transaction and storage records</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> from-storage [ops id]
+  <span class="list">(<span class="title">from-db</span><span class="body"> <span class="list">(<span class="title">safe-get</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:db</span> ops)</span></span> <span class="list">(<span class="title">to-db</span><span class="body"> id)</span></span> <span class="list">(<span class="body"><span class="keyword">:options</span> ops)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
+<p>And safe-get looks like this</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> safe-get [db k options]
+  <span class="list">(<span class="title">try</span><span class="body">
+    <span class="list">(<span class="title">if</span><span class="body"> options
+      <span class="list">(<span class="body">.get db k options)</span></span>
+      <span class="list">(<span class="body">.get db k)</span></span>)</span></span>
+    <span class="list">(<span class="title">catch</span><span class="body"> Exception e
+      <span class="literal">nil</span>)</span></span>)</span></span>)</span></span></code></pre>
+<p>Options are what LevelDB use to do things within a transaction/snapshot. This could have been a multi-method, but I felt the if statement kept things pretty expressive and easy to follow.</p>
+<p>That from-db thing is for the conversion of a byte array into a nice clojure data structure:</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> from-db [v]
+  <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">nil</span><span class="body">? v)</span></span> <span class="literal">nil</span>
+  <span class="list">(<span class="title">with-open</span><span class="body"> [reader <span class="list">(<span class="title">java</span><span class="body">.io.PushbackReader.
+                          <span class="list">(<span class="title">clojure</span><span class="body">.java.io/reader
+                            <span class="list">(<span class="title">java</span><span class="body">.io.ByteArrayInputStream. v)</span></span>)</span></span>)</span></span>]
+    <span class="list">(<span class="title">edn/read</span><span class="body"> reader)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
+<p><strong>The iterator</strong></p>
+<p>The iterator is interesting, as this shows the easiest way I found to wrap up a native resource that implements iterators, and still allow the use of <em>iterator-seq</em>.</p>
+<p>The difficulty with iterator-seq, is that if you were to call it on something that kept a native handle (such as the above), the lazy nature of Clojure makes it very easy to write code that by accident doesn&#39;t evaluate until after the handle is closed.</p>
+<p>By pushing this into a Closeable object and providing an as-seq method, we make the consumers responsible for evaluating the sequence and closing the resource in the correct order.</p>
+<p><em>expand-iterator</em> seemed like a sensible notion, as the iterator returns a weird object with getKey and getValue which have byte arrays and aren&#39;t very friendly to consuming code.</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> expand-iterator-str [i]
+  { <span class="keyword">:k</span> <span class="list">(<span class="title">from-db</span><span class="body"> <span class="list">(<span class="body">.getKey i)</span></span>)</span></span>
+    <span class="keyword">:v</span> <span class="list">(<span class="title">from-db</span><span class="body"> <span class="list">(<span class="body">.getValue i)</span></span>)</span></span> })</span></span></code></pre>
+<p><strong>Committing a transaction</strong></p>
+<p>Well you can see that the transaction just calls commit with itself</p>
+<pre><code><span class="list">(<span class="title">commit</span><span class="body">! [this] <span class="list">(<span class="title">commit</span><span class="body">! this)</span></span>)</span></span></code></pre>
+<p>And has some pretty simple logic for calling &quot;delete&quot; or &quot;put&quot; depending on the contents of the transaction</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> commit! [{<span class="keyword">:keys</span> [db cache] <span class="keyword">:as</span> tx}]
+  <span class="list">(<span class="title">with-open</span><span class="body"> [batch <span class="list">(<span class="body">.createWriteBatch db)</span></span>]
+      <span class="list">(<span class="title">doseq</span><span class="body"> [[id value] cache]
+        <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> value <span class="keyword">:deleted</span>)</span></span>
+          <span class="list">(<span class="body">.delete batch <span class="list">(<span class="title">to-db</span><span class="body"> id)</span></span>)</span></span>
+          <span class="list">(<span class="body">.put batch <span class="list">(<span class="title">to-db</span><span class="body"> id)</span></span> <span class="list">(<span class="title">to-db</span><span class="body"> value)</span></span>)</span></span>)</span></span>)</span></span>
+      <span class="list">(<span class="title">let</span><span class="body"> [wo <span class="list">(<span class="title">WriteOptions</span><span class="body">.)</span></span>]
+        <span class="list">(<span class="body">.sync wo true)</span></span>
+        <span class="list">(<span class="body">.write db batch wo)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
+<p>Again, we have a to-db function there, this just does the opposite of the from-db function shown above</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> from-db [v]
+  <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">nil</span><span class="body">? v)</span></span> <span class="literal">nil</span>
+  <span class="list">(<span class="title">with-open</span><span class="body"> [reader <span class="list">(<span class="title">java</span><span class="body">.io.PushbackReader.
+                          <span class="list">(<span class="title">clojure</span><span class="body">.java.io/reader
+                            <span class="list">(<span class="title">java</span><span class="body">.io.ByteArrayInputStream. v)</span></span>)</span></span>)</span></span>]
+    <span class="list">(<span class="title">edn/read</span><span class="body"> reader)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
+<p>Keeping the to/from DB functions in just one place in the codebase simplified things immensely, this is the only place we deal with byte arrays and if need be they could be replaced with streaming functions for performance (if the LevelDB wrapper supported such things).</p>
+<p>Everywhere else, it&#39;s just plain old Clojure Data Structures and that keeps the rest of the codebase pretty clean.</p>
+<p><strong>Summary</strong></p>
+<p>Interop with plain old Java isn&#39;t too bad if you keep it behind nice little wrappers like this. Records and protocols are still nice, but in this case it seemed much better to keep the actual code out of the records and deal with the data inside a record as if it were a Plain Old Map.</p>
+<p>Keeping the storage dealing only with clojure data structures, and hiding how we convert to/from the actual storage layout means I can optimise in the future if need be and keep those large byte arrays out of memory.</p>
+<p><strong>Related Files</strong></p>
+<ul>
+<li>levelstorage.clj</li>
+<li>storage.clj</li>
+</ul>

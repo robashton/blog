@@ -72,8 +72,104 @@
   <body>
     <div id="blog-entry">
       <h1 id="post-title">The http API for my clojure document database</h1>
-      <h6>Published on <span class="date">2015-5-11</span></h6>
-      <div id="post"><p>Er, broke this - entry will be up later today</p>
+      <h6>Published on <span class="date">2014-5-27</span></h6>
+      <div id="post"><p>I mentioned in the last post that I had decided on a common set of protocols for a client wishing to talk to the database, regardless of whether it was in-memory, remote or on embedded on disk.</p>
+<ul>
+<li><a href="/entries/i-wrote-a-document-database-in-clojure.html">I wrote a document database in Clojure</a></li>
+<li><a href="/entries/the-client-api-for-my-clojure-document-database.html">The Client API for my Clojure document database</a></li>
+</ul>
+<p><strong>Recap</strong></p>
+<p>This took the form of a protocol that looked like this:</p>
+<pre><code><span class="list">(<span class="title">defprotocol</span><span class="body"> DocumentDatabase
+  <span class="list">(<span class="title">close</span><span class="body"> [this])</span></span>
+  <span class="list">(<span class="title">load-document-metadata</span><span class="body"> [this id])</span></span>
+  <span class="list">(<span class="title">query</span><span class="body"> [this opts])</span></span>
+  <span class="list">(<span class="title">clear-conflicts</span><span class="body"> [this id])</span></span>
+  <span class="list">(<span class="title">conflicts</span><span class="body"> [this])</span></span>
+  <span class="list">(<span class="title">put-document</span><span class="body"> [this id document metadata])</span></span>
+  <span class="list">(<span class="title">load-document</span><span class="body"> [this id])</span></span>
+  <span class="list">(<span class="title">delete-document</span><span class="body"> [this id metadata])</span></span>
+  <span class="list">(<span class="title">bulk</span><span class="body"> [this operations])</span></span>
+  <span class="list">(<span class="title">put-index</span><span class="body"> [this index])</span></span>
+  <span class="list">(<span class="title">load-index-metadata</span><span class="body"> [this id])</span></span>
+  <span class="list">(<span class="title">delete-index</span><span class="body"> [this id])</span></span>
+  <span class="list">(<span class="title">load-index</span><span class="body"> [this id])</span></span>)</span></span></code></pre>
+<p>It&#39;s fairly well established that document database operations map well into a restful interface - in the above mappings we only have two resources,</p>
+<ul>
+<li>/document (PUT/GET/DELETE/HEAD)</li>
+<li>/index    (PUT/GET/DELETE/HEAD)</li>
+</ul>
+<p>With a convenience &quot;bulk&quot; endpoint which we&#39;d use if we wanted to do multiple operations in a single transaction.</p>
+<p><strong>Enter Liberator</strong></p>
+<p>It just so happens that there is a great library available for Clojure (built on top of some other decisions (ring) made by the clojure community) which enforces valid http over the notion of resources. This library is called &quot;<a href="http://clojure-liberator.github.io/liberator/">Liberator</a>&quot;</p>
+<p>You can describe a resource and it&#39;ll manage all the appropriate HTTP operations for you:</p>
+<pre><code>(resource
+  <span class="symbol">:allowed-methods</span> [<span class="symbol">:put</span> <span class="symbol">:get</span> <span class="symbol">:delete</span> <span class="symbol">:head</span>]
+  <span class="symbol">:put!</span> some-handler
+  <span class="symbol">:delete!</span> some-handler
+  <span class="symbol">:handle-ok</span> some-handler)</code></pre>
+<p><strong>And HTTP-Kit</strong></p>
+<p>By itself, liberator isn&#39;t really enough to talk to the world over HTTP, as you need a http server to actually host it.</p>
+<p>I used HTTP Kit because it supports asynchronous operations and seems to be getting the love these days. What this means, is you create some handlers using liberator and pass them into the &#39;run-server&#39; function from http-kit.</p>
+<pre><code><span class="list">(<span class="title">run-server</span><span class="body"> handlers)</span></span></code></pre>
+<p><strong>So I have an embedded database</strong></p>
+<p>I don&#39;t want these routes I&#39;ve defined to be coupled to either</p>
+<ul>
+<li>The HTTP server hosting them (http-kit in this case)</li>
+<li>The type of database being used (in-memory or otherwise)</li>
+</ul>
+<p>So what I did is created a closure, which takes in the instance of database to talk to and returns the routes defined around that instance</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> create-http-server [instance]
+  <span class="list">(<span class="title">let</span><span class="body"> [db-routes <span class="list">(<span class="title">create-routes</span><span class="body"> instance)</span></span>]
+    <span class="list">(<span class="title">handler/api</span><span class="body"> db-routes)</span></span>)</span></span>)</span></span></code></pre>
+<p>I can then use that in tests, the REPL or the main application to create a http server around an instance of a database</p>
+<p>This is what my main application looks like for example.</p>
+<pre><code>(run-server
+  (http/<span class="operator"><span class="keyword">create</span>-http-server embedded-instance) { :port <span class="number">8001</span> :<span class="keyword">join</span>? <span class="keyword">true</span> }))</code></pre>
+<p><strong>The routes themselves</strong></p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> create-routes [instance]
+  <span class="list">(<span class="title">routes</span><span class="body">
+    <span class="list">(<span class="title">ANY</span><span class="body"> <span class="string">"/document/:id"</span> [id]
+      <span class="list">(<span class="title">resource</span><span class="body">
+        <span class="keyword">:allowed-methods</span> [<span class="keyword">:put</span> <span class="keyword">:get</span> <span class="keyword">:delete</span> <span class="keyword">:head</span>]
+        <span class="keyword">:exists</span>? <span class="list">(<span class="title">fn</span><span class="body"> [ctx] <span class="list">(<span class="title">resource-exists</span><span class="body">
+                            ctx
+                            #<span class="list">(<span class="title">db/load-document</span><span class="body"> instance id)</span></span>
+                            #<span class="list">(<span class="title">db/load-document-metadata</span><span class="body"> instance id)</span></span>)</span></span>)</span></span>
+        <span class="keyword">:available-media-types</span> accepted-types
+        <span class="keyword">:etag</span> <span class="list">(<span class="title">fn</span><span class="body"> [ctx] <span class="list">(<span class="title">etag-from-metadata</span><span class="body"> ctx)</span></span>)</span></span>
+        <span class="keyword">:put</span>! <span class="list">(<span class="title">fn</span><span class="body"> [ctx] <span class="list">(<span class="title">db/put-document</span><span class="body"> instance id <span class="list">(<span class="title">read-body</span><span class="body"> ctx)</span></span> <span class="list">(<span class="title">read-metadata</span><span class="body"> ctx)</span></span>)</span></span>)</span></span>
+        <span class="keyword">:delete</span>! <span class="list">(<span class="title">fn</span><span class="body"> [_] <span class="list">(<span class="title">db/delete-document</span><span class="body"> instance id <span class="list">(<span class="title">read-metadata</span><span class="body"> _)</span></span>)</span></span>)</span></span>
+        <span class="keyword">:handle-ok</span> <span class="list">(<span class="title">fn</span><span class="body"> [_] <span class="list">(<span class="title">standard-response</span><span class="body"> _ <span class="list">(<span class="body">:<span class="keyword">:resource</span> _)</span></span> <span class="list">(<span class="body">:<span class="keyword">:metadata</span> _)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>
+    <span class="list">(<span class="title">ANY</span><span class="body"> <span class="string">"/index/:id"</span> [id]
+      <span class="list">(<span class="title">resource</span><span class="body">
+        <span class="keyword">:allowed-methods</span> [<span class="keyword">:put</span> <span class="keyword">:get</span> <span class="keyword">:delete</span> <span class="keyword">:head</span>]
+        <span class="keyword">:exists</span>? <span class="list">(<span class="title">fn</span><span class="body"> [ctx] <span class="list">(<span class="title">resource-exists</span><span class="body">
+                            ctx
+                            #<span class="list">(<span class="title">db/load-index</span><span class="body"> instance id)</span></span>
+                            #<span class="list">(<span class="title">db/load-index-metadata</span><span class="body"> instance id)</span></span>)</span></span>)</span></span>
+        <span class="keyword">:available-media-types</span> accepted-types
+        <span class="keyword">:etag</span> <span class="list">(<span class="title">fn</span><span class="body"> [ctx] <span class="list">(<span class="title">etag-from-metadata</span><span class="body"> ctx)</span></span>)</span></span>
+        <span class="keyword">:put</span>! <span class="list">(<span class="title">fn</span><span class="body"> [ctx] <span class="list">(<span class="title">db/put-index</span><span class="body"> instance <span class="list">(<span class="title">merge</span><span class="body"> { <span class="keyword">:id</span> id } <span class="list">(<span class="title">read-body</span><span class="body"> ctx)</span></span>)</span></span>)</span></span>)</span></span>
+        <span class="keyword">:delete</span>! <span class="list">(<span class="title">fn</span><span class="body"> [_] <span class="list">(<span class="title">db/delete-index</span><span class="body"> instance id)</span></span>)</span></span>
+        <span class="keyword">:handle-ok</span> <span class="list">(<span class="title">fn</span><span class="body"> [_] <span class="list">(<span class="title">standard-response</span><span class="body"> _ <span class="list">(<span class="body">:<span class="keyword">:resource</span> _)</span></span> <span class="list">(<span class="body">:<span class="keyword">:metadata</span> _)</span></span> )</span></span> )</span></span>)</span></span>)</span></span>
+
+    <span class="comment">;; ETC ETC ETC ETC</span></code></pre>
+<p>They&#39;re a bit more complicated than any demo because</p>
+<ul>
+<li>The database support Etags for versioning</li>
+<li>An exists? check is needed and we cache the results</li>
+<li>The database will return json/edn/html depending on the requester (standard-response)</li>
+</ul>
+<p>Other than that, the routes are just a wrapper around the db operations already described in the previous entry.</p>
+<p><strong>What did we learn</strong></p>
+<p>Liberator is a really tidy way of wrapping up something and exposing it over HTTP, and that we can pick and choose HTTP servers to go with this is the icing on the cake. This is something I liked about this eco-system for sure. (See &#39;connect&#39; in node or &#39;OWIN&#39; in .NET)</p>
+<p>Next up, we&#39;ll look at the core storage protocols in the document database and how that helped me write different storage mechanisms.</p>
+<p><strong>Related Files</strong></p>
+<ul>
+<li>http.clj</li>
+<li>database.clj</li>
+</ul>
 </div>
       <div id="links">
         <a href="/">Index</a>
@@ -83,8 +179,9 @@
       <div id="hire-me">
         <h6>This used to ask if you wanted to hire me</h6>
         <p>But chances are I'm not available, as I'm busy shipping stuff.</p>
-        <p>Drop me an e-mail anyway, as I like interesting problems.</p>
-        <p><a href="mailto:robashton@codeofrob.com">Get in touch</a></p>
+        <p>I am available for conference speaking, I like talking and will do so for just T&E (and perhaps a bottle of wine or two).</p>
+        <p>I have done soft keynotes, and usually entertain/rile people in equal proportion, but prefer to talk tech as that's what I do</p>
+        <p><a href="mailto:robashton@codeofrob.com">Email me :)</a></p>
       </div>
       <div id="disqus">
         <div id="disqus_thread"></div>
@@ -143,7 +240,7 @@
               <a href="/">Rob Ashton</a>
             </div>
             <div class="span6">
-              <p class="terms">2013 © Rob Ashton. ALL Rights Reserved.</p>
+              <p class="terms">2014 © Rob Ashton. ALL Rights Reserved.</p>
             </div>
         </div><!--/row-fluid-->
     </div><!--/container-->
