@@ -91,12 +91,13 @@
   }</span></span></span>}</code></pre>
 <p>We might write the following map function</p>
 <pre><code><span class="list">(<span class="title"><span class="built_in">defn</span></span> pony-by-town <span class="collection">[pony]</span> <span class="collection">{ <span class="string">"town"</span> <span class="list">(<span class="title"><span class="built_in">get-in</span></span> pony <span class="collection">[<span class="attribute">:address</span> <span class="attribute">:town</span>]</span>)</span>}</span>)</span></code></pre>
-<p>This needs storing in the database too, as it will need to go through all of these indexes as documents are written/modified and execute them before putting their results into lucene. Sadly there is no &quot;tidy&quot; way to serialize functions in Clojure and while I now know about macros and could probably make them do it for me, I opted for taking in strings representing these index functions.</p>
+<p>The results of this might be put in some form of secondary index (in Couch this would be a variety of b-tree) for look-up purposes.</p>
+<p>This index definition needs storing in the database too, as the database will need to run all of these indexes on documents as they are written/modified.  Sadly there is no &quot;tidy&quot; way to serialize functions in Clojure and while I now know about macros and could probably make them do it for me, I opted for taking in strings representing these index functions.</p>
 <pre><code>{ <span class="symbol">:id</span> <span class="string">"ponies-by-town"</span>
   <span class="symbol">:map</span> <span class="string">"(fn [doc] { \"town\" (get-in doc [:address :town])})"</span>
 }</code></pre>
-<p>These have their own GET/PUT/DELETE methods in the HTTP API and Document API and are treated just like documents.</p>
-<p><strong>The index store</strong></p>
+<p>These have their own GET/PUT/DELETE methods in the HTTP API and Document API and are treated just like documents. (indeed, indexes.clj looks very much like documents.clj)</p>
+<p><strong>The index store itself</strong></p>
 <p>Again, no way am I writing a secondary index store from scratch and just like RavenDB did, I&#39;m reaching for Lucene to provide these capabilities.</p>
 <p>Looking around, there are a few half-finished wrappers for Lucene written in Clojure - presumably to the point where they did what the authors needed and then no further. Code owned is often better than code borrowed and I therefore decided to write my own domain specific wrappers of Lucene.</p>
 <pre><code>(:import

@@ -21,15 +21,17 @@ We might write the following map function
 
     (defn pony-by-town [pony] { "town" (get-in pony [:address :town])})
 
-This needs storing in the database too, as it will need to go through all of these indexes as documents are written/modified and execute them before putting their results into lucene. Sadly there is no "tidy" way to serialize functions in Clojure and while I now know about macros and could probably make them do it for me, I opted for taking in strings representing these index functions.
+The results of this might be put in some form of secondary index (in Couch this would be a variety of b-tree) for look-up purposes.
+
+This index definition needs storing in the database too, as the database will need to run all of these indexes on documents as they are written/modified.  Sadly there is no "tidy" way to serialize functions in Clojure and while I now know about macros and could probably make them do it for me, I opted for taking in strings representing these index functions.
 
     { :id "ponies-by-town"
       :map "(fn [doc] { \"town\" (get-in doc [:address :town])})"
     }
 
-These have their own GET/PUT/DELETE methods in the HTTP API and Document API and are treated just like documents.
+These have their own GET/PUT/DELETE methods in the HTTP API and Document API and are treated just like documents. (indeed, indexes.clj looks very much like documents.clj)
 
-**The index store**
+**The index store itself**
 
 Again, no way am I writing a secondary index store from scratch and just like RavenDB did, I'm reaching for Lucene to provide these capabilities.
 

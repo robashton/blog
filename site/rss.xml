@@ -1,5 +1,102 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Tue, 27 May 2014 07:53:22 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[The client API for my clojure document database]]></title><description><![CDATA[<p>Let&#39;s start our little foray into seeing what code I cooked up by looking at how I did the Client API for CravenDB as it&#39;ll give us a good indication as to the sort of features I wanted to support.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Thu, 29 May 2014 07:48:36 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[The http API for my clojure document database]]></title><description><![CDATA[<p>I mentioned in the last post that I had decided on a common set of protocols for a client wishing to talk to the database, regardless of whether it was in-memory, remote or on embedded on disk.</p>
+<ul>
+<li><a href="/entries/i-wrote-a-document-database-in-clojure.html">I wrote a document database in Clojure</a></li>
+<li><a href="/entries/the-client-api-for-my-clojure-document-database.html">The Client API for my Clojure document database</a></li>
+</ul>
+<p><strong>Recap</strong></p>
+<p>This took the form of a protocol that looked like this:</p>
+<pre><code><span class="list">(<span class="title">defprotocol</span><span class="body"> DocumentDatabase
+  <span class="list">(<span class="title">close</span><span class="body"> [this])</span></span>
+  <span class="list">(<span class="title">load-document-metadata</span><span class="body"> [this id])</span></span>
+  <span class="list">(<span class="title">query</span><span class="body"> [this opts])</span></span>
+  <span class="list">(<span class="title">clear-conflicts</span><span class="body"> [this id])</span></span>
+  <span class="list">(<span class="title">conflicts</span><span class="body"> [this])</span></span>
+  <span class="list">(<span class="title">put-document</span><span class="body"> [this id document metadata])</span></span>
+  <span class="list">(<span class="title">load-document</span><span class="body"> [this id])</span></span>
+  <span class="list">(<span class="title">delete-document</span><span class="body"> [this id metadata])</span></span>
+  <span class="list">(<span class="title">bulk</span><span class="body"> [this operations])</span></span>
+  <span class="list">(<span class="title">put-index</span><span class="body"> [this index])</span></span>
+  <span class="list">(<span class="title">load-index-metadata</span><span class="body"> [this id])</span></span>
+  <span class="list">(<span class="title">delete-index</span><span class="body"> [this id])</span></span>
+  <span class="list">(<span class="title">load-index</span><span class="body"> [this id])</span></span>)</span></span></code></pre>
+<p>It&#39;s fairly well established that document database operations map well into a restful interface - in the above mappings we only have two resources,</p>
+<ul>
+<li>/document (PUT/GET/DELETE/HEAD)</li>
+<li>/index    (PUT/GET/DELETE/HEAD)</li>
+</ul>
+<p>With a convenience &quot;bulk&quot; endpoint which we&#39;d use if we wanted to do multiple operations in a single transaction.</p>
+<p><strong>Enter Liberator</strong></p>
+<p>It just so happens that there is a great library available for Clojure (built on top of some other decisions (ring) made by the clojure community) which enforces valid http over the notion of resources. This library is called &quot;<a href="http://clojure-liberator.github.io/liberator/">Liberator</a>&quot;</p>
+<p>You can describe a resource and it&#39;ll manage all the appropriate HTTP operations for you:</p>
+<pre><code>(resource
+  <span class="symbol">:allowed-methods</span> [<span class="symbol">:put</span> <span class="symbol">:get</span> <span class="symbol">:delete</span> <span class="symbol">:head</span>]
+  <span class="symbol">:put!</span> some-handler
+  <span class="symbol">:delete!</span> some-handler
+  <span class="symbol">:handle-ok</span> some-handler)</code></pre>
+<p><strong>And HTTP-Kit</strong></p>
+<p>By itself, liberator isn&#39;t really enough to talk to the world over HTTP, as you need a http server to actually host it.</p>
+<p>I used HTTP Kit because it supports asynchronous operations and seems to be getting the love these days. What this means, is you create some handlers using liberator and pass them into the &#39;run-server&#39; function from http-kit.</p>
+<pre><code><span class="list">(<span class="title">run-server</span><span class="body"> handlers)</span></span></code></pre>
+<p><strong>So I have an embedded database</strong></p>
+<p>I don&#39;t want these routes I&#39;ve defined to be coupled to either</p>
+<ul>
+<li>The HTTP server hosting them (http-kit in this case)</li>
+<li>The type of database being used (in-memory or otherwise)</li>
+</ul>
+<p>So what I did is created a closure, which takes in the instance of database to talk to and returns the routes defined around that instance</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> create-http-server [instance]
+  <span class="list">(<span class="title">let</span><span class="body"> [db-routes <span class="list">(<span class="title">create-routes</span><span class="body"> instance)</span></span>]
+    <span class="list">(<span class="title">handler/api</span><span class="body"> db-routes)</span></span>)</span></span>)</span></span></code></pre>
+<p>I can then use that in tests, the REPL or the main application to create a http server around an instance of a database</p>
+<p>This is what my main application looks like for example.</p>
+<pre><code>(run-server
+  (http/<span class="operator"><span class="keyword">create</span>-http-server embedded-instance) { :port <span class="number">8001</span> :<span class="keyword">join</span>? <span class="keyword">true</span> }))</code></pre>
+<p><strong>The routes themselves</strong></p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> create-routes [instance]
+  <span class="list">(<span class="title">routes</span><span class="body">
+    <span class="list">(<span class="title">ANY</span><span class="body"> <span class="string">"/document/:id"</span> [id]
+      <span class="list">(<span class="title">resource</span><span class="body">
+        <span class="keyword">:allowed-methods</span> [<span class="keyword">:put</span> <span class="keyword">:get</span> <span class="keyword">:delete</span> <span class="keyword">:head</span>]
+        <span class="keyword">:exists</span>? <span class="list">(<span class="title">fn</span><span class="body"> [ctx] <span class="list">(<span class="title">resource-exists</span><span class="body">
+                            ctx
+                            #<span class="list">(<span class="title">db/load-document</span><span class="body"> instance id)</span></span>
+                            #<span class="list">(<span class="title">db/load-document-metadata</span><span class="body"> instance id)</span></span>)</span></span>)</span></span>
+        <span class="keyword">:available-media-types</span> accepted-types
+        <span class="keyword">:etag</span> <span class="list">(<span class="title">fn</span><span class="body"> [ctx] <span class="list">(<span class="title">etag-from-metadata</span><span class="body"> ctx)</span></span>)</span></span>
+        <span class="keyword">:put</span>! <span class="list">(<span class="title">fn</span><span class="body"> [ctx] <span class="list">(<span class="title">db/put-document</span><span class="body"> instance id <span class="list">(<span class="title">read-body</span><span class="body"> ctx)</span></span> <span class="list">(<span class="title">read-metadata</span><span class="body"> ctx)</span></span>)</span></span>)</span></span>
+        <span class="keyword">:delete</span>! <span class="list">(<span class="title">fn</span><span class="body"> [_] <span class="list">(<span class="title">db/delete-document</span><span class="body"> instance id <span class="list">(<span class="title">read-metadata</span><span class="body"> _)</span></span>)</span></span>)</span></span>
+        <span class="keyword">:handle-ok</span> <span class="list">(<span class="title">fn</span><span class="body"> [_] <span class="list">(<span class="title">standard-response</span><span class="body"> _ <span class="list">(<span class="body">:<span class="keyword">:resource</span> _)</span></span> <span class="list">(<span class="body">:<span class="keyword">:metadata</span> _)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>
+    <span class="list">(<span class="title">ANY</span><span class="body"> <span class="string">"/index/:id"</span> [id]
+      <span class="list">(<span class="title">resource</span><span class="body">
+        <span class="keyword">:allowed-methods</span> [<span class="keyword">:put</span> <span class="keyword">:get</span> <span class="keyword">:delete</span> <span class="keyword">:head</span>]
+        <span class="keyword">:exists</span>? <span class="list">(<span class="title">fn</span><span class="body"> [ctx] <span class="list">(<span class="title">resource-exists</span><span class="body">
+                            ctx
+                            #<span class="list">(<span class="title">db/load-index</span><span class="body"> instance id)</span></span>
+                            #<span class="list">(<span class="title">db/load-index-metadata</span><span class="body"> instance id)</span></span>)</span></span>)</span></span>
+        <span class="keyword">:available-media-types</span> accepted-types
+        <span class="keyword">:etag</span> <span class="list">(<span class="title">fn</span><span class="body"> [ctx] <span class="list">(<span class="title">etag-from-metadata</span><span class="body"> ctx)</span></span>)</span></span>
+        <span class="keyword">:put</span>! <span class="list">(<span class="title">fn</span><span class="body"> [ctx] <span class="list">(<span class="title">db/put-index</span><span class="body"> instance <span class="list">(<span class="title">merge</span><span class="body"> { <span class="keyword">:id</span> id } <span class="list">(<span class="title">read-body</span><span class="body"> ctx)</span></span>)</span></span>)</span></span>)</span></span>
+        <span class="keyword">:delete</span>! <span class="list">(<span class="title">fn</span><span class="body"> [_] <span class="list">(<span class="title">db/delete-index</span><span class="body"> instance id)</span></span>)</span></span>
+        <span class="keyword">:handle-ok</span> <span class="list">(<span class="title">fn</span><span class="body"> [_] <span class="list">(<span class="title">standard-response</span><span class="body"> _ <span class="list">(<span class="body">:<span class="keyword">:resource</span> _)</span></span> <span class="list">(<span class="body">:<span class="keyword">:metadata</span> _)</span></span> )</span></span> )</span></span>)</span></span>)</span></span>
+
+    <span class="comment">;; ETC ETC ETC ETC</span></code></pre>
+<p>They&#39;re a bit more complicated than any demo because</p>
+<ul>
+<li>The database support Etags for versioning</li>
+<li>An exists? check is needed and we cache the results</li>
+<li>The database will return json/edn/html depending on the requester (standard-response)</li>
+</ul>
+<p>Other than that, the routes are just a wrapper around the db operations already described in the previous entry.</p>
+<p><strong>What did we learn</strong></p>
+<p>Liberator is a really tidy way of wrapping up something and exposing it over HTTP, and that we can pick and choose HTTP servers to go with this is the icing on the cake. This is something I liked about this eco-system for sure. (See &#39;connect&#39; in node or &#39;OWIN&#39; in .NET)</p>
+<p>Next up, we&#39;ll look at the core storage protocols in the document database and how that helped me write different storage mechanisms.</p>
+<p><strong>Related Files</strong></p>
+<ul>
+<li>http.clj</li>
+<li>database.clj</li>
+</ul>
+]]></description><link>http://codeofrob.com/entries/the-http-api-for-my-clojure-document-database.html</link><guid isPermaLink="true">http://codeofrob.com/entries/the-http-api-for-my-clojure-document-database.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 27 May 2014 09:30:00 GMT</pubDate></item><item><title><![CDATA[The client API for my clojure document database]]></title><description><![CDATA[<p>Let&#39;s start our little foray into seeing what code I cooked up by looking at how I did the Client API for CravenDB as it&#39;ll give us a good indication as to the sort of features I wanted to support.</p>
 <ul>
 <li><a href="/entries/i-wrote-a-document-database-in-clojure.html">I wrote a document database in Clojure</a></li>
 </ul>
@@ -554,56 +651,4 @@ domReady(function() {
 <p><em>this is a bit crap</em></p>
 <p>Yeah - so this is the spaghetti code we&#39;re talking about occuring if you&#39;re not using a framework. Re-rendering the whole page just to update a list of customers? Why re-render the select control at all? Why have we got two rendering systems slamming into what is effectively a global dom element with global data?</p>
 <p>Clearly there has to be a better way to have our cake <em>and</em> eat it and we&#39;ll talk about that in the next blog entry about building composable widgets.</p>
-]]></description><link>http://codeofrob.com/entries/frameworkless-js---but-we-*really*-want-to-use-knockout-for-that-bit.html</link><guid isPermaLink="true">http://codeofrob.com/entries/frameworkless-js---but-we-*really*-want-to-use-knockout-for-that-bit.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 14 Nov 2013 09:30:00 GMT</pubDate></item><item><title><![CDATA[Frameworkless JS - rendering templates]]></title><description><![CDATA[<p>Continuing then with the <a href="https://github.com/robashton/look-ma-no-frameworks/">&quot;look no ma no frameworks&quot;</a> series...</p>
-<ul>
-<li><a href="/entries/look-ma,-no-frameworks.html">Look ma no Frameworks</a></li>
-<li><a href="/entries/frameworkless-js---an-example.html">An example</a></li>
-<li><a href="/entries/starting-the-frameworkless-js-project.html">Getting started</a></li>
-</ul>
-<p>Now, I&#39;m <a href="/entries/anti-templating-languages.html">no real fan of pull-based templating systems</a>, but I lost the war on this a while ago and I&#39;m not going to impose this one on this system today. (Remember, this was a walkthrough for a client with specific questions and not about me trying to impose my own opinions on a team I wasn&#39;t going to stay with)</p>
-<p>So we picked a templating engine at random, and went with Mustache.. because no reason.</p>
-<pre><code><span class="comment">npm</span> <span class="comment">install</span> <span class="comment">mustache</span> <span class="literal">-</span><span class="literal">-</span><span class="comment">save</code></pre>
-<p>Great! There were celebrations in the street as we wrote the following code...</p>
-<pre><code>var mustache = require('mustache')
-  , domReady = require('domready')
-
-var template = "<span class="tag">&lt;<span class="title">p</span>&gt;</span>Hello <span class="variable">{{name}}</span><span class="tag">&lt;/<span class="title">p</span>&gt;</span>"
-
-domReady(function() {
-  var container = document.getElementById('container')
-  container.innerHtml = mustache.render(template, { name: "Bob" })
-})</code></pre>
-<p><em>Waaait a minute, what is going on here - why have you just stuck stuff in a string that is cheating Rob Ashton how dare you.</em></p>
-<p>Guilty as charged, clearly this isn&#39;t going to scale well over time (although it&#39;s probably going to be better than building up strings of html using the &quot;+&quot; operator).</p>
-<p>What we need here clearly is something that can give us a template from an external source and allow us to use it from there now if only such a thing existed.</p>
-<p>The temptation is there to download these things as needed from the server - and in some cases this is certainly an option (although in those cases a server-side rendering approach might not be a bad idea either).</p>
-<p>Instead, how about writing code like this?</p>
-<pre><code><span class="keyword">var</span> mustache = <span class="keyword">require</span>(<span class="string">'mustache'</span>)
-  , domReady = <span class="keyword">require</span>(<span class="string">'domready'</span>)
-  , fs = <span class="keyword">require</span>(<span class="string">'fs'</span>)
-
-<span class="keyword">var</span> template = fs.readFileSync(__dirname + <span class="string">"/myfunkytemplate.html"</span>)
-
-domReady(function() {
-  <span class="keyword">var</span> container = document.getElementById(<span class="string">'container'</span>)
-  container.innerHtml = mustache.render(template, { name: <span class="string">"Bob"</span> })
-})</code></pre>
-<p>What on earth? What is this even? Magic? <em>fs</em> is a module you didn&#39;t see me install because normally this is a server-side module in node.js - and right now the example above does absolutely nothing.</p>
-<p>You will recall our process for building the output file looked like this:</p>
-<pre><code>browserify app<span class="variable">.js</span> -o <span class="keyword">public</span>/app<span class="variable">.js</span></code></pre>
-<p>Now, if only there was something smart enough to see that <em>readFileSync</em> call and replace that with inline content from our template file...</p>
-<pre><code><span class="comment">npm</span> <span class="comment">install</span> <span class="comment">brfs</span> <span class="literal">-</span><span class="literal">-</span><span class="comment">save</code></pre>
-<p>Boom, headshot. This is a transformer for browserify, something that can take the output of browserify and do something with it. If we use it like so</p>
-<pre><code>browserify -t brfs app<span class="variable">.js</span> -o <span class="keyword">public</span>/app<span class="variable">.js</span></code></pre>
-<p>Then just like magic, the un-optimised output will look like this</p>
-<pre><code>var mustache = require('mustache')
-  , domReady = require('domready')
-
-var template = "<span class="tag">&lt;<span class="title">p</span>&gt;</span>Hello <span class="variable">{{name}}</span><span class="tag">&lt;/<span class="title">p</span>&gt;</span>"
-
-domReady(function() {
-  var container = document.getElementById('container')
-  container.innerHtml = mustache.render(template, { name: "Bob" })
-})</code></pre>
-<p>Which was just like the initial example where we started. Neat huh?</p>
-]]></description><link>http://codeofrob.com/entries/frameworkless-js---rendering-templates.html</link><guid isPermaLink="true">http://codeofrob.com/entries/frameworkless-js---rendering-templates.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 12 Nov 2013 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/frameworkless-js---but-we-*really*-want-to-use-knockout-for-that-bit.html</link><guid isPermaLink="true">http://codeofrob.com/entries/frameworkless-js---but-we-*really*-want-to-use-knockout-for-that-bit.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 14 Nov 2013 09:30:00 GMT</pubDate></item></channel></rss>
