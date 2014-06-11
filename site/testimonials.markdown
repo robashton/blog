@@ -35,7 +35,7 @@
     <div class="header">               
         <div class="container"> 
             <div class="logo">                                             
-              <h2><a href="index.html">Rob Ashton</a></h2>
+              <h2><a href="/index.html">Rob Ashton</a></h2>
             </div>
             <div class="navbar">                                
                 <div class="navbar-inner">                                  
@@ -53,7 +53,7 @@
                                 <a href="/blog.html">Blog</a>
                             </li>
                             <li>
-                                <a href="/testimonials.html">Testimonials</a>
+                                <a href="/statements.html">Testimonials</a>
                             </li>
                             <li>
                                 <a href="/hire.html">Hire Me</a>
@@ -84,7 +84,7 @@
 
   <blockquote>I feel I've lost you somewhere...". yeah, just after you said "hello, my name is Rob"</blockquote>
   <span class="quotee">[Gary Short](https://twitter.com/garyshort/status/259591681656102912) (2012)</span>
-  
+
   <blockquote>noise/rant to substance ratio is sadly too high</blockquote>
   <span class="quotee">anonymous (2011)</span>
 
