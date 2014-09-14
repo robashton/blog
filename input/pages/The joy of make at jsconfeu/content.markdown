@@ -1,11 +1,11 @@
 I somehow ended up doing a talk at #jsconfeu this weekend on "make" of all things, submitted after a night of partying with all the wrong people who thought it would be a hilarious idea.
 
-Anyway, it happened and the slides at demos are available online. ([http://slides.com/robashton/got-make](Slides) // [https://github.com/robashton/jsconfeu2014](Demos) ). Here is the blog post version of that talk because it is unlikely I'll ever do it again.
+Anyway, it happened and the slides at demos are available online. ([Slides](http://slides.com/robashton/got-make)// [Demos](https://github.com/robashton/jsconfeu2014) ). Here is the blog post version of that talk because it is unlikely I'll ever do it again.
 
 Why Make
 ===
 
-The long and short of this is that I work on a team of cross-platform developers on a project comprised mostly of Erlang and C. Make is the natural choice for this and indeed we have a common make file across our projects found at [https://github.com/id3as/erl-mk](github/id3as/erl-mk).
+The long and short of this is that I work on a team of cross-platform developers on a project comprised mostly of Erlang and C. Make is the natural choice for this and indeed we have a common make file across our projects found at [github/id3as/erl-mk](https://github.com/id3as/erl-mk).
 
 Our core codebase is shiny diamonds, polished diamonds; It's stable and relatively robust, and we string together a lot of it with the programmer equivalent of duct tape (bash scripts). Make is for building, Bash is for task execution and this separation works very well for us.
 
@@ -139,7 +139,7 @@ This is much tidier and this forms the basis of many a Makefile.
 A borderline real-world example
 ===
 
-Referring to the example found on Github here: [https://github.com/robashton/jsconfeu2014/tree/master/src/simplewidgets](robashton/jsconf2014)
+Referring to the example found on Github here: [robashton/jsconf2014](https://github.com/robashton/jsconfeu2014/tree/master/src/simplewidgets)
 
 We have a folder layout that looks like this
 
