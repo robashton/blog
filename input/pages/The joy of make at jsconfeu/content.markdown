@@ -1,6 +1,6 @@
 I somehow ended up doing a talk at #jsconfeu this weekend on "make" of all things, submitted after a night of partying with all the wrong people who thought it would be a hilarious idea.
 
-Anyway, it happened and the slides at demos are available online. (Slides // Demos ). Here is the blog post version of that talk because it is unlikely I'll ever do it again.
+Anyway, it happened and the slides at demos are available online. ([http://slides.com/robashton/got-make](Slides) // [https://github.com/robashton/jsconfeu2014](Demos) ). Here is the blog post version of that talk because it is unlikely I'll ever do it again.
 
 Why Make
 ===
