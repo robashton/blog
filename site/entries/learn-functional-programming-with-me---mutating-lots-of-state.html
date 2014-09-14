@@ -89,11 +89,11 @@
   (<span class="keyword">for</span> <span class="string">[[x y] enemies]
     [(inc x) y]
   )
-)</code></pre>
-<p>doLogic takes in a sequence of enemies, then uses a list comprehension to create a new list of enemies but with &#39;x&#39; increased by one.</p>
+)
+</code></pre><p>doLogic takes in a sequence of enemies, then uses a list comprehension to create a new list of enemies but with &#39;x&#39; increased by one.</p>
 <p>Now all we have to do is pass this new sequence into the next call of &#39;tick&#39;</p>
-<pre><code><span class="list">(<span class="title">tick</span><span class="body"> <span class="list">(<span class="title">doLogic</span><span class="body"> enemies)</span></span>)</span></span></code></pre>
-<p>Okay, that was <em>too</em> easy, from what I see here this is also going to be lazy up until the point we call &#39;doseq&#39;, it makes me feel kinda weird though that we&#39;re apparently creating a completely new sequence every single frame - memory-wise this has to be a bad idea and in the JS environment this is going to make me cry.</p>
+<pre><code><span class="list">(<span class="title">tick</span><span class="body"> <span class="list">(<span class="title">doLogic</span><span class="body"> enemies)</span></span>)</span></span>
+</code></pre><p>Okay, that was <em>too</em> easy, from what I see here this is also going to be lazy up until the point we call &#39;doseq&#39;, it makes me feel kinda weird though that we&#39;re apparently creating a completely new sequence every single frame - memory-wise this has to be a bad idea and in the JS environment this is going to make me cry.</p>
 <p>I have no idea what is going on under the hood though, so if any Clojurescript guru can enlighten me I&#39;d appreciate it.</p>
 <p><strong>Making our invaders move left to right and back again</strong></p>
 <p>Well, the first thing I actually need to do is set up my invaders properly in some sort of known &#39;game space&#39;, this isn&#39;t really related to the functional programming bit so I&#39;m going to pretty much side-step over it by modifying the code and explaining what I&#39;ve done. (normally I&#39;d use a camera system and be a bit more clever, but not the point of this exercise)</p>
@@ -102,8 +102,8 @@
   <span class="list">(<span class="title">let</span><span class="body"> [ctx <span class="list">(<span class="title">context</span><span class="body">)</span></span>] 
     <span class="list">(<span class="title">tick</span><span class="body"> ctx <span class="list">(<span class="title">initState</span><span class="body">)</span></span>)</span></span> 
   )</span></span>
-)</span></span></code></pre>
-<p>And actually, I&#39;m going to specify the width and height as 640x480 and hard-code the whole thing</p>
+)</span></span>
+</code></pre><p>And actually, I&#39;m going to specify the width and height as 640x480 and hard-code the whole thing</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> ^<span class="keyword">:export</span> init []
   <span class="list">(<span class="title">let</span><span class="body"> [ctx <span class="list">(<span class="title">context</span><span class="body"> <span class="number">640</span> <span class="number">480</span>)</span></span>] 
     <span class="list">(<span class="title">tick</span><span class="body"> ctx <span class="list">(<span class="title">initState</span><span class="body">)</span></span>)</span></span> 
@@ -118,23 +118,23 @@
       <span class="list">(<span class="title">set</span><span class="body">! <span class="list">(<span class="body">. target -height)</span></span> height)</span></span>
     ]
   )</span></span>
-)</span></span></code></pre>
-<p>And now I&#39;ve done this, I can do a little bit of maths and say that if I make my space invaders 20x20, then I can fit 8 of them on the screen horizontally and 4 vertically (leaving space for our good guy and between them!)</p>
+)</span></span>
+</code></pre><p>And now I&#39;ve done this, I can do a little bit of maths and say that if I make my space invaders 20x20, then I can fit 8 of them on the screen horizontally and 4 vertically (leaving space for our good guy and between them!)</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> initState []
  <span class="list">(<span class="title">for</span><span class="body"> [x <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">16</span> <span class="number">2</span>)</span></span>
        y <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">8</span> <span class="number">2</span>)</span></span>]
    [<span class="list">(<span class="title">*</span><span class="body"> x <span class="number">30</span>)</span></span> <span class="list">(<span class="title">*</span><span class="body"> y <span class="number">30</span>)</span></span> <span class="number">20</span> <span class="number">20</span>]
  )</span></span>
-)</span></span></code></pre>
-<p>I&#39;m also now including a width and height with each of my little invaders, which means I&#39;ll need to modify my logic function</p>
+)</span></span>
+</code></pre><p>I&#39;m also now including a width and height with each of my little invaders, which means I&#39;ll need to modify my logic function</p>
 <pre><code>(defn doLogic [enemies]
   (<span class="keyword">for</span> <span class="string">[[x y w h] enemies]
     [(inc x) y w h]
   )
-)</code></pre>
-<p>And rendering them now looks like this</p>
-<pre><code>(doseq <span class="string">[[x y w h] enemies] (drawSquare ctx x y w h))</code></pre>
-<p>Now this doesn&#39;t solve that what I want to do is change the direction of my squares when they reach the edge of the playing area, this is bit more interesting.</p>
+)
+</code></pre><p>And rendering them now looks like this</p>
+<pre><code>(doseq <span class="string">[[x y w h] enemies] (drawSquare ctx x y w h))
+</code></pre><p>Now this doesn&#39;t solve that what I want to do is change the direction of my squares when they reach the edge of the playing area, this is bit more interesting.</p>
 <p><strong>Variable state changes</strong></p>
 <p>Well, when do my space invaders switch direction? Well, I went on <a href="http://www.youtube.com/watch?v=437Ld_rKM2s">Youtube</a> to look at the original behaviour of space invaders and it seems that if you destroy a column of invaders then it won&#39;t switch direction until at least one invader has reached the edge of the screen.</p>
 <p>What&#39;s an efficient way of handling this I wonder, well I&#39;ll need a direction as part of my main game state so I&#39;ll get that in first</p>
@@ -146,8 +146,8 @@
      [<span class="list">(<span class="title">*</span><span class="body"> x <span class="number">30</span>)</span></span> <span class="list">(<span class="title">*</span><span class="body"> y <span class="number">30</span>)</span></span> <span class="number">20</span> <span class="number">20</span>]
    )</span></span>
  ]
-)</span></span></code></pre>
-<p>Okay, so now initState will return a vector containing a direction (1), and a sequence of enemies. I&#39;m really not confortable with these arbitrary lists of state so I&#39;ll look for some way to make them tidier shortly I think.</p>
+)</span></span>
+</code></pre><p>Okay, so now initState will return a vector containing a direction (1), and a sequence of enemies. I&#39;m really not confortable with these arbitrary lists of state so I&#39;ll look for some way to make them tidier shortly I think.</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> tick [ctx state]
   <span class="list">(<span class="title">let</span><span class="body"> [[dir enemies] state]
     <span class="list">(<span class="title">clearScreen</span><span class="body"> ctx)</span></span> 
@@ -156,8 +156,8 @@
       <span class="list">(<span class="title">tick</span><span class="body"> ctx <span class="list">(<span class="title">doLogic</span><span class="body"> state)</span></span>)</span></span>
     )</span></span> <span class="number">33</span>  )</span></span>
   )</span></span>
-)</span></span></code></pre>
-<p>In my tick method, I&#39;ll use a destructuring assignment to unpack this vector into a direction and an enemies sequence so I can easily go through that sequence.</p>
+)</span></span>
+</code></pre><p>In my tick method, I&#39;ll use a destructuring assignment to unpack this vector into a direction and an enemies sequence so I can easily go through that sequence.</p>
 <pre><code>(defn doLogic <span class="string">[[direction enemies]]</span>
   [
     direction
@@ -165,8 +165,8 @@
       [(inc x) y w h]
     )
   ]
-)</code></pre>
-<p>And in my doLogic method, I&#39;ll simply re-return the diretion, and the modified sequence of enemies.</p>
+)
+</code></pre><p>And in my doLogic method, I&#39;ll simply re-return the diretion, and the modified sequence of enemies.</p>
 <p>All I need to do now is return a different direction if a certain condition is true</p>
 <ul>
 <li>Are we going right? Are any of the entities too far to the right?</li>
@@ -183,8 +183,8 @@
       )</span></span>
     )</span></span>
   ]
-)</span></span></code></pre>
-<p>We&#39;ll ask another function what the next direction is going to be, if the current direction is &#39;1&#39;, we&#39;ll inc x, anx if the current direction is not 1, we&#39;ll dec x.</p>
+)</span></span>
+</code></pre><p>We&#39;ll ask another function what the next direction is going to be, if the current direction is &#39;1&#39;, we&#39;ll inc x, anx if the current direction is not 1, we&#39;ll dec x.</p>
 <p>I can implement getNextDirection like so, taking in current and enemies</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> getNextDirection [current enemies]
   <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> current <span class="number">1</span>)</span></span>
@@ -195,8 +195,8 @@
       <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">&lt;</span><span class="body"> left <span class="number">0</span>)</span></span> <span class="number">1</span> <span class="number">-1</span>)</span></span>
     )</span></span>
   )</span></span>
-)</span></span></code></pre>
-<p>I can say, if we&#39;re going right, check out what the max x position is, and change direction if it&#39;s greater than 600, and vice versa if it&#39;s not.</p>
+)</span></span>
+</code></pre><p>I can say, if we&#39;re going right, check out what the max x position is, and change direction if it&#39;s greater than 600, and vice versa if it&#39;s not.</p>
 <p>This all works, my squares go from left to right and back again and keep bouncing around.</p>
 <p><img src="/img/yellow_squares.png" alt="A load of yellow squares" title="Space invaders"></p>
 <p>I have another question at this point, which is &quot;how many times is this list being iterated, should I be optimising this some how?&quot;</p>

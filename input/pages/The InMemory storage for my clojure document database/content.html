@@ -8,8 +8,8 @@
 </ul>
 <p>Well, this is quite a simple thing. As described in the last two entries - we have a very small surface area to implement for our storage system, and all objects are passed in as Plain Old Clojure data structures. The implemention therefore clocks in at under 40 lines of code and is shown in its entirety below.</p>
 <p>Memory storage is implemented as an atom containing a sorted map.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> create [] <span class="list">(<span class="title">MemoryStorage</span><span class="body">. <span class="list">(<span class="title">atom</span><span class="body"> <span class="list">(<span class="title">sorted-map</span><span class="body">)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>MemoryStorage merely returns whatever is in this atom at the start of a transaction (giving read isolation)</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> create [] <span class="list">(<span class="title">MemoryStorage</span><span class="body">. <span class="list">(<span class="title">atom</span><span class="body"> <span class="list">(<span class="title">sorted-map</span><span class="body">)</span></span>)</span></span>)</span></span>)</span></span>
+</code></pre><p>MemoryStorage merely returns whatever is in this atom at the start of a transaction (giving read isolation)</p>
 <pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> MemoryStorage [memory]
   java.io.Closeable
   Reader
@@ -17,8 +17,8 @@
   <span class="list">(<span class="title">ensure-transaction</span><span class="body"> [ops] <span class="list">(<span class="title">MemoryTransaction</span><span class="body">. @<span class="list">(<span class="body"><span class="keyword">:memory</span> ops)</span></span> <span class="list">(<span class="body"><span class="keyword">:memory</span> ops)</span></span>)</span></span>)</span></span>
   <span class="list">(<span class="title">from-db</span><span class="body"> [this id] <span class="list">(<span class="title">get</span><span class="body"> @memory id)</span></span>)</span></span>
   <span class="list">(<span class="title">open-iterator</span><span class="body"> [this] <span class="list">(<span class="title">MemoryIterator</span><span class="body">. <span class="literal">nil</span> memory <span class="list">(<span class="title">atom</span><span class="body"> <span class="literal">nil</span>)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span></code></pre>
-<p>Commiting the transaction, is just a reduction of operations inside the transaction into whatever is in the atom.</p>
+  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span>
+</code></pre><p>Commiting the transaction, is just a reduction of operations inside the transaction into whatever is in the atom.</p>
 <pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> MemoryTransaction [snapshot memory]
   java.io.Closeable
   Writer
@@ -28,8 +28,8 @@
   <span class="list">(<span class="title">commit</span><span class="body">! [this] <span class="list">(<span class="title">swap</span><span class="body">! memory #<span class="list">(<span class="title">reduce</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> [m [k v]]
                   <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> <span class="keyword">:deleted</span> v)</span></span> <span class="list">(<span class="title">dissoc</span><span class="body"> m k)</span></span> <span class="list">(<span class="title">assoc</span><span class="body"> m k v)</span></span>)</span></span>)</span></span>
                                         %<span class="number">1</span> <span class="list">(<span class="body"><span class="keyword">:cache</span> this)</span></span>)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span></code></pre>
-<p>And because we created a sorted map, iterating means dropping up to the point where we want to begin iterating, and returning the sequence.</p>
+  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span>
+</code></pre><p>And because we created a sorted map, iterating means dropping up to the point where we want to begin iterating, and returning the sequence.</p>
 <pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> MemoryIterator [snapshot memory start]
   java.io.Closeable
   Iterator
@@ -37,8 +37,8 @@
   <span class="list">(<span class="title">as-seq</span><span class="body"> [this]
     <span class="list">(<span class="title">map</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> [i] {<span class="keyword">:k</span> <span class="list">(<span class="title">key</span><span class="body"> i)</span></span> <span class="keyword">:v</span> <span class="list">(<span class="title">val</span><span class="body"> i)</span></span>})</span></span>
       <span class="list">(<span class="title">drop-while</span><span class="body"> #<span class="list">(<span class="title">&gt;</span><span class="body"> <span class="number">0</span> <span class="list">(<span class="title">compare</span><span class="body"> <span class="list">(<span class="title">key</span><span class="body"> %<span class="number">1</span>)</span></span> @start)</span></span>)</span></span> <span class="list">(<span class="title">or</span><span class="body"> snapshot @memory)</span></span>)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span></code></pre>
-<p>Obviously not suitable for production, but it keeps the tests fast (and runnable on various environments without needing native compiles). It also makes it easier to work in the REPL as there is no need to worry about on-disk artifacts or locking.</p>
+  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span>
+</code></pre><p>Obviously not suitable for production, but it keeps the tests fast (and runnable on various environments without needing native compiles). It also makes it easier to work in the REPL as there is no need to worry about on-disk artifacts or locking.</p>
 <p><strong>Summary</strong></p>
 <p>Having a small surface area for storage implementation, and keeping communication with core storage a matter of using plain old clojure data structures made this easy to write.</p>
 <p><strong>Related Files</strong></p>

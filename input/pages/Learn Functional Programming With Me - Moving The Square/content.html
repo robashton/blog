@@ -1,33 +1,33 @@
 <p>So, last session I managed to get a square being drawn, as if I haven&#39;t done that a thousand times in JS - now to do something a bit more dangerous (because it involves state), and more likely to get me in trouble - let&#39;s move the square around using the keyboard.</p>
 <p><strong>Reminder</strong>: The source for all of this can be found at <a href="https://github.com/robashton/clojure-spaceinvaders">github.com/robashton/clojure-spaceinvaders</a></p>
-<h2>Parameterising the function</h2>
+<h2 id="parameterising-the-function">Parameterising the function</h2>
 <p>This is a no-brainer, I&#39;m going to need to know where to draw this thing, I start off by passing in the state required to draw a rect to my function.</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> drawRect [x y w h]
   <span class="list">(<span class="title">let</span><span class="body"> [target <span class="list">(<span class="body">.getElementById js/document <span class="string">"target"</span>)</span></span>
         context <span class="list">(<span class="body">.getContext target <span class="string">"2d"</span>)</span></span>]
      <span class="list">(<span class="body">.fillRect context x y w h)</span></span>           
   )</span></span>
-)</span></span></code></pre>
-<p>So far so good - but now I&#39;m going to need to not only pass in those variables, but - well they&#39;re going to have to be variable (somehow) because they&#39;re going to have to change each frame and it&#39;s stuff like this that makes me break out in a cold sweat because I haven&#39;t discovered the patterns to solve this type of problem yet.</p>
+)</span></span>
+</code></pre><p>So far so good - but now I&#39;m going to need to not only pass in those variables, but - well they&#39;re going to have to be variable (somehow) because they&#39;re going to have to change each frame and it&#39;s stuff like this that makes me break out in a cold sweat because I haven&#39;t discovered the patterns to solve this type of problem yet.</p>
 <p>Let&#39;s explain - you see that &#39;let&#39; statement, the values I&#39;ve defined there, those key value pairs are <em>immutable</em>, this means I cannot change them - for example, if I want to make this square move of its own voilition, the literal equivalent of</p>
 <pre><code><span class="function"><span class="title">for</span><span class="params">(var x = <span class="number">0</span>; x &lt; <span class="number">1000</span>; x++)</span>
-  <span class="title">drawRect</span><span class="params">(x, <span class="number">0</span>, <span class="number">100</span>, <span class="number">100</span>)</span>;</code></pre>
-<p>Doesn&#39;t exist.</p>
+  <span class="title">drawRect</span><span class="params">(x, <span class="number">0</span>, <span class="number">100</span>, <span class="number">100</span>)</span>;
+</code></pre><p>Doesn&#39;t exist.</p>
 <p>Now, if I were to make my best guess at how to solve this, I&#39;d say that we need a function that takes in x, and then calls itself with x+1, for example at a conceptual level:</p>
 <pre><code><span class="function"><span class="keyword">function</span> <span class="title">drawAndMove</span><span class="params">(x)</span> <span class="comment">{
   drawRect(x, 0, 100, 100)
   if(x &lt;= 1000)
     drawAndMove(x+1)
 }</span>
-<span class="title">drawAndMove</span><span class="params">(0)</span>;</span></code></pre>
-<p>This actually maps across to a construct in our chosen world that looks something like the following:</p>
+<span class="title">drawAndMove</span><span class="params">(0)</span>;</span>
+</code></pre><p>This actually maps across to a construct in our chosen world that looks something like the following:</p>
 <pre><code><span class="list">(<span class="title">loop</span><span class="body"> [x <span class="number">0</span>]
   <span class="list">(<span class="title">drawRect</span><span class="body"> x <span class="number">0</span> <span class="number">100</span> <span class="number">100</span>)</span></span>     
   <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">&lt;=</span><span class="body"> x <span class="number">1000</span>)</span></span>
     <span class="list">(<span class="title">recur</span><span class="body"> <span class="list">(<span class="title">inc</span><span class="body"> x)</span></span>)</span></span>
   )</span></span>
-)</span></span></code></pre>
-<ul>
+)</span></span>
+</code></pre><ul>
 <li>I want to loop, I want the following values available in this loop (x = 0)</li>
 <li>Please draw the rect at x,0,100,100</li>
 <li>If x &lt;= 1000, recurse and increment x</li>
@@ -38,8 +38,8 @@
   logic();
   render();
   setTimeout(tick, <span class="number">33</span>);
-}</code></pre>
-<p>Again, cutting a corner here because I don&#39;t want to write a full on game loop in clojure just yet.</p>
+}
+</code></pre><p>Again, cutting a corner here because I don&#39;t want to write a full on game loop in clojure just yet.</p>
 <p>Figuring it out, I&#39;ve ended up with something like this</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> tick [x]
   <span class="list">(<span class="title">drawRect</span><span class="body"> x <span class="number">0</span> <span class="number">100</span> <span class="number">100</span>)</span></span>
@@ -53,8 +53,8 @@
 
 <span class="list">(<span class="title">defn</span><span class="body"> ^<span class="keyword">:export</span> init []
    <span class="list">(<span class="title">tick</span><span class="body"> <span class="number">0</span>)</span></span>
-)</span></span></code></pre>
-<ul>
+)</span></span>
+</code></pre><ul>
 <li>Define a function called tick, which takes in the current position of our object</li>
 <li>Draw a rect at that location</li>
 <li>If x is still less than 1000, then</li>

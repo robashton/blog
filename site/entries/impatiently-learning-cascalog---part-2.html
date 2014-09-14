@@ -77,13 +77,14 @@
 <ul>
 <li><a href="/entries/impatiently-learning-cascalog---part-1.html">Part 1</a></li>
 </ul>
-<h1>Part 2</h1>
+<h1 id="part-2">Part 2</h1>
 <p>Apparently in this part we&#39;re going to update our first code so as to count the words in our document and that&#39;s the first step towards implementing a <a href="http://en.wikipedia.org/wiki/Tf*idf">tf-idf</a> implementation - cool story bro, I have no idea what one of those is but moving on.</p>
 <p>I quite like the explanation given at the beginning of the article for why it&#39;s important that we be able to copy data from one place to another, and why we&#39;d use Cascalog for this. Basically we&#39;re talking about being able to make guarantees about this operation and that&#39;s going to be important when we&#39;re trying to write logic on top of this process.</p>
 <p>So anyway, we&#39;re given the following code</p>
 <pre><code class="lang-clojure"><span class="list">(<span class="title">defmapcatop</span> split <span class="collection">[line]</span>
   <span class="string">"reads in a line of string and splits it by regex"</span>
-    <span class="list">(<span class="title">s/split</span> line #<span class="string">"[\[\]\\(\),.)\s]+"</span>)</span>)</span></code></pre>
+    <span class="list">(<span class="title">s/split</span> line #<span class="string">"[\[\]\\(\),.)\s]+"</span>)</span>)</span>
+</code></pre>
 <p>I guess that &#39;defmapcatop&#39; is a macro for defining map operations, and this appears to be splitting a line by whitespace.</p>
 <p>Googling this doesn&#39;t appear to yield in the documentation, which is a bit unfortunate - but a bit of rummaging around finds a handy page for <a href="http://entxtech.blogspot.co.uk/2010/12/which-operation-def-macro-should-i-use.html">&quot;which def should I use&quot;</a>  which suggests that I&#39;m on the right track with that line of thought.</p>
 <p>Okay, so we can move on from this pretty swiftly and see how we&#39;re going to use this</p>
@@ -92,7 +93,8 @@
        [?word ?count]
        ((hfs-delimited in :skip-header? true) _ ?line)
        (split ?line :&gt; ?word)
-       (c/count ?count)))</code></pre>
+       (c/count ?count)))
+</code></pre>
 <p>Well, I have to say I can barely read this - my Clojure-fu is not strong when mixed with the Cascalog.</p>
 <p>But, we can see</p>
 <ul>
@@ -116,8 +118,8 @@
 <p>I suspect that the <em>(?&lt;-</em> thingy is actually a macro of some sort that re-writes this into something more sane, but who knows right?</p>
 <p>Running this with</p>
 <pre><code><span class="title">lein</span> uberjar
-<span class="title">hadoop</span> jar ./target/impatient.jar <span class="typedef"><span class="keyword">data</span>/rain.txt output/wc</span></code></pre>
-<p>Gives me a wonderful &quot;out of memory exception&quot;, so I post a dump on the mailing list and have a look at my environment.</p>
+<span class="title">hadoop</span> jar ./target/impatient.jar <span class="typedef"><span class="keyword">data</span>/rain.txt output/wc</span>
+</code></pre><p>Gives me a wonderful &quot;out of memory exception&quot;, so I post a dump on the mailing list and have a look at my environment.</p>
 <p>Things I tried while I waited for a response</p>
 <ul>
 <li>Re-install the hadoop package (1.2.1) but the x64 version</li>
@@ -143,8 +145,8 @@ Land    1
 Secrets    1
 This    2
 Two    1
-Valley    1</code></pre>
-<p>Etc - so I&#39;m happy enough with that.</p>
+Valley    1
+</code></pre><p>Etc - so I&#39;m happy enough with that.</p>
 <p>I&#39;m still not <em>that</em> happy with the crazy syntax of the Clojure, I&#39;m grabbing at it and going with the rolling assumption that the logic-like-system is just a bunch of macros on top of vanilla Clojure and &quot;just works&quot;, so &quot;shut up and carry on Rob&quot;.</p>
 <p>Onto part 3 then...</p>
 </div>

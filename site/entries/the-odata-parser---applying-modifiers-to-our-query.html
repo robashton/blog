@@ -85,8 +85,8 @@
 <pre><code>/resource/child?<span class="variable">$orderby</span>=Rating asc
 /resource?<span class="variable">$top</span>=10
 /resource?<span class="variable">$orderby</span>=Rating,Category/Name desc
-/resource?<span class="variable">$filter</span>=Rating eq 5</code></pre>
-<p>As can be seen, the complexity of these can grow quite easily but in reality they&#39;re pretty much a combination of</p>
+/resource?<span class="variable">$filter</span>=Rating eq 5
+</code></pre><p>As can be seen, the complexity of these can grow quite easily but in reality they&#39;re pretty much a combination of</p>
 <ul>
 <li>the query option itself</li>
 <li>an expression that is unique to that query option</li>
@@ -103,8 +103,8 @@ I imagine when trying to re-use those rules I&#39;ll probably sort out some of t
   <span class="function_name">it</span>(<span class="string">"sort options have the property specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
      assert.<span class="function_name">equal</span>(result.options.$orderby.property, <span class="string">"Property"</span>)
   }</span>)
-})</code></pre>
-<p>I&#39;m quite excited about this as how this model presents itself will probably help me sort out the main model I&#39;m creating to support the OData request.</p>
+})
+</code></pre><p>I&#39;m quite excited about this as how this model presents itself will probably help me sort out the main model I&#39;m creating to support the OData request.</p>
 <p>I&#39;ll start off with:</p>
 <pre><code>OData = (
   (
@@ -123,8 +123,8 @@ I imagine when trying to re-use those rules I&#39;ll probably sort out some of t
          <span class="keyword">return</span> model
        }
   | <span class="string">'/'</span>
-) </code></pre>
-<p>I&#39;ll simply look for a list of query options, and actually merge the notion of service parameters and known query options (and in fact, custom options too - which are simply any unrecognised options - without a dollar sign in front of them)</p>
+) 
+</code></pre><p>I&#39;ll simply look for a list of query options, and actually merge the notion of service parameters and known query options (and in fact, custom options too - which are simply any unrecognised options - without a dollar sign in front of them)</p>
 <p>What does this look like? </p>
 <pre><code>QueryOption = 
   SortOption
@@ -133,8 +133,8 @@ I imagine when trying to re-use those rules I&#39;ll probably sort out some of t
 
 SortOption = 
   se<span class="string">q("<span class="variable">$orderby</span>=")</span>
-  ResourceName:property -&gt; { name: <span class="string">'$orderby'</span>, value = { property: property }}</code></pre>
-<p>Well we&#39;ll start off with the simplest one, which is just supporting a single property and no options. I don&#39;t want to get too ahead of myself after all.</p>
+  ResourceName:property -&gt; { name: <span class="string">'$orderby'</span>, value = { property: property }}
+</code></pre><p>Well we&#39;ll start off with the simplest one, which is just supporting a single property and no options. I don&#39;t want to get too ahead of myself after all.</p>
 <p>This works but of course I&#39;ve broken my tests for service parameters now, so I&#39;ll fix those</p>
 <pre><code>test(<span class="string">"/method(1)/child?foo=bar"</span>, <span class="string">"OData"</span>, function(<span class="constant">result</span>) {
     console.<span class="command">log</span>(<span class="constant">result</span>)
@@ -152,8 +152,8 @@ SortOption =
   <span class="keyword">it</span>(<span class="string">"should have the argument specified"</span>, function() {
      assert.<span class="keyword">equal</span>(<span class="constant">result</span>.options.foo, 'bar')
   })
-})</code></pre>
-<p><strong>A bit more $orderby</strong></p>
+})
+</code></pre><p><strong>A bit more $orderby</strong></p>
 <p>Not done by a long-shot, we have several aspects to $orderby</p>
 <ul>
 <li>We can order by a single property</li>
@@ -172,8 +172,8 @@ SortOption =
   <span class="function_name">it</span>(<span class="string">"sort options have the second property specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
      assert.<span class="function_name">equal</span>(result.options.$orderby.properties[<span class="number">1</span>].name, <span class="string">"PropertyTwo"</span>)
   }</span>)
-})</code></pre>
-<p>Yeugh, our data model is getting quite convoluted - I&#39;ll be working on that for sure.</p>
+})
+</code></pre><p>Yeugh, our data model is getting quite convoluted - I&#39;ll be working on that for sure.</p>
 <p>But first...</p>
 <pre><code>SortOption = 
   se<span class="string">q("<span class="variable">$orderby</span>=")</span>
@@ -183,8 +183,8 @@ SortOption =
 SortProperty = 
   ResourceName:property -&gt; { name: property }
 
-,</code></pre>
-<p>Pretty tidy, and this opens up the avenue of being able to specify ASC or DESC very easily</p>
+,
+</code></pre><p>Pretty tidy, and this opens up the avenue of being able to specify ASC or DESC very easily</p>
 <p><em>DESC</em></p>
 <pre><code><span class="function"><span class="title">test</span><span class="params">(<span class="string">"/resource?$orderby=PropertyOne desc"</span>, <span class="string">"OData"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>(result) <span class="tuple">{
   <span class="function_name">it</span>(<span class="string">"sort options are present on the result"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
@@ -196,8 +196,8 @@ SortProperty =
   <span class="function_name">it</span>(<span class="string">"sort options have the property ordering specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
      assert.<span class="function_name">equal</span>(result.options.$orderby.properties[<span class="number">0</span>].order, <span class="string">"desc"</span>)
   }</span>)
-})</code></pre>
-<p><em>ASC</em></p>
+})
+</code></pre><p><em>ASC</em></p>
 <pre><code><span class="function"><span class="title">test</span><span class="params">(<span class="string">"/resource?$orderby=PropertyOne asc"</span>, <span class="string">"OData"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>(result) <span class="tuple">{
   <span class="function_name">it</span>(<span class="string">"sort options are present on the result"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
      assert.<span class="function_name">notEqual</span>(result.options.$orderby, null)
@@ -208,8 +208,8 @@ SortProperty =
   <span class="function_name">it</span>(<span class="string">"sort options have the property ordering specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
      assert.<span class="function_name">equal</span>(result.options.$orderby.properties[<span class="number">0</span>].order, <span class="string">"asc"</span>)
   }</span>)
-})</code></pre>
-<p><em>Double trouble</em></p>
+})
+</code></pre><p><em>Double trouble</em></p>
 <pre><code>test(<span class="string">"/resource?$orderby=PropertyOne asc,PropertyTwo desc"</span>, <span class="string">"OData"</span>, function(result) {
   it(<span class="string">"sort options are present on the result"</span>, function() {
      assert<span class="variable">.notEqual</span>(result<span class="variable">.options</span>.$orderby, null)
@@ -226,16 +226,16 @@ SortProperty =
   it(<span class="string">"sort options have the property two ordering specified"</span>, function() {
      assert<span class="variable">.equal</span>(result<span class="variable">.options</span>.$orderby<span class="variable">.properties</span>[<span class="number">1</span>]<span class="variable">.order</span>, <span class="string">"desc"</span>)
   })
-})</code></pre>
-<p>Adding this is <em>super</em> easy</p>
+})
+</code></pre><p>Adding this is <em>super</em> easy</p>
 <pre><code>SortProperty = 
   ResourceName:property
   (
     se<span class="string">q(" asc")</span> -&gt; <span class="string">"asc"</span>
   | se<span class="string">q(" desc")</span> -&gt; <span class="string">"desc"</span>
   )?:order
-  -&gt; { name: property, order: order }</code></pre>
-<p>Simply check for the resource name, then optionally check for an &quot;asc&quot; or a &quot;desc&quot;, before bundling this into an object.</p>
+  -&gt; { name: property, order: order }
+</code></pre><p>Simply check for the resource name, then optionally check for an &quot;asc&quot; or a &quot;desc&quot;, before bundling this into an object.</p>
 <p><strong>And the final bit - property paths</strong></p>
 <p>I already technically have this written in the form of the expression &quot;PathSegment&quot;, but that&#39;s a bit too coupled to the main query path, and un-coupling it would be tricky - so it&#39;s better off just to write a new expression for matching paths within query options.</p>
 <p>First off, the test I want to pass</p>
@@ -250,16 +250,16 @@ SortProperty =
         | PathSegment: <span class="keyword">next</span>
         )?
       ) -&gt; { resource: resource, key: key, <span class="keyword">link</span>: <span class="keyword">link</span>, property: <span class="keyword">next</span> }
-,</code></pre>
-<p>We just need a subset of this, let&#39;s call it PropertyPath</p>
+,
+</code></pre><p>We just need a subset of this, let&#39;s call it PropertyPath</p>
 <pre><code>PropertyPath = 
       ResourceName:resource
       (
         <span class="comment">'/'</span>
         PropertyPath: <span class="keyword">next</span>
       )? -&gt; { name: resource, <span class="keyword">property</span>: <span class="keyword">next</span>}
-,</code></pre>
-<p>And with a slight modification to our SortOptions to use this new expression:</p>
+,
+</code></pre><p>And with a slight modification to our SortOptions to use this new expression:</p>
 <pre><code>SortProperty = 
   PropertyPath:property
   (
@@ -269,8 +269,8 @@ SortProperty =
   -&gt; {
        property.order = order;
        <span class="keyword">return</span> property;
-     }</code></pre>
-<p>And we&#39;re done.</p>
+     }
+</code></pre><p>And we&#39;re done.</p>
 <p>Next up, I&#39;ll tackle the paging stuffs, as that should be simple.</p>
 </div>
       <div id="links">

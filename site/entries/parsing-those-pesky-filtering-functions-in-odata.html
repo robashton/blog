@@ -90,8 +90,8 @@
 <li><a href="/entries/precedence-grouping,-you-first..-no-you-odata-parser.html">Precedence grouping in OData</a></li>
 </ul>
 <p><strong>Function calls look like this</strong></p>
-<pre><code>/Customers?<span class="variable">$filter</span>=substringof(<span class="string">'Alfreds'</span>, CompanyName) eq <span class="literal">true</span></code></pre>
-<p>In other words, they&#39;re a special piece of the expression which can take a list of expressions separated by commas</p>
+<pre><code>/Customers?<span class="variable">$filter</span>=substringof(<span class="string">'Alfreds'</span>, CompanyName) eq <span class="literal">true</span>
+</code></pre><p>In other words, they&#39;re a special piece of the expression which can take a list of expressions separated by commas</p>
 <p>I could hack this and just allow any function call, or I can explicitly name them all - which I&#39;ll do because it&#39;ll help with the highlighting in the editor that&#39;ll use this parser.</p>
 <p>I&#39;ll do the first one here, and then go and do the rest in a similar fashion because they&#39;re just the same thing over and over again!</p>
 <p>Our test for &#39;substringof&#39;</p>
@@ -113,8 +113,8 @@
   <span class="keyword">it</span>(<span class="string">"rhs should be cake"</span>, function() {
      assert.<span class="keyword">equal</span>(<span class="constant">result</span>.options.$filterby[<span class="number">2</span>], <span class="string">"cake"</span>)
   }) 
-})</code></pre>
-<p>This kinda thing will do, and getting the method out is a simple  matter of adding the MethodExpression to the values possible in an expression:</p>
+})
+</code></pre><p>This kinda thing will do, and getting the method out is a simple  matter of adding the MethodExpression to the values possible in an expression:</p>
 <pre><code>FilterByValue = 
   FilterMethodCallExpression
 <span class="string">| FilterNegateExpression</span>
@@ -122,16 +122,16 @@
 <span class="string">| QuotedText</span>
 <span class="string">| PropertyPath</span>
 <span class="string">| GroupedPrecedenceExpression</span>
-,</code></pre>
-<p>Now, it is tempting to be lazy and just write a  generic method recogniser with variable lists of args, but we&#39;re building for highlighting so it would be nice to know what the recognised methods are, and what args they expect, so what I&#39;ll do is this</p>
+,
+</code></pre><p>Now, it is tempting to be lazy and just write a  generic method recogniser with variable lists of args, but we&#39;re building for highlighting so it would be nice to know what the recognised methods are, and what args they expect, so what I&#39;ll do is this</p>
 <pre><code><span class="comment">FilterMethodCallExpression</span> <span class="comment">=</span> 
   <span class="comment">(</span>
     <span class="comment">FilterSubstringOf</span>
   <span class="comment">|</span> <span class="comment">OtherMethod</span>
   <span class="comment">|</span> <span class="comment">AnotherMethod</span>
   <span class="comment">)</span> <span class="literal">-</span>&gt; <span class="title">[</span> <span class="comment">"call"</span>, <span class="comment">methodcall</span> <span class="title">]</span>
-<span class="string">,</span></code></pre>
-<p>And write a definition for each method (tedious, but I&#39;ll automate a pile of that with VIM macros)</p>
+<span class="string">,</span>
+</code></pre><p>And write a definition for each method (tedious, but I&#39;ll automate a pile of that with VIM macros)</p>
 <pre><code>FilterSubstringOf = 
   se<span class="string">q('substringof')</span>:method 
   <span class="string">'('</span> 
@@ -142,8 +142,8 @@
   spaces 
   FilterByExpression:two 
   spaces 
-  <span class="string">')'</span> -&gt; { args: [ one, two ], method: method }</code></pre>
-<p>And they&#39;ll all look like that.</p>
+  <span class="string">')'</span> -&gt; { args: [ one, two ], method: method }
+</code></pre><p>And they&#39;ll all look like that.</p>
 <p>With this done, $filter is now fully supported and I can get on with mopping up the final recognised pieces of OData. I&#39;ll try and do that all in a single post.</p>
 </div>
       <div id="links">

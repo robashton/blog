@@ -109,13 +109,13 @@
      assert.<span class="keyword">equal</span>(rhs[<span class="number">1</span>].<span class="property">name</span>, <span class="string">"Price"</span>)
      assert.<span class="keyword">equal</span>(rhs[<span class="number">2</span>], <span class="number">10</span>)
   })
-})</code></pre>
-<p>We have a tree that looks like</p>
+})
+</code></pre><p>We have a tree that looks like</p>
 <pre><code>[ 'and', 
   [ 'gt', 'Price', <span class="number">5</span> ],
   [ 'lt', 'Price', <span class="number">10</span>]
-]</code></pre>
-<p>Our next step can walk this tree and generate SQL or something similar very easily.</p>
+]
+</code></pre><p>Our next step can walk this tree and generate SQL or something similar very easily.</p>
 <p><strong>How do we generate such a thing?</strong></p>
 <p>Well, &#39;and&#39; is an operator with the lowest precedence (well, the same as &#39;or&#39;), and therefore we want it to be first in the tree (it makes senseif you think about it!). </p>
 <p>The leaves should be the nodes with the highest precedence because we&#39;ll get their results first and them go up to the root node.</p>
@@ -123,25 +123,25 @@
 <p>There is quite a wall here, so let&#39;s break it down</p>
 <pre><code>  FilterByOption = 
     se<span class="string">q("<span class="variable">$filterby</span>=")</span>
-    FilterByExpression:expr -&gt; { name: <span class="string">"<span class="variable">$filterby</span>"</span>, value: expr }</code></pre>
-<p><em>When we find $filterby, then parse the expression</em></p>
+    FilterByExpression:expr -&gt; { name: <span class="string">"<span class="variable">$filterby</span>"</span>, value: expr }
+</code></pre><p><em>When we find $filterby, then parse the expression</em></p>
 <pre><code>  <span class="title">FilterByExpression</span> =
-    FilterAndExpression</code></pre>
-<p><em>The first thing we want to find is an &#39;and&#39; expression</em></p>
+    FilterAndExpression
+</code></pre><p><em>The first thing we want to find is an &#39;and&#39; expression</em></p>
 <pre><code>  <span class="constant">FilterAndExpression</span> =
     <span class="constant">FilterAndExpression</span><span class="symbol">:lhs</span>
     <span class="constant">FilterAndOperand</span><span class="symbol">:op</span>
     <span class="constant">FilterLogicalExpression</span><span class="symbol">:rhs</span> -&gt; [ op, lhs, rhs ]
-  | <span class="constant">FilterLogicalExpression</span></code></pre>
-<p><em>try and find more AndExpressions</em></p>
+  | <span class="constant">FilterLogicalExpression</span>
+</code></pre><p><em>try and find more AndExpressions</em></p>
 <p><em>Else, let the right hand side be the next preferable thing (a plain old logical expression)</em></p>
 <p><em>Else, just try to find a logical expression</em></p>
 <pre><code>  <span class="constant">FilterLogicalExpression</span> =
     <span class="constant">FilterLogicalExpression</span><span class="symbol">:lhs</span>
     <span class="constant">FilterByOperand</span><span class="symbol">:op</span>
     <span class="constant">FilterByValue</span><span class="symbol">:rhs</span> -&gt; [ op, lhs, rhs ]
-  | <span class="constant">FilterByValue</span></code></pre>
-<p><em>Try to find more LogicalExpressions</em></p>
+  | <span class="constant">FilterByValue</span>
+</code></pre><p><em>Try to find more LogicalExpressions</em></p>
 <p><em>Else, let the right hand side be the next preferable thing (a plain old value)</em></p>
 <p><em>Else fall back to finding a value</em></p>
 <pre><code>  FilterAndOperand =
@@ -150,8 +150,8 @@
       se<span class="string">q("and")</span>
     | se<span class="string">q("or")</span>
     ):op 
-    spaces -&gt; op</code></pre>
-<p><em>And/or have the same precedence</em></p>
+    spaces -&gt; op
+</code></pre><p><em>And/or have the same precedence</em></p>
 <pre><code>  FilterByOperand =
     spaces
     (
@@ -162,13 +162,13 @@
     | se<span class="string">q("lt")</span>
     | se<span class="string">q("le")</span>
     ):op 
-    spaces -&gt; op</code></pre>
-<p><em>These are unchanged</em></p>
+    spaces -&gt; op
+</code></pre><p><em>These are unchanged</em></p>
 <pre><code>  FilterByValue = 
     Number
   <span class="string">| QuotedText</span>
-  <span class="string">| PropertyPath</span></code></pre>
-<p><em>As are these</em></p>
+  <span class="string">| PropertyPath</span>
+</code></pre><p><em>As are these</em></p>
 </div>
       <div id="links">
         <a href="/">Index</a>

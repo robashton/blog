@@ -105,8 +105,8 @@
       var repo = ev.body.repo.full_name
       <span class="function_name">linkTo</span>('pushesbyrepo-' + repo, ev)
     }</span>
-  })</code></pre>
-<p>So far so good, I now have a stream per repo called &quot;pushesbyrepo-{reponame}&quot; - now what?</p>
+  })
+</code></pre><p>So far so good, I now have a stream per repo called &quot;pushesbyrepo-{reponame}&quot; - now what?</p>
 <p>Well, the key thing I mentioned above was that we&#39;re &quot;looking for all the events where&quot;, this suggests that perhaps the thing we are looking for should be considered an event in its own right.</p>
 <p>We can do this, we can for each of thse streams keep a note of when the last push was, and if we encounter another push within a certain time-frame, emit an event for this find of ours.</p>
 <p><strong>Running a projection per generated stream</strong></p>
@@ -115,8 +115,8 @@
   <span class="title">foreachStream</span><span class="params">()</span>
   .<span class="title">when</span><span class="params">(<span class="tuple">{
     $init: // etc
-  }</span>)</span></code></pre>
-<p>There is a built in projection in the EventStore that will automatically use the character &#39;-&#39; to sort a collection of streams into categories, and if we have</p>
+  }</span>)</span>
+</code></pre><p>There is a built in projection in the EventStore that will automatically use the character &#39;-&#39; to sort a collection of streams into categories, and if we have</p>
 <ul>
 <li>pushesbyrepo-bob</li>
 <li>pushesbyrepo-alice</li>
@@ -146,8 +146,8 @@
       state.last<span class="variable">Push</span> = ev
       return state
     }
-  })</code></pre>
-<p>Seems legit, simply keep the last PushEvent around at all times, when we get a new one, check the difference and emit an event if it&#39;s less than X minutes. NICE</p>
+  })
+</code></pre><p>Seems legit, simply keep the last PushEvent around at all times, when we get a new one, check the difference and emit an event if it&#39;s less than X minutes. NICE</p>
 <p>Running this, I now have a stream at </p>
 <p><em>/streams/paranoidpushes</em> </p>
 <p>So, how many paranoid pushes have I had in the time period I&#39;ve been sampling over? (roughly three hours at time of writing)</p>
@@ -159,10 +159,10 @@
     <span class="string">"ParanoidPush"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
       state.count++
     }</span>
-  })</code></pre>
-<p>And the result?</p>
-<pre><code><span class="rules">{ <span class="rule"><span class="attribute">count</span>:<span class="value"> <span class="number">104533</span> }</span></span></span></code></pre>
-<p>Voila, that&#39;s an incredibly simply temporal query that just works and gives me the total number of pushes that happened within 2 minutes of each other to the same repository - and it&#39;s pretty easy too. We have two steps:</p>
+  })
+</code></pre><p>And the result?</p>
+<pre><code><span class="rules">{ <span class="rule"><span class="attribute">count</span>:<span class="value"> <span class="number">104533</span> }</span></span></span>
+</code></pre><p>Voila, that&#39;s an incredibly simply temporal query that just works and gives me the total number of pushes that happened within 2 minutes of each other to the same repository - and it&#39;s pretty easy too. We have two steps:</p>
 <ul>
 <li>Push out events for each instance of some temporal correlation</li>
 <li>Aggregate on those events to get the result</li>

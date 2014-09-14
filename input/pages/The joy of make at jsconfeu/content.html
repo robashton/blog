@@ -1,0 +1,182 @@
+<p>I somehow ended up doing a talk at #jsconfeu this weekend on &quot;make&quot; of all things, submitted after a night of partying with all the wrong people who thought it would be a hilarious idea.</p>
+<p>Anyway, it happened and the slides at demos are available online. (Slides // Demos ). Here is the blog post version of that talk because it is unlikely I&#39;ll ever do it again.</p>
+<h1 id="why-make">Why Make</h1>
+<p>The long and short of this is that I work on a team of cross-platform developers on a project comprised mostly of Erlang and C. Make is the natural choice for this and indeed we have a common make file across our projects found at <a href="github/id3as/erl-mk">https://github.com/id3as/erl-mk</a>.</p>
+<p>Our core codebase is shiny diamonds, polished diamonds; It&#39;s stable and relatively robust, and we string together a lot of it with the programmer equivalent of duct tape (bash scripts). Make is for building, Bash is for task execution and this separation works very well for us.</p>
+<p>Bringing in &quot;yet another build system&quot; just for JS would wind everybody up something chronic, especially when the build systems available in the JS world are confused about whether they are task runners or build scripts and the heinous mess of either JSON or JS streaming code found in this environment is pretty off-putting.</p>
+<p>So yeah, we use Make because it&#39;s there and because it&#39;s good at building things; We use Bash because it&#39;s there and it&#39;s good at running things.</p>
+<p>Also Make is just plain fun, it&#39;s such a quirky thing to work with how could you not enjoy it? (If you&#39;re working in JS you already know what it&#39;s like to work with something quirky and the two are therefore a match made in heaven)</p>
+<p>All the examples shown in this entry assume you&#39;re in the directory with a file called &quot;Makefile&quot;</p>
+<h1 id="make-is-not-a-procedural-language">Make is not a procedural language</h1>
+<p>So lesson number one in the land of Make, is what happens in the following file when we run &quot;make&quot;?</p>
+<pre><code>
+one=<span class="variable">$(</span>two)
+two=<span class="variable">$(</span>three)
+three=hello world
+
+<span class="symbol">all:</span>
+    <span class="variable">@echo</span> <span class="variable">$(</span>one)
+</code></pre><p>Well obviously we print out &quot;hello world&quot; to the console, why is that? Because anything assigned with &#39;=&#39; is a recursive variable, and they&#39;ll be recursively expanded at the point of use. (So in this case &quot;one&quot; isn&#39;t used until we echo it, at which point both two and three have values and we get a good result).</p>
+<p>This is important because it impacts how we use expressions and functions later on in the Makefile.</p>
+<h1 id="targets-pre-requisites-and-recipes">Targets, Pre-Requisites and Recipes</h1>
+<p>A makefile is comprised of variables (as we see above) and recipes (which are a combination of targets, pre-requisites and some instructions to generate those targets)</p>
+<p>For example</p>
+<pre><code><span class="keyword">out</span>/file<span class="preprocessor">.txt</span>: <span class="keyword">in</span>/file<span class="preprocessor">.txt</span>
+  <span class="keyword">cp</span> <span class="keyword">in</span>/file<span class="preprocessor">.txt</span> <span class="keyword">out</span>/file<span class="preprocessor">.txt</span>
+</code></pre><p>The above is not idiomatic, but serves to highlight that a target is <em>usually</em> a file or directory and the pre-req is often a file/directory to a file/directory too. The instructions in the recipe simply instruct Make how to generate that target from that input.</p>
+<p>Because we&#39;ve stated our targets and pre-reqs in terms of files, Make can check the timestamps of these artifacts and only run the command if the pre-req is newer than the target.</p>
+<h1 id="dry-with-pattern-rules">DRY with Pattern Rules</h1>
+<p>Given this Makefile, what stands out?</p>
+<pre><code>
+<span class="label">all:</span> <span class="keyword">out</span>/pinkie<span class="preprocessor">.txt</span> <span class="keyword">out</span>/rainbow<span class="preprocessor">.txt</span>
+    @echo &gt; /dev/null
+
+<span class="keyword">out</span>/pinkie<span class="preprocessor">.txt</span>: <span class="keyword">in</span>/pinkie<span class="preprocessor">.txt</span> <span class="keyword">out</span>
+    <span class="keyword">cp</span> <span class="keyword">in</span>/pinkie<span class="preprocessor">.txt</span> <span class="keyword">out</span>/pinkie<span class="preprocessor">.txt</span>
+
+<span class="keyword">out</span>/rainbow<span class="preprocessor">.txt</span>: <span class="keyword">in</span>/rainbow<span class="preprocessor">.txt</span> <span class="keyword">out</span>
+    <span class="keyword">cp</span> <span class="keyword">in</span>/rainbow<span class="preprocessor">.txt</span> <span class="keyword">out</span>/rainbow<span class="preprocessor">.txt</span>
+
+<span class="label">out:</span>
+    mkdir -p <span class="keyword">out</span>
+</code></pre><p>Well we&#39;re repeating ourselves a lot for what is a simple file copy. Make gives us &quot;pattern rules&quot; to help with this. Targets can be defined in terms of &quot;patterns&quot; and then we match on the pattern rather than an exact.</p>
+<pre><code><span class="label">all:</span> <span class="keyword">out</span>/pinkie<span class="preprocessor">.txt</span> <span class="keyword">out</span>/rainbow<span class="preprocessor">.txt</span>
+    @echo &gt; /dev/null
+
+<span class="keyword">out</span>/%<span class="preprocessor">.txt</span>: <span class="keyword">in</span>/%<span class="preprocessor">.txt</span> <span class="keyword">out</span>
+    <span class="keyword">cp</span> $&lt; $@
+
+<span class="label">out:</span>
+    mkdir -p <span class="keyword">out</span>
+</code></pre><p>Woah, what is going on here? Well, the percentage symbol is the pattern we&#39;re matching on, and we&#39;re still invoking that target for both out/pinkie.txt and out/rainbow.txt. Make then gives us <em>automatic variables</em> to work with; There are a good dozen of these available, but in the above example we&#39;re using</p>
+<ul>
+<li><strong>$&lt;</strong> (The <em>first</em> pre-requisite that triggered the execution of this recipe - in/pony.txt in this case</li>
+<li><strong>$@</strong> (The full name of the target being matched, in this case out/pony.txt)</li>
+</ul>
+<p>Of course, we&#39;re still manually entering out/pinkie.txt and in/pinkie.txt and that&#39;s sub-optimal so let&#39;s sort that out too.</p>
+<h1 id="using-built-ins-to-generate-targets">Using built-ins to generate targets</h1>
+<p>Various functions are available to us in Makefiles, and what we want to do is generate a list of <em>outputs</em> to invoke our targets with.</p>
+<p>The only thing we have to work with is a directory full of inputs, so let&#39;s go and find all of those first</p>
+<pre><code><span class="title">INPUTS</span> := $(wildcard in/<span class="regexp">*.txt</span>)
+</code></pre><p>When the value of INPUTS is expanded, it&#39;ll contain a list of files matching the pattern, in this case that&#39;s the value &quot;in/pinkie.txt in/rainbow.txt&quot;</p>
+<p>Our desired outputs actually have the same name at these except they&#39;re in a different directory, that&#39;s okay because we can call another function to replace all the &#39;in&#39;s n the INPUTS with &#39;out&#39;s</p>
+<pre><code>OUTPUTS := <span class="variable">$(</span>patsubst <span class="keyword">in</span>/<span class="variable">%,</span>out/<span class="variable">%,</span> <span class="variable">$(</span>INPUTS))
+</code></pre><p>Putting all of this together, our Makefile now looks like this</p>
+<pre><code>INPUTS := <span class="variable">$(</span>wildcard in/<span class="variable">*.</span>txt)
+OUTPUTS := <span class="variable">$(</span>patsubst in/<span class="variable">%,</span>out/<span class="variable">%,</span> <span class="variable">$(</span>INPUTS))
+
+all: <span class="variable">$(</span>OUTPUTS)
+    <span class="variable">@echo</span> &gt; <span class="regexp">/dev/null</span>
+
+out/<span class="variable">%.</span>txt: in/<span class="variable">%.</span>txt out
+    cp <span class="variable">$&lt;</span> <span class="variable">$@</span>
+
+out:
+    <span class="keyword">mkdir</span> -p out
+</code></pre><p>This is much tidier and this forms the basis of many a Makefile.</p>
+<ul>
+<li>Scan for the inputs</li>
+<li>Generate the names of the outputs from this list of inputs</li>
+<li>Invoke targets with lists of outputs, with pre-requisites as the list of inputs</li>
+</ul>
+<h1 id="a-borderline-real-world-example">A borderline real-world example</h1>
+<p>Referring to the example found on Github here: <a href="robashton/jsconf2014">https://github.com/robashton/jsconfeu2014/tree/master/src/simplewidgets</a></p>
+<p>We have a folder layout that looks like this</p>
+<pre><code>/
+site/
+  index<span class="variable">.html</span>
+widgets/
+  pinkie/
+    img/
+      various-images<span class="variable">.png</span>
+    index<span class="variable">.styl</span>
+    index<span class="variable">.coffee</span>
+  rainbow/
+    img/
+      various-images<span class="variable">.png</span>
+    index<span class="variable">.styl</span>
+    index<span class="variable">.coffee</span>
+  celestia/
+    img/
+      various-images<span class="variable">.png</span>
+    index<span class="variable">.styl</span>
+    index<span class="variable">.coffee</span>
+</code></pre><p>What we want to do is generate</p>
+<pre><code><span class="title">site</span>/widgets.js
+<span class="title">site</span>/widgets.css
+<span class="title">img</span>/*
+</code></pre><p>From the widget folders, and we want to do so as efficiently as possible and in a way which means that Make has a good chance of not doing repeat work.</p>
+<p>I like to start with my desired outputs and work out what I need to get there, in this case, ignoring the images this means</p>
+<pre><code>widgets.js &lt;- cat widgets/<span class="variable">*/</span><span class="variable">*.</span>js &lt;- coffee -c widgets/<span class="variable">*/</span><span class="variable">*.</span>coffee
+</code></pre><p>and</p>
+<pre><code>widgets.css &lt;- cat widgets/<span class="variable">*/</span><span class="variable">*.</span>css &lt;- stylus widgets/<span class="variable">*/</span><span class="variable">*.</span>styl
+</code></pre><p>(This does mean that requires won&#39;t work in Styl, but it doesn&#39;t require a lot of imagination to stretch this makefile to only run on index.styl and declare other styl files as dependencies of it)</p>
+<p>So, first we need to bundle up our inputs</p>
+<pre><code>COFFEEFILES := <span class="variable">$(</span>wildcard widgets/<span class="variable">*/</span><span class="variable">*.</span>coffee)
+STYLUSFILES := <span class="variable">$(</span>wildcard widgets/<span class="variable">*/</span><span class="variable">*.</span>styl)
+</code></pre><p>And generate our lists of outputs</p>
+<pre><code>OUTPUTJSFILES := <span class="variable">$(</span>patsubst <span class="variable">%.</span>coffee,<span class="variable">%.</span>js, <span class="variable">$(</span>COFFEEFILES))
+OUTPUTCSSFILES := <span class="variable">$(</span>patsubst <span class="variable">%.</span>styl,<span class="variable">%.</span>css, <span class="variable">$(</span>STYLUSFILES))
+</code></pre><p>Then our code path is quite simply</p>
+<pre><code>site/widgets.<span class="method">js:</span> <span class="char">$(</span><span class="class">OUTPUTJSFILES</span>)
+    cat <span class="char">$^</span> &gt; site/widgets.js
+
+widgets/%.<span class="method">js:</span> widgets/%.coffee
+    coffee -c <span class="char">$&lt;</span>
+</code></pre><p>And our CSS path is quite simple too</p>
+<pre><code>site/widgets.<span class="method">css:</span> <span class="char">$(</span><span class="class">OUTPUTCSSFILES</span>)
+    cat <span class="char">$^</span> &gt; site/widgets.css
+
+widgets/%.<span class="method">css:</span> widgets/%.styl <span class="char">$(</span><span class="class">STYLUSFILES</span>)
+    stylus <span class="char">$&lt;</span>
+</code></pre><p>Images are a little more complicated because we&#39;re cheating and flattening the structure (everything from each /img folder goes directly in the output /img folder, so name clashes could happen. In the real world we&#39;d probably stick things in a per widget folder or more likely generate a sprite map.)</p>
+<pre><code>SOURCEIMAGES := <span class="variable">$(</span>wildcard widgets/<span class="variable">*/</span>img/<span class="variable">*.</span>png)
+COPIEDIMAGES := <span class="variable">$(</span>addsuffix  _lastcopied, <span class="variable">$(</span>SOURCEIMAGES))
+</code></pre><p>What&#39;s this _lastcopied business? We&#39;ll see</p>
+<pre><code>widgets/<span class="variable">%_lastcopied</span>: widgets/% | site/img/
+    cp widgets/<span class="variable">$*</span> site/img/
+    <span class="variable">@touch</span> <span class="variable">$@</span>
+</code></pre><p>We use a dummy file which we &quot;touch&quot; every time we copy an image, this is because in this example we lose the relationship between the input and output file. (This isn&#39;t necessary, it&#39;s just a demo to show you could do this). Make can then compare timestamps between that _lastcopied file and the image itself to determine whether it needs copying.</p>
+<p>Our make all instruction now simply looks like this</p>
+<pre><code>all: site<span class="regexp">/widgets.js site/</span>widgets.css $(COPIEDIMAGES)
+    <span class="property">@echo</span> &gt; <span class="regexp">/dev/</span><span class="literal">null</span>
+</code></pre><p>For bonus points, we can run make with</p>
+<pre><code><span class="title">make</span> -j
+</code></pre><p><strong>And all of this can be done in parallel!!</strong>. Most of the time it&#39;ll only be compiling a couple of coffee files anyway and will be super fast because Make doesn&#39;t like to do extra work.</p>
+<h1 id="makefile-re-use">Makefile re-use</h1>
+<p>So we&#39;ve written an awesome makefile that generates spritemaps, compiles various languages into JS (coffee/JSX/whatever), and then executes browserify against this and perhaps even scans node_modules for templates/stylesheets/images/etc (Well why not eh?)</p>
+<p>It&#39;d be a shame not to use these conventions across our projects, but copying a Makefile into all those projects seems like an awful idea because you don&#39;t want all the projects to be the same but &quot;slightly different&quot;.</p>
+<p>How about using wget?</p>
+<p>Our makefile can look something like this</p>
+<pre><code class="lang-bash">export WIDGET_DIR=baubles
+
+common.mk:
+    @wget -nv -O $@ <span class="string">'https://raw.github.com/robashton/jsconfeu2014/master/src/_assets/common.mk'</span> || rm -f $@
+
+-include common.mk
+</code></pre>
+<p>Note the &quot;export&quot;, we can see how this is used in common.mk over here</p>
+<pre><code><span class="title">WIDGET_DIR</span> ?= widgets
+.DEFAULT_GOAL=all
+</code></pre><p>Nice - we can configure the makefile if we decide our widgets should be called baubles, for bonus points we then execute &quot;all&quot; by default, so just typing &quot;Make&quot; will result in this file being downloaded and then the project being compiled. Mega wins.</p>
+<p><em>Note: While it is seemingly nice to use a package manager, for widget type designs like this, it&#39;s enough to just stick them into Github and recursively download the repos and either execute their make files directly or if they haven&#39;t got one, re-execute our make file in the context of that directory. (That&#39;s what we do in Erlang instead of using Rebar, but projects that have rebar or their own makefile work fine then too because we&#39;re just calling Make anyway).</em></p>
+<p>I have no opinion on whether your team should do it one way or another.</p>
+<h1 id="the-difference-between-task-runners-and-build-systems">The difference between task runners and build systems</h1>
+<p>I think most of the Grunt/Gulp whatevers and examples of usages of those I&#39;ve seen in the wild get it pretty hilariously wrong because they tread a weird line between acting as task runners and build systems. What&#39;s even worse is when you see Makefiles that look simply like this</p>
+<pre><code><span class="attribute">all</span>: <span class="string">build-js build-css</span>
+
+<span class="avrasm">build-js:
+  browserify -t brfs src/app<span class="preprocessor">.js</span> &gt; site/app<span class="preprocessor">.js</span>
+
+build-css:
+  stylus src/style<span class="preprocessor">.styl</span> &gt; site/style<span class="preprocessor">.css</span>
+
+<span class="label">etc:</span>
+  blah
+
+
+<span class="preprocessor">.PHONY</span> build-js build-css etc</span>
+</code></pre><p>For plain old task running, just stick things in npm scripts, for build processes use a build tool. In our projects this means Bash or Make but whatever works. Make&#39;s power is in generating dependency trees and only evaluating targets that are out of date (and then parallelising them). If this isn&#39;t being used then it&#39;s a bit pointless to be using Make.</p>
+<p>It goes the other way, if we&#39;re spending a pile of time trying to set up dependency structures in whatever task runner is the current hotness, perhaps looking backwards to proven technology might be a sensible notion.</p>
+<h1 id="and-that-s-it">And that&#39;s it</h1>
+<p>I hope this was useful if you&#39;ve not considered make before or have considered make and were put off, it&#39;s a fine piece of software full of magic incantations and hilariously clearly added afterthoughts.</p>

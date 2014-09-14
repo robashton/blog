@@ -77,16 +77,16 @@
 <p><img src="/img/blackline.png" alt="Black smear"></p>
 <p>I promised I&#39;d add keyboard input this time around, and I don&#39;t like to lie - so while I sit here at my client&#39;s rather amazing karting day I&#39;ve decided to give adding this a go as I don&#39;t really like karting that much ;-).</p>
 <p>First things first, I need to clear my screen in between frames or I&#39;m going to keep on having an ugly black smear instead of a moving black square, in JS this would look like.</p>
-<pre><code>context<span class="preprocessor">.clearRect</span>(<span class="number">0</span>, <span class="number">0</span>, width, height)<span class="comment">;</span></code></pre>
-<p>Not rocket science, right?</p>
+<pre><code>context<span class="preprocessor">.clearRect</span>(<span class="number">0</span>, <span class="number">0</span>, width, height)<span class="comment">;</span>
+</code></pre><p>Not rocket science, right?</p>
 <p>Well, right now, I have the function for drawing a square, which gets the context and draws a square, this looks like</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> drawSquare [x y w h]
   <span class="list">(<span class="title">let</span><span class="body"> [target <span class="list">(<span class="body">.getElementById js/document <span class="string">"target"</span>)</span></span>
         context <span class="list">(<span class="body">.getContext target <span class="string">"2d"</span>)</span></span>]
     <span class="list">(<span class="body">.fillRect context x y w h)</span></span>
   )</span></span>
-)</span></span></code></pre>
-<p>Great, but in order to have the moving square, I&#39;m going need that context more than once, and making multiple requests to get the context is a bad idea because it means lots of calls to the DOM (slow).</p>
+)</span></span>
+</code></pre><p>Great, but in order to have the moving square, I&#39;m going need that context more than once, and making multiple requests to get the context is a bad idea because it means lots of calls to the DOM (slow).</p>
 <p>Clearly this means I&#39;m going to need three functions for my purposes:</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> clearScreen [ctx]
   <span class="list">(<span class="body">.clearRect ctx <span class="number">0</span> <span class="number">0</span> WIDTH HEIGHT)</span></span>
@@ -99,25 +99,25 @@
 <span class="list">(<span class="title">defn</span><span class="body"> context []
   <span class="list">(<span class="title">let</span><span class="body"> [target <span class="list">(<span class="body">.getElementById js/document <span class="string">"target"</span>)</span></span>]
   <span class="list">(<span class="body">.getContext target <span class="string">"2d"</span>)</span></span>)</span></span>
-)</span></span></code></pre>
-<p>Meaning I can do</p>
+)</span></span>
+</code></pre><p>Meaning I can do</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> drawScene [x]
   <span class="list">(<span class="title">let</span><span class="body"> [ctx <span class="list">(<span class="title">context</span><span class="body">)</span></span>]
     <span class="list">(<span class="title">clearScreen</span><span class="body"> ctx)</span></span>
     <span class="list">(<span class="title">drawRect</span><span class="body"> x <span class="number">0</span> <span class="number">100</span> <span class="number">100</span>)</span></span>
   )</span></span>
-)</span></span></code></pre>
-<p>Now, you&#39;ll have noticed (if you&#39;re actually paying attention), that I have a &#39;Width&#39; and &#39;Height&#39; parameter for clearScreen that I haven&#39;t bothered trying to filter - that&#39;s because they&#39;re attributes of the Canvas Element and I need to get the darned things from that element and I haven&#39;t worked out a clean way of passing these things around (or retrieving them all from a function so I have the values present at that time. (Remember that I am trying to avoid global state, and as far as I know I haven&#39;t got &quot;Types&quot; for storing collections of data in.</p>
+)</span></span>
+</code></pre><p>Now, you&#39;ll have noticed (if you&#39;re actually paying attention), that I have a &#39;Width&#39; and &#39;Height&#39; parameter for clearScreen that I haven&#39;t bothered trying to filter - that&#39;s because they&#39;re attributes of the Canvas Element and I need to get the darned things from that element and I haven&#39;t worked out a clean way of passing these things around (or retrieving them all from a function so I have the values present at that time. (Remember that I am trying to avoid global state, and as far as I know I haven&#39;t got &quot;Types&quot; for storing collections of data in.</p>
 <p>Okay - so first things first, how do I get attributes from an HTML element? HTML elements? Attributes? These aren&#39;t Clojure concepts - I can do a quick Google and see that this is possible:</p>
-<pre><code><span class="list">(<span class="body">. target -width)</span></span></code></pre>
-<p>According to the Wiki on Clojurescript, this is just part of the &quot;host interop&quot; featureset - I&#39;m not entirely sure how this maps to typical Clojure.</p>
+<pre><code><span class="list">(<span class="body">. target -width)</span></span>
+</code></pre><p>According to the Wiki on Clojurescript, this is just part of the &quot;host interop&quot; featureset - I&#39;m not entirely sure how this maps to typical Clojure.</p>
 <p>Now - this still means I have the problem of how to get these out of a function, in JS I&#39;d probably have something like</p>
 <pre><code><span class="keyword">var</span> Rendering = <span class="keyword">function</span>(element) {
   <span class="keyword">this</span>.context = element.getContext(<span class="string">'2d'</span>);
   <span class="keyword">this</span>.width = element.width;
   <span class="keyword">this</span>.height = element.height;
-}</code></pre>
-<p>Or something trite like that (see my other canvas codes in Github for what this actually looks like).</p>
+}
+</code></pre><p>Or something trite like that (see my other canvas codes in Github for what this actually looks like).</p>
 <p>Can&#39;t do this here as far as I know, turns out I can return a vector, or a list or a set or something from a function (duh), so I can do something like</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> context []
   <span class="list">(<span class="title">let</span><span class="body"> [target <span class="list">(<span class="body">.getElementById js/document <span class="string">"target"</span>)</span></span>
@@ -127,27 +127,27 @@
       <span class="list">(<span class="body">. target -height)</span></span>
     ]
   )</span></span>
-)</span></span></code></pre>
-<p>Which will return a vector containing</p>
-<pre><code>[context width height]</code></pre>
-<p>I can pass this into my clearRect function for example with</p>
+)</span></span>
+</code></pre><p>Which will return a vector containing</p>
+<pre><code>[context width height]
+</code></pre><p>I can pass this into my clearRect function for example with</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> drawScene [x]
   <span class="list">(<span class="title">let</span><span class="body"> [ctx <span class="list">(<span class="title">context</span><span class="body">)</span></span>]
     <span class="list">(<span class="title">clearScreen</span><span class="body"> ctx)</span></span>
     <span class="list">(<span class="title">drawRect</span><span class="body"> x <span class="number">0</span> <span class="number">100</span> <span class="number">100</span>)</span></span>
   )</span></span>
-)</span></span></code></pre>
-<p>So nothing different here, but I&#39;ll need to unpack that vector in order to use it</p>
+)</span></span>
+</code></pre><p>So nothing different here, but I&#39;ll need to unpack that vector in order to use it</p>
 <pre><code>(defn clearScreen [ctx]
   (let <span class="string">[[context width height] ctx
     (.clearRect context 0 0 width height)
   )
-)</code></pre>
-<p>Which is a bit verbose, or doing a bit of research it appears I can automatically unpack that vector when I call the function ala</p>
+)
+</code></pre><p>Which is a bit verbose, or doing a bit of research it appears I can automatically unpack that vector when I call the function ala</p>
 <pre><code>(defn clearScreen <span class="string">[[context width height]]</span>
   (.clearRect context <span class="number">0</span> <span class="number">0</span> width height)
-)</code></pre>
-<p>I&#39;m not entirely sure how I feel about this, I&#39;m just passing blobs of data around and assuming their structure in my functions - does Clojure have any inference over this stuff for verifiability (I&#39;m not sure) - seems I&#39;m losing a lot of the safety I&#39;d have with OO constructs (regardless of type safety or whatever).</p>
+)
+</code></pre><p>I&#39;m not entirely sure how I feel about this, I&#39;m just passing blobs of data around and assuming their structure in my functions - does Clojure have any inference over this stuff for verifiability (I&#39;m not sure) - seems I&#39;m losing a lot of the safety I&#39;d have with OO constructs (regardless of type safety or whatever).</p>
 <p>Either way, my complete program currently looks like this:</p>
 <pre><code><span class="list">(<span class="title">ns</span><span class="body"> game)</span></span>
 
@@ -186,8 +186,8 @@
 
 <span class="list">(<span class="title">defn</span><span class="body"> ^<span class="keyword">:export</span> init []
   <span class="list">(<span class="title">tick</span><span class="body"> <span class="number">0</span>)</span></span> 
-)</span></span></code></pre>
-<p>This has the effect of drawing a square, clearing the rect and drawing the square again, which means my square floats across the screen.</p>
+)</span></span>
+</code></pre><p>This has the effect of drawing a square, clearing the rect and drawing the square again, which means my square floats across the screen.</p>
 <p>Seems I&#39;ve once again run out of room to talk about input to this program from the keyboard, hopefully I&#39;ll reach that next entry!</p>
 <p>I still have some pending questions from these two entries:</p>
 <ul>

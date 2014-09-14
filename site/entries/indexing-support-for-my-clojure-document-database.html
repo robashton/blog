@@ -88,15 +88,15 @@
 <pre><code><span class="rules">{ <span class="rule"><span class="attribute">name</span>:<span class="value"> <span class="string">"Pinkie Pie"</span>
   address: {
     :town <span class="string">"Ponyville"</span>
-  }</span></span></span>}</code></pre>
-<p>We might write the following map function</p>
-<pre><code><span class="list">(<span class="title"><span class="built_in">defn</span></span> pony-by-town <span class="collection">[pony]</span> <span class="collection">{ <span class="string">"town"</span> <span class="list">(<span class="title"><span class="built_in">get-in</span></span> pony <span class="collection">[<span class="attribute">:address</span> <span class="attribute">:town</span>]</span>)</span>}</span>)</span></code></pre>
-<p>The results of this might be put in some form of secondary index (in Couch this would be a variety of b-tree) for look-up purposes.</p>
+  }</span></span></span>}
+</code></pre><p>We might write the following map function</p>
+<pre><code><span class="list">(<span class="title"><span class="built_in">defn</span></span> pony-by-town <span class="collection">[pony]</span> <span class="collection">{ <span class="string">"town"</span> <span class="list">(<span class="title"><span class="built_in">get-in</span></span> pony <span class="collection">[<span class="attribute">:address</span> <span class="attribute">:town</span>]</span>)</span>}</span>)</span>
+</code></pre><p>The results of this might be put in some form of secondary index (in Couch this would be a variety of b-tree) for look-up purposes.</p>
 <p>This index definition needs storing in the database too, as the database will need to run all of these indexes on documents as they are written/modified.  Sadly there is no &quot;tidy&quot; way to serialize functions in Clojure and while I now know about macros and could probably make them do it for me, I opted for taking in strings representing these index functions.</p>
 <pre><code>{ <span class="symbol">:id</span> <span class="string">"ponies-by-town"</span>
   <span class="symbol">:map</span> <span class="string">"(fn [doc] { \"town\" (get-in doc [:address :town])})"</span>
-}</code></pre>
-<p>These have their own GET/PUT/DELETE methods in the HTTP API and Document API and are treated just like documents. (indeed, indexes.clj looks very much like documents.clj)</p>
+}
+</code></pre><p>These have their own GET/PUT/DELETE methods in the HTTP API and Document API and are treated just like documents. (indeed, indexes.clj looks very much like documents.clj)</p>
 <p><strong>The index store itself</strong></p>
 <p>Again, no way am I writing a secondary index store from scratch and just like RavenDB did, I&#39;m reaching for Lucene to provide these capabilities.</p>
 <p>Looking around, there are a few half-finished wrappers for Lucene written in Clojure - presumably to the point where they did what the authors needed and then no further. Code owned is often better than code borrowed and I therefore decided to write my own domain specific wrappers of Lucene.</p>
@@ -108,8 +108,8 @@
           (org<span class="variable">.apache</span><span class="variable">.lucene</span><span class="variable">.search</span> IndexSearcher Sort SortField SortField$Type)
           (org<span class="variable">.apache</span><span class="variable">.lucene</span><span class="variable">.queryparser</span><span class="variable">.classic</span> QueryParser)
           (org<span class="variable">.apache</span><span class="variable">.lucene</span><span class="variable">.document</span> Document Field Field$Store Field$Index
-                                      TextField IntField FloatField StringField)))</code></pre>
-<p>Very classes. Much namespace. Wow.</p>
+                                      TextField IntField FloatField StringField)))
+</code></pre><p>Very classes. Much namespace. Wow.</p>
 <p><strong>Some more protocols</strong></p>
 <p>While in the rest of the database, protocols have been used for convenient polymorphism, in this case they were used to provide very thin wrappers over Lucene (hiding the immense object construction required to build up the various reader/writer/indexes) and ensuring the consistent use of Lucene.</p>
 <pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> LuceneIndexWriting [writer analyzer]
@@ -123,8 +123,8 @@
 <span class="list">(<span class="title">defrecord</span><span class="body"> LuceneIndex [analyzer directory config]
   java.io.Closeable
   <span class="list">(<span class="title">close</span><span class="body"> [this]
-    <span class="list">(<span class="body">.close directory)</span></span>)</span></span>)</span></span></code></pre>
-<p>And lo, the following factory methods were born.</p>
+    <span class="list">(<span class="body">.close directory)</span></span>)</span></span>)</span></span>
+</code></pre><p>And lo, the following factory methods were born.</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> open-writer [index] <span class="list">(<span class="title">LuceneIndexWriting</span><span class="body">.
                       <span class="list">(<span class="title">IndexWriter</span><span class="body">. <span class="list">(<span class="body"><span class="keyword">:directory</span> index)</span></span> <span class="list">(<span class="body"><span class="keyword">:config</span> index)</span></span>)</span></span>
                         <span class="list">(<span class="body"><span class="keyword">:analyzer</span> index)</span></span>)</span></span>)</span></span>
@@ -142,8 +142,8 @@
   <span class="list">(<span class="title">let</span><span class="body"> [analyzer <span class="list">(<span class="title">StandardAnalyzer</span><span class="body">. Version/LUCENE_CURRENT)</span></span>
         directory <span class="list">(<span class="title">RAMDirectory</span><span class="body">.)</span></span>
         config <span class="list">(<span class="title">IndexWriterConfig</span><span class="body">. Version/LUCENE_CURRENT analyzer)</span></span>]
-    <span class="list">(<span class="title">LuceneIndex</span><span class="body">. analyzer directory config)</span></span>)</span></span>)</span></span></code></pre>
-<p>Not much to it, but how do we write to this?</p>
+    <span class="list">(<span class="title">LuceneIndex</span><span class="body">. analyzer directory config)</span></span>)</span></span>)</span></span>
+</code></pre><p>Not much to it, but how do we write to this?</p>
 <p><strong>Writing to our indexes</strong></p>
 <p>The only important function really, is this.</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> put-entry [index ref-id content]
@@ -151,8 +151,8 @@
     <span class="list">(<span class="title">doseq</span><span class="body"> [f <span class="list">(<span class="title">map-to-lucene</span><span class="body"> content)</span></span>] <span class="list">(<span class="body">.add doc f)</span></span>)</span></span>
     <span class="list">(<span class="body">.add doc <span class="list">(<span class="title">document-id-field</span><span class="body"> ref-id)</span></span>)</span></span>
     <span class="list">(<span class="body">.addDocument <span class="list">(<span class="body"><span class="keyword">:writer</span> index)</span></span> doc)</span></span>)</span></span>
-  index)</span></span></code></pre>
-<p>So, somehow we&#39;ll need to go through all of our documents as they are written/modified and execute all the indexes we have against them before calling put-entry and storing the results in Lucene.</p>
+  index)</span></span>
+</code></pre><p>So, somehow we&#39;ll need to go through all of our documents as they are written/modified and execute all the indexes we have against them before calling put-entry and storing the results in Lucene.</p>
 <p>That&#39;s a job for the indexing engine, but we&#39;ll leave that for now as it&#39;s one of the more complicated pieces of code and will need a bit of explanation.</p>
 <p><strong>Summary</strong></p>
 <p>Again, interop with Java is a useful tool if we want to make the most of the existing OSS ecosystem. Obviously the Java interface to Lucene is butt ugly and hiding it from the rest of the database within this <em>lucene.clj</em> module makes sense and that&#39;s exactly what I&#39;ve done.</p>

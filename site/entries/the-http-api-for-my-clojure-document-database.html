@@ -93,8 +93,8 @@
   <span class="list">(<span class="title">put-index</span><span class="body"> [this index])</span></span>
   <span class="list">(<span class="title">load-index-metadata</span><span class="body"> [this id])</span></span>
   <span class="list">(<span class="title">delete-index</span><span class="body"> [this id])</span></span>
-  <span class="list">(<span class="title">load-index</span><span class="body"> [this id])</span></span>)</span></span></code></pre>
-<p>It&#39;s fairly well established that document database operations map well into a restful interface - in the above mappings we only have two resources,</p>
+  <span class="list">(<span class="title">load-index</span><span class="body"> [this id])</span></span>)</span></span>
+</code></pre><p>It&#39;s fairly well established that document database operations map well into a restful interface - in the above mappings we only have two resources,</p>
 <ul>
 <li>/document (PUT/GET/DELETE/HEAD)</li>
 <li>/index    (PUT/GET/DELETE/HEAD)</li>
@@ -107,12 +107,12 @@
   <span class="symbol">:allowed-methods</span> [<span class="symbol">:put</span> <span class="symbol">:get</span> <span class="symbol">:delete</span> <span class="symbol">:head</span>]
   <span class="symbol">:put!</span> some-handler
   <span class="symbol">:delete!</span> some-handler
-  <span class="symbol">:handle-ok</span> some-handler)</code></pre>
-<p><strong>And HTTP-Kit</strong></p>
+  <span class="symbol">:handle-ok</span> some-handler)
+</code></pre><p><strong>And HTTP-Kit</strong></p>
 <p>By itself, liberator isn&#39;t really enough to talk to the world over HTTP, as you need a http server to actually host it.</p>
 <p>I used HTTP Kit because it supports asynchronous operations and seems to be getting the love these days. What this means, is you create some handlers using liberator and pass them into the &#39;run-server&#39; function from http-kit.</p>
-<pre><code><span class="list">(<span class="title">run-server</span><span class="body"> handlers)</span></span></code></pre>
-<p><strong>So I have an embedded database</strong></p>
+<pre><code><span class="list">(<span class="title">run-server</span><span class="body"> handlers)</span></span>
+</code></pre><p><strong>So I have an embedded database</strong></p>
 <p>I don&#39;t want these routes I&#39;ve defined to be coupled to either</p>
 <ul>
 <li>The HTTP server hosting them (http-kit in this case)</li>
@@ -121,12 +121,12 @@
 <p>So what I did is created a closure, which takes in the instance of database to talk to and returns the routes defined around that instance</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> create-http-server [instance]
   <span class="list">(<span class="title">let</span><span class="body"> [db-routes <span class="list">(<span class="title">create-routes</span><span class="body"> instance)</span></span>]
-    <span class="list">(<span class="title">handler/api</span><span class="body"> db-routes)</span></span>)</span></span>)</span></span></code></pre>
-<p>I can then use that in tests, the REPL or the main application to create a http server around an instance of a database</p>
+    <span class="list">(<span class="title">handler/api</span><span class="body"> db-routes)</span></span>)</span></span>)</span></span>
+</code></pre><p>I can then use that in tests, the REPL or the main application to create a http server around an instance of a database</p>
 <p>This is what my main application looks like for example.</p>
 <pre><code>(run-server
-  (http/<span class="operator"><span class="keyword">create</span>-http-server embedded-instance) { :port <span class="number">8001</span> :<span class="keyword">join</span>? <span class="keyword">true</span> }))</code></pre>
-<p><strong>The routes themselves</strong></p>
+  (http/<span class="operator"><span class="keyword">create</span>-http-server embedded-instance) { :port <span class="number">8001</span> :<span class="keyword">join</span>? <span class="keyword">true</span> }))
+</code></pre><p><strong>The routes themselves</strong></p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> create-routes [instance]
   <span class="list">(<span class="title">routes</span><span class="body">
     <span class="list">(<span class="title">ANY</span><span class="body"> <span class="string">"/document/:id"</span> [id]
@@ -154,8 +154,8 @@
         <span class="keyword">:delete</span>! <span class="list">(<span class="title">fn</span><span class="body"> [_] <span class="list">(<span class="title">db/delete-index</span><span class="body"> instance id)</span></span>)</span></span>
         <span class="keyword">:handle-ok</span> <span class="list">(<span class="title">fn</span><span class="body"> [_] <span class="list">(<span class="title">standard-response</span><span class="body"> _ <span class="list">(<span class="body">:<span class="keyword">:resource</span> _)</span></span> <span class="list">(<span class="body">:<span class="keyword">:metadata</span> _)</span></span> )</span></span> )</span></span>)</span></span>)</span></span>
 
-    <span class="comment">;; ETC ETC ETC ETC</span></code></pre>
-<p>They&#39;re a bit more complicated than any demo because</p>
+    <span class="comment">;; ETC ETC ETC ETC</span>
+</code></pre><p>They&#39;re a bit more complicated than any demo because</p>
 <ul>
 <li>The database support Etags for versioning</li>
 <li>An exists? check is needed and we cache the results</li>

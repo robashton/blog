@@ -1,5 +1,275 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Wed, 11 Jun 2014 10:05:59 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Document storage in my clojure document database]]></title><description><![CDATA[<p>With core storage implemented, document storage becomes the trivial matter of a few pure functions</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Sun, 14 Sep 2014 11:38:26 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[The joy of make at jsconfeu]]></title><description><![CDATA[<p>I somehow ended up doing a talk at #jsconfeu this weekend on &quot;make&quot; of all things, submitted after a night of partying with all the wrong people who thought it would be a hilarious idea.</p>
+<p>Anyway, it happened and the slides at demos are available online. (Slides // Demos ). Here is the blog post version of that talk because it is unlikely I&#39;ll ever do it again.</p>
+<h1 id="why-make">Why Make</h1>
+<p>The long and short of this is that I work on a team of cross-platform developers on a project comprised mostly of Erlang and C. Make is the natural choice for this and indeed we have a common make file across our projects found at <a href="github/id3as/erl-mk">https://github.com/id3as/erl-mk</a>.</p>
+<p>Our core codebase is shiny diamonds, polished diamonds; It&#39;s stable and relatively robust, and we string together a lot of it with the programmer equivalent of duct tape (bash scripts). Make is for building, Bash is for task execution and this separation works very well for us.</p>
+<p>Bringing in &quot;yet another build system&quot; just for JS would wind everybody up something chronic, especially when the build systems available in the JS world are confused about whether they are task runners or build scripts and the heinous mess of either JSON or JS streaming code found in this environment is pretty off-putting.</p>
+<p>So yeah, we use Make because it&#39;s there and because it&#39;s good at building things; We use Bash because it&#39;s there and it&#39;s good at running things.</p>
+<p>Also Make is just plain fun, it&#39;s such a quirky thing to work with how could you not enjoy it? (If you&#39;re working in JS you already know what it&#39;s like to work with something quirky and the two are therefore a match made in heaven)</p>
+<p>All the examples shown in this entry assume you&#39;re in the directory with a file called &quot;Makefile&quot;</p>
+<h1 id="make-is-not-a-procedural-language">Make is not a procedural language</h1>
+<p>So lesson number one in the land of Make, is what happens in the following file when we run &quot;make&quot;?</p>
+<pre><code>
+one=<span class="variable">$(</span>two)
+two=<span class="variable">$(</span>three)
+three=hello world
+
+<span class="symbol">all:</span>
+    <span class="variable">@echo</span> <span class="variable">$(</span>one)
+</code></pre><p>Well obviously we print out &quot;hello world&quot; to the console, why is that? Because anything assigned with &#39;=&#39; is a recursive variable, and they&#39;ll be recursively expanded at the point of use. (So in this case &quot;one&quot; isn&#39;t used until we echo it, at which point both two and three have values and we get a good result).</p>
+<p>This is important because it impacts how we use expressions and functions later on in the Makefile.</p>
+<h1 id="targets-pre-requisites-and-recipes">Targets, Pre-Requisites and Recipes</h1>
+<p>A makefile is comprised of variables (as we see above) and recipes (which are a combination of targets, pre-requisites and some instructions to generate those targets)</p>
+<p>For example</p>
+<pre><code><span class="keyword">out</span>/file<span class="preprocessor">.txt</span>: <span class="keyword">in</span>/file<span class="preprocessor">.txt</span>
+  <span class="keyword">cp</span> <span class="keyword">in</span>/file<span class="preprocessor">.txt</span> <span class="keyword">out</span>/file<span class="preprocessor">.txt</span>
+</code></pre><p>The above is not idiomatic, but serves to highlight that a target is <em>usually</em> a file or directory and the pre-req is often a file/directory to a file/directory too. The instructions in the recipe simply instruct Make how to generate that target from that input.</p>
+<p>Because we&#39;ve stated our targets and pre-reqs in terms of files, Make can check the timestamps of these artifacts and only run the command if the pre-req is newer than the target.</p>
+<h1 id="dry-with-pattern-rules">DRY with Pattern Rules</h1>
+<p>Given this Makefile, what stands out?</p>
+<pre><code>
+<span class="label">all:</span> <span class="keyword">out</span>/pinkie<span class="preprocessor">.txt</span> <span class="keyword">out</span>/rainbow<span class="preprocessor">.txt</span>
+    @echo &gt; /dev/null
+
+<span class="keyword">out</span>/pinkie<span class="preprocessor">.txt</span>: <span class="keyword">in</span>/pinkie<span class="preprocessor">.txt</span> <span class="keyword">out</span>
+    <span class="keyword">cp</span> <span class="keyword">in</span>/pinkie<span class="preprocessor">.txt</span> <span class="keyword">out</span>/pinkie<span class="preprocessor">.txt</span>
+
+<span class="keyword">out</span>/rainbow<span class="preprocessor">.txt</span>: <span class="keyword">in</span>/rainbow<span class="preprocessor">.txt</span> <span class="keyword">out</span>
+    <span class="keyword">cp</span> <span class="keyword">in</span>/rainbow<span class="preprocessor">.txt</span> <span class="keyword">out</span>/rainbow<span class="preprocessor">.txt</span>
+
+<span class="label">out:</span>
+    mkdir -p <span class="keyword">out</span>
+</code></pre><p>Well we&#39;re repeating ourselves a lot for what is a simple file copy. Make gives us &quot;pattern rules&quot; to help with this. Targets can be defined in terms of &quot;patterns&quot; and then we match on the pattern rather than an exact.</p>
+<pre><code><span class="label">all:</span> <span class="keyword">out</span>/pinkie<span class="preprocessor">.txt</span> <span class="keyword">out</span>/rainbow<span class="preprocessor">.txt</span>
+    @echo &gt; /dev/null
+
+<span class="keyword">out</span>/%<span class="preprocessor">.txt</span>: <span class="keyword">in</span>/%<span class="preprocessor">.txt</span> <span class="keyword">out</span>
+    <span class="keyword">cp</span> $&lt; $@
+
+<span class="label">out:</span>
+    mkdir -p <span class="keyword">out</span>
+</code></pre><p>Woah, what is going on here? Well, the percentage symbol is the pattern we&#39;re matching on, and we&#39;re still invoking that target for both out/pinkie.txt and out/rainbow.txt. Make then gives us <em>automatic variables</em> to work with; There are a good dozen of these available, but in the above example we&#39;re using</p>
+<ul>
+<li><strong>$&lt;</strong> (The <em>first</em> pre-requisite that triggered the execution of this recipe - in/pony.txt in this case</li>
+<li><strong>$@</strong> (The full name of the target being matched, in this case out/pony.txt)</li>
+</ul>
+<p>Of course, we&#39;re still manually entering out/pinkie.txt and in/pinkie.txt and that&#39;s sub-optimal so let&#39;s sort that out too.</p>
+<h1 id="using-built-ins-to-generate-targets">Using built-ins to generate targets</h1>
+<p>Various functions are available to us in Makefiles, and what we want to do is generate a list of <em>outputs</em> to invoke our targets with.</p>
+<p>The only thing we have to work with is a directory full of inputs, so let&#39;s go and find all of those first</p>
+<pre><code><span class="title">INPUTS</span> := $(wildcard in/<span class="regexp">*.txt</span>)
+</code></pre><p>When the value of INPUTS is expanded, it&#39;ll contain a list of files matching the pattern, in this case that&#39;s the value &quot;in/pinkie.txt in/rainbow.txt&quot;</p>
+<p>Our desired outputs actually have the same name at these except they&#39;re in a different directory, that&#39;s okay because we can call another function to replace all the &#39;in&#39;s n the INPUTS with &#39;out&#39;s</p>
+<pre><code>OUTPUTS := <span class="variable">$(</span>patsubst <span class="keyword">in</span>/<span class="variable">%,</span>out/<span class="variable">%,</span> <span class="variable">$(</span>INPUTS))
+</code></pre><p>Putting all of this together, our Makefile now looks like this</p>
+<pre><code>INPUTS := <span class="variable">$(</span>wildcard in/<span class="variable">*.</span>txt)
+OUTPUTS := <span class="variable">$(</span>patsubst in/<span class="variable">%,</span>out/<span class="variable">%,</span> <span class="variable">$(</span>INPUTS))
+
+all: <span class="variable">$(</span>OUTPUTS)
+    <span class="variable">@echo</span> &gt; <span class="regexp">/dev/null</span>
+
+out/<span class="variable">%.</span>txt: in/<span class="variable">%.</span>txt out
+    cp <span class="variable">$&lt;</span> <span class="variable">$@</span>
+
+out:
+    <span class="keyword">mkdir</span> -p out
+</code></pre><p>This is much tidier and this forms the basis of many a Makefile.</p>
+<ul>
+<li>Scan for the inputs</li>
+<li>Generate the names of the outputs from this list of inputs</li>
+<li>Invoke targets with lists of outputs, with pre-requisites as the list of inputs</li>
+</ul>
+<h1 id="a-borderline-real-world-example">A borderline real-world example</h1>
+<p>Referring to the example found on Github here: <a href="robashton/jsconf2014">https://github.com/robashton/jsconfeu2014/tree/master/src/simplewidgets</a></p>
+<p>We have a folder layout that looks like this</p>
+<pre><code>/
+site/
+  index<span class="variable">.html</span>
+widgets/
+  pinkie/
+    img/
+      various-images<span class="variable">.png</span>
+    index<span class="variable">.styl</span>
+    index<span class="variable">.coffee</span>
+  rainbow/
+    img/
+      various-images<span class="variable">.png</span>
+    index<span class="variable">.styl</span>
+    index<span class="variable">.coffee</span>
+  celestia/
+    img/
+      various-images<span class="variable">.png</span>
+    index<span class="variable">.styl</span>
+    index<span class="variable">.coffee</span>
+</code></pre><p>What we want to do is generate</p>
+<pre><code><span class="title">site</span>/widgets.js
+<span class="title">site</span>/widgets.css
+<span class="title">img</span>/*
+</code></pre><p>From the widget folders, and we want to do so as efficiently as possible and in a way which means that Make has a good chance of not doing repeat work.</p>
+<p>I like to start with my desired outputs and work out what I need to get there, in this case, ignoring the images this means</p>
+<pre><code>widgets.js &lt;- cat widgets/<span class="variable">*/</span><span class="variable">*.</span>js &lt;- coffee -c widgets/<span class="variable">*/</span><span class="variable">*.</span>coffee
+</code></pre><p>and</p>
+<pre><code>widgets.css &lt;- cat widgets/<span class="variable">*/</span><span class="variable">*.</span>css &lt;- stylus widgets/<span class="variable">*/</span><span class="variable">*.</span>styl
+</code></pre><p>(This does mean that requires won&#39;t work in Styl, but it doesn&#39;t require a lot of imagination to stretch this makefile to only run on index.styl and declare other styl files as dependencies of it)</p>
+<p>So, first we need to bundle up our inputs</p>
+<pre><code>COFFEEFILES := <span class="variable">$(</span>wildcard widgets/<span class="variable">*/</span><span class="variable">*.</span>coffee)
+STYLUSFILES := <span class="variable">$(</span>wildcard widgets/<span class="variable">*/</span><span class="variable">*.</span>styl)
+</code></pre><p>And generate our lists of outputs</p>
+<pre><code>OUTPUTJSFILES := <span class="variable">$(</span>patsubst <span class="variable">%.</span>coffee,<span class="variable">%.</span>js, <span class="variable">$(</span>COFFEEFILES))
+OUTPUTCSSFILES := <span class="variable">$(</span>patsubst <span class="variable">%.</span>styl,<span class="variable">%.</span>css, <span class="variable">$(</span>STYLUSFILES))
+</code></pre><p>Then our code path is quite simply</p>
+<pre><code>site/widgets.<span class="method">js:</span> <span class="char">$(</span><span class="class">OUTPUTJSFILES</span>)
+    cat <span class="char">$^</span> &gt; site/widgets.js
+
+widgets/%.<span class="method">js:</span> widgets/%.coffee
+    coffee -c <span class="char">$&lt;</span>
+</code></pre><p>And our CSS path is quite simple too</p>
+<pre><code>site/widgets.<span class="method">css:</span> <span class="char">$(</span><span class="class">OUTPUTCSSFILES</span>)
+    cat <span class="char">$^</span> &gt; site/widgets.css
+
+widgets/%.<span class="method">css:</span> widgets/%.styl <span class="char">$(</span><span class="class">STYLUSFILES</span>)
+    stylus <span class="char">$&lt;</span>
+</code></pre><p>Images are a little more complicated because we&#39;re cheating and flattening the structure (everything from each /img folder goes directly in the output /img folder, so name clashes could happen. In the real world we&#39;d probably stick things in a per widget folder or more likely generate a sprite map.)</p>
+<pre><code>SOURCEIMAGES := <span class="variable">$(</span>wildcard widgets/<span class="variable">*/</span>img/<span class="variable">*.</span>png)
+COPIEDIMAGES := <span class="variable">$(</span>addsuffix  _lastcopied, <span class="variable">$(</span>SOURCEIMAGES))
+</code></pre><p>What&#39;s this _lastcopied business? We&#39;ll see</p>
+<pre><code>widgets/<span class="variable">%_lastcopied</span>: widgets/% | site/img/
+    cp widgets/<span class="variable">$*</span> site/img/
+    <span class="variable">@touch</span> <span class="variable">$@</span>
+</code></pre><p>We use a dummy file which we &quot;touch&quot; every time we copy an image, this is because in this example we lose the relationship between the input and output file. (This isn&#39;t necessary, it&#39;s just a demo to show you could do this). Make can then compare timestamps between that _lastcopied file and the image itself to determine whether it needs copying.</p>
+<p>Our make all instruction now simply looks like this</p>
+<pre><code>all: site<span class="regexp">/widgets.js site/</span>widgets.css $(COPIEDIMAGES)
+    <span class="property">@echo</span> &gt; <span class="regexp">/dev/</span><span class="literal">null</span>
+</code></pre><p>For bonus points, we can run make with</p>
+<pre><code><span class="title">make</span> -j
+</code></pre><p><strong>And all of this can be done in parallel!!</strong>. Most of the time it&#39;ll only be compiling a couple of coffee files anyway and will be super fast because Make doesn&#39;t like to do extra work.</p>
+<h1 id="makefile-re-use">Makefile re-use</h1>
+<p>So we&#39;ve written an awesome makefile that generates spritemaps, compiles various languages into JS (coffee/JSX/whatever), and then executes browserify against this and perhaps even scans node_modules for templates/stylesheets/images/etc (Well why not eh?)</p>
+<p>It&#39;d be a shame not to use these conventions across our projects, but copying a Makefile into all those projects seems like an awful idea because you don&#39;t want all the projects to be the same but &quot;slightly different&quot;.</p>
+<p>How about using wget?</p>
+<p>Our makefile can look something like this</p>
+<pre><code class="lang-bash">export WIDGET_DIR=baubles
+
+common.mk:
+    @wget -nv -O $@ <span class="string">'https://raw.github.com/robashton/jsconfeu2014/master/src/_assets/common.mk'</span> || rm -f $@
+
+-include common.mk
+</code></pre>
+<p>Note the &quot;export&quot;, we can see how this is used in common.mk over here</p>
+<pre><code><span class="title">WIDGET_DIR</span> ?= widgets
+.DEFAULT_GOAL=all
+</code></pre><p>Nice - we can configure the makefile if we decide our widgets should be called baubles, for bonus points we then execute &quot;all&quot; by default, so just typing &quot;Make&quot; will result in this file being downloaded and then the project being compiled. Mega wins.</p>
+<p><em>Note: While it is seemingly nice to use a package manager, for widget type designs like this, it&#39;s enough to just stick them into Github and recursively download the repos and either execute their make files directly or if they haven&#39;t got one, re-execute our make file in the context of that directory. (That&#39;s what we do in Erlang instead of using Rebar, but projects that have rebar or their own makefile work fine then too because we&#39;re just calling Make anyway).</em></p>
+<p>I have no opinion on whether your team should do it one way or another.</p>
+<h1 id="the-difference-between-task-runners-and-build-systems">The difference between task runners and build systems</h1>
+<p>I think most of the Grunt/Gulp whatevers and examples of usages of those I&#39;ve seen in the wild get it pretty hilariously wrong because they tread a weird line between acting as task runners and build systems. What&#39;s even worse is when you see Makefiles that look simply like this</p>
+<pre><code><span class="attribute">all</span>: <span class="string">build-js build-css</span>
+
+<span class="avrasm">build-js:
+  browserify -t brfs src/app<span class="preprocessor">.js</span> &gt; site/app<span class="preprocessor">.js</span>
+
+build-css:
+  stylus src/style<span class="preprocessor">.styl</span> &gt; site/style<span class="preprocessor">.css</span>
+
+<span class="label">etc:</span>
+  blah
+
+
+<span class="preprocessor">.PHONY</span> build-js build-css etc</span>
+</code></pre><p>For plain old task running, just stick things in npm scripts, for build processes use a build tool. In our projects this means Bash or Make but whatever works. Make&#39;s power is in generating dependency trees and only evaluating targets that are out of date (and then parallelising them). If this isn&#39;t being used then it&#39;s a bit pointless to be using Make.</p>
+<p>It goes the other way, if we&#39;re spending a pile of time trying to set up dependency structures in whatever task runner is the current hotness, perhaps looking backwards to proven technology might be a sensible notion.</p>
+<h1 id="and-that-s-it">And that&#39;s it</h1>
+<p>I hope this was useful if you&#39;ve not considered make before or have considered make and were put off, it&#39;s a fine piece of software full of magic incantations and hilariously clearly added afterthoughts.</p>
+]]></description><link>http://codeofrob.com/entries/the-joy-of-make-at-jsconfeu.html</link><guid isPermaLink="true">http://codeofrob.com/entries/the-joy-of-make-at-jsconfeu.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Sun, 14 Sep 2014 09:30:00 GMT</pubDate></item><item><title><![CDATA[Indexing support for my clojure document database]]></title><description><![CDATA[<p>What is a document database without the ability to query?</p>
+<ul>
+<li><a href="/entries/i-wrote-a-document-database-in-clojure.html">I wrote a Clojure document database</a></li>
+<li><a href="/entries/the-client-api-for-my-clojure-document-database.html">The Client API for my Clojure document database</a></li>
+<li><a href="/entries/the-http-api-for-my-clojure-document-database.html">The HTTP API for my Clojure document database</a></li>
+<li><a href="/entries/the-core-storage-protocols-for-my-clojure-document-database.html">The core storage protocols for the Clojure document database</a></li>
+<li><a href="/entries/the-leveldb-storage-for-my-clojure-document-database.html">LevelDB storage implementation for the Clojure document database</a></li>
+<li><a href="/the-inmemory-storage-for-my-clojure-document-database.html">In-memory storage for the Clojure document database</a></li>
+<li><a href="/entries/document-storage-in-my-clojure-document-database.html">Document storage in the Clojure document database</a></li>
+</ul>
+<p><strong>What is an index?</strong></p>
+<p>An index, is just something that transforms a potentially complex document into something that can be put into our index store. For example, if we had the following document and we wanted to be able to search for ponies by the town in which they live.</p>
+<pre><code><span class="rules">{ <span class="rule"><span class="attribute">name</span>:<span class="value"> <span class="string">"Pinkie Pie"</span>
+  address: {
+    :town <span class="string">"Ponyville"</span>
+  }</span></span></span>}
+</code></pre><p>We might write the following map function</p>
+<pre><code><span class="list">(<span class="title"><span class="built_in">defn</span></span> pony-by-town <span class="collection">[pony]</span> <span class="collection">{ <span class="string">"town"</span> <span class="list">(<span class="title"><span class="built_in">get-in</span></span> pony <span class="collection">[<span class="attribute">:address</span> <span class="attribute">:town</span>]</span>)</span>}</span>)</span>
+</code></pre><p>The results of this might be put in some form of secondary index (in Couch this would be a variety of b-tree) for look-up purposes.</p>
+<p>This index definition needs storing in the database too, as the database will need to run all of these indexes on documents as they are written/modified.  Sadly there is no &quot;tidy&quot; way to serialize functions in Clojure and while I now know about macros and could probably make them do it for me, I opted for taking in strings representing these index functions.</p>
+<pre><code>{ <span class="symbol">:id</span> <span class="string">"ponies-by-town"</span>
+  <span class="symbol">:map</span> <span class="string">"(fn [doc] { \"town\" (get-in doc [:address :town])})"</span>
+}
+</code></pre><p>These have their own GET/PUT/DELETE methods in the HTTP API and Document API and are treated just like documents. (indeed, indexes.clj looks very much like documents.clj)</p>
+<p><strong>The index store itself</strong></p>
+<p>Again, no way am I writing a secondary index store from scratch and just like RavenDB did, I&#39;m reaching for Lucene to provide these capabilities.</p>
+<p>Looking around, there are a few half-finished wrappers for Lucene written in Clojure - presumably to the point where they did what the authors needed and then no further. Code owned is often better than code borrowed and I therefore decided to write my own domain specific wrappers of Lucene.</p>
+<pre><code>(:import
+          (org<span class="variable">.apache</span><span class="variable">.lucene</span><span class="variable">.analysis</span><span class="variable">.standard</span> StandardAnalyzer)
+          (org<span class="variable">.apache</span><span class="variable">.lucene</span><span class="variable">.store</span> FSDirectory RAMDirectory)
+          (org<span class="variable">.apache</span><span class="variable">.lucene</span><span class="variable">.util</span> Version)
+          (org<span class="variable">.apache</span><span class="variable">.lucene</span><span class="variable">.index</span> IndexWriterConfig IndexWriter DirectoryReader)
+          (org<span class="variable">.apache</span><span class="variable">.lucene</span><span class="variable">.search</span> IndexSearcher Sort SortField SortField$Type)
+          (org<span class="variable">.apache</span><span class="variable">.lucene</span><span class="variable">.queryparser</span><span class="variable">.classic</span> QueryParser)
+          (org<span class="variable">.apache</span><span class="variable">.lucene</span><span class="variable">.document</span> Document Field Field$Store Field$Index
+                                      TextField IntField FloatField StringField)))
+</code></pre><p>Very classes. Much namespace. Wow.</p>
+<p><strong>Some more protocols</strong></p>
+<p>While in the rest of the database, protocols have been used for convenient polymorphism, in this case they were used to provide very thin wrappers over Lucene (hiding the immense object construction required to build up the various reader/writer/indexes) and ensuring the consistent use of Lucene.</p>
+<pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> LuceneIndexWriting [writer analyzer]
+  java.io.Closeable
+  <span class="list">(<span class="title">close</span><span class="body"> [this]
+    <span class="list">(<span class="body">.close writer)</span></span>)</span></span>)</span></span>
+<span class="list">(<span class="title">defrecord</span><span class="body"> LuceneIndexReading [reader analyzer]
+  java.io.Closeable
+  <span class="list">(<span class="title">close</span><span class="body"> [this]
+    <span class="list">(<span class="body">.close reader)</span></span>)</span></span>)</span></span>
+<span class="list">(<span class="title">defrecord</span><span class="body"> LuceneIndex [analyzer directory config]
+  java.io.Closeable
+  <span class="list">(<span class="title">close</span><span class="body"> [this]
+    <span class="list">(<span class="body">.close directory)</span></span>)</span></span>)</span></span>
+</code></pre><p>And lo, the following factory methods were born.</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> open-writer [index] <span class="list">(<span class="title">LuceneIndexWriting</span><span class="body">.
+                      <span class="list">(<span class="title">IndexWriter</span><span class="body">. <span class="list">(<span class="body"><span class="keyword">:directory</span> index)</span></span> <span class="list">(<span class="body"><span class="keyword">:config</span> index)</span></span>)</span></span>
+                        <span class="list">(<span class="body"><span class="keyword">:analyzer</span> index)</span></span>)</span></span>)</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> open-reader [index] <span class="list">(<span class="title">LuceneIndexReading</span><span class="body">.
+                      <span class="list">(<span class="title">DirectoryReader/open</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:directory</span> index)</span></span>)</span></span> <span class="list">(<span class="body"><span class="keyword">:analyzer</span> index)</span></span>)</span></span>)</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> create-index [file]
+  <span class="list">(<span class="title">let</span><span class="body"> [analyzer <span class="list">(<span class="title">StandardAnalyzer</span><span class="body">. Version/LUCENE_CURRENT)</span></span>
+        directory <span class="list">(<span class="title">FSDirectory/open</span><span class="body"> file)</span></span>
+        config <span class="list">(<span class="title">IndexWriterConfig</span><span class="body">. Version/LUCENE_CURRENT analyzer)</span></span> ]
+    <span class="list">(<span class="title">LuceneIndex</span><span class="body">. analyzer directory config)</span></span>)</span></span>)</span></span>
+
+<span class="list">(<span class="title">defn</span><span class="body"> create-memory-index []
+  <span class="list">(<span class="title">let</span><span class="body"> [analyzer <span class="list">(<span class="title">StandardAnalyzer</span><span class="body">. Version/LUCENE_CURRENT)</span></span>
+        directory <span class="list">(<span class="title">RAMDirectory</span><span class="body">.)</span></span>
+        config <span class="list">(<span class="title">IndexWriterConfig</span><span class="body">. Version/LUCENE_CURRENT analyzer)</span></span>]
+    <span class="list">(<span class="title">LuceneIndex</span><span class="body">. analyzer directory config)</span></span>)</span></span>)</span></span>
+</code></pre><p>Not much to it, but how do we write to this?</p>
+<p><strong>Writing to our indexes</strong></p>
+<p>The only important function really, is this.</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> put-entry [index ref-id content]
+  <span class="list">(<span class="title">let</span><span class="body"> [doc <span class="list">(<span class="title">Document</span><span class="body">.)</span></span>]
+    <span class="list">(<span class="title">doseq</span><span class="body"> [f <span class="list">(<span class="title">map-to-lucene</span><span class="body"> content)</span></span>] <span class="list">(<span class="body">.add doc f)</span></span>)</span></span>
+    <span class="list">(<span class="body">.add doc <span class="list">(<span class="title">document-id-field</span><span class="body"> ref-id)</span></span>)</span></span>
+    <span class="list">(<span class="body">.addDocument <span class="list">(<span class="body"><span class="keyword">:writer</span> index)</span></span> doc)</span></span>)</span></span>
+  index)</span></span>
+</code></pre><p>So, somehow we&#39;ll need to go through all of our documents as they are written/modified and execute all the indexes we have against them before calling put-entry and storing the results in Lucene.</p>
+<p>That&#39;s a job for the indexing engine, but we&#39;ll leave that for now as it&#39;s one of the more complicated pieces of code and will need a bit of explanation.</p>
+<p><strong>Summary</strong></p>
+<p>Again, interop with Java is a useful tool if we want to make the most of the existing OSS ecosystem. Obviously the Java interface to Lucene is butt ugly and hiding it from the rest of the database within this <em>lucene.clj</em> module makes sense and that&#39;s exactly what I&#39;ve done.</p>
+<p><strong>Related Files</strong></p>
+<ul>
+<li>indexes.clj</li>
+<li>lucene.clj</li>
+</ul>
+]]></description><link>http://codeofrob.com/entries/indexing-support-for-my-clojure-document-database.html</link><guid isPermaLink="true">http://codeofrob.com/entries/indexing-support-for-my-clojure-document-database.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 12 Jun 2014 09:30:00 GMT</pubDate></item><item><title><![CDATA[Document storage in my clojure document database]]></title><description><![CDATA[<p>With core storage implemented, document storage becomes the trivial matter of a few pure functions</p>
 <ul>
 <li><a href="/entries/i-wrote-a-document-database-in-clojure.html">I wrote a Clojure document database</a></li>
 <li><a href="/entries/the-client-api-for-my-clojure-document-database.html">The Client API for my Clojure document database</a></li>
@@ -29,8 +299,8 @@
 (<span class="function"><span class="keyword">def</span> <span class="title">conflict</span><span class="title">-</span><span class="title">prefix</span> </span><span class="string">"conflict-"</span>)
 (<span class="function"><span class="keyword">def</span> <span class="title">document</span><span class="title">-</span><span class="title">prefix</span> </span><span class="string">"doc-"</span>)
 (<span class="function"><span class="keyword">def</span> <span class="title">last</span><span class="title">-</span><span class="title">synctag</span><span class="title">-</span><span class="title">key</span> </span><span class="string">"last-synctag"</span>)
-(<span class="function"><span class="keyword">def</span> <span class="title">docs</span><span class="title">-</span><span class="title">to</span><span class="title">-</span><span class="title">metadata</span><span class="title">-</span><span class="title">prefix</span> </span><span class="string">"docs-to-metadata-"</span>)</code></pre>
-<p>Thus, writing is actually the addition of multiple entries to the underlying key-value store. I have a few helper methods for determining whether an entry in the underlying storage is a specific type of key/value pair. Note: I know, these are using reflection and I should be using the built in string methods - I never got around to updating this code :)</p>
+(<span class="function"><span class="keyword">def</span> <span class="title">docs</span><span class="title">-</span><span class="title">to</span><span class="title">-</span><span class="title">metadata</span><span class="title">-</span><span class="title">prefix</span> </span><span class="string">"docs-to-metadata-"</span>)
+</code></pre><p>Thus, writing is actually the addition of multiple entries to the underlying key-value store. I have a few helper methods for determining whether an entry in the underlying storage is a specific type of key/value pair. Note: I know, these are using reflection and I should be using the built in string methods - I never got around to updating this code :)</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> is-document-key [^String k]
   <span class="list">(<span class="body">.startsWith k document-prefix)</span></span>)</span></span>
 <span class="list">(<span class="title">defn</span><span class="body"> is-document-key-prefixed-with [prefix entry]
@@ -42,30 +312,30 @@
 <span class="list">(<span class="title">defn</span><span class="body"> is-conflict-entry [m]
   <span class="list">(<span class="body">.startsWith <span class="list">(<span class="body"><span class="keyword">:k</span> m)</span></span> conflict-prefix)</span></span>)</span></span>
 <span class="list">(<span class="title">defn</span><span class="body"> is-conflict-entry-for [m doc-id]
-  <span class="list">(<span class="body">.startsWith <span class="list">(<span class="body"><span class="keyword">:k</span> m)</span></span> <span class="list">(<span class="title">str</span><span class="body"> conflict-prefix doc-id)</span></span>)</span></span>)</span></span></code></pre>
-<p>Storing a document is just a repeated application of chnages to the underlying transaction as described in previous entries</p>
+  <span class="list">(<span class="body">.startsWith <span class="list">(<span class="body"><span class="keyword">:k</span> m)</span></span> <span class="list">(<span class="title">str</span><span class="body"> conflict-prefix doc-id)</span></span>)</span></span>)</span></span>
+</code></pre><p>Storing a document is just a repeated application of chnages to the underlying transaction as described in previous entries</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> store-document
   [db id document metadata]
   <span class="list">(<span class="title">-&gt;</span><span class="body"> db
     <span class="list">(<span class="title">s/store</span><span class="body"> <span class="list">(<span class="title">str</span><span class="body"> document-prefix id)</span></span> document)</span></span>
     <span class="list">(<span class="title">s/store</span><span class="body"> <span class="list">(<span class="title">str</span><span class="body"> synctags-to-docs-prefix <span class="list">(<span class="body"><span class="keyword">:synctag</span> metadata)</span></span>)</span></span> id)</span></span>
-    <span class="list">(<span class="title">s/store</span><span class="body"> <span class="list">(<span class="title">str</span><span class="body"> docs-to-metadata-prefix id)</span></span> metadata)</span></span>)</span></span>)</span></span></code></pre>
-<p>Likewise, deletion is a similar story</p>
+    <span class="list">(<span class="title">s/store</span><span class="body"> <span class="list">(<span class="title">str</span><span class="body"> docs-to-metadata-prefix id)</span></span> metadata)</span></span>)</span></span>)</span></span>
+</code></pre><p>Likewise, deletion is a similar story</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> delete-document
   [session id metadata]
   <span class="list">(<span class="title">-&gt;</span><span class="body"> session
     <span class="list">(<span class="title">s/delete</span><span class="body"> <span class="list">(<span class="title">str</span><span class="body"> document-prefix id)</span></span>)</span></span>
     <span class="list">(<span class="title">s/store</span><span class="body"> <span class="list">(<span class="title">str</span><span class="body"> synctags-to-docs-prefix <span class="list">(<span class="body"><span class="keyword">:synctag</span> metadata)</span></span>)</span></span> id)</span></span>
-    <span class="list">(<span class="title">s/store</span><span class="body"> <span class="list">(<span class="title">str</span><span class="body"> docs-to-metadata-prefix id)</span></span> metadata)</span></span>)</span></span>)</span></span></code></pre>
-<p>Not that while we delete the actual document and data, we associate this operation with metadata and a version regardless, we we can resolve this appropriately if a conflict arises.</p>
+    <span class="list">(<span class="title">s/store</span><span class="body"> <span class="list">(<span class="title">str</span><span class="body"> docs-to-metadata-prefix id)</span></span> metadata)</span></span>)</span></span>)</span></span>
+</code></pre><p>Not that while we delete the actual document and data, we associate this operation with metadata and a version regardless, we we can resolve this appropriately if a conflict arises.</p>
 <p>Registration of conflicts is managed externally to all of this, and thus there is also a store-conflict function surfaced.</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> store-conflict [db id document metadata]
   <span class="list">(<span class="title">s/store</span><span class="body"> db <span class="list">(<span class="title">str</span><span class="body"> conflict-prefix id <span class="list">(<span class="body"><span class="keyword">:synctag</span> metadata)</span></span>)</span></span>
           {
             <span class="keyword">:id</span> id
             <span class="keyword">:data</span> document
-            <span class="keyword">:metadata</span> metadata })</span></span>)</span></span></code></pre>
-<p>Getting all the conflicts from the document storage, is just a matter of opening an appropriate iterator and reading entries until one is not a conflict</p>
+            <span class="keyword">:metadata</span> metadata })</span></span>)</span></span>
+</code></pre><p>Getting all the conflicts from the document storage, is just a matter of opening an appropriate iterator and reading entries until one is not a conflict</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> conflicts
   <span class="list">(<span class="body">[db] <span class="list">(<span class="title">conflicts</span><span class="body"> db <span class="string">""</span>)</span></span>)</span></span>
   <span class="list">(<span class="body">[db prefix]
@@ -73,8 +343,8 @@
         <span class="list">(<span class="title">s/seek</span><span class="body"> iter <span class="list">(<span class="title">str</span><span class="body"> conflict-prefix prefix)</span></span>)</span></span>
         <span class="list">(<span class="title">doall</span><span class="body"> <span class="list">(<span class="title">-&gt;&gt;</span><span class="body"> <span class="list">(<span class="title">s/as-seq</span><span class="body"> iter)</span></span>
             <span class="list">(<span class="title">take-while</span><span class="body"> #<span class="list">(<span class="title">is-conflict-entry-for</span><span class="body"> %<span class="number">1</span> prefix)</span></span>)</span></span>
-            <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:v</span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>This is not lazy, we can see a with-open block and a do-all, I guess if I&#39;d fleshed out the MVCC set-up then the iterator control would have been passed up to a higher layer.</p>
+            <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:v</span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>
+</code></pre><p>This is not lazy, we can see a with-open block and a do-all, I guess if I&#39;d fleshed out the MVCC set-up then the iterator control would have been passed up to a higher layer.</p>
 <p>For convenience, the documents also surface some convenience methods for reading through documents from a specific key or order. Unlike conflicts, these take in an iterator and it is assumed that the utiliser will take care of evaluation and the closing of that iterator in the appropriate manner.</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> iterate-documents-prefixed-with [iter prefix]
   <span class="list">(<span class="title">s/seek</span><span class="body"> iter <span class="list">(<span class="title">str</span><span class="body"> document-prefix prefix)</span></span>)</span></span>
@@ -84,8 +354,8 @@
 
 <span class="list">(<span class="title">defn</span><span class="body"> iterate-synctags-after [iter synctag]
   <span class="list">(<span class="title">s/seek</span><span class="body"> iter <span class="list">(<span class="title">str</span><span class="body"> synctags-to-docs-prefix <span class="list">(<span class="title">next-synctag</span><span class="body"> synctag)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">-&gt;&gt;</span><span class="body"> <span class="list">(<span class="title">s/as-seq</span><span class="body"> iter)</span></span> <span class="list">(<span class="title">take-while</span><span class="body"> is-synctag-docs-entry)</span></span> <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:v</span>)</span></span> <span class="list">(<span class="title">distinct</span><span class="body">)</span></span>)</span></span>)</span></span></code></pre>
-<p>That&#39;s actually the entire implementation of document storage listed out in this blog entry. Clojure can be very terse at timess due to the data-oriented nature of this code - and in my opinion doesn&#39;t lose legibility in this case for that sake.</p>
+  <span class="list">(<span class="title">-&gt;&gt;</span><span class="body"> <span class="list">(<span class="title">s/as-seq</span><span class="body"> iter)</span></span> <span class="list">(<span class="title">take-while</span><span class="body"> is-synctag-docs-entry)</span></span> <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:v</span>)</span></span> <span class="list">(<span class="title">distinct</span><span class="body">)</span></span>)</span></span>)</span></span>
+</code></pre><p>That&#39;s actually the entire implementation of document storage listed out in this blog entry. Clojure can be very terse at timess due to the data-oriented nature of this code - and in my opinion doesn&#39;t lose legibility in this case for that sake.</p>
 <p>Note that all functions in this are actually pure, they take in one map, and return a new map with changes applied to it. (Or as pure as they can be, the underlying storage mechnism can do all sorts of weird things with atoms and we wouldn&#39;t even know.)</p>
 <p><strong>Related Files</strong></p>
 <ul>
@@ -101,8 +371,8 @@
 </ul>
 <p>Well, this is quite a simple thing. As described in the last two entries - we have a very small surface area to implement for our storage system, and all objects are passed in as Plain Old Clojure data structures. The implemention therefore clocks in at under 40 lines of code and is shown in its entirety below.</p>
 <p>Memory storage is implemented as an atom containing a sorted map.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> create [] <span class="list">(<span class="title">MemoryStorage</span><span class="body">. <span class="list">(<span class="title">atom</span><span class="body"> <span class="list">(<span class="title">sorted-map</span><span class="body">)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>MemoryStorage merely returns whatever is in this atom at the start of a transaction (giving read isolation)</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> create [] <span class="list">(<span class="title">MemoryStorage</span><span class="body">. <span class="list">(<span class="title">atom</span><span class="body"> <span class="list">(<span class="title">sorted-map</span><span class="body">)</span></span>)</span></span>)</span></span>)</span></span>
+</code></pre><p>MemoryStorage merely returns whatever is in this atom at the start of a transaction (giving read isolation)</p>
 <pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> MemoryStorage [memory]
   java.io.Closeable
   Reader
@@ -110,8 +380,8 @@
   <span class="list">(<span class="title">ensure-transaction</span><span class="body"> [ops] <span class="list">(<span class="title">MemoryTransaction</span><span class="body">. @<span class="list">(<span class="body"><span class="keyword">:memory</span> ops)</span></span> <span class="list">(<span class="body"><span class="keyword">:memory</span> ops)</span></span>)</span></span>)</span></span>
   <span class="list">(<span class="title">from-db</span><span class="body"> [this id] <span class="list">(<span class="title">get</span><span class="body"> @memory id)</span></span>)</span></span>
   <span class="list">(<span class="title">open-iterator</span><span class="body"> [this] <span class="list">(<span class="title">MemoryIterator</span><span class="body">. <span class="literal">nil</span> memory <span class="list">(<span class="title">atom</span><span class="body"> <span class="literal">nil</span>)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span></code></pre>
-<p>Commiting the transaction, is just a reduction of operations inside the transaction into whatever is in the atom.</p>
+  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span>
+</code></pre><p>Commiting the transaction, is just a reduction of operations inside the transaction into whatever is in the atom.</p>
 <pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> MemoryTransaction [snapshot memory]
   java.io.Closeable
   Writer
@@ -121,8 +391,8 @@
   <span class="list">(<span class="title">commit</span><span class="body">! [this] <span class="list">(<span class="title">swap</span><span class="body">! memory #<span class="list">(<span class="title">reduce</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> [m [k v]]
                   <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> <span class="keyword">:deleted</span> v)</span></span> <span class="list">(<span class="title">dissoc</span><span class="body"> m k)</span></span> <span class="list">(<span class="title">assoc</span><span class="body"> m k v)</span></span>)</span></span>)</span></span>
                                         %<span class="number">1</span> <span class="list">(<span class="body"><span class="keyword">:cache</span> this)</span></span>)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span></code></pre>
-<p>And because we created a sorted map, iterating means dropping up to the point where we want to begin iterating, and returning the sequence.</p>
+  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span>
+</code></pre><p>And because we created a sorted map, iterating means dropping up to the point where we want to begin iterating, and returning the sequence.</p>
 <pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> MemoryIterator [snapshot memory start]
   java.io.Closeable
   Iterator
@@ -130,8 +400,8 @@
   <span class="list">(<span class="title">as-seq</span><span class="body"> [this]
     <span class="list">(<span class="title">map</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> [i] {<span class="keyword">:k</span> <span class="list">(<span class="title">key</span><span class="body"> i)</span></span> <span class="keyword">:v</span> <span class="list">(<span class="title">val</span><span class="body"> i)</span></span>})</span></span>
       <span class="list">(<span class="title">drop-while</span><span class="body"> #<span class="list">(<span class="title">&gt;</span><span class="body"> <span class="number">0</span> <span class="list">(<span class="title">compare</span><span class="body"> <span class="list">(<span class="title">key</span><span class="body"> %<span class="number">1</span>)</span></span> @start)</span></span>)</span></span> <span class="list">(<span class="title">or</span><span class="body"> snapshot @memory)</span></span>)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span></code></pre>
-<p>Obviously not suitable for production, but it keeps the tests fast (and runnable on various environments without needing native compiles). It also makes it easier to work in the REPL as there is no need to worry about on-disk artifacts or locking.</p>
+  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span>
+</code></pre><p>Obviously not suitable for production, but it keeps the tests fast (and runnable on various environments without needing native compiles). It also makes it easier to work in the REPL as there is no need to worry about on-disk artifacts or locking.</p>
 <p><strong>Summary</strong></p>
 <p>Having a small surface area for storage implementation, and keeping communication with core storage a matter of using plain old clojure data structures made this easy to write.</p>
 <p><strong>Related Files</strong></p>
@@ -150,8 +420,8 @@
 <pre><code>(:<span class="import"><span class="keyword">import</span> <span class="container">(<span class="title">org</span>.<span class="title">iq80</span>.<span class="title">leveldb</span> <span class="type">Options</span> <span class="type">ReadOptions</span> <span class="type">WriteOptions</span> <span class="type">DBIterator</span>)</span></span>
           (org.fusesource.leveldbjni <span class="type">JniDBFactory</span>)
           (java.io <span class="type">File</span>)
-          (java.nio <span class="type">ByteBuffer</span>)))</code></pre>
-<p>Lovely lovely classes.</p>
+          (java.nio <span class="type">ByteBuffer</span>)))
+</code></pre><p>Lovely lovely classes.</p>
 <p>I mentioned in the previous entry that we ended up with some simple protocols describing what we expect from our storage implementation</p>
 <p><strong>storageops.clj</strong></p>
 <pre><code><span class="list">(<span class="title">defprotocol</span><span class="body"> Reader
@@ -166,8 +436,8 @@
   <span class="list">(<span class="title">as-seq</span><span class="body"> [this])</span></span>)</span></span>
 
 <span class="list">(<span class="title">defprotocol</span><span class="body"> Storage
-  <span class="list">(<span class="title">ensure-transaction</span><span class="body"> [this])</span></span>)</span></span></code></pre>
-<p>In the <em>levelstorage.clj</em>, these are implemented as thinly as possible before farming out the actual work to pure clojure methods, thus we have</p>
+  <span class="list">(<span class="title">ensure-transaction</span><span class="body"> [this])</span></span>)</span></span>
+</code></pre><p>In the <em>levelstorage.clj</em>, these are implemented as thinly as possible before farming out the actual work to pure clojure methods, thus we have</p>
 <p>Our core storage record</p>
 <pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> LevelStorage [path db]
   java.io.Closeable
@@ -183,8 +453,8 @@
   <span class="list">(<span class="title">open-iterator</span><span class="body"> [this] <span class="list">(<span class="title">get-iterator</span><span class="body"> this)</span></span>)</span></span>
   <span class="list">(<span class="title">close</span><span class="body"> [this]
     <span class="list">(<span class="body">.close db)</span></span>
-    <span class="literal">nil</span>)</span></span>)</span></span></code></pre>
-<p>Our transaction record</p>
+    <span class="literal">nil</span>)</span></span>)</span></span>
+</code></pre><p>Our transaction record</p>
 <pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> LevelTransaction [db options path]
   java.io.Closeable
   Writer
@@ -193,49 +463,49 @@
   <span class="list">(<span class="title">from-db</span><span class="body"> [this id] <span class="list">(<span class="title">from-storage</span><span class="body"> this id)</span></span>)</span></span>
   <span class="list">(<span class="title">commit</span><span class="body">! [this] <span class="list">(<span class="title">commit</span><span class="body">! this)</span></span>)</span></span>
   <span class="list">(<span class="title">close</span><span class="body"> [this]
-    <span class="list">(<span class="body">.close <span class="list">(<span class="body">.snapshot options)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>And our iterator</p>
+    <span class="list">(<span class="body">.close <span class="list">(<span class="body">.snapshot options)</span></span>)</span></span>)</span></span>)</span></span>
+</code></pre><p>And our iterator</p>
 <pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> LevelIterator [inner]
   java.io.Closeable
   Iterator
   <span class="list">(<span class="title">seek</span><span class="body">! [this value] <span class="list">(<span class="body">.seek inner <span class="list">(<span class="title">to-db</span><span class="body"> value)</span></span>)</span></span>)</span></span>
   <span class="list">(<span class="title">as-seq</span><span class="body"> [this]
     <span class="list">(<span class="title">-&gt;&gt;</span><span class="body"> <span class="list">(<span class="title">iterator-seq</span><span class="body"> inner)</span></span> <span class="list">(<span class="title">map</span><span class="body"> expand-iterator-str)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="list">(<span class="body">.close inner)</span></span>)</span></span>)</span></span></code></pre>
-<p>First off, we can see that all these records implement &quot;Closeable&quot;, this is so that they can be used within the <em>with-open</em> built-in macro, which ensures that anything opened gets closed, regardless of exceptions or whatever.</p>
+  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="list">(<span class="body">.close inner)</span></span>)</span></span>)</span></span>
+</code></pre><p>First off, we can see that all these records implement &quot;Closeable&quot;, this is so that they can be used within the <em>with-open</em> built-in macro, which ensures that anything opened gets closed, regardless of exceptions or whatever.</p>
 <p>We can also see that the transaction and storage implement the same methods and farm the actual work out to pretty much the same functions.</p>
 <p><strong>Getting an object</strong></p>
 <p>This is the method called by both the transaction and storage records</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> from-storage [ops id]
-  <span class="list">(<span class="title">from-db</span><span class="body"> <span class="list">(<span class="title">safe-get</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:db</span> ops)</span></span> <span class="list">(<span class="title">to-db</span><span class="body"> id)</span></span> <span class="list">(<span class="body"><span class="keyword">:options</span> ops)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>And safe-get looks like this</p>
+  <span class="list">(<span class="title">from-db</span><span class="body"> <span class="list">(<span class="title">safe-get</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:db</span> ops)</span></span> <span class="list">(<span class="title">to-db</span><span class="body"> id)</span></span> <span class="list">(<span class="body"><span class="keyword">:options</span> ops)</span></span>)</span></span>)</span></span>)</span></span>
+</code></pre><p>And safe-get looks like this</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> safe-get [db k options]
   <span class="list">(<span class="title">try</span><span class="body">
     <span class="list">(<span class="title">if</span><span class="body"> options
       <span class="list">(<span class="body">.get db k options)</span></span>
       <span class="list">(<span class="body">.get db k)</span></span>)</span></span>
     <span class="list">(<span class="title">catch</span><span class="body"> Exception e
-      <span class="literal">nil</span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>Options are what LevelDB use to do things within a transaction/snapshot. This could have been a multi-method, but I felt the if statement kept things pretty expressive and easy to follow.</p>
+      <span class="literal">nil</span>)</span></span>)</span></span>)</span></span>
+</code></pre><p>Options are what LevelDB use to do things within a transaction/snapshot. This could have been a multi-method, but I felt the if statement kept things pretty expressive and easy to follow.</p>
 <p>That from-db thing is for the conversion of a byte array into a nice clojure data structure:</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> from-db [v]
   <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">nil</span><span class="body">? v)</span></span> <span class="literal">nil</span>
   <span class="list">(<span class="title">with-open</span><span class="body"> [reader <span class="list">(<span class="title">java</span><span class="body">.io.PushbackReader.
                           <span class="list">(<span class="title">clojure</span><span class="body">.java.io/reader
                             <span class="list">(<span class="title">java</span><span class="body">.io.ByteArrayInputStream. v)</span></span>)</span></span>)</span></span>]
-    <span class="list">(<span class="title">edn/read</span><span class="body"> reader)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<p><strong>The iterator</strong></p>
+    <span class="list">(<span class="title">edn/read</span><span class="body"> reader)</span></span>)</span></span>)</span></span>)</span></span>
+</code></pre><p><strong>The iterator</strong></p>
 <p>The iterator is interesting, as this shows the easiest way I found to wrap up a native resource that implements iterators, and still allow the use of <em>iterator-seq</em>.</p>
 <p>The difficulty with iterator-seq, is that if you were to call it on something that kept a native handle (such as the above), the lazy nature of Clojure makes it very easy to write code that by accident doesn&#39;t evaluate until after the handle is closed.</p>
 <p>By pushing this into a Closeable object and providing an as-seq method, we make the consumers responsible for evaluating the sequence and closing the resource in the correct order.</p>
 <p><em>expand-iterator</em> seemed like a sensible notion, as the iterator returns a weird object with getKey and getValue which have byte arrays and aren&#39;t very friendly to consuming code.</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> expand-iterator-str [i]
   { <span class="keyword">:k</span> <span class="list">(<span class="title">from-db</span><span class="body"> <span class="list">(<span class="body">.getKey i)</span></span>)</span></span>
-    <span class="keyword">:v</span> <span class="list">(<span class="title">from-db</span><span class="body"> <span class="list">(<span class="body">.getValue i)</span></span>)</span></span> })</span></span></code></pre>
-<p><strong>Committing a transaction</strong></p>
+    <span class="keyword">:v</span> <span class="list">(<span class="title">from-db</span><span class="body"> <span class="list">(<span class="body">.getValue i)</span></span>)</span></span> })</span></span>
+</code></pre><p><strong>Committing a transaction</strong></p>
 <p>Well you can see that the transaction just calls commit with itself</p>
-<pre><code><span class="list">(<span class="title">commit</span><span class="body">! [this] <span class="list">(<span class="title">commit</span><span class="body">! this)</span></span>)</span></span></code></pre>
-<p>And has some pretty simple logic for calling &quot;delete&quot; or &quot;put&quot; depending on the contents of the transaction</p>
+<pre><code><span class="list">(<span class="title">commit</span><span class="body">! [this] <span class="list">(<span class="title">commit</span><span class="body">! this)</span></span>)</span></span>
+</code></pre><p>And has some pretty simple logic for calling &quot;delete&quot; or &quot;put&quot; depending on the contents of the transaction</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> commit! [{<span class="keyword">:keys</span> [db cache] <span class="keyword">:as</span> tx}]
   <span class="list">(<span class="title">with-open</span><span class="body"> [batch <span class="list">(<span class="body">.createWriteBatch db)</span></span>]
       <span class="list">(<span class="title">doseq</span><span class="body"> [[id value] cache]
@@ -244,15 +514,15 @@
           <span class="list">(<span class="body">.put batch <span class="list">(<span class="title">to-db</span><span class="body"> id)</span></span> <span class="list">(<span class="title">to-db</span><span class="body"> value)</span></span>)</span></span>)</span></span>)</span></span>
       <span class="list">(<span class="title">let</span><span class="body"> [wo <span class="list">(<span class="title">WriteOptions</span><span class="body">.)</span></span>]
         <span class="list">(<span class="body">.sync wo true)</span></span>
-        <span class="list">(<span class="body">.write db batch wo)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>Again, we have a to-db function there, this just does the opposite of the from-db function shown above</p>
+        <span class="list">(<span class="body">.write db batch wo)</span></span>)</span></span>)</span></span>)</span></span>
+</code></pre><p>Again, we have a to-db function there, this just does the opposite of the from-db function shown above</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> from-db [v]
   <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">nil</span><span class="body">? v)</span></span> <span class="literal">nil</span>
   <span class="list">(<span class="title">with-open</span><span class="body"> [reader <span class="list">(<span class="title">java</span><span class="body">.io.PushbackReader.
                           <span class="list">(<span class="title">clojure</span><span class="body">.java.io/reader
                             <span class="list">(<span class="title">java</span><span class="body">.io.ByteArrayInputStream. v)</span></span>)</span></span>)</span></span>]
-    <span class="list">(<span class="title">edn/read</span><span class="body"> reader)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>Keeping the to/from DB functions in just one place in the codebase simplified things immensely, this is the only place we deal with byte arrays and if need be they could be replaced with streaming functions for performance (if the LevelDB wrapper supported such things).</p>
+    <span class="list">(<span class="title">edn/read</span><span class="body"> reader)</span></span>)</span></span>)</span></span>)</span></span>
+</code></pre><p>Keeping the to/from DB functions in just one place in the codebase simplified things immensely, this is the only place we deal with byte arrays and if need be they could be replaced with streaming functions for performance (if the LevelDB wrapper supported such things).</p>
 <p>Everywhere else, it&#39;s just plain old Clojure Data Structures and that keeps the rest of the codebase pretty clean.</p>
 <p><strong>Summary</strong></p>
 <p>Interop with plain old Java isn&#39;t too bad if you keep it behind nice little wrappers like this. Records and protocols are still nice, but in this case it seemed much better to keep the actual code out of the records and deal with the data inside a record as if it were a Plain Old Map.</p>
@@ -291,8 +561,8 @@
   <span class="list">(<span class="title">as-seq</span><span class="body"> [this])</span></span>)</span></span>
 
 <span class="list">(<span class="title">defprotocol</span><span class="body"> Storage
-  <span class="list">(<span class="title">ensure-transaction</span><span class="body"> [this])</span></span>)</span></span></code></pre>
-<p>Well, you&#39;ll notice immediately that there is no trace of any methods for &quot;put/get/delete&quot; operations and that&#39;s because it seemed to me that this sort of thing was common between all the storage subsystems and actually was a matter of building up a suitable data structure for flushing to the subsystem via that &quot;<em>commit!</em>&quot; method.</p>
+  <span class="list">(<span class="title">ensure-transaction</span><span class="body"> [this])</span></span>)</span></span>
+</code></pre><p>Well, you&#39;ll notice immediately that there is no trace of any methods for &quot;put/get/delete&quot; operations and that&#39;s because it seemed to me that this sort of thing was common between all the storage subsystems and actually was a matter of building up a suitable data structure for flushing to the subsystem via that &quot;<em>commit!</em>&quot; method.</p>
 <p>Why Reader/Writer/Storage as separate protocols? Because a transaction can be a reader and a writer, and the core storage can be a reader and a writer as well (operations outside of a transaction).</p>
 <p><strong>Transaction lifecycle</strong></p>
 <p>So, we actually end up with another module, &quot;<em>storage.clj</em>&quot; to keep these operations over the top of the actual storage mechanism.</p>
@@ -306,8 +576,8 @@
 <p>The storage module exposes the actual functions used to communicate with the underlying storage system, and also surfaces an &quot;ensure-transaction&quot; function.</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> ensure-transaction [storage]
   <span class="list">(<span class="title">assoc</span><span class="body"> <span class="list">(<span class="title">s/ensure-transaction</span><span class="body"> storage)</span></span>
-      <span class="keyword">:last-synctag</span> <span class="list">(<span class="body"><span class="keyword">:last-synctag</span> storage)</span></span>)</span></span>)</span></span></code></pre>
-<p>Any operations happening within this transaction are managed by the storage module and are just a matter of</p>
+      <span class="keyword">:last-synctag</span> <span class="list">(<span class="body"><span class="keyword">:last-synctag</span> storage)</span></span>)</span></span>)</span></span>
+</code></pre><p>Any operations happening within this transaction are managed by the storage module and are just a matter of</p>
 <ul>
 <li>Putting things into that map</li>
 <li>Taking things out of that map</li>
@@ -317,19 +587,19 @@
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> get-obj [ops id]
   <span class="list">(<span class="title">let</span><span class="body"> [cached <span class="list">(<span class="title">get-in</span><span class="body"> ops [<span class="keyword">:cache</span> id])</span></span>]
     <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> cached <span class="keyword">:deleted</span>)</span></span> <span class="literal">nil</span>
-      <span class="list">(<span class="title">or</span><span class="body"> cached <span class="list">(<span class="title">s/from-db</span><span class="body"> ops id)</span></span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>or marking an item as deleted:</p>
+      <span class="list">(<span class="title">or</span><span class="body"> cached <span class="list">(<span class="title">s/from-db</span><span class="body"> ops id)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>
+</code></pre><p>or marking an item as deleted:</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> delete [ops id]
-  <span class="list">(<span class="title">assoc-in</span><span class="body"> ops [<span class="keyword">:cache</span> id] <span class="keyword">:deleted</span>)</span></span>)</span></span></code></pre>
-<p><strong>Zero mutation until flush</strong></p>
+  <span class="list">(<span class="title">assoc-in</span><span class="body"> ops [<span class="keyword">:cache</span> id] <span class="keyword">:deleted</span>)</span></span>)</span></span>
+</code></pre><p><strong>Zero mutation until flush</strong></p>
 <p>Because all the operations taking place are taking place over the top of a plain old Clojure Map, the code written on top of this is easy to follow as there is no incidental mutation, and it&#39;s easy to dump out the contents of the map in the REPL to see what is going on.</p>
 <p>To write a document from a module in the database, as well as some metadata and some useful marker for example, we can take a transaction from the underlying storage and do</p>
 <pre><code><span class="list">(<span class="title">-&gt;</span><span class="body"> <span class="list">(<span class="title">s/ensure-transaction</span><span class="body"> db)</span></span>
     <span class="list">(<span class="title">s/store</span><span class="body"> <span class="string">"doc-1"</span> { <span class="keyword">:id</span> <span class="string">"foo"</span> })</span></span>
     <span class="list">(<span class="title">s/store</span><span class="body"> <span class="string">"metadata-doc-1"</span> { <span class="keyword">:owner</span> <span class="string">"bob"</span> })</span></span>
     <span class="list">(<span class="title">s/store</span><span class="body"> <span class="string">"last-change"</span> <span class="list">(<span class="title">now</span><span class="body">)</span></span>)</span></span>
-    s/commit!)</span></span></code></pre>
-<p>The majority of the logic here is just putting things into a map, and indeed the only code that actually touches the underying storage is the commit call in this instance. This is using data as integration between the different layers of the database and is quite simple to follow and understand.</p>
+    s/commit!)</span></span>
+</code></pre><p>The majority of the logic here is just putting things into a map, and indeed the only code that actually touches the underying storage is the commit call in this instance. This is using data as integration between the different layers of the database and is quite simple to follow and understand.</p>
 <p><strong>Related files</strong></p>
 <ul>
 <li>storageops.clj</li>
@@ -355,8 +625,8 @@
   <span class="list">(<span class="title">put-index</span><span class="body"> [this index])</span></span>
   <span class="list">(<span class="title">load-index-metadata</span><span class="body"> [this id])</span></span>
   <span class="list">(<span class="title">delete-index</span><span class="body"> [this id])</span></span>
-  <span class="list">(<span class="title">load-index</span><span class="body"> [this id])</span></span>)</span></span></code></pre>
-<p>It&#39;s fairly well established that document database operations map well into a restful interface - in the above mappings we only have two resources,</p>
+  <span class="list">(<span class="title">load-index</span><span class="body"> [this id])</span></span>)</span></span>
+</code></pre><p>It&#39;s fairly well established that document database operations map well into a restful interface - in the above mappings we only have two resources,</p>
 <ul>
 <li>/document (PUT/GET/DELETE/HEAD)</li>
 <li>/index    (PUT/GET/DELETE/HEAD)</li>
@@ -369,12 +639,12 @@
   <span class="symbol">:allowed-methods</span> [<span class="symbol">:put</span> <span class="symbol">:get</span> <span class="symbol">:delete</span> <span class="symbol">:head</span>]
   <span class="symbol">:put!</span> some-handler
   <span class="symbol">:delete!</span> some-handler
-  <span class="symbol">:handle-ok</span> some-handler)</code></pre>
-<p><strong>And HTTP-Kit</strong></p>
+  <span class="symbol">:handle-ok</span> some-handler)
+</code></pre><p><strong>And HTTP-Kit</strong></p>
 <p>By itself, liberator isn&#39;t really enough to talk to the world over HTTP, as you need a http server to actually host it.</p>
 <p>I used HTTP Kit because it supports asynchronous operations and seems to be getting the love these days. What this means, is you create some handlers using liberator and pass them into the &#39;run-server&#39; function from http-kit.</p>
-<pre><code><span class="list">(<span class="title">run-server</span><span class="body"> handlers)</span></span></code></pre>
-<p><strong>So I have an embedded database</strong></p>
+<pre><code><span class="list">(<span class="title">run-server</span><span class="body"> handlers)</span></span>
+</code></pre><p><strong>So I have an embedded database</strong></p>
 <p>I don&#39;t want these routes I&#39;ve defined to be coupled to either</p>
 <ul>
 <li>The HTTP server hosting them (http-kit in this case)</li>
@@ -383,12 +653,12 @@
 <p>So what I did is created a closure, which takes in the instance of database to talk to and returns the routes defined around that instance</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> create-http-server [instance]
   <span class="list">(<span class="title">let</span><span class="body"> [db-routes <span class="list">(<span class="title">create-routes</span><span class="body"> instance)</span></span>]
-    <span class="list">(<span class="title">handler/api</span><span class="body"> db-routes)</span></span>)</span></span>)</span></span></code></pre>
-<p>I can then use that in tests, the REPL or the main application to create a http server around an instance of a database</p>
+    <span class="list">(<span class="title">handler/api</span><span class="body"> db-routes)</span></span>)</span></span>)</span></span>
+</code></pre><p>I can then use that in tests, the REPL or the main application to create a http server around an instance of a database</p>
 <p>This is what my main application looks like for example.</p>
 <pre><code>(run-server
-  (http/<span class="operator"><span class="keyword">create</span>-http-server embedded-instance) { :port <span class="number">8001</span> :<span class="keyword">join</span>? <span class="keyword">true</span> }))</code></pre>
-<p><strong>The routes themselves</strong></p>
+  (http/<span class="operator"><span class="keyword">create</span>-http-server embedded-instance) { :port <span class="number">8001</span> :<span class="keyword">join</span>? <span class="keyword">true</span> }))
+</code></pre><p><strong>The routes themselves</strong></p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> create-routes [instance]
   <span class="list">(<span class="title">routes</span><span class="body">
     <span class="list">(<span class="title">ANY</span><span class="body"> <span class="string">"/document/:id"</span> [id]
@@ -416,8 +686,8 @@
         <span class="keyword">:delete</span>! <span class="list">(<span class="title">fn</span><span class="body"> [_] <span class="list">(<span class="title">db/delete-index</span><span class="body"> instance id)</span></span>)</span></span>
         <span class="keyword">:handle-ok</span> <span class="list">(<span class="title">fn</span><span class="body"> [_] <span class="list">(<span class="title">standard-response</span><span class="body"> _ <span class="list">(<span class="body">:<span class="keyword">:resource</span> _)</span></span> <span class="list">(<span class="body">:<span class="keyword">:metadata</span> _)</span></span> )</span></span> )</span></span>)</span></span>)</span></span>
 
-    <span class="comment">;; ETC ETC ETC ETC</span></code></pre>
-<p>They&#39;re a bit more complicated than any demo because</p>
+    <span class="comment">;; ETC ETC ETC ETC</span>
+</code></pre><p>They&#39;re a bit more complicated than any demo because</p>
 <ul>
 <li>The database support Etags for versioning</li>
 <li>An exists? check is needed and we cache the results</li>
@@ -454,8 +724,8 @@
   <span class="list">(<span class="title">put-index</span><span class="body"> [this index])</span></span>
   <span class="list">(<span class="title">load-index-metadata</span><span class="body"> [this id])</span></span>
   <span class="list">(<span class="title">delete-index</span><span class="body"> [this id])</span></span>
-  <span class="list">(<span class="title">load-index</span><span class="body"> [this id])</span></span>)</span></span></code></pre>
-<p>This is a low level interface obviously, the key operations being</p>
+  <span class="list">(<span class="title">load-index</span><span class="body"> [this id])</span></span>)</span></span>
+</code></pre><p>This is a low level interface obviously, the key operations being</p>
 <ul>
 <li>put-document</li>
 <li>load-document</li>
@@ -469,17 +739,17 @@
 <span class="comment">; Embedded on disk</span>
 <span class="list">(<span class="title">def</span><span class="body"> instance <span class="list">(<span class="title">embedded/create</span><span class="body"> <span class="string">"var/db"</span>)</span></span>)</span></span>
 <span class="comment">; Remote via HTTP</span>
-<span class="list">(<span class="title">def</span><span class="body"> instance <span class="list">(<span class="title">remote/create</span><span class="body"> <span class="string">"http://example.host:8000"</span>)</span></span>)</span></span></code></pre>
-<p>And then each of those implementations supports the above operations transparently.</p>
+<span class="list">(<span class="title">def</span><span class="body"> instance <span class="list">(<span class="title">remote/create</span><span class="body"> <span class="string">"http://example.host:8000"</span>)</span></span>)</span></span>
+</code></pre><p>And then each of those implementations supports the above operations transparently.</p>
 <p>I wanted to support transactions with this database too, so a <em>bulk</em> operation is supported which is just a combination of the above operations.</p>
 <pre><code><span class="list">(<span class="title">-&gt;</span><span class="body"> <span class="list">(<span class="title">t/open</span><span class="body"> instance)</span></span>
     <span class="list">(<span class="title">t/store</span><span class="body"> <span class="string">"doc-1"</span> { <span class="keyword">:message</span> <span class="string">"hello world"</span> })</span></span>
     <span class="list">(<span class="title">t/store</span><span class="body"> <span class="string">"doc-2"</span> { <span class="keyword">:message</span> <span class="string">"hello alice"</span> })</span></span>
     <span class="list">(<span class="title">t/store</span><span class="body"> <span class="string">"doc-3"</span> { <span class="keyword">:message</span> <span class="string">"hello bob"</span> })</span></span>
     <span class="list">(<span class="title">t/delete</span><span class="body"> <span class="string">"doc-4"</span>)</span></span>
-    <span class="list">(<span class="title">t/commit</span><span class="body">!)</span></span></code></pre>
-<p>I only have two implementations of this and they&#39;re actually pretty empty because they merely farm out into the code that really does something.</p>
-<h3>The remote implementation</h3>
+    <span class="list">(<span class="title">t/commit</span><span class="body">!)</span></span>
+</code></pre><p>I only have two implementations of this and they&#39;re actually pretty empty because they merely farm out into the code that really does something.</p>
+<h3 id="the-remote-implementation">The remote implementation</h3>
 <p>I ended up using a couple of packages from Clojars to do the hard work for me here</p>
 <ul>
 <li><em><a href="https://github.com/neotyk/http.async.client">http.async.client</a></em>: This was an arbitrary choice, I just wanted a HTTP client that worked and supported async</li>
@@ -497,8 +767,8 @@
 <span class="list">(<span class="title">defn</span><span class="body"> url-for-conflict-id [url id]
   <span class="list">(<span class="title">str</span><span class="body"> url <span class="string">"/conflict/"</span> id)</span></span>)</span></span>
 <span class="list">(<span class="title">defn</span><span class="body"> url-for-stream [url synctag]
-  <span class="list">(<span class="title">str</span><span class="body"> url <span class="string">"/stream?synctag="</span> <span class="list">(<span class="title">or</span><span class="body"> synctag <span class="string">""</span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>An actual operation in the record (others removed for brevity)</p>
+  <span class="list">(<span class="title">str</span><span class="body"> url <span class="string">"/stream?synctag="</span> <span class="list">(<span class="title">or</span><span class="body"> synctag <span class="string">""</span>)</span></span>)</span></span>)</span></span>
+</code></pre><p>An actual operation in the record (others removed for brevity)</p>
 <pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> RemoteDatabase [url]
   DocumentDatabase
   <span class="list">(<span class="title">close</span><span class="body"> [this])</span></span>
@@ -509,19 +779,19 @@
         <span class="list">(<span class="title">process-response</span><span class="body">
           <span class="list">(<span class="title">http/GET</span><span class="body"> client <span class="list">(<span class="title">url-for-query</span><span class="body"> url opts)</span></span>
                     <span class="keyword">:headers</span> default-headers
-                    <span class="keyword">:query</span> <span class="list">(<span class="title">dissoc</span><span class="body"> opts <span class="keyword">:filter</span> <span class="keyword">:index</span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>I really like the brevity of Clojure for this. The &quot;close&quot; isn&#39;t really needed for this implementation so it&#39;s an empty function that returns nothing. The rest of the operations look the same, a http request and the processing of that http request. Lovely.</p>
-<h3>The embedded implementation</h3>
+                    <span class="keyword">:query</span> <span class="list">(<span class="title">dissoc</span><span class="body"> opts <span class="keyword">:filter</span> <span class="keyword">:index</span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>
+</code></pre><p>I really like the brevity of Clojure for this. The &quot;close&quot; isn&#39;t really needed for this implementation so it&#39;s an empty function that returns nothing. The rest of the operations look the same, a http request and the processing of that http request. Lovely.</p>
+<h3 id="the-embedded-implementation">The embedded implementation</h3>
 <p>The embedded implementation is obviously the heart and soul of the whole database, everything comes through this (it sits behind the HTTP interface we&#39;ll see in the next post).</p>
-<pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> EmbeddedDatabase [storage index-engine ifh counters]</code></pre>
-<p>The constructor for this record takes in the underlying storage engine, index engine, the in-flight transaction system and some performance counters. This wasn&#39;t really what I had in mind when I through it together, but the <a href="https://github.com/robashton/cravendb/blob/master/src/cravendb/embedded.clj#L24">code itself</a> is quite concise as it mostly just farms out the work to modules responsible for managing document operations, indexing operations and etc.</p>
+<pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> EmbeddedDatabase [storage index-engine ifh counters]
+</code></pre><p>The constructor for this record takes in the underlying storage engine, index engine, the in-flight transaction system and some performance counters. This wasn&#39;t really what I had in mind when I through it together, but the <a href="https://github.com/robashton/cravendb/blob/master/src/cravendb/embedded.clj#L24">code itself</a> is quite concise as it mostly just farms out the work to modules responsible for managing document operations, indexing operations and etc.</p>
 <p>For example</p>
 <pre><code><span class="list">(<span class="title">put-index</span><span class="body"> [this index]
   <span class="list">(<span class="title">with-open</span><span class="body"> [tx <span class="list">(<span class="title">s/ensure-transaction</span><span class="body"> storage)</span></span>]
     <span class="list">(<span class="title">s/commit</span><span class="body">! <span class="list">(<span class="title">indexes/put-index</span><span class="body"> tx index {<span class="keyword">:synctag</span> <span class="list">(<span class="title">s/next-synctag</span><span class="body"> tx)</span></span>})</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">ie/notify-of-new-index</span><span class="body"> index-engine index)</span></span>)</span></span></code></pre>
-<p>In this case (and most of the other cases), the code sitting in the record is just coordinating the actions between a few different modules.</p>
-<h3>Lessons learned about Protocols and Records</h3>
+  <span class="list">(<span class="title">ie/notify-of-new-index</span><span class="body"> index-engine index)</span></span>)</span></span>
+</code></pre><p>In this case (and most of the other cases), the code sitting in the record is just coordinating the actions between a few different modules.</p>
+<h3 id="lessons-learned-about-protocols-and-records">Lessons learned about Protocols and Records</h3>
 <p>It seems from this (and it carries across into other places I&#39;ve used protocols too). I tend to end up using a protocol for the polymorphism and the records to hold some handles/state and then delegate the work out into pure functions.</p>
 <p>I could probably have used multi-methods for this (based on some property in the state), but I found them to be a bit messy because it meant bundling several implementations in the same file. I quickly moved away from the attempts where I did this when it got hard to follow.</p>
 <p>Apparently protocols are also faster, but given performance was not really one of my goals I doubt that is a bottleneck in the database.</p>
@@ -539,100 +809,12 @@
 <li>The goal was to make a tidy client API in Clojure that would be really easy to understand and use</li>
 <li>The goal was to learn how to write Clojure by writing a lot of Clojure</li>
 </ul>
-<h3>What I ended up with</h3>
+<h3 id="what-i-ended-up-with">What I ended up with</h3>
 <p>I ended up with a few thousand lines of Clojure across a total of 34 files, half of those lines were just code testing the other code, and the other half is written in a variety of styles as I wrote more Clojure and realised how everything I&#39;d done in the past few weeks was wrong over and over again. During the development of this database I also ended up in the top 100 OSS committers across Github  - presumably becuase I spent so long committing fixes to those mistakes.</p>
 <p>It took me on a journey through interop with legacy Java, interop with native code, adventures in core.async, building a RESTful API in Clojure, building a HTTP client in Clojure and a ton more stuff that is probably good to know if you want to be a Clojure developer.</p>
 <p>I am not a Clojure developer, although I have done some work in Clojure. I consider this work to have been a key moment in turning me at least into a borderline reasonable functional programmer and netted me my current job of writing code in Erlang from coffee shops over Europe. Yay indeed.</p>
-<h3>I am going to go through this stuff</h3>
+<h3 id="i-am-going-to-go-through-this-stuff">I am going to go through this stuff</h3>
 <p>I&#39;m going to do a few talks this year on my experiences with Clojure and on learning via writing this database in particular. For those lucky enough to avoid these events I am going to write about some of the areas of this codebase, some of the decisions I made when writing them and some of the obvious mistakes that perhaps I shouldn&#39;t have made.</p>
 <p>This will be a very practical and possibly/probably even wrong information sharing exercise but hopefully it means the hours I put into building that database can be used to help others too.</p>
 <p>Ready? Well you&#39;ll have to wait, the posts are queud up :-)</p>
-]]></description><link>http://codeofrob.com/entries/i-wrote-a-document-database-in-clojure.html</link><guid isPermaLink="true">http://codeofrob.com/entries/i-wrote-a-document-database-in-clojure.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 29 Apr 2014 09:30:00 GMT</pubDate></item><item><title><![CDATA[you have ruined javascript]]></title><description><![CDATA[<h2>In the old days</h2>
-<p>In the old days we had some really awful JS being written on pages in a pretty ad-hoc fashion and it caused us huge problems. Presumably most people still do this but they&#39;re the same people who aren&#39;t reading this blog post so we can pretend they don&#39;t exist unless we end up consulting at their companies and oh god oh god please no not that.</p>
-<p>The great/awesome/amazing thing about JS is that nobody wanted to go near it and in enterprise organisations they just wanted to stay in their safe little world of well organised layers of abstraction ordered by factory and XML super injection frameworks.</p>
-<p>That was great for people like me who wanted to get paid enterprise rates but didn&#39;t want to have to put up with layers of awful &quot;best practises&quot; and performance problems that came from the irrational fear of letting anybody who wasn&#39;t a DBA touch the database.</p>
-<p>Even better, when those performance problems arose, we could save the day by writing a front-end in JS that pretended they didn&#39;t exist and gave the users a great experience despite the shoddy workmanship on the backend.</p>
-<h2>We&#39;ve hit peak JS</h2>
-<p>It was even better when jQuery came along as the world we inhabited could be bolted together out of small re-usable jQuery plug-ins. We finally hit peak JS when NPM turned up and we started using a half-decent module system for managing these self contained widgets.</p>
-<p>I envisaged a future where I could work with great teams on great UIs with great codebases organised out of these little modules and organised around self-contained features/widgets. Perhaps we could slowly take back control of codebases from those enterprise-bound fiends with their beans, their orms and their patterns and practise based proxy factory factories.</p>
-<p>We had some reasonable things going on, we were building great things out of great code and we had freed ourselves from the shackles of the burdensome enterprise frameworks.</p>
-<h2>You ruined it</h2>
-<p>Now - I still do JS, but I&#39;m mostly working in Erlang these days, building video streaming/encoding systems and <em>blah blah blah</em>, that&#39;s why I&#39;m not really blogging at the moment but basically my backend is pretty sexy and my frontend is pretty sexy too (Facebook&#39;s React + NPM to fill the gaps). I came across this post on Stackoverflow that brought back all the flashbacks of those enterprise days and to my horror it has spread like a java-borne venereal disease to the front-end of the body of my internets.</p>
-<h3><a href="http://stackoverflow.com/questions/15666048/angular-js-service-vs-provider-vs-factory/">Angular.js: service vs provider vs factory?</a></h3>
-<p>Okay, that&#39;s not so bad, but let&#39;s go and look at the <a href="http://stackoverflow.com/questions/15666048/angular-js-service-vs-provider-vs-factory/20613879?stw=2#20613879">top-voted answer</a> (okay, it&#39;s not anymore since I wrote this post) and take stock of this because apparently there are some very satisfied customers:</p>
-  <blockquote>Wow! Thanks for the detailed explanation. You made it easy and crystal clear mate. Well done!!</blockquote>
-
-<p>If I was being kind, I&#39;d say that this comment is ironic and the whole thing is just a really good example of Poe&#39;s law, but on reading the whole thing I don&#39;t think this is the case and my frown has not turned upside down.</p>
-<p>So... the first thing we see is a quote from the freaking Angular docs which looks like this</p>
-  <blockquote>An Angular &quot;service&quot; is a singleton object created by a &quot;service factory&quot;.  These service factories are functions which, in turn, are created by a &quot;service provider&quot;. &quot;The service providers are constructor functions&quot;.  When instantiated they must contain a property called $get, which holds the service factory function.</blockquote>
-
-<p>What the actual fuck <em>is</em> this? I read this as <em>&quot;in order to do a hello world, you must first create a hello world service to create the hello world factory to create the hello world sercice so you can print hello world on the screen.&quot;</em></p>
-  <blockquote>Whaaaaaaat? Am I reading a thesis? It is very confusing.</blockquote>
-
-<p>No, you are not reading a thesis, you <em>are</em> reading the angular docs apparently.</p>
-<p>If it were a thesis it would probably be trying to explain a solution to some sort of problem instead of describing a made up solution to a made up problem. (Actually, that&#39;s not strictly true because academics are in a world of their own too but close enough).</p>
-  <blockquote>The following is a real world example made up for this question.</blockquote>
-
-<p>Presumably most of the scenarios used for creating Angular are made up because it&#39;s the only reason we would ever need all these factories, proxies, services in the front-end. The kind of code and explanation we&#39;re about to go through comes straight from la la land and it&#39;s hard to believe that it&#39;s not a joke.</p>
-  <blockquote>Service, Factory, and Provider can be the same.</blockquote>
-
-<p>What? No of course they can be, they&#39;re all just functions that return a value but okay, let&#39;s carry on with this madness to see where it leads...</p>
-<p>We get an example of &quot;car instantiation&quot;, with the premise</p>
-  <blockquote>With service(a singleton), you cannot achieve this because service cannot be instantiated.</blockquote>
-
-<p>To justify the existance of providers, because</p>
-  <blockquote>To instantiate, you need Factory or Provider</blockquote>
-
-<p>No. Oh God. WHAT. <em>WHAT THE FUCK</em>.</p>
-<pre><code><span class="keyword">var</span> car = <span class="keyword">new</span> Car({ cylinders: <span class="number">4</span> })</code></pre>
-<p>The freaking &#39;new&#39; keyword.  We had these arguments in the enteprise back-end world so many times and to see the same bullshit repeated for JS galls me right to the fucking core. This is the same old shit in what used to be my go-to escape hatch from that hideous crap.</p>
-  <blockquote>Provider can be configured for your application</blockquote>
-
-<p>Of course we we can configure providers if we need to configure our applications. How else could we configure our applications and make them configurable for our enterprise scale configurable applications.</p>
-<p>I love the code that comes next, it&#39;s almost a parody in itself. It doesn&#39;t even need a commentary to be fucking hilarious.</p>
-<pre><code>app.service(<span class="string">'CarService'</span>, <span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
-    <span class="keyword">this</span>.dealer = <span class="string">"Bad"</span>;
-    <span class="keyword">this</span>.numCylinder = <span class="number">4</span>;
-});
-
-app.factory(<span class="string">'CarFactory'</span>, <span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
-    <span class="keyword">return</span> <span class="function"><span class="keyword">function</span> <span class="params">(numCylinder)</span> {</span>
-        <span class="keyword">this</span>.dealer = <span class="string">"Bad"</span>;
-        <span class="keyword">this</span>.numCylinder = numCylinder
-    };
-});
-
-app.provider(<span class="string">'CarProvider'</span>, <span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
-    <span class="keyword">this</span>.dealerName = <span class="string">'Bad'</span>;
-    <span class="keyword">this</span>.<span class="variable">$get</span> = <span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
-        <span class="keyword">return</span> <span class="function"><span class="keyword">function</span> <span class="params">(numCylinder)</span> {</span>
-            <span class="keyword">this</span>.numCylinder = numCylinder;
-            <span class="keyword">this</span>.dealer = <span class="keyword">this</span>.dealerName;
-        }
-    };
-    <span class="keyword">this</span>.setDealerName = <span class="function"><span class="keyword">function</span> <span class="params">(str)</span> {</span>
-        <span class="keyword">this</span>.dealerName = str;
-    }
-});</code></pre>
-<p>To configure the dealer, all we have to do is</p>
-<pre><code><span class="transposed_variable">app.</span>config(<span class="function"><span class="keyword">function</span> <span class="params">(CarProviderProvider)</span> {</span>
-    <span class="transposed_variable">CarProviderProvider.</span>setDealerName(<span class="string">'Good'</span>);
-});</code></pre>
-<p>Hey, it&#39;s just config - no need to change any of the real code!!</p>
-<p>I&#39;d write a plain old JS equivalent but trying to wrap my head around all of the indirection in the above example is making me want to crawl under a desk and bang my head on the floor until the brainmeats come out so I don&#39;t have to subject myself to this madness any further.</p>
-  <blockquote>But, why CarProviderProviderinstead of CarProvider</blockquote>
-
-<p>Here&#39;s a tip. If you find yourself asking a question like this. If you find yourself asking a question which requires this sort of answer and then this sort of question to be asked <em>YOU&#39;VE DONE IT WRONG</em>.</p>
-<p>There is no inherent shame in doing it wrong, it&#39;s okay - we all make mistakes, but given the current trajectory of this bullshit we&#39;re far from realising what is being done and we&#39;ll be hiring Angular Consultants and sending our students on expensive Angular Training Courses for many years to come. Well done - you fell for it.</p>
-<h2>What the fuck is wrong with you people?</h2>
-<p>We had a good thing, you ruined it. We had an escape route from that ridiculous enterprise hand-holding bullshit and instead of learning how to fucking code you&#39;ve just brought your factory provider providers with you into what was once an okay place to get stuff done.</p>
-<h3>Screw you guys, I&#39;m going home</h3>
-<p>It&#39;s okay, I don&#39;t really do enterprise any more. I showed this question and answer to my colleagues and we all had a good laugh at your expense because this stupidity is fucking hilarious. But you know what? When you&#39;ve all stopped digging this hole and you&#39;ve realised what a bottomless pit really looks like, I&#39;ll be stood outside laughing at you because it&#39;s still your own fucking fault.</p>
-<p>Start thinking for yourselves, ditch this shit before it&#39;s too late and learn how to write some actual fucking code. The information is out there, you can do it. If you need handholding with factories and providers and service provider factories then consider that the world doesn&#39;t need your bullshit code and go and get a job you&#39;re actually good at. Stop ruining it for the rest of us.</p>
-]]></description><link>http://codeofrob.com/entries/you-have-ruined-javascript.html</link><guid isPermaLink="true">http://codeofrob.com/entries/you-have-ruined-javascript.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Wed, 23 Apr 2014 09:30:00 GMT</pubDate></item><item><title><![CDATA[Clojure dojo-ing at NDC London]]></title><description><![CDATA[<p>I&#39;m sat at NDC London working on my presentation on a completely re-paved laptop and that&#39;s my entire day sorted for Wednesday.</p>
-<p>However, there is <em>Thursday</em> and <em>Friday</em> and while there are a couple of sessions I&#39;ll probably attend, I think I&#39;m going to sit/stand around near the Twilio coffee machine and give Clojure 101s to anybody who fancies doing something a bit different.</p>
-<p>The format? Bring your laptop and let&#39;s get you set up with a working Clojure environment. Let&#39;s pull down something fun to work on and let&#39;s build something. </p>
-<p>Just come and find me, tweet me <a href="@robashton"><a href="http://twitter.com/robashton">http://twitter.com/robashton</a></a> to find out where I am or otherwise holla.</p>
-<p>If you don&#39;t have a laptop I&#39;m happy to do some informal lessons on my own machine but obviously there is a limit to the number of people we can crowd around my laptop and how much we can engage on that.</p>
-<p>Let&#39;s create some more Clojure devs!</p>
-]]></description><link>http://codeofrob.com/entries/clojure-dojo-ing-at-ndc-london.html</link><guid isPermaLink="true">http://codeofrob.com/entries/clojure-dojo-ing-at-ndc-london.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 28 Nov 2013 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/i-wrote-a-document-database-in-clojure.html</link><guid isPermaLink="true">http://codeofrob.com/entries/i-wrote-a-document-database-in-clojure.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 29 Apr 2014 09:30:00 GMT</pubDate></item></channel></rss>

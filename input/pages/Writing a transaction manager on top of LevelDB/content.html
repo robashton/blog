@@ -6,8 +6,8 @@
 myStore<span class="preprocessor">.Batch</span>(accessor =&gt; {
   var doc = accessor<span class="preprocessor">.Get</span>(<span class="string">"key1"</span>)<span class="comment">;</span>
   accessor<span class="preprocessor">.Put</span>(<span class="string">"key2"</span>, <span class="string">"Hello"</span>)<span class="comment">;</span>
-})<span class="comment">;</span></code></pre>
-<p>What does this look like?</p>
+})<span class="comment">;</span>
+</code></pre><p>What does this look like?</p>
 <pre><code><span class="keyword">public</span> <span class="keyword">void</span> Batch(Action&lt;StorageAccessor&gt; actions) {
   <span class="keyword">var</span> transaction = <span class="keyword">this</span>.CreateTransaction();
   <span class="keyword">var</span> accessor = <span class="keyword">new</span> StorageAccessor(<span class="keyword">this</span>, transaction);
@@ -18,8 +18,8 @@ myStore<span class="preprocessor">.Batch</span>(accessor =&gt; {
     <span class="keyword">throw</span>;
   }
   <span class="keyword">this</span>.CommitTransaction(transaction);
-}</code></pre>
-<p>Where the accessor simply calls the Get/Put/Delete methods on the storage and passes in the transaction associated with it.</p>
+}
+</code></pre><p>Where the accessor simply calls the Get/Put/Delete methods on the storage and passes in the transaction associated with it.</p>
 <pre><code><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="id">StorageAccessor</span> {</span>
   <span class="keyword">private</span> Storage storage;
   <span class="keyword">private</span> StorageTransaction transaction;
@@ -40,8 +40,8 @@ myStore<span class="preprocessor">.Batch</span>(accessor =&gt; {
   <span class="keyword">public</span> <span class="keyword">void</span> Delete(string <span class="keyword">id</span>) {
     <span class="keyword">this</span><span class="variable">.storage</span><span class="variable">.Delete</span>(<span class="keyword">id</span>, <span class="keyword">this</span><span class="variable">.transaction</span>);
   }
-}</code></pre>
-<p>Where we then make a check to see if another transaction has modified that key in the meantime</p>
+}
+</code></pre><p>Where we then make a check to see if another transaction has modified that key in the meantime</p>
 <pre><code><span class="keyword">public</span> <span class="keyword">void</span> Put(string <span class="keyword">id</span>, Object obj, StorageTransaction transaction) {
   <span class="keyword">this</span><span class="variable">.keysToTransactionId</span><span class="variable">.AddOrUpdate</span>(<span class="keyword">id</span>, (key) =&gt; {
       transaction<span class="variable">.AddOperation</span>(storage =&gt; storage<span class="variable">.Put</span>(<span class="keyword">id</span>, obj));
@@ -51,6 +51,6 @@ myStore<span class="preprocessor">.Batch</span>(accessor =&gt; {
     <span class="comment">// NOTE: This doesn't handle the transaction doing multiple operations on the same key</span>
     <span class="keyword">throw</span> new Exception(<span class="string">"This should be a concurrency exception but I'm lazy"</span>);
   });
-}</code></pre>
-<p>Obviously a real implementation needs to do things like keep modified information around so reads can go via that before hitting the LevelDB snapshot, but in essence you can build a pretty simple transaction manager providing your underlying storage does the hard work of managing atomicity of operations.</p>
+}
+</code></pre><p>Obviously a real implementation needs to do things like keep modified information around so reads can go via that before hitting the LevelDB snapshot, but in essence you can build a pretty simple transaction manager providing your underlying storage does the hard work of managing atomicity of operations.</p>
 <p>Next up, back to the C++ as I look at what we&#39;re doing do about large values in RavenDB documents.</p>

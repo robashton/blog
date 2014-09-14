@@ -86,8 +86,8 @@
 <li><a href="/entries/learn-functional-programming-with-me---keyboard-input-for-our-red-square.html">Moving our red square with keyboard input</a></li>
 </ul>
 <p>So far I have a fixed number of entities in my scene, which means the pattern</p>
-<pre><code><span class="function"><span class="title">logic</span><span class="params">(state)</span> =&gt; <span class="title">newState</span></code></pre>
-<p>Has been working great for me, but how might I manage a variable number of these entities? How might I hook up the creation of these entities to keyboard input?</p>
+<pre><code><span class="function"><span class="title">logic</span><span class="params">(state)</span> =&gt; <span class="title">newState</span>
+</code></pre><p>Has been working great for me, but how might I manage a variable number of these entities? How might I hook up the creation of these entities to keyboard input?</p>
 <p>Well, actually I don&#39;t think it is going to be that hard - but we&#39;ll see as I give it a go...</p>
 <p><strong>The basics once again</strong></p>
 <p>The same deal as everything else so far (okay, my next entry might be on re-factoring all this to avoid duplication)</p>
@@ -99,8 +99,8 @@
   <span class="attribute">:w</span> w
   <span class="attribute">:h</span> h
  }</span>
-)</span></code></pre>
-<p><em>Bullets logic is taking the current sequence of bullets and moving them on the vertical axis</em></p>
+)</span>
+</code></pre><p><em>Bullets logic is taking the current sequence of bullets and moving them on the vertical axis</em></p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> bulletsLogic [state]
   <span class="list">(<span class="title">for</span><span class="body"> [bullet <span class="list">(<span class="body"><span class="keyword">:bullets</span> state)</span></span>]
     {
@@ -110,16 +110,16 @@
       <span class="keyword">:h</span> <span class="list">(<span class="body"><span class="keyword">:h</span> bullet)</span></span>
     }
   )</span></span>
-)</span></span></code></pre>
-<p><em>And I&#39;m going to draw a black square for each bullet</em></p>
+)</span></span>
+</code></pre><p><em>And I&#39;m going to draw a black square for each bullet</em></p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> bulletsRender [ctx state]
   <span class="list">(<span class="title">doseq</span><span class="body"> [bullet <span class="list">(<span class="body"><span class="keyword">:bullets</span> state)</span></span>] 
     <span class="list">(<span class="title">let</span><span class="body"> [{<span class="keyword">:keys</span> [x y w h]} bullet]
       <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx x y w h <span class="string">"#000"</span>)</span></span>
     )</span></span>
   )</span></span>
-)</span></span></code></pre>
-<p>There is nothing special or new about the above, although I&#39;ve dropped the &#39;let&#39; (as compared to the enemies render function) and pulled the bullets out of the state as part of the doseq call.</p>
+)</span></span>
+</code></pre><p>There is nothing special or new about the above, although I&#39;ve dropped the &#39;let&#39; (as compared to the enemies render function) and pulled the bullets out of the state as part of the doseq call.</p>
 <p>My bullets to begin with?</p>
 <p><em>Create an empty list</em></p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> initState []
@@ -132,8 +132,8 @@
    <span class="keyword">:player</span> <span class="list">(<span class="title">initPlayer</span><span class="body"> <span class="number">200</span> <span class="number">430</span> <span class="number">20</span> <span class="number">20</span>)</span></span>
    <span class="keyword">:bullets</span> <span class="list">(<span class="body">)</span></span>
  } 
-)</span></span></code></pre>
-<p>I found out how to do that on Google so I think it&#39;s right.</p>
+)</span></span>
+</code></pre><p>I found out how to do that on Google so I think it&#39;s right.</p>
 <p>I also found out that apparently an empty list is not a sequence, although it is sequenceable which means I can safely do the above (I think)</p>
 <p><em>Calling the appropriate methods</em></p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> doLogic [state]
@@ -149,12 +149,12 @@
   <span class="list">(<span class="title">enemiesRender</span><span class="body"> ctx state)</span></span>
   <span class="list">(<span class="title">playerRender</span><span class="body"> ctx state)</span></span>
   <span class="list">(<span class="title">bulletsRender</span><span class="body"> ctx state)</span></span>
-)</span></span></code></pre>
-<p>Now, all of this achieves the square root of diddly squat, although if I run the program it doesn&#39;t fall over in a heap pile of flames so that&#39;s pretty good going for all of this code.</p>
+)</span></span>
+</code></pre><p>Now, all of this achieves the square root of diddly squat, although if I run the program it doesn&#39;t fall over in a heap pile of flames so that&#39;s pretty good going for all of this code.</p>
 <p><strong>Hooking up some input events</strong></p>
 <p>Well okay, for now what I&#39;ll do is say is &quot;if the spacebar is pressed we&#39;ll fire a bullet&quot;, so we can do this in a similar manner to everything else thus far...</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> bulletsLogic [state]</code></pre>
-<p><em>Get the player out, and update the bullets into a seq called &#39;existingBullets&#39;</em></p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> bulletsLogic [state]
+</code></pre><p><em>Get the player out, and update the bullets into a seq called &#39;existingBullets&#39;</em></p>
 <pre><code>  <span class="list">(<span class="title">let</span><span class="body"> [player <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>
         existingBullets 
         <span class="list">(<span class="title">for</span><span class="body"> [bullet <span class="list">(<span class="body"><span class="keyword">:bullets</span> state)</span></span>]
@@ -165,8 +165,8 @@
             <span class="keyword">:h</span> <span class="list">(<span class="body"><span class="keyword">:h</span> bullet)</span></span>
           }
         )</span></span>
-      ]</code></pre>
-<p><em>If the space bar is down, then create a new sequence with a new bullet and the existing bullets</em></p>
+      ]
+</code></pre><p><em>If the space bar is down, then create a new sequence with a new bullet and the existing bullets</em></p>
 <pre><code>    <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="body">@keyStates <span class="number">32</span>)</span></span>
       <span class="list">(<span class="title">cons</span><span class="body"> 
         {
@@ -176,13 +176,13 @@
          <span class="keyword">:h</span> <span class="number">5</span>
         }
         existingBullets
-      )</span></span></code></pre>
-<p><em>Else just return the existing bullets</em></p>
+      )</span></span>
+</code></pre><p><em>Else just return the existing bullets</em></p>
 <pre><code>      <span class="title">existingBullets</span>
     )
   )
-)</code></pre>
-<p>This is pretty messy, although it&#39;s my first iteration at this so that&#39;s okay, I suspect I can be a bit cleverer about this and probably will end up being so!</p>
+)
+</code></pre><p>This is pretty messy, although it&#39;s my first iteration at this so that&#39;s okay, I suspect I can be a bit cleverer about this and probably will end up being so!</p>
 <p><strong>Don&#39;t change the collection, create a new one</strong></p>
 <p>What we can see though, is that I don&#39;t &quot;add the new bullet to the sequence&quot;, I instead &quot;create a new sequence out of the old one plus the new items&quot;. That&#39;s what <em>cons</em> does according to the Clojure docs.</p>
 <p>This is counter-intuitive to those of us used to our mutable collections, but apparently Clojure is quite clever about this stuff and I should trust that this is okay. (Just like so far I&#39;m trusting that everything else is going to be okay too).</p>

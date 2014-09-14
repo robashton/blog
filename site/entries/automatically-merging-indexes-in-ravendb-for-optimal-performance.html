@@ -77,37 +77,37 @@
 <p>What is that you ask? Well - when we do the following series of queries</p>
 <pre><code>session<span class="variable">.Query</span>&lt;Pony&gt;()
     <span class="variable">.Where</span>(pony =&gt; pony<span class="variable">.Name</span> == <span class="string">"Rainbow Dash"</span>)
-    <span class="variable">.FirstOrDefault</span>()</code></pre>
-<p>and</p>
+    <span class="variable">.FirstOrDefault</span>()
+</code></pre><p>and</p>
 <pre><code>session<span class="variable">.Query</span>&lt;Pony&gt;()
         <span class="variable">.Where</span>(pony =&gt; pony<span class="variable">.Colour</span> == <span class="string">"Pink"</span>)
-        <span class="variable">.ToList</span>()</code></pre>
-<p>We will end up with the following indexes in RavenDB</p>
+        <span class="variable">.ToList</span>()
+</code></pre><p>We will end up with the following indexes in RavenDB</p>
 <p><em>Pony/Name</em></p>
 <pre><code>    <span class="keyword">from</span> pony <span class="keyword">in</span> ponies
       <span class="keyword">select</span> <span class="keyword">new</span> {
           pony.Name
-      }</code></pre>
-<p><em>Pony/Colour</em></p>
+      }
+</code></pre><p><em>Pony/Colour</em></p>
 <pre><code>    <span class="keyword">from</span> pony <span class="keyword">in</span> ponies
       <span class="keyword">select</span> <span class="keyword">new</span> {
           pony.Colour
-      }</code></pre>
-<p>Well, in reality there is no real reason why we&#39;d have two indexes and incur the cost of iterating over documents every time they&#39;re added more often than we need.</p>
+      }
+</code></pre><p>Well, in reality there is no real reason why we&#39;d have two indexes and incur the cost of iterating over documents every time they&#39;re added more often than we need.</p>
 <p>One of the things that the query optimiser already does, is look for the &#39;widest&#39; index - that is the index that touches the most fields.</p>
 <p>It makes sense therefore, that rather than simply look for the widest index that matches the query, we should look for the most compatible index and create a new one based off of that if it doesn&#39;t match completely.</p>
 <p>Consider the above, we should end up with two indexes</p>
 <pre><code>    <span class="keyword">from</span> pony <span class="keyword">in</span> ponies
       <span class="keyword">select</span> <span class="keyword">new</span> {
           pony.Name
-      }</code></pre>
-<p>and</p>
+      }
+</code></pre><p>and</p>
 <pre><code>    <span class="keyword">from</span> pony <span class="keyword">in</span> ponies
       <span class="keyword">select</span> <span class="keyword">new</span> {
           pony.Name,
           pony.Colour
-      }</code></pre>
-<p>Over time, the first index won&#39;t be used (as it&#39;s not as wide as the second index), and it will wither and die because of idling and auto-removal.</p>
+      }
+</code></pre><p>Over time, the first index won&#39;t be used (as it&#39;s not as wide as the second index), and it will wither and die because of idling and auto-removal.</p>
 <p>Over time, we&#39;ll actually end up with only one index per document type (providing there aren&#39;t any reasons why a query isn&#39;t compatible with an existing index, such as different indexing or sorting options)</p>
 <p>This ensures that over time when using automatically generated queries, that RavenDB keeps itself as lean as possible and using as few resources as possible (and tidy!)</p>
 <p>Now that covers what I did on in first couple of days at Hibernating Rhinos, next up I&#39;ll talk about what I&#39;m helping do with result transformations.</p>
