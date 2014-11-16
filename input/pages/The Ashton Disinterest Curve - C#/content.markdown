@@ -27,6 +27,7 @@ Perhaps this kindergarten has its use, but we all have to grow up and it would b
 
 Current position of .NET on the disinterest curve: *Bitter, bitter memories*.
 
+Next up is JS/Node, I have nicer things to say about this - promise.
 
 
 
