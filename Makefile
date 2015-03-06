@@ -1,6 +1,14 @@
 default: all
 
-all: build
+MARKDOWN := $(wildcard in/*.txt)
+INPUTHTML := $(patsubst in/%,out/%, $(INPUTS))
 
-build: 
-	node build.js
+
+out/%.txt: input/pages/*/%.html site/entries
+	cp $< $@
+
+site/entries:
+	mkdir -p site/entries
+
+site/entries/%.html:
+

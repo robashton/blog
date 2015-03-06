@@ -72,9 +72,101 @@
   <body>
     <div id="blog-entry">
       <h1 id="post-title">The Ashton Disinterest Curve - Erlang</h1>
-      <h6>Published on <span class="date">2015-7-7</span></h6>
-      <div id="post"><p><a href="url">title</a>
-<img src="img" alt="alt"></p>
+      <h6>Published on <span class="date">2015-3-9</span></h6>
+      <div id="post"><p>I&#39;ve complained about <a href="/entries/the-ashton-disinterest-curve---c.html">.NET</a> (nothing has changed by the way) and <a href="/entries/the-ashton-disinterest-curve---javascript-and-node.html">JS</a> (or here) and I&#39;ve been pretty nice about <a href="/entries/the-ashton-disinterest-curve---clojure.html">Clojure</a> (or so I thought) and I&#39;ve managed to delay doing anything about Erlang at all because reasons.</p>
+<h1 id="erlang-mundane-brilliance">Erlang - mundane brilliance</h1>
+<p>I&#39;m not passionate about Erlang; I&#39;ve never been passionate about Erlang and I&#39;ve never hated it either. Perhaps this explains why I&#39;m over a year into working with it professionally and I still don&#39;t feel the need to talk loudly about it one way or another. (That and I have a great team of colleagues, work remotely and build pretty awesome products that are actually being used by people - okay then).</p>
+<p>Let&#39;s get something out of the way then, I&#39;m not an Erlang evangelist - I was even asked in a talk the other day what my three sentence elevator pitch for Erlang would be and I haven&#39;t got one. If you want to put in the effort to work in the Erlang ecosystem then the rewards will become apparent fast enough but trying to explain how exactly such an ugly language contributes positively in any way to our product quality/stability in a tidy soundbite just isn&#39;t something I&#39;m interested in doing.</p>
+<h1 id="erlang-is-ugly">Erlang is Ugly</h1>
+<p>Contrived bit of code I just wrote in the airport:</p>
+<pre><code class="lang-erlang">
+    -module(greeter).
+
+    -export([hello/2]).
+
+    -record(state, {
+        targets :: list(target_config())
+      })
+
+    init() -&gt;
+      spawn_link(fun chat_loop/0).
+
+    hello(Pid, Str, Names)
+      case Names of
+        [] -&gt;  ok;
+        [ Head | Tail ] -&gt;
+          Pid ! { hello, Str, Head },
+          hello(Pid, Str, Names)
+      end.
+
+    chat_loop(State) -&gt;
+      NewState = receive
+        { hello, Str, Name } -&gt;
+          Target = lookup_name(Name),
+          Target:write(Str),
+          State,
+        { register, Name, Cfg } -&gt;
+          register_name(State, Name, Cfg)
+        after 1000
+          housekeeping(State)
+      end,
+      chat_loop(NewState).
+
+    register_name(State = #state { targets = Targets }, Name, Cfg) -&gt;
+      State#state { targets = [ { Name, Cfg } | Targets ] }.
+`
+</code></pre>
+<p>Or whatever. This is all fairly standard code and certainly there is nothing unusual in here that you&#39;d not expect to see in any old module from around the place. This is probably about 5% of the syntax of Erlang and you can start to see why a lot of people start to pick up Erlang via the medium of &quot;Learn Erlang for Great Good&quot; or something similar and after a week of syntax lessons throw their arms in frustration and exclaim &quot;What on earth is the point?&quot; and either switch to Elixir or something even worse (okay it&#39;s relative) like NodeJs.</p>
+<p>No <em>real</em> type system, no polymorphism, hilariously inconsistent APIs for processing lists, queues, dictionaries (even within the list API itself it&#39;s not consistent with the argument orders etc), no real way of doing function composition or guaranteeing purity in functions (which means guard clauses can only use built-ins) and what you really have is a way of writing locally &quot;pure&quot; code across imperative operations on networks and filesystems.</p>
+<h1 id="erlang-has-moving-parts">Erlang has moving parts</h1>
+<p>How do you do releases? How do you build your application? How do you test it? How do you run it? What do you need for all of this to work? A quick scan of an &quot;empty&quot; project built from scratch just now on my machine contains:</p>
+<ul>
+<li>Makefile (for building stuff)</li>
+<li>Relx (for releasing stuff)</li>
+<li>sys.config (for configuring stuff)</li>
+<li>relx.config (for configuring the release)</li>
+<li>foo_app.src (a manifest for the application)</li>
+<li>foo_app.erl (the application entry point)</li>
+<li>foo_web.erl (a gen server for spinning up the web process hierarchy)</li>
+<li>foo_sup.erl (a supervisor for managing the process hierarchy)</li>
+<li>foo_config.erl (a little wrapper for accessing sys.config)</li>
+<li>a &#39;deps&#39; folder containing &quot;gproc (process utils), lager (logging), cowboy (web)</li>
+</ul>
+<p>And a few other bits. This is astonishingly daunting and no amount of &quot;just use rebar&quot; will ever make that easy. I&#39;m generally against scaffolding because it allows awkward design to survive but you almost <em>need</em> to scaffold the basic Erlang application somehow because of all the bits you need to just spin it up. Contrast that to a simple node project with its app.js. node_modules and ... oh wait you can pretty much write something useful from this point and <em>discover as you go</em> while still building something tangible that somebody might want to use.</p>
+<p>Oh, and unlike Clojure there is no real REPL (stop saying erl is a REPL or like a REPL because it really is not a REPL and it offers none of the same experiences you&#39;d expect from a REPL and nobody does applications which can be bootstrapped easily via a REPL and there is very little tooling support for talking to this from your editor so really it&#39;s nothing like Clojure omg stop you guys)</p>
+<p>At this point the folk in the Erlang community reading this will be thinking &quot;but it&#39;s not quite like that - once you have a workflow it&#39;s all sensible enough&quot; or &quot;You don&#39;t need most of those things for an application really&quot; or &quot;why would you want to do things in a REPL anyway?&quot; or all sorts of self-deluding statements because they&#39;ve been blinded by some of the better things in Erlang and things like working and profitable products for years and that&#39;s sort of okay but in a way also really frustrating because it seems that after a few years of Erlang development Erlangers seem to forget just how awful some of the tools they&#39;re working with actually are.</p>
+<h1 id="erlang-s-oss-is-moving-sands">Erlang&#39;s OSS is moving sands</h1>
+<p>Every few months we decide we need to make http calls from our applications and we have to do the dance of working out which library is still being maintained or compiles in the current version of Erlang (seriously lhttpc and unicode and R17 really pissed me off for a pile) and then lhttpc is deprecated so use gun as it has maps but actually shotgun is a better wrapper but maybe you need to use fusco except that&#39;s not ready yet yes it&#39;s 2015 and we don&#39;t have a consensus on a http client. (Actually Gun is pretty neat and there are reasons to be re-writing http clients with the advent of http2 etc but okay this is a little frustrating and a small example of the ecosystem).</p>
+<p>The language itself is still evolving and some libraries just stop working between releases, there aren&#39;t too many active users of most Erlang libs once you get out of the basic world of http and databases and you will find bugs and you&#39;ll have to fix those bugs and you&#39;ll have to invest time in doing that if you want to be effective in this world - so you&#39;ll need to be a competent Erlang developer to build an Erlang application but is that such a bad thing given that 90% of developers working in their chosen language are incompetent and at least we have this as a safeguard to keep that sort of person out? I really don&#39;t know I&#39;m just thinking out loud).</p>
+<p>Oh - and every month I find another Erlang library that hasn&#39;t written their manifest properly so doesn&#39;t work in the releases that we build using relx and we&#39;re relying on dangling forks or commits of quite a few projects because nobody seems to be around to take our call for fixing them or merging our fixes.</p>
+<p>It&#39;s not brilliant but...</p>
+<h1 id="erlang-does-seem-to-work">Erlang does seem to work</h1>
+<p>It doesn&#39;t just work, it excels. Once you&#39;ve fought and made peace with all of the above (and more) and you&#39;re using the bash scripts and makefiles that the rest of your company is using for automating the build/test/release process and you&#39;ve spent the time learning how all of it fits together then you can spend some time looking at supervision trees and process ownership and you realise that it&#39;s pretty hard to crash an Erlang application and leave anything open or dangling or in a weird state if you reasoned about your supervision structure at all.</p>
+<p>OTP is pure wonder (gen_server, supervisors, applications etc) and the libraries that ship wth Erlang using the process model and underlying abstractions are battle-tested, stable and well thought out.</p>
+<p>Consider that I can write the following code anywhere in any old gen server and if it fails (IE, write doesn&#39;t return &#39;ok&#39;, the entire process tree crashes and subject to the rules in the supervisor either will be restarted, kill siblings or parents or pass the error up automatically to the next supervision level and we&#39;ll have a log about all of this including the current state of the offending process and there won&#39;t be a dangling open handle to the file and a whole bunch of other useful &quot;none-artifacts&quot; that you&#39;d easily overlook if you hadn&#39;t put in the time to avoid them.</p>
+<pre><code><span class="setting">ok = <span class="value">file:write(Handle, Bytes).</span></span>
+</code></pre><p>Not having to dance around exceptional error cases in most file or networking scenarios and writing your code on top of these built-ins means you can spend more time writing the code you need to write for the feature itself (Okay admittedly if you&#39;ve gotten around the syntax issues). This philosophy and things like it hold true across the various libraries we use from across the ecosystem and mean we don&#39;t tend to get too many support calls at 2am because web servers have disappeared because something is locked, crashed, down permanently, corrupt or whatever.</p>
+<p>Easy inter process communication means it is easy to build self-contained little workers around little balls of state and not worry about concurrency (most of the time) because everything is safe if you&#39;re following the happy path. Generally it also means that shifting cpu heavy stuff around our stack is easy because we can always take one of these processes and spin it up somewhere else. I mentioned that in Clojure we ended up with Actors in core.async but without error handling or safe handle management and here is the answer neatly packaged for us in a platform that has been around and battle-tested for 10x as long. Neat.</p>
+<h1 id="but-what-about-elixir">But what about Elixir</h1>
+<p>If I mention Erlang, this is always the first thing that comes up and it sorta annoys me. I have a few issues with Elixir and they&#39;re not really to do with the language itself because y&#39;know, I couldn&#39;t care less about syntax in general but I do care about philosophy. It&#39;s irrational but here goes:</p>
+<p>1) I&#39;ve worked in Ruby, the Ruby community might be friendly but they&#39;re mostly godawful developers and their tendency to overload operators with magic, or monkey patch internals or generally do any sort of meta-programming because ahahaaha lols made me almost quit programming altogether in frustration when I stared into that abyss for the duration of that job
+2) Elixir comes from that background, with that sort of developer and now with ADDED MACROS (oh man no)</p>
+<p>You see - Clojure is allowed to have Macros because the rules of Macro club are clearly written down and stated as thus:</p>
+<ul>
+<li>Don&#39;t use Macros</li>
+<li>Don&#39;t use Macros</li>
+<li>Don&#39;t use Macros</li>
+<li>Okay, re-write those rules - we&#39;re going to use Macros because our name is Rich Hickey</li>
+</ul>
+<p>This general sensibility means that you don&#39;t generally bring in libraries in Clojure and then have to wonder why everything in your application no longer works because somebody decided to re-define basic mathematical operators (for those not doing Ruby <em>yes this is actually a thing I don&#39;t know what even</em>.</p>
+<p>Erlang doesn&#39;t cost us any money because we can&#39;t pretend records/maps are objects, we don&#39;t need that functionality. Erlang doesn&#39;t cost us money because we can&#39;t do meta-programming (actually we sorta can but sssh don&#39;t tell the Ruby devs) - and while the syntax might be ugly it isn&#39;t something that is a fundamental issue beyond the initial learning curve because you should be learning OTP, not the language. Putting the focus on that shiny language takes a lot of focus away from the things in Erlang that are actually <em>useful</em> as in the ode above. This is further chronicled by the sheer number of blog entries of &quot;Ruby vs Elixir&quot;, &quot;Node vs Elixir&quot; etc as if somehow the language is at all anything you should be interested in. I find it incredibly hard to trust Elixir, anything written <em>in</em> Elixir or anything written by the Elixir devs (see Ruby metaprogramming above).</p>
+<p>The new and shiny detracts from the old and gnarly without really adding that much in tangible benefits and bringing in the hipster brigade who all totally missed the point when it came to the bit in the chapter &quot;What do you mean you can&#39;t re-assign variables&quot;.</p>
+<p>If you&#39;re a great dev then you can probably be more effective in Elixir (probably), but bear in mind they&#39;re re-building all the shitty infrastructure around packaging management, build tools, scaffolding etc that it has been quite a relief to stay away from in this last year of doing Erlang (I&#39;ll cover this in the upcoming series). So thanks but no thanks - you are all incorrect in your thinking and I&#39;ll see you in a couple of years when you work that out for yourself.</p>
+<h1 id="lfe">LFE</h1>
+<p>An interesting idea, and we&#39;re looking at trialling it in our low value webby bits side by side with the Erlang (because it&#39;s not trying to do anything magic beyond offering a fairly simple syntax change - you know I love a good LISP). At the moment there are a pile of things that we&#39;d want in it (I found some issues the first six hours I jumped in and while Robert Virding is very fast at fixing them we&#39;d need to keep it in low value code while we helped grow the project).</p>
+<p>Bonus: It&#39;s not being ran by Ruby script kiddies, so that&#39;s a Good Thing (tm).</p>
+<h1 id="state-on-the-disinterest-curve">State on the disinterest curve</h1>
+<p>Still not really that interested in Erlang, simply building things in it and enjoying it - this process is pretty mundane and perhaps that&#39;s what I&#39;ve been looking for all this time. I&#39;m going to throw in some more blog entries after this one covering how <em>we</em> build things in Erlang because we do things <em>our</em> way and I&#39;ve been asked about this a few times now. This should be fun.</p>
 </div>
       <div id="links">
         <a href="/">Index</a>
@@ -82,11 +174,9 @@
         <a href="http://twitter.com/robashton">Follow me</a>
       </div>
       <div id="hire-me">
-        <h6>This used to ask if you wanted to hire me</h6>
-        <p>But chances are I'm not available, as I'm busy shipping stuff.</p>
-        <p>I am available for conference speaking, I like talking and will do so for just T&E (and perhaps a bottle of wine or two).</p>
-        <p>I have done soft keynotes, and usually entertain/rile people in equal proportion, but prefer to talk tech as that's what I do</p>
-        <p><a href="mailto:robashton@codeofrob.com">Email me :)</a></p>
+        <h6>This used to be a call to action on contacting me</h6>
+        <p>But I'm really not interested in being contacted and probably won't even read the comments on this article</p>
+        <p>I'm working hard at a company and any blog entries I might write are because I had some spare time and felt like sharing :-)</p>
       </div>
       <div id="disqus">
         <div id="disqus_thread"></div>
