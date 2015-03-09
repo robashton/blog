@@ -1,0 +1,102 @@
+[Vir](http://github.com/robashton/vir) is a bunching together of various scripts we had lying around our projects written in a combination of Bash and Erlang to manage the execution/release/etc process for our applications. It does what we need to do and stops about there - I suspect the best way of using Vir is to either use it as it is or fork it for your own organisation rather than trying to make it help everybody.
+
+The easiest way to get started with vir is to clone it to ~/.vir and add this folder to the path, but it'll work if you just add it to a GH repo and run it locally to so... whatever - do what you want it's just a bash script.
+
+Anyway, running vir should give us a list of possible commands, for now we'll just create an empty web application in a folder, so do something like the below..
+
+    mkdir awesomeapp
+    cd awesomeapp
+    git init
+    vir init -t web awesome
+    git commit ...
+
+This creates an application (and builds it) based off the web template called 'awesome' and gives us a folder structure that looks similar to below:
+
+As previously mentioned, this is at immediate glance a lot to digest, but we can go through it a little at a time and see just what has been created for us.
+
+**Config**
+
+    apps/awesome/release-files/sys.config
+    apps/awesome/src/awesome_config.erl
+
+
+**Application startup**
+
+    apps/awesome/src/awesome_app.erl
+    apps/awesome/src/awesome_sup.erl
+
+**A web application**
+
+    apps/awesome/src/awesome_cowboy.erl
+
+**Release artifacts**
+
+    apps/awesome/relx.config
+    deployment/build_no
+    deployment/major_ver
+    deployment/minor_ver
+
+**Dependencies**
+
+  deps/cowboy/
+  deps/cowlib/
+  deps/edown/
+  deps/gen_leader/
+  deps/goldrush/
+  deps/gproc/
+  deps/jsx/
+  deps/lager/
+  deps/ranch/
+
+
+In reality we're only explicitly bringing in *cowboy*, *gproc*, *jsx* and *lager* and the others are further dependencies of these. Because Erlang operates in a single global namespace you can't do explicit imports ala NodeJS and have multiple versions of things in the application. Because dependency applications often spin up a fleet of processes on start-up this would cause huge issues anyway because it's not Just Code you're bringing in.
+
+**A Makefile**
+
+
+Using it
+==
+
+So how do we use this? Well the bash script we just ran probably did all this already but loosely our general dev cycle will be
+
+    make -j apps         #  "make in parallel, the apps only, ignore the deps"
+    vir run awesome      #  "vir, run the app please"
+
+If we add new dependencies, then we'll need to run the following command after a build before running
+
+    vir boot             # Generate bootscripts for each application based on the manifests
+
+So what do we have when it starts up? Well, let's look at the logs first
+
+    Erlang/OTP 17 [erts-6.1] [source] [64-bit] [smp:4:4] [async-threads:10] [kernel-poll:false]
+
+    13:08:49.978 [info] Application lager started on node nonode@nohost
+    13:08:49.979 [info] Application ranch started on node nonode@nohost
+    13:08:49.979 [info] Application crypto started on node nonode@nohost
+    13:08:49.980 [info] Application cowlib started on node nonode@nohost
+    13:08:49.988 [info] Application cowboy started on node nonode@nohost
+    13:08:49.998 [info] Application gproc started on node nonode@nohost
+    13:08:49.998 [info] Application shared started on node nonode@nohost
+    Mode dev not found
+    13:08:50.024 [info] Application awesome started on node nonode@nohost
+    Eshell V6.1  (abort with ^G)
+
+Neato, we see all the applications specified in *app.src* started up. (Mode dev isn't found because we haven't got one and that's the default mode)
+
+Is it working?
+
+    curl http://localhost:3000/index.html
+    <html>
+      <head>
+      </head>
+      <body>
+        <h1>Hello world</h1>
+      </body>
+    </html>
+
+Yup.
+
+Next up
+==
+
+I'll look at our Makefile and how we handle dependencies, and explain a bit more our decisions around that.

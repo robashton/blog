@@ -107,10 +107,11 @@ Easy inter process communication means it is easy to build self-contained little
 But what about Elixir
 ===
 
-If I mention Erlang, this is always the first thing that comes up and it sorta annoys me. I have a few issues with Elixir and they're not really to do with the language itself because y'know, I couldn't care less about syntax in general but I do care about philosophy. It's irrational but here goes:
+If I mention Erlang, this is always the first thing that comes up and it sorta annoys me. I have a few issues with Elixir and they're not really to do with the language itself because y'know, I couldn't care less about syntax in general but I do care about philosophy/focus. It's irrational but here goes:
 
 1) I've worked in Ruby, the Ruby community might be friendly but they're mostly godawful developers and their tendency to overload operators with magic, or monkey patch internals or generally do any sort of meta-programming because ahahaaha lols made me almost quit programming altogether in frustration when I stared into that abyss for the duration of that job
-2) Elixir comes from that background, with that sort of developer and now with ADDED MACROS (oh man no)
+
+2) Elixir comes from that background, with that sort of developer and now with ADDED MACROS (oh man no don't give these kids more metaprogramming tools)
 
 You see - Clojure is allowed to have Macros because the rules of Macro club are clearly written down and stated as thus:
 
@@ -119,7 +120,7 @@ You see - Clojure is allowed to have Macros because the rules of Macro club are 
 - Don't use Macros
 - Okay, re-write those rules - we're going to use Macros because our name is Rich Hickey
 
-This general sensibility means that you don't generally bring in libraries in Clojure and then have to wonder why everything in your application no longer works because somebody decided to re-define basic mathematical operators (for those not doing Ruby *yes this is actually a thing I don't know what even*.
+This general sensibility means that you don't generally bring in libraries in Clojure and then have to wonder why everything in your application no longer works because somebody decided to re-define basic mathematical operators (for those not doing Ruby *yes this is actually a thing I don't know what even*).
 
 Erlang doesn't cost us any money because we can't pretend records/maps are objects, we don't need that functionality. Erlang doesn't cost us money because we can't do meta-programming (actually we sorta can but sssh don't tell the Ruby devs) - and while the syntax might be ugly it isn't something that is a fundamental issue beyond the initial learning curve because you should be learning OTP, not the language. Putting the focus on that shiny language takes a lot of focus away from the things in Erlang that are actually *useful* as in the ode above. This is further chronicled by the sheer number of blog entries of "Ruby vs Elixir", "Node vs Elixir" etc as if somehow the language is at all anything you should be interested in. I find it incredibly hard to trust Elixir, anything written *in* Elixir or anything written by the Elixir devs (see Ruby metaprogramming above).
 
