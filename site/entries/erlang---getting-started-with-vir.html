@@ -1,0 +1,244 @@
+<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
+<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
+<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
+<!--[if !ie]><!-->
+<html lang="en"> <!--<![endif]-->
+<head>
+    <title id="title">Erlang - Getting started with vir</title>
+    <meta charset="utf-8">
+    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <meta name="author" content="">
+    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
+    <link rel="stylesheet" href="/assets/css/style_responsive.css">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
+    <link rel="stylesheet" href="/assets/css/themes/default.css">
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
+    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="header">
+        <div class="container">
+            <div class="logo">
+             <h2><a href="/index.html">Rob Ashton</a></h2>
+            </div>
+            <div class="navbar">
+                <div class="navbar-inner">
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </a>
+                    <div class="nav-collapse collapse">
+                        <ul class="nav top-2">
+                          <li>
+                                <a href="/">Home</a>
+                            </li>
+                            <li>
+                                <a href="/blog.html">Blog</a>
+                            </li>
+                            <li>
+                                <a href="/statements.html">Testimonials</a>
+                            </li>
+                            <li>
+                                <a href="/hire.html">Hire Me</a>
+                            </li>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+  <body>
+    <div id="blog-entry">
+      <h1 id="post-title">Erlang - Getting started with vir</h1>
+      <h6>Published on <span class="date">2015-3-19</span></h6>
+      <div id="post"><p><a href="http://github.com/robashton/vir">Vir</a> is a bunching together of various scripts we had lying around our projects written in a combination of Bash and Erlang to manage the execution/release/etc process for our applications. It does what we need to do and stops about there - I suspect the best way of using Vir is to either use it as it is or fork it for your own organisation rather than trying to make it help everybody.</p>
+<p>The easiest way to get started with vir is to clone it to ~/.vir and add this folder to the path, but it&#39;ll work if you just add it to a GH repo and run it locally to so... whatever - do what you want it&#39;s just a bash script.</p>
+<p>Anyway, running vir should give us a list of possible commands, for now we&#39;ll just create an empty web application in a folder, so do something like the below..</p>
+<pre><code>mkdir awesomeapp
+cd awesomeapp
+git init
+vir init -t web awesome
+git commit <span class="keyword">...</span>
+</code></pre><p>This creates an application (and builds it) based off the web template called &#39;awesome&#39; and gives us a folder structure that looks similar to below:</p>
+<p>As previously mentioned, this is at immediate glance a lot to digest, but we can go through it a little at a time and see just what has been created for us.</p>
+<p><strong>Config</strong></p>
+<pre><code><span class="title">apps</span>/awesome/release-files/sys.config
+<span class="title">apps</span>/awesome/src/awesome_config.erl
+</code></pre><p><strong>Application startup</strong></p>
+<pre><code><span class="title">apps</span>/awesome/src/awesome_app.erl
+<span class="title">apps</span>/awesome/src/awesome_sup.erl
+</code></pre><p><strong>A web application</strong></p>
+<pre><code>apps/awesome/src/<span class="filename">awesome_cowboy.erl
+</code></pre><p><strong>Release artifacts</strong></p>
+<pre><code><span class="title">apps</span>/awesome/relx.config
+<span class="title">deployment</span>/build_no
+<span class="title">deployment</span>/major_ver
+<span class="title">deployment</span>/minor_ver
+</code></pre><p><strong>Dependencies</strong></p>
+<p>  deps/cowboy/
+  deps/cowlib/
+  deps/edown/
+  deps/gen_leader/
+  deps/goldrush/
+  deps/gproc/
+  deps/jsx/
+  deps/lager/
+  deps/ranch/</p>
+<p>In reality we&#39;re only explicitly bringing in <em>cowboy</em>, <em>gproc</em>, <em>jsx</em> and <em>lager</em> and the others are further dependencies of these. Because Erlang operates in a single global namespace you can&#39;t do explicit imports ala NodeJS and have multiple versions of things in the application. Because dependency applications often spin up a fleet of processes on start-up this would cause huge issues anyway because it&#39;s not Just Code you&#39;re bringing in.</p>
+<p><strong>A Makefile</strong></p>
+<h1 id="using-it">Using it</h1>
+<p>So how do we use this? Well the bash script we just ran probably did all this already but loosely our general dev cycle will be</p>
+<pre><code><span class="title">make</span> -j apps         <span class="comment">#  "make in parallel, the apps only, ignore the deps"</span>
+vir run awesome      <span class="comment">#  "vir, run the app please"</span>
+</code></pre><p>If we add new dependencies, then we&#39;ll need to run the following command after a build before running</p>
+<pre><code>vir boot             # <span class="keyword">Generate</span> bootscripts <span class="keyword">for</span> each application based <span class="keyword">on</span> the manifests
+</code></pre><p>So what do we have when it starts up? Well, let&#39;s look at the logs first</p>
+<pre><code>Erlang/OTP <span class="number">17</span> [erts-<span class="number">6.1</span>] [source] [<span class="number">64</span>-bit] [smp:<span class="number">4</span>:<span class="number">4</span>] [async-threads:<span class="number">10</span>] [kernel-poll:<span class="constant">false</span>]
+
+<span class="number">13</span>:<span class="number">08</span>:<span class="number">49.978</span> [info] Application lager started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
+<span class="number">13</span>:<span class="number">08</span>:<span class="number">49.979</span> [info] Application ranch started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
+<span class="number">13</span>:<span class="number">08</span>:<span class="number">49.979</span> [info] Application crypto started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
+<span class="number">13</span>:<span class="number">08</span>:<span class="number">49.980</span> [info] Application cowlib started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
+<span class="number">13</span>:<span class="number">08</span>:<span class="number">49.988</span> [info] Application cowboy started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
+<span class="number">13</span>:<span class="number">08</span>:<span class="number">49.998</span> [info] Application gproc started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
+<span class="number">13</span>:<span class="number">08</span>:<span class="number">49.998</span> [info] Application shared started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
+Mode dev <span class="keyword">not</span> found
+<span class="number">13</span>:<span class="number">08</span>:<span class="number">50.024</span> [info] Application awesome started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
+Eshell V6<span class="number">.1</span>  (abort <span class="keyword">with</span> ^G)
+</code></pre><p>Neato, we see all the applications specified in <em>app.src</em> started up. (Mode dev isn&#39;t found because we haven&#39;t got one and that&#39;s the default mode)</p>
+<p>Is it working?</p>
+<pre><code>curl http://localhost:3000/index.html
+<span class="tag">&lt;<span class="title">html</span>&gt;</span>
+  <span class="tag">&lt;<span class="title">head</span>&gt;</span>
+  <span class="tag">&lt;/<span class="title">head</span>&gt;</span>
+  <span class="tag">&lt;<span class="title">body</span>&gt;</span>
+    <span class="tag">&lt;<span class="title">h1</span>&gt;</span>Hello world<span class="tag">&lt;/<span class="title">h1</span>&gt;</span>
+  <span class="tag">&lt;/<span class="title">body</span>&gt;</span>
+<span class="tag">&lt;/<span class="title">html</span>&gt;</span>
+</code></pre><p>Yup.</p>
+<h1 id="next-up">Next up</h1>
+<p>I&#39;ll look at our Makefile and how we handle dependencies, and explain a bit more our decisions around that.</p>
+</div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="http://twitter.com/robashton">Follow me</a>
+      </div>
+      <div id="hire-me">
+        <h6>This used to be a call to action on contacting me</h6>
+        <p>But I'm really not interested in being contacted and probably won't even read the comments on this article</p>
+        <p>I'm working hard at a company and any blog entries I might write are because I had some spare time and felt like sharing :-)</p>
+      </div>
+      <div id="disqus">
+        <div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+      </div>
+    </div>
+    <div id="post-comments">
+
+    </div>
+
+<div class="footer" style="margin-top: 0px">
+    <div class="container">
+        <div class="row-fluid">
+            <div class="span3">
+                <div class="headline"><h3>Get In Touch</h3></div>
+                <address class="address">
+                    <ul class="icons-ul">
+                        <li><i class="icon-li icon-envelope"></i>Email: <a href="mailto:robashton@codeofrob.com" class="">robashton@codeofrob.com</a></li>
+                        <li><i class="icon-li icon-envelope"></i>Skype: <a href="skype:rob_ashton" class="">rob_ashton</a></li>
+                    </ul>
+                </address>
+            </div><!--/span3-->
+            <div class="span5">
+                <div class="headline"><h3>Subscribe</h3></div>
+                <p>I publish an <a href="http://feed.codeofrob.com/RobAshton">RSS feed</a> from my blog and some other activities</p>
+            </div>
+            <div class="span4">
+                <div class="posts">
+                  <div class="headline"><h3>Find me...</h3></div>
+                  <p><a href="http://twitter.com/robashton"><img src="/assets/img/twitter.jpg" alt="" />
+                  <a href="http://github.com/robashton"><img src="/assets/img/github.png" alt="" /></a></p>
+                </div>
+            </div><!--/span4-->
+        </div><!--/row-fluid-->
+    </div><!--/container-->
+</div><!--/footer-->
+<!--=== End Footer ===-->
+
+<!--=== Copyright ===-->
+<div class="copyright">
+    <div class="container">
+        <div class="row-fluid">
+            <div class="span2">
+              <a href="/">Rob Ashton</a>
+            </div>
+            <div class="span6">
+              <p class="terms">2014 © Rob Ashton. ALL Rights Reserved.</p>
+            </div>
+        </div><!--/row-fluid-->
+    </div><!--/container-->
+</div><!--/copyright-->
+<!--=== End Copyright ===-->
+
+<!-- JS Global Compulsory -->
+<script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+<script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+<!-- JS Implementing Plugins -->
+<script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+<script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+<script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+<script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+<script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+<script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+<!-- JS Page Level -->
+<script type="text/javascript" src="/assets/js/app.js"></script>
+<script type="text/javascript" src="/assets/js/pages/index.js"></script>
+<script type="text/javascript">
+    jQuery(document).ready(function() {
+      	App.init();
+        App.initFancybox();
+        App.initSliders();
+        Index.initParallaxSlider();
+    });
+</script>
+<!--[if lt IE 9]>
+    <script src="assets/js/respond.js"></script>
+<![endif]-->
+  </body>
+</html>
+
