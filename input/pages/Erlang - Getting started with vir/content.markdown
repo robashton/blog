@@ -38,21 +38,22 @@ As previously mentioned, this is at immediate glance a lot to digest, but we can
 
 **Dependencies**
 
-  deps/cowboy/
-  deps/cowlib/
-  deps/edown/
-  deps/gen_leader/
-  deps/goldrush/
-  deps/gproc/
-  deps/jsx/
-  deps/lager/
-  deps/ranch/
+    deps/cowboy/
+    deps/cowlib/
+    deps/edown/
+    deps/gen_leader/
+    deps/goldrush/
+    deps/gproc/
+    deps/jsx/
+    deps/lager/
+    deps/ranch/
 
 
 In reality we're only explicitly bringing in *cowboy*, *gproc*, *jsx* and *lager* and the others are further dependencies of these. Because Erlang operates in a single global namespace you can't do explicit imports ala NodeJS and have multiple versions of things in the application. Because dependency applications often spin up a fleet of processes on start-up this would cause huge issues anyway because it's not Just Code you're bringing in.
 
 **A Makefile**
 
+    Makefile
 
 Using it
 ==

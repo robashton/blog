@@ -1,5 +1,84 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Mon, 09 Mar 2015 12:00:06 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[The Ashton Disinterest Curve - Erlang]]></title><description><![CDATA[<p>I&#39;ve complained about <a href="/entries/the-ashton-disinterest-curve---c.html">.NET</a> (nothing has changed by the way) and <a href="/entries/the-ashton-disinterest-curve---javascript-and-node.html">JS</a> (or here) and I&#39;ve been pretty nice about <a href="/entries/the-ashton-disinterest-curve---clojure.html">Clojure</a> (or so I thought) and I&#39;ve managed to delay doing anything about Erlang at all because reasons.</p>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Thu, 19 Mar 2015 09:45:38 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Erlang - Getting started with vir]]></title><description><![CDATA[<p><a href="http://github.com/robashton/vir">Vir</a> is a bunching together of various scripts we had lying around our projects written in a combination of Bash and Erlang to manage the execution/release/etc process for our applications. It does what we need to do and stops about there - I suspect the best way of using Vir is to either use it as it is or fork it for your own organisation rather than trying to make it help everybody.</p>
+<p>The easiest way to get started with vir is to clone it to ~/.vir and add this folder to the path, but it&#39;ll work if you just add it to a GH repo and run it locally to so... whatever - do what you want it&#39;s just a bash script.</p>
+<p>Anyway, running vir should give us a list of possible commands, for now we&#39;ll just create an empty web application in a folder, so do something like the below..</p>
+<pre><code>mkdir awesomeapp
+cd awesomeapp
+git init
+vir init -t web awesome
+git commit <span class="keyword">...</span>
+</code></pre><p>This creates an application (and builds it) based off the web template called &#39;awesome&#39; and gives us a folder structure that looks similar to below:</p>
+<p>As previously mentioned, this is at immediate glance a lot to digest, but we can go through it a little at a time and see just what has been created for us.</p>
+<p><strong>Config</strong></p>
+<pre><code><span class="title">apps</span>/awesome/release-files/sys.config
+<span class="title">apps</span>/awesome/src/awesome_config.erl
+</code></pre><p><strong>Application startup</strong></p>
+<pre><code><span class="title">apps</span>/awesome/src/awesome_app.erl
+<span class="title">apps</span>/awesome/src/awesome_sup.erl
+</code></pre><p><strong>A web application</strong></p>
+<pre><code>apps/awesome/src/<span class="filename">awesome_cowboy.erl
+</code></pre><p><strong>Release artifacts</strong></p>
+<pre><code><span class="title">apps</span>/awesome/relx.config
+<span class="title">deployment</span>/build_no
+<span class="title">deployment</span>/major_ver
+<span class="title">deployment</span>/minor_ver
+</code></pre><p><strong>Dependencies</strong></p>
+<pre><code><span class="title">deps</span>/cowboy/
+<span class="title">deps</span>/cowlib/
+<span class="title">deps</span>/edown/
+<span class="title">deps</span>/gen_leader/
+<span class="title">deps</span>/goldrush/
+<span class="title">deps</span>/gproc/
+<span class="title">deps</span>/jsx/
+<span class="title">deps</span>/lager/
+<span class="title">deps</span>/ranch/
+</code></pre><p>In reality we&#39;re only explicitly bringing in <em>cowboy</em>, <em>gproc</em>, <em>jsx</em> and <em>lager</em> and the others are further dependencies of these. Because Erlang operates in a single global namespace you can&#39;t do explicit imports ala NodeJS and have multiple versions of things in the application. Because dependency applications often spin up a fleet of processes on start-up this would cause huge issues anyway because it&#39;s not Just Code you&#39;re bringing in.</p>
+<p><strong>A Makefile</strong></p>
+<pre><code><span class="attribute">Makefile
+</code></pre><h1 id="using-it">Using it</h1>
+<p>So how do we use this? Well the bash script we just ran probably did all this already but loosely our general dev cycle will be</p>
+<pre><code><span class="title">make</span> -j apps         <span class="comment">#  "make in parallel, the apps only, ignore the deps"</span>
+vir run awesome      <span class="comment">#  "vir, run the app please"</span>
+</code></pre><p>If we add new dependencies, then we&#39;ll need to run the following command after a build before running</p>
+<pre><code>vir boot             # <span class="keyword">Generate</span> bootscripts <span class="keyword">for</span> each application based <span class="keyword">on</span> the manifests
+</code></pre><p>So what do we have when it starts up? Well, let&#39;s look at the logs first</p>
+<pre><code>Erlang/OTP <span class="number">17</span> [erts-<span class="number">6.1</span>] [source] [<span class="number">64</span>-bit] [smp:<span class="number">4</span>:<span class="number">4</span>] [async-threads:<span class="number">10</span>] [kernel-poll:<span class="constant">false</span>]
+
+<span class="number">13</span>:<span class="number">08</span>:<span class="number">49.978</span> [info] Application lager started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
+<span class="number">13</span>:<span class="number">08</span>:<span class="number">49.979</span> [info] Application ranch started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
+<span class="number">13</span>:<span class="number">08</span>:<span class="number">49.979</span> [info] Application crypto started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
+<span class="number">13</span>:<span class="number">08</span>:<span class="number">49.980</span> [info] Application cowlib started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
+<span class="number">13</span>:<span class="number">08</span>:<span class="number">49.988</span> [info] Application cowboy started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
+<span class="number">13</span>:<span class="number">08</span>:<span class="number">49.998</span> [info] Application gproc started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
+<span class="number">13</span>:<span class="number">08</span>:<span class="number">49.998</span> [info] Application shared started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
+Mode dev <span class="keyword">not</span> found
+<span class="number">13</span>:<span class="number">08</span>:<span class="number">50.024</span> [info] Application awesome started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
+Eshell V6<span class="number">.1</span>  (abort <span class="keyword">with</span> ^G)
+</code></pre><p>Neato, we see all the applications specified in <em>app.src</em> started up. (Mode dev isn&#39;t found because we haven&#39;t got one and that&#39;s the default mode)</p>
+<p>Is it working?</p>
+<pre><code>curl http://localhost:3000/index.html
+<span class="tag">&lt;<span class="title">html</span>&gt;</span>
+  <span class="tag">&lt;<span class="title">head</span>&gt;</span>
+  <span class="tag">&lt;/<span class="title">head</span>&gt;</span>
+  <span class="tag">&lt;<span class="title">body</span>&gt;</span>
+    <span class="tag">&lt;<span class="title">h1</span>&gt;</span>Hello world<span class="tag">&lt;/<span class="title">h1</span>&gt;</span>
+  <span class="tag">&lt;/<span class="title">body</span>&gt;</span>
+<span class="tag">&lt;/<span class="title">html</span>&gt;</span>
+</code></pre><p>Yup.</p>
+<h1 id="next-up">Next up</h1>
+<p>I&#39;ll look at our Makefile and how we handle dependencies, and explain a bit more our decisions around that.</p>
+]]></description><link>http://codeofrob.com/entries/erlang---getting-started-with-vir.html</link><guid isPermaLink="true">http://codeofrob.com/entries/erlang---getting-started-with-vir.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 19 Mar 2015 09:30:00 GMT</pubDate></item><item><title><![CDATA[Erlang - How we do it]]></title><description><![CDATA[<p>Having <a href="/entries/the-ashton-disinterest-curve---c.html">established</a> that I <a href="/entries/the-ashton-disinterest-curve---javascript-and-node.html">apparently</a> <a href="/entries/the-ashton-disinterest-curve---clojure.html">hate</a> <a href="/entries/the-ashton-disinterest-curve---erlang.html">everything</a>, let&#39;s get a bit more constructive and go over how at the company I work at, we do Erlang and do Erlang effectively.</p>
+<p>Let&#39;s start off with a little history first though to build context for this series... I&#39;ll use &quot;we&quot; a lot, but what I really mean is &quot;me and my current understanding of our way&quot;.</p>
+<h1 id="where-we-are">Where we are</h1>
+<p>There were a couple of .NET developers, and they had need to build a distributed system and they looked at .NET and went &quot;hell no, let&#39;s do that little bit in Erlang&quot; and then a little bit later &quot;Oh sod it, let&#39;s do everyting in Erlang this is actually great&quot;. Lots of mistakes were made over the next few years and they were learned from as they were made. Eventually a developer called Rob (me) joined the team and most of the important mistakes had already been made and a lot of decisions had been made about how best to be effective at Erlang development.</p>
+<p>We&#39;ve been through our own custom build systems/runners, to using <a href="https://github.com/rebar/rebar">Rebar</a>, to using fairly <a href="https://github.com/ninenines/erlang.mk">poorly written</a> Makefiles to using <a href="https://github.com/fenollp/erl-mk">reasonably written</a> Makefiles to just forking the best one and making it <a href="https://github.com/id3as/erl-mk">our own</a>. We&#39;ve been through the &quot;let&#39;s make everything a gen server&quot; to &quot;why do we need gen servers anyway&quot; to &quot;okay, here is the happy medium&quot;. We&#39;ve had bash scripts lying around a bunch of projects for automation purposes that have diverged from each other, converged again and been merged into a &quot;<a href="https://github.com/robashton/vir">single tool to rule them all</a>&quot;. We have sensible ways to build up APIs between gen servers, between running applications and we have a common swiss army knife of a common library that every time I go to write Erlang without for personal stuff I wonder how on earth I ever got on without.</p>
+<p>It&#39;s a pretty mature stack and because we own most of it outside of our basic dependencies we&#39;re not subject to the whims of third parties changing their minds about how projects should be written and managed. Leaning on a large platform like Erlang is relaxing because it has been around for a few decades and generally doesn&#39;t undergo massive shifts every year just because some hipster somewhere decides they don&#39;t like <em>that sort</em> of paren or semi-colon.</p>
+<p>We&#39;re pretty much against package managers, binary dependencies or other opaque tooling that we can&#39;t understand and simply make our own. We&#39;ve learned the hard way that sometimes the best tools are the ones that we&#39;ve all been using since the dawn of time (Bash and Make) and slowly over time these ideas have converged and become crystalised as a standard set of tools we all understand and are happy with.</p>
+<h1 id="a-series-then">A series then</h1>
+<p>So we have these bash scripts and makefiles and our standard application structure and while we&#39;ve been using them for years in various forms we&#39;ve never really publicised that they&#39;re actually OSS on Github. We&#39;ve never talked about how to use them to build Erlang applications (new starters? Pair for half a year and you&#39;ll have it all down like second nature anyway).</p>
+<p>Now that most of this has stabilised (for now), it&#39;s quite a good time to write a blog series about our workflow, how to bootstrap a new application, how to do builds and releases and best practises around gen servers and processes and APIs and inter-process communication. We&#39;re also heavy Docker users (for now) so I&#39;ll cover our loose workflow around how we use that for development etc.</p>
+<p>On board? The next entry will be about bootstrapping an empty application.</p>
+]]></description><link>http://codeofrob.com/entries/erlang---how-we-do-it.html</link><guid isPermaLink="true">http://codeofrob.com/entries/erlang---how-we-do-it.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 17 Mar 2015 09:30:00 GMT</pubDate></item><item><title><![CDATA[The Ashton Disinterest Curve - Erlang]]></title><description><![CDATA[<p>I&#39;ve complained about <a href="/entries/the-ashton-disinterest-curve---c.html">.NET</a> (nothing has changed by the way) and <a href="/entries/the-ashton-disinterest-curve---javascript-and-node.html">JS</a> (or here) and I&#39;ve been pretty nice about <a href="/entries/the-ashton-disinterest-curve---clojure.html">Clojure</a> (or so I thought) and I&#39;ve managed to delay doing anything about Erlang at all because reasons.</p>
 <h1 id="erlang-mundane-brilliance">Erlang - mundane brilliance</h1>
 <p>I&#39;m not passionate about Erlang; I&#39;ve never been passionate about Erlang and I&#39;ve never hated it either. Perhaps this explains why I&#39;m over a year into working with it professionally and I still don&#39;t feel the need to talk loudly about it one way or another. (That and I have a great team of colleagues, work remotely and build pretty awesome products that are actually being used by people - okay then).</p>
 <p>Let&#39;s get something out of the way then, I&#39;m not an Erlang evangelist - I was even asked in a talk the other day what my three sentence elevator pitch for Erlang would be and I haven&#39;t got one. If you want to put in the effort to work in the Erlang ecosystem then the rewards will become apparent fast enough but trying to explain how exactly such an ugly language contributes positively in any way to our product quality/stability in a tidy soundbite just isn&#39;t something I&#39;m interested in doing.</p>
@@ -453,143 +532,4 @@ build-css:
 <li>indexes.clj</li>
 <li>lucene.clj</li>
 </ul>
-]]></description><link>http://codeofrob.com/entries/indexing-support-for-my-clojure-document-database.html</link><guid isPermaLink="true">http://codeofrob.com/entries/indexing-support-for-my-clojure-document-database.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 12 Jun 2014 09:30:00 GMT</pubDate></item><item><title><![CDATA[Document storage in my clojure document database]]></title><description><![CDATA[<p>With core storage implemented, document storage becomes the trivial matter of a few pure functions</p>
-<ul>
-<li><a href="/entries/i-wrote-a-document-database-in-clojure.html">I wrote a Clojure document database</a></li>
-<li><a href="/entries/the-client-api-for-my-clojure-document-database.html">The Client API for my Clojure document database</a></li>
-<li><a href="/entries/the-http-api-for-my-clojure-document-database.html">The HTTP API for my Clojure document database</a></li>
-<li><a href="/entries/the-core-storage-protocols-for-my-clojure-document-database.html">The core storage protocols for the Clojure document database</a></li>
-<li><a href="/entries/the-leveldb-storage-for-my-clojure-document-database.html">LevelDB storage implementation for the Clojure document database</a></li>
-<li><a href="/the-inmemory-storage-for-my-clojure-document-database.html">In-memory storage for the Clojure document database</a></li>
-</ul>
-<p><strong>What is a document</strong></p>
-<p>A document in this database is going to be anything that can be deserialized into a clojure object (so binary edn). This includes</p>
-<ul>
-<li>Maps</li>
-<li>Vectors/Lists/Etc</li>
-<li>Primitives</li>
-</ul>
-<p>Often document databases assume some sort of &quot;id&quot; property as part of the document, but in experience this often ends up to be a hindrance as you end up having to implement conventions/etc deep inside the database for managing the id property. Leaving this to clients to figure out, it&#39;s much easier to simply associate a document with an id and keep the tracking of that id to the user (they&#39;re free to put it on the document however, if the structure supports it).</p>
-<p>As part of each document, a version or synctag is kept (a global incremented number) - in the distributed set-up which I never got around to finishing, this would have been generated by the primary node - but regardless, it needs storing with each document.</p>
-<p>For indexing, we also need to store a bunch of secondary indexes against each document so we can look them up by other means, without duplicating the data in storage.</p>
-<ul>
-<li>By Id</li>
-<li>By Synctag (write order)</li>
-<li>By Conflicts (in an MVCC set-up)</li>
-<li>Document metadata</li>
-</ul>
-<p>Therefore, we keep a few built-in prefixes around to determine how these documents are stored</p>
-<pre><code>(<span class="function"><span class="keyword">def</span> <span class="title">synctags</span><span class="title">-</span><span class="title">to</span><span class="title">-</span><span class="title">docs</span><span class="title">-</span><span class="title">prefix</span> </span><span class="string">"synctags-to-docs-"</span>)
-(<span class="function"><span class="keyword">def</span> <span class="title">conflict</span><span class="title">-</span><span class="title">prefix</span> </span><span class="string">"conflict-"</span>)
-(<span class="function"><span class="keyword">def</span> <span class="title">document</span><span class="title">-</span><span class="title">prefix</span> </span><span class="string">"doc-"</span>)
-(<span class="function"><span class="keyword">def</span> <span class="title">last</span><span class="title">-</span><span class="title">synctag</span><span class="title">-</span><span class="title">key</span> </span><span class="string">"last-synctag"</span>)
-(<span class="function"><span class="keyword">def</span> <span class="title">docs</span><span class="title">-</span><span class="title">to</span><span class="title">-</span><span class="title">metadata</span><span class="title">-</span><span class="title">prefix</span> </span><span class="string">"docs-to-metadata-"</span>)
-</code></pre><p>Thus, writing is actually the addition of multiple entries to the underlying key-value store. I have a few helper methods for determining whether an entry in the underlying storage is a specific type of key/value pair. Note: I know, these are using reflection and I should be using the built in string methods - I never got around to updating this code :)</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> is-document-key [^String k]
-  <span class="list">(<span class="body">.startsWith k document-prefix)</span></span>)</span></span>
-<span class="list">(<span class="title">defn</span><span class="body"> is-document-key-prefixed-with [prefix entry]
-  <span class="list">(<span class="body">.startsWith <span class="list">(<span class="title">entry</span><span class="body"> <span class="keyword">:k</span>)</span></span> <span class="list">(<span class="title">str</span><span class="body"> document-prefix prefix)</span></span>)</span></span>)</span></span>
-<span class="list">(<span class="title">defn</span><span class="body"> is-synctags-to-docs-key [k]
-  <span class="list">(<span class="body">.startsWith k synctags-to-docs-prefix)</span></span>)</span></span>
-<span class="list">(<span class="title">defn</span><span class="body"> is-synctag-docs-entry [m]
-  <span class="list">(<span class="title">is-synctags-to-docs-key</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:k</span> m)</span></span>)</span></span>)</span></span>
-<span class="list">(<span class="title">defn</span><span class="body"> is-conflict-entry [m]
-  <span class="list">(<span class="body">.startsWith <span class="list">(<span class="body"><span class="keyword">:k</span> m)</span></span> conflict-prefix)</span></span>)</span></span>
-<span class="list">(<span class="title">defn</span><span class="body"> is-conflict-entry-for [m doc-id]
-  <span class="list">(<span class="body">.startsWith <span class="list">(<span class="body"><span class="keyword">:k</span> m)</span></span> <span class="list">(<span class="title">str</span><span class="body"> conflict-prefix doc-id)</span></span>)</span></span>)</span></span>
-</code></pre><p>Storing a document is just a repeated application of chnages to the underlying transaction as described in previous entries</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> store-document
-  [db id document metadata]
-  <span class="list">(<span class="title">-&gt;</span><span class="body"> db
-    <span class="list">(<span class="title">s/store</span><span class="body"> <span class="list">(<span class="title">str</span><span class="body"> document-prefix id)</span></span> document)</span></span>
-    <span class="list">(<span class="title">s/store</span><span class="body"> <span class="list">(<span class="title">str</span><span class="body"> synctags-to-docs-prefix <span class="list">(<span class="body"><span class="keyword">:synctag</span> metadata)</span></span>)</span></span> id)</span></span>
-    <span class="list">(<span class="title">s/store</span><span class="body"> <span class="list">(<span class="title">str</span><span class="body"> docs-to-metadata-prefix id)</span></span> metadata)</span></span>)</span></span>)</span></span>
-</code></pre><p>Likewise, deletion is a similar story</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> delete-document
-  [session id metadata]
-  <span class="list">(<span class="title">-&gt;</span><span class="body"> session
-    <span class="list">(<span class="title">s/delete</span><span class="body"> <span class="list">(<span class="title">str</span><span class="body"> document-prefix id)</span></span>)</span></span>
-    <span class="list">(<span class="title">s/store</span><span class="body"> <span class="list">(<span class="title">str</span><span class="body"> synctags-to-docs-prefix <span class="list">(<span class="body"><span class="keyword">:synctag</span> metadata)</span></span>)</span></span> id)</span></span>
-    <span class="list">(<span class="title">s/store</span><span class="body"> <span class="list">(<span class="title">str</span><span class="body"> docs-to-metadata-prefix id)</span></span> metadata)</span></span>)</span></span>)</span></span>
-</code></pre><p>Not that while we delete the actual document and data, we associate this operation with metadata and a version regardless, we we can resolve this appropriately if a conflict arises.</p>
-<p>Registration of conflicts is managed externally to all of this, and thus there is also a store-conflict function surfaced.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> store-conflict [db id document metadata]
-  <span class="list">(<span class="title">s/store</span><span class="body"> db <span class="list">(<span class="title">str</span><span class="body"> conflict-prefix id <span class="list">(<span class="body"><span class="keyword">:synctag</span> metadata)</span></span>)</span></span>
-          {
-            <span class="keyword">:id</span> id
-            <span class="keyword">:data</span> document
-            <span class="keyword">:metadata</span> metadata })</span></span>)</span></span>
-</code></pre><p>Getting all the conflicts from the document storage, is just a matter of opening an appropriate iterator and reading entries until one is not a conflict</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> conflicts
-  <span class="list">(<span class="body">[db] <span class="list">(<span class="title">conflicts</span><span class="body"> db <span class="string">""</span>)</span></span>)</span></span>
-  <span class="list">(<span class="body">[db prefix]
-      <span class="list">(<span class="title">with-open</span><span class="body"> [iter <span class="list">(<span class="title">s/get-iterator</span><span class="body"> db )</span></span>]
-        <span class="list">(<span class="title">s/seek</span><span class="body"> iter <span class="list">(<span class="title">str</span><span class="body"> conflict-prefix prefix)</span></span>)</span></span>
-        <span class="list">(<span class="title">doall</span><span class="body"> <span class="list">(<span class="title">-&gt;&gt;</span><span class="body"> <span class="list">(<span class="title">s/as-seq</span><span class="body"> iter)</span></span>
-            <span class="list">(<span class="title">take-while</span><span class="body"> #<span class="list">(<span class="title">is-conflict-entry-for</span><span class="body"> %<span class="number">1</span> prefix)</span></span>)</span></span>
-            <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:v</span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>
-</code></pre><p>This is not lazy, we can see a with-open block and a do-all, I guess if I&#39;d fleshed out the MVCC set-up then the iterator control would have been passed up to a higher layer.</p>
-<p>For convenience, the documents also surface some convenience methods for reading through documents from a specific key or order. Unlike conflicts, these take in an iterator and it is assumed that the utiliser will take care of evaluation and the closing of that iterator in the appropriate manner.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> iterate-documents-prefixed-with [iter prefix]
-  <span class="list">(<span class="title">s/seek</span><span class="body"> iter <span class="list">(<span class="title">str</span><span class="body"> document-prefix prefix)</span></span>)</span></span>
-  <span class="list">(<span class="title">-&gt;&gt;</span><span class="body"> <span class="list">(<span class="title">s/as-seq</span><span class="body"> iter)</span></span>
-    <span class="list">(<span class="title">take-while</span><span class="body"> <span class="list">(<span class="title">partial</span><span class="body"> is-document-key-prefixed-with prefix)</span></span>)</span></span>
-    <span class="list">(<span class="title">map</span><span class="body"> <span class="list">(<span class="title">comp</span><span class="body"> edn/read-string <span class="keyword">:v</span>)</span></span>)</span></span>)</span></span> )</span></span>
-
-<span class="list">(<span class="title">defn</span><span class="body"> iterate-synctags-after [iter synctag]
-  <span class="list">(<span class="title">s/seek</span><span class="body"> iter <span class="list">(<span class="title">str</span><span class="body"> synctags-to-docs-prefix <span class="list">(<span class="title">next-synctag</span><span class="body"> synctag)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">-&gt;&gt;</span><span class="body"> <span class="list">(<span class="title">s/as-seq</span><span class="body"> iter)</span></span> <span class="list">(<span class="title">take-while</span><span class="body"> is-synctag-docs-entry)</span></span> <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:v</span>)</span></span> <span class="list">(<span class="title">distinct</span><span class="body">)</span></span>)</span></span>)</span></span>
-</code></pre><p>That&#39;s actually the entire implementation of document storage listed out in this blog entry. Clojure can be very terse at timess due to the data-oriented nature of this code - and in my opinion doesn&#39;t lose legibility in this case for that sake.</p>
-<p>Note that all functions in this are actually pure, they take in one map, and return a new map with changes applied to it. (Or as pure as they can be, the underlying storage mechnism can do all sorts of weird things with atoms and we wouldn&#39;t even know.)</p>
-<p><strong>Related Files</strong></p>
-<ul>
-<li>documents.clj</li>
-</ul>
-]]></description><link>http://codeofrob.com/entries/document-storage-in-my-clojure-document-database.html</link><guid isPermaLink="true">http://codeofrob.com/entries/document-storage-in-my-clojure-document-database.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 10 Jun 2014 09:30:00 GMT</pubDate></item><item><title><![CDATA[The InMemory storage for my clojure document database]]></title><description><![CDATA[<p>One of the great things about RavenDB, is the in-memory mode that gives users the ability to write tests against one interface, but switch in an embedded in-memory system for testing. Not touching the disk but getting fast (semi) integration tests and feedback is pretty leet and I want it too.</p>
-<ul>
-<li><a href="/entries/i-wrote-a-document-database-in-clojure.html">I wrote a document database in Clojure</a></li>
-<li><a href="/entries/the-client-api-for-my-clojure-document-database.html">The Client API for my Clojure document database</a></li>
-<li><a href="/entries/the-http-api-for-my-clojure-document-database.html">The HTTP API for my Clojure document database</a></li>
-<li><a href="/entries/the-core-storage-protocols-for-my-clojure-document-database.html">The core storage protocols for the Clojure document database</a></li>
-<li><a href="/entries/the-leveldb-storage-for-my-clojure-document-database.html">LevelDB storage implementation for the Clojure document database</a></li>
-</ul>
-<p>Well, this is quite a simple thing. As described in the last two entries - we have a very small surface area to implement for our storage system, and all objects are passed in as Plain Old Clojure data structures. The implemention therefore clocks in at under 40 lines of code and is shown in its entirety below.</p>
-<p>Memory storage is implemented as an atom containing a sorted map.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> create [] <span class="list">(<span class="title">MemoryStorage</span><span class="body">. <span class="list">(<span class="title">atom</span><span class="body"> <span class="list">(<span class="title">sorted-map</span><span class="body">)</span></span>)</span></span>)</span></span>)</span></span>
-</code></pre><p>MemoryStorage merely returns whatever is in this atom at the start of a transaction (giving read isolation)</p>
-<pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> MemoryStorage [memory]
-  java.io.Closeable
-  Reader
-  Storage
-  <span class="list">(<span class="title">ensure-transaction</span><span class="body"> [ops] <span class="list">(<span class="title">MemoryTransaction</span><span class="body">. @<span class="list">(<span class="body"><span class="keyword">:memory</span> ops)</span></span> <span class="list">(<span class="body"><span class="keyword">:memory</span> ops)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">from-db</span><span class="body"> [this id] <span class="list">(<span class="title">get</span><span class="body"> @memory id)</span></span>)</span></span>
-  <span class="list">(<span class="title">open-iterator</span><span class="body"> [this] <span class="list">(<span class="title">MemoryIterator</span><span class="body">. <span class="literal">nil</span> memory <span class="list">(<span class="title">atom</span><span class="body"> <span class="literal">nil</span>)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span>
-</code></pre><p>Commiting the transaction, is just a reduction of operations inside the transaction into whatever is in the atom.</p>
-<pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> MemoryTransaction [snapshot memory]
-  java.io.Closeable
-  Writer
-  Reader
-  <span class="list">(<span class="title">open-iterator</span><span class="body"> [this] <span class="list">(<span class="title">MemoryIterator</span><span class="body">. snapshot memory <span class="list">(<span class="title">atom</span><span class="body"> <span class="literal">nil</span>)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">from-db</span><span class="body"> [this id] <span class="list">(<span class="title">get</span><span class="body"> snapshot id)</span></span>)</span></span>
-  <span class="list">(<span class="title">commit</span><span class="body">! [this] <span class="list">(<span class="title">swap</span><span class="body">! memory #<span class="list">(<span class="title">reduce</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> [m [k v]]
-                  <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> <span class="keyword">:deleted</span> v)</span></span> <span class="list">(<span class="title">dissoc</span><span class="body"> m k)</span></span> <span class="list">(<span class="title">assoc</span><span class="body"> m k v)</span></span>)</span></span>)</span></span>
-                                        %<span class="number">1</span> <span class="list">(<span class="body"><span class="keyword">:cache</span> this)</span></span>)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span>
-</code></pre><p>And because we created a sorted map, iterating means dropping up to the point where we want to begin iterating, and returning the sequence.</p>
-<pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> MemoryIterator [snapshot memory start]
-  java.io.Closeable
-  Iterator
-  <span class="list">(<span class="title">seek</span><span class="body">! [this value] <span class="list">(<span class="title">swap</span><span class="body">! start <span class="list">(<span class="title">fn</span><span class="body"> [i] value)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">as-seq</span><span class="body"> [this]
-    <span class="list">(<span class="title">map</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> [i] {<span class="keyword">:k</span> <span class="list">(<span class="title">key</span><span class="body"> i)</span></span> <span class="keyword">:v</span> <span class="list">(<span class="title">val</span><span class="body"> i)</span></span>})</span></span>
-      <span class="list">(<span class="title">drop-while</span><span class="body"> #<span class="list">(<span class="title">&gt;</span><span class="body"> <span class="number">0</span> <span class="list">(<span class="title">compare</span><span class="body"> <span class="list">(<span class="title">key</span><span class="body"> %<span class="number">1</span>)</span></span> @start)</span></span>)</span></span> <span class="list">(<span class="title">or</span><span class="body"> snapshot @memory)</span></span>)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span>
-</code></pre><p>Obviously not suitable for production, but it keeps the tests fast (and runnable on various environments without needing native compiles). It also makes it easier to work in the REPL as there is no need to worry about on-disk artifacts or locking.</p>
-<p><strong>Summary</strong></p>
-<p>Having a small surface area for storage implementation, and keeping communication with core storage a matter of using plain old clojure data structures made this easy to write.</p>
-<p><strong>Related Files</strong></p>
-<ul>
-<li>memorystorage.clj</li>
-</ul>
-]]></description><link>http://codeofrob.com/entries/the-inmemory-storage-for-my-clojure-document-database.html</link><guid isPermaLink="true">http://codeofrob.com/entries/the-inmemory-storage-for-my-clojure-document-database.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 05 Jun 2014 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/indexing-support-for-my-clojure-document-database.html</link><guid isPermaLink="true">http://codeofrob.com/entries/indexing-support-for-my-clojure-document-database.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 12 Jun 2014 09:30:00 GMT</pubDate></item></channel></rss>
