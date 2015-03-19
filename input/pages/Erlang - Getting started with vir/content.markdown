@@ -19,7 +19,6 @@ As previously mentioned, this is at immediate glance a lot to digest, but we can
     apps/awesome/release-files/sys.config
     apps/awesome/src/awesome_config.erl
 
-
 **Application startup**
 
     apps/awesome/src/awesome_app.erl
@@ -31,7 +30,6 @@ As previously mentioned, this is at immediate glance a lot to digest, but we can
 
 **Release artifacts**
 
-    apps/awesome/relx.config
     deployment/build_no
     deployment/major_ver
     deployment/minor_ver
@@ -48,8 +46,15 @@ As previously mentioned, this is at immediate glance a lot to digest, but we can
     deps/lager/
     deps/ranch/
 
+**Various Manifests**
 
-In reality we're only explicitly bringing in *cowboy*, *gproc*, *jsx* and *lager* and the others are further dependencies of these. Because Erlang operates in a single global namespace you can't do explicit imports ala NodeJS and have multiple versions of things in the application. Because dependency applications often spin up a fleet of processes on start-up this would cause huge issues anyway because it's not Just Code you're bringing in.
+    apps/awesome/relx.config
+    apps/awesome/src/awesome.app.src
+
+
+In reality we're only explicitly bringing in *cowboy*, *gproc*, *jsx* and *lager* and the others are further dependencies of these. Because Erlang operates in a single global namespace you can't do explicit imports ala NodeJS and have multiple versions of things in the application.
+
+It doesn't matter too much anyway because dependency applications often spin up a fleet of processes on start-up rather than simply operating as library code, so you wouldn't want more than one version of an application running within a project.
 
 **A Makefile**
 
@@ -82,7 +87,32 @@ So what do we have when it starts up? Well, let's look at the logs first
     13:08:50.024 [info] Application awesome started on node nonode@nohost
     Eshell V6.1  (abort with ^G)
 
-Neato, we see all the applications specified in *app.src* started up. (Mode dev isn't found because we haven't got one and that's the default mode)
+Neato, we see all the applications specified in *awesome.app.src* started up. (Mode dev isn't found because we haven't got one and that's the default mode)
+
+This is awesome.app.src for reference.
+
+    {application, awesome,
+     [
+      {description, ""},
+      {vsn, "1.0.0"},
+      {registered, []},
+      {modules, []},
+      {included_applications, []},
+      {applications,
+       [
+        kernel,
+        jsx,
+        stdlib,
+        lager,
+        cowboy,
+        gproc,
+        shared
+       ]},
+      {mod, { awesome_app, []}},
+      {env, []}
+      ]}.
+
+See what I mean about dependencies not simply being a pile of code, that list of folders we have in deps contain actual applications that are started up before awesome_app itself.
 
 Is it working?
 

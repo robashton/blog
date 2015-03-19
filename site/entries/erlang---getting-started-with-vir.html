@@ -92,8 +92,7 @@ git commit <span class="keyword">...</span>
 </code></pre><p><strong>A web application</strong></p>
 <pre><code>apps/awesome/src/<span class="filename">awesome_cowboy.erl
 </code></pre><p><strong>Release artifacts</strong></p>
-<pre><code><span class="title">apps</span>/awesome/relx.config
-<span class="title">deployment</span>/build_no
+<pre><code><span class="title">deployment</span>/build_no
 <span class="title">deployment</span>/major_ver
 <span class="title">deployment</span>/minor_ver
 </code></pre><p><strong>Dependencies</strong></p>
@@ -106,7 +105,11 @@ git commit <span class="keyword">...</span>
 <span class="title">deps</span>/jsx/
 <span class="title">deps</span>/lager/
 <span class="title">deps</span>/ranch/
-</code></pre><p>In reality we&#39;re only explicitly bringing in <em>cowboy</em>, <em>gproc</em>, <em>jsx</em> and <em>lager</em> and the others are further dependencies of these. Because Erlang operates in a single global namespace you can&#39;t do explicit imports ala NodeJS and have multiple versions of things in the application. Because dependency applications often spin up a fleet of processes on start-up this would cause huge issues anyway because it&#39;s not Just Code you&#39;re bringing in.</p>
+</code></pre><p><strong>Various Manifests</strong></p>
+<pre><code>apps/awesome/relx<span class="variable">.config</span>
+apps/awesome/src/awesome<span class="variable">.app</span><span class="variable">.src</span>
+</code></pre><p>In reality we&#39;re only explicitly bringing in <em>cowboy</em>, <em>gproc</em>, <em>jsx</em> and <em>lager</em> and the others are further dependencies of these. Because Erlang operates in a single global namespace you can&#39;t do explicit imports ala NodeJS and have multiple versions of things in the application.</p>
+<p>It doesn&#39;t matter too much anyway because dependency applications often spin up a fleet of processes on start-up rather than simply operating as library code, so you wouldn&#39;t want more than one version of an application running within a project.</p>
 <p><strong>A Makefile</strong></p>
 <pre><code><span class="attribute">Makefile
 </code></pre><h1 id="using-it">Using it</h1>
@@ -128,7 +131,29 @@ vir run awesome      <span class="comment">#  "vir, run the app please"</span>
 Mode dev <span class="keyword">not</span> found
 <span class="number">13</span>:<span class="number">08</span>:<span class="number">50.024</span> [info] Application awesome started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
 Eshell V6<span class="number">.1</span>  (abort <span class="keyword">with</span> ^G)
-</code></pre><p>Neato, we see all the applications specified in <em>app.src</em> started up. (Mode dev isn&#39;t found because we haven&#39;t got one and that&#39;s the default mode)</p>
+</code></pre><p>Neato, we see all the applications specified in <em>awesome.app.src</em> started up. (Mode dev isn&#39;t found because we haven&#39;t got one and that&#39;s the default mode)</p>
+<p>This is awesome.app.src for reference.</p>
+<pre><code><span class="cell">{application, awesome,
+ [
+  {description, ""}</span>,
+  <span class="cell">{vsn, "<span class="number">1.0</span><span class="number">.0</span>"}</span>,
+  <span class="cell">{registered, []}</span>,
+  <span class="cell">{modules, []}</span>,
+  <span class="cell">{included_applications, []}</span>,
+  <span class="cell">{applications,
+   [
+    kernel,
+    jsx,
+    stdlib,
+    lager,
+    cowboy,
+    gproc,
+    shared
+   ]}</span>,
+  <span class="cell">{mod, { awesome_app, []}</span>},
+  <span class="cell">{env, []}</span>
+  ]}.
+</code></pre><p>See what I mean about dependencies not simply being a pile of code, that list of folders we have in deps contain actual applications that are started up before awesome_app itself.</p>
 <p>Is it working?</p>
 <pre><code>curl http://localhost:3000/index.html
 <span class="tag">&lt;<span class="title">html</span>&gt;</span>
