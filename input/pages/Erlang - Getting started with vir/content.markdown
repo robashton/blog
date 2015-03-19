@@ -10,29 +10,37 @@ Anyway, running vir should give us a list of possible commands, for now we'll ju
     vir init -t web awesome
     git commit ...
 
-This creates an application (and builds it) based off the web template called 'awesome' and gives us a folder structure that looks similar to below:
+This creates an application called "*awesome*" (and builds it) based off the *web* and gives us a folder structure that looks similar to below:
 
-As previously mentioned, this is at immediate glance a lot to digest, but we can go through it a little at a time and see just what has been created for us.
+As mentioned in a previous blog entry, this is at immediate glance a lot to digest, but we can go through it a little at a time and see just what has been created for us.
 
 **Config**
 
     apps/awesome/release-files/sys.config
     apps/awesome/src/awesome_config.erl
 
+sys.config is a standalone file containing various key-value pairs of config and awesome_config is a wrapper that provides an API to read that file. Not much to see here.
+
 **Application startup**
 
     apps/awesome/src/awesome_app.erl
     apps/awesome/src/awesome_sup.erl
 
+An application requires something that implements the OTP Behaviour "Application" (*awesome_app.erl*), and if I want child processes within the structure I'll need a supervisor to manager them, that's (*awesome_sup.erl*).
+
 **A web application**
 
     apps/awesome/src/awesome_cowboy.erl
+
+This is just a OTP genserver that uses Cowboy (one of our dependencies) to create a simple http listener.
 
 **Release artifacts**
 
     deployment/build_no
     deployment/major_ver
     deployment/minor_ver
+
+This is a cheap way of bumping version for the application during a release cycle.
 
 **Dependencies**
 
@@ -46,19 +54,24 @@ As previously mentioned, this is at immediate glance a lot to digest, but we can
     deps/lager/
     deps/ranch/
 
-**Various Manifests**
-
-    apps/awesome/relx.config
-    apps/awesome/src/awesome.app.src
-
+Lots of folders containing lots more of the above. They were cloned and brought in because the Makefile contains a list of dependencies.
 
 In reality we're only explicitly bringing in *cowboy*, *gproc*, *jsx* and *lager* and the others are further dependencies of these. Because Erlang operates in a single global namespace you can't do explicit imports ala NodeJS and have multiple versions of things in the application.
 
 It doesn't matter too much anyway because dependency applications often spin up a fleet of processes on start-up rather than simply operating as library code, so you wouldn't want more than one version of an application running within a project.
 
+**Various Manifests**
+
+    apps/awesome/relx.config
+    apps/awesome/src/awesome.app.src
+
+*relx.config* is a manifest specifying how to do a release with all the appropriate files, and *awesome.app.src* tells the boot system what state our application needs to be in before it can be started.
+
 **A Makefile**
 
     Makefile
+
+Yup, we use make.
 
 Using it
 ==
