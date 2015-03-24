@@ -23,20 +23,27 @@ Conventions
 
 There is a standard structure to an Erlang project, and it looks like this
 
+
+```bash
     relx.config
     src/%.erl
     src/%.app.src
     release-files/sys.config
     release-files/*.anything.else
     include/%.hrl
+```
 
 We can only get away with using a standard one-size-fits-all Makefile if you conform to some convention and given that there is already a convention to Erlang projects this is the one that we are using. Additionally you can also have
 
+```bash
     apps/<app-name>/<the same as above>
+```
 
 To have multiple apps in the same project, and
 
+```bash
     deps/<dep-name>/<the same as above>
+```
 
 To rely on other Erlang projects and their source code - more on that in a little bit.
 
@@ -46,6 +53,7 @@ Using id3as.mk
 To configure and use id3as.mk, we use an entry point Makefile to set up some variables and download id3as.mk - this would usually be called "Makefile" or "makefile" and sit in the top level of the project (vir will generate this if you're using it).
 
 
+```cmake
     DEPS_DIR = $(addsuffix /deps, $(realpath .))
     ERL_LIBS = $(DEPS_DIR):$(realpath apps)
 
@@ -66,6 +74,7 @@ To configure and use id3as.mk, we use an entry point Makefile to set up some var
       @wget --no-cache -nv -O $@ 'https://raw.github.com/id3as/id3as.mk/master/id3as.mk' || rm -f $@
 
     -include id3as.mk
+```
 
 I'm not a huge fan of using this for dependency downloads (I'd prefer a bash script) but it's just a single operation at the start to download all dependencies to the DEPS_DIR and then build is just standard Make. You'd still need to specify which dependencies you had because the Makefile uses this to build up a dependency tree and only build each dependency once (in the right order).
 
