@@ -1,0 +1,187 @@
+<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
+<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
+<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
+<!--[if !ie]><!-->
+<html lang="en"> <!--<![endif]-->
+<head>
+    <title id="title">Erlang and Make - Okay together</title>
+    <meta charset="utf-8">
+    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <meta name="author" content="">
+    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
+    <link rel="stylesheet" href="/assets/css/style_responsive.css">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
+    <link rel="stylesheet" href="/assets/css/themes/default.css">
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
+    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="header">
+        <div class="container">
+            <div class="logo">
+             <h2><a href="/index.html">Rob Ashton</a></h2>
+            </div>
+            <div class="navbar">
+                <div class="navbar-inner">
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </a>
+                    <div class="nav-collapse collapse">
+                        <ul class="nav top-2">
+                          <li>
+                                <a href="/">Home</a>
+                            </li>
+                            <li>
+                                <a href="/blog.html">Blog</a>
+                            </li>
+                            <li>
+                                <a href="/testimonials.html">Testimonials</a>
+                            </li>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <body>
+    <div id="blog-entry">
+      <h1 id="post-title">Erlang and Make - Okay together</h1>
+      <h6>Published on <span class="date">2015-3-24</span></h6>
+      <div id="post"><p>We don&#39;t tread the same path as most Erlangers, as <a href="/entries/the-ashton-disinterest-curve---erlang.html">mentioned</a> having been through more than a few of the standard build systems in that ecosystem we&#39;ve settled on our own (the original hard work done by somebody else). All on top of a <a href="http://github.com/robashton/vir">pile of bash</a> that organically came from real world production use of Erlang.</p>
+<h1 id="so-why-make-">So why Make?</h1>
+<p>Well firstly we already know it; our three languages at work are C, Erlang and (<em>spit</em>) JavaScript. Secondly if you look at an Erlang project and compilation of that Erlang project you&#39;ll see that we have a bunch of files that need compiling into another format (mostly independent to each other), let&#39;s have a wee look at that.</p>
+<pre><code>src/<span class="variable">%.</span>erl       -&gt;    ebin/<span class="variable">%.</span>beam
+src/<span class="variable">%.</span>app.src   -&gt;    ebin/<span class="variable">%.</span>app
+src/<span class="variable">%.</span>xrl       -&gt;    ebin/<span class="variable">%.</span>beam
+src/<span class="variable">%.</span>yrl       -&gt;    ebin/<span class="variable">%.</span>beam
+priv/mibs/<span class="variable">%.</span>bin -&gt;    mins/<span class="variable">%.</span>mib
+</code></pre><p>Etc.</p>
+<p>If only there was a tool which allowed you to declaratively wildcard a bunch of inputs to a bunch of outputs and use timestamps to determine whether individual files needed re-compiling again. Hmmmmm.</p>
+<p>So yeah, this is our fork of <a href="http://github.com/id3as/erl-mk.git">erl-mk</a>, although in a few days this will be renamed to <a href="http://github.com/id3as/id3as.mk">id3as.mk</a> so check which link doesn&#39;t 404 and this will see you right.</p>
+<h1 id="conventions">Conventions</h1>
+<p>There is a standard structure to an Erlang project, and it looks like this</p>
+<pre><code><span class="title">relx</span>.config
+<span class="title">src</span>/%.erl
+<span class="title">src</span>/%.app.src
+<span class="title">release</span>-files/sys.config
+<span class="title">release</span>-files/*.anything.<span class="keyword">else</span>
+<span class="title">include</span>/%.hrl
+</code></pre><p>We can only get away with using a standard one-size-fits-all Makefile if you conform to some convention and given that there is already a convention to Erlang projects this is the one that we are using. Additionally you can also have</p>
+<pre><code>apps/<span class="xml"><span class="tag">&lt;<span class="title">app-name</span>&gt;</span>/<span class="tag">&lt;<span class="title">the</span> <span class="attribute">same</span> <span class="attribute">as</span> <span class="attribute">above</span>&gt;</span></span>
+</code></pre><p>To have multiple apps in the same project, and</p>
+<pre><code>deps/<span class="xml"><span class="tag">&lt;<span class="title">dep-name</span>&gt;</span>/<span class="tag">&lt;<span class="title">the</span> <span class="attribute">same</span> <span class="attribute">as</span> <span class="attribute">above</span>&gt;</span></span>
+</code></pre><p>To rely on other Erlang projects and their source code - more on that in a little bit.</p>
+<h1 id="using-id3as-mk">Using id3as.mk</h1>
+<p>To configure and use id3as.mk, we use an entry point Makefile to set up some variables and download id3as.mk - this would usually be called &quot;Makefile&quot; or &quot;makefile&quot; and sit in the top level of the project (vir will generate this if you&#39;re using it).</p>
+<pre><code>DEPS_DIR = $(addsuffix /deps, $(realpath .))
+ERL_LIBS = $(DEPS_DIR):$(realpath apps)
+
+<span class="reserved">export</span> DEPS_DIR
+<span class="reserved">export</span> ERL_LIBS
+
+<span class="reserved">export</span> ERLCFLAGS = +debug_info +warn_export_vars +warn_shadow_vars +warn_obsolete_guard +<span class="string">'{lager_truncation_size, 10240}'</span>
+<span class="reserved">export</span> ERLMIBFLAGS =
+
+DEPS = lager cowboy gproc jsx
+
+dep_lager = git:<span class="regexp">//gi</span>thub.com<span class="regexp">/basho/</span>lager.git <span class="number">2.0</span><span class="number">.1</span>
+dep_cowboy = git<span class="property">@github</span>.com:extend/cowboy.git master
+dep_gproc = git:<span class="regexp">//gi</span>thub.com<span class="regexp">/esl/g</span>proc.git <span class="number">0.2</span><span class="number">.12</span>
+dep_jsx = git:<span class="regexp">//gi</span>thub.com<span class="regexp">/talentdeficit/</span>jsx.git master
+
+id3as.mk:
+  <span class="property">@wget</span> --<span class="literal">no</span>-cache -nv -O $@ <span class="string">'https://raw.github.com/id3as/id3as.mk/master/id3as.mk'</span> || rm -f $@
+
+-include id3as.mk
+</code></pre><p>I&#39;m not a huge fan of using this for dependency downloads (I&#39;d prefer a bash script) but it&#39;s just a single operation at the start to download all dependencies to the DEPS_DIR and then build is just standard Make. You&#39;d still need to specify which dependencies you had because the Makefile uses this to build up a dependency tree and only build each dependency once (in the right order).</p>
+<p>Anyway, it&#39;s self explanatory - you&#39;ll see that in Erlang we haven&#39;t got a package manager (although some misguided but well meaning folk are trying to change that), and we just download source into a deps folder and build that ourselves. change that), and we just download source into a deps folder and build that ourselves. change that), and we just download source into a deps folder and build that ourselves. change that), and we just download source into a deps folder and build that ourselves. (No, they&#39;re not submodules, <em>ew</em>)</p>
+<p>For each dep, id3as.mk checks if there is a Makefile present (in which case it&#39;ll run that), checks if there is a rebar.config present (in which case it&#39;ll run rebar) and falls back to re-executing itself in the dep dir. For all the id3as.mk based dependencies it&#39;ll honour timestamps all the way down. Rebar is a little more dumb and once you&#39;re in the world of rebar it can be a little slow as it insists on recursing over deps multiple times during a single build (boo, hiss).</p>
+<p>I&#39;m a big fan of having dep source available - it means if you build up a tags file for your editor you can jump into the source code of even the third party dependencies you&#39;re using and see how they work (what better documentation than the actual code okay just joking devs we should all be writing better documentation).</p>
+<h1 id="make-commands">Make commands</h1>
+<ul>
+<li>&quot;make get-deps&quot; - initial download of deps</li>
+<li>&quot;make&quot; - build <em>everything</em></li>
+<li>&quot;make apps&quot; - just build the apps</li>
+<li>&quot;make apps/<foo>&quot; - just build the foo app</li>
+<li>&quot;make deps&quot; - just build the deps</li>
+<li>&quot;make deps/<foo>&quot; - just build that dep (useful if you&#39;re debugging a third party dep)</li>
+<li>&quot;make rel&quot; - make a release</li>
+</ul>
+<p>Neato. Everything is just timestamp checking and then for bonus points</p>
+<ul>
+<li>make -j <anything from above>   - DO IT IN PARALLEL</li>
+</ul>
+<p>Seeing as most of these steps and most of the erl/beams are independent of each other a build is much faster if you run it in parallel.</p>
+<h1 id="on-package-managers">On package managers</h1>
+<p>I often get a few eyebrows raised when I say we don&#39;t need one of these - so the next entry will write about why they&#39;re unnecessary (in any of the incarnations so far) and why we should do without.</p>
+</div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+      </div>
+
+        <!--=== Copyright ===-->
+        <div class="copyright">
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span2">
+                <a href="/">Rob Ashton</a>
+              </div>
+              <div class="span6">
+                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+        </div><!--/copyright-->
+        <!--=== End Copyright ===-->
+
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
+    });
+        </script>
+        <!--[if lt IE 9]>
+    <script src="assets/js/respond.js"></script>
+<![endif]-->
+        </body>
+        </html>
+
