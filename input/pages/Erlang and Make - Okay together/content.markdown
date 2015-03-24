@@ -69,7 +69,7 @@ To configure and use id3as.mk, we use an entry point Makefile to set up some var
 
 I'm not a huge fan of using this for dependency downloads (I'd prefer a bash script) but it's just a single operation at the start to download all dependencies to the DEPS_DIR and then build is just standard Make. You'd still need to specify which dependencies you had because the Makefile uses this to build up a dependency tree and only build each dependency once (in the right order).
 
-Anyway, it's self explanatory - you'll see that in Erlang we haven't got a package manager (although some misguided but well meaning folk are trying to change that), and we just download source into a deps folder and build that ourselves. change that), and we just download source into a deps folder and build that ourselves. change that), and we just download source into a deps folder and build that ourselves. change that), and we just download source into a deps folder and build that ourselves. (No, they're not submodules, *ew*)
+Anyway, it's self explanatory - you'll see that in Erlang we haven't got a package manager (although some misguided but well meaning folk are trying to change that), and we just download source into a deps folder and build that ourselves. (No, they're not submodules, *ew*)
 
 For each dep, id3as.mk checks if there is a Makefile present (in which case it'll run that), checks if there is a rebar.config present (in which case it'll run rebar) and falls back to re-executing itself in the dep dir. For all the id3as.mk based dependencies it'll honour timestamps all the way down. Rebar is a little more dumb and once you're in the world of rebar it can be a little slow as it insists on recursing over deps multiple times during a single build (boo, hiss).
 
