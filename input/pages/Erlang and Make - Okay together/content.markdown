@@ -92,9 +92,9 @@ Make commands
 - "make apps" - just build the apps
 - "make clean" - clean up our app
 - "make clean-all" - ruthlessly gut everything
-- "make apps/<foo>" - just build the foo app
+- "make apps/[foo]" - just build the foo app
 - "make deps" - just build the deps
-- "make deps/<foo>" - just build that dep (useful if you're debugging a third party dep)
+- "make deps/[foo]" - just build that dep (useful if you're debugging a third party dep)
 - "make rel" - make a release
 
 Neato. Everything is just timestamp checking and then for bonus points
