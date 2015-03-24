@@ -1,4 +1,4 @@
-We don't tread the same path as most Erlangers, as [mentioned](/entries/the-ashton-disinterest-curve---erlang.html) having been through more than a few of the standard build systems in that ecosystem we've settled on our own (the original hard work done by somebody else). All on top of a [pile of bash](http://github.com/robashton/vir) that organically came from real world production use of Erlang.
+We don't tread the same path as most Erlangers, as [mentioned](/entries/the-ashton-disinterest-curve---erlang.html) having been through more than a few of the standard build systems in that ecosystem we've settled on our own (the original hard work done by somebody else). All on top of a [pile of bash](/entries/erlang---getting-started-with-vir.html) that organically came from real world production use of Erlang.
 
 So why Make?
 ==
