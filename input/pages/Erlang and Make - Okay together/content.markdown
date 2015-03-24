@@ -3,7 +3,7 @@ We don't tread the same path as most Erlangers, as [mentioned](/entries/the-asht
 So why Make?
 ==
 
-Well firstly we already know it; our three languages at work are C, Erlang and (*spit*) JavaScript. Secondly if you look at an Erlang project and compilation of that Erlang project you'll see that we have a bunch of files that need compiling into another format (mostly independent to each other), let's have a wee look at that.
+Well firstly we already know it; our other language other than Erlang at work is C (okay and (*spit*) JavaScript, oky three languages - and Bash... etc). Secondly if you look at an Erlang project and compilation of that Erlang project you'll see that we have a bunch of files that need compiling into another format (mostly independent to each other), let's have a wee look at that.
 
     src/%.erl       ->    ebin/%.beam
     src/%.app.src   ->    ebin/%.app
