@@ -51,7 +51,7 @@ var compilePosts = function(posts) {
   var readPageHtmlSync = function(folder) {
     var mdfilename = 'input/pages/' + folder + '/content.markdown';
     var htmlfilename = 'input/pages/' + folder + '/content.html';
-    var mdstat = path.existsSync(mdfilename);
+    var mdstat = fs.existsSync(mdfilename);
     if(mdstat) {
       var mdcontent = fs.readFileSync(mdfilename, 'utf8');
       var html = markdown(mdcontent);
