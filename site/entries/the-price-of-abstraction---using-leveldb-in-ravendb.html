@@ -58,10 +58,7 @@
                                 <a href="/blog.html">Blog</a>
                             </li>
                             <li>
-                                <a href="/statements.html">Testimonials</a>
-                            </li>
-                            <li>
-                                <a href="/hire.html">Hire Me</a>
+                                <a href="/testimonials.html">Testimonials</a>
                             </li>
                     </div>
                 </div>
@@ -69,7 +66,7 @@
         </div>
     </div>
 
-  <body>
+    <body>
     <div id="blog-entry">
       <h1 id="post-title">The price of abstraction - using LevelDB in RavenDB</h1>
       <h6>Published on <span class="date">2013-3-8</span></h6>
@@ -85,15 +82,15 @@
 <p>I grabbed the <a href="https://github.com/meebey/leveldb-sharp">C# bindings</a> from Github and set about re-implementing my in-memory transaction manager on top of them.</p>
 <p>The first thing I notice about the C# bindings is that the API looks like this:</p>
 <pre><code><span class="keyword">string</span> <span class="keyword">value</span> = db.Get(<span class="keyword">string</span> key)
-db.Put(<span class="keyword">string</span> key, <span class="keyword">string</span> <span class="keyword">value</span>)</code></pre>
-<p>This is not what <a href="/entries/streaming-large-values-from-leveldb.html">RavenDB wants</a>, what RavenDB wants is a MemoryStream or at the very least a ByteArray - as it is not in the business of pushing large strings around the place in managed memory.</p>
+db.Put(<span class="keyword">string</span> key, <span class="keyword">string</span> <span class="keyword">value</span>)
+</code></pre><p>This is not what <a href="/entries/streaming-large-values-from-leveldb.html">RavenDB wants</a>, what RavenDB wants is a MemoryStream or at the very least a ByteArray - as it is not in the business of pushing large strings around the place in managed memory.</p>
 <p>No problem, I fork the original project and set about addding Byte array support and then notice something.</p>
 <p><em>The bindings are using the C API for LevelDB</em> (which makes sense if you&#39;re going to support cross platform C#), but more importantly the C API looks something like this:</p>
-<pre><code><span class="keyword">char</span>* leveldb_get(<span class="keyword">char</span>* key)</code></pre>
-<p>See that return result? That&#39;s a malloc, what does the LevelDB C# code do?</p>
+<pre><code><span class="keyword">char</span>* leveldb_get(<span class="keyword">char</span>* key)
+</code></pre><p>See that return result? That&#39;s a malloc, what does the LevelDB C# code do?</p>
 <pre><code> <span class="keyword">var</span> <span class="keyword">value</span> = Marshal.PtrToStringAnsi(valuePtr, (<span class="keyword">int</span>) valueLength);
- <span class="keyword">return</span> <span class="keyword">value</span>;</code></pre>
-<p>Ignoring the <a href="https://github.com/meebey/leveldb-sharp/issues/2">memory leak</a>, as it&#39;s a known issue and an easy mistake to make, we can see we&#39;re copying the data out of the unmanaged array into a managed string via the PtrToStringAnsi call.</p>
+ <span class="keyword">return</span> <span class="keyword">value</span>;
+</code></pre><p>Ignoring the <a href="https://github.com/meebey/leveldb-sharp/issues/2">memory leak</a>, as it&#39;s a known issue and an easy mistake to make, we can see we&#39;re copying the data out of the unmanaged array into a managed string via the PtrToStringAnsi call.</p>
 <p>What does the C api do?</p>
 <pre><code><span class="variable">Status</span> s = db-&gt;rep-&gt;<span class="variable">Get</span>(options-&gt;rep, <span class="variable">Slice</span>(key, keylen), &amp;tmp);
 <span class="function"><span class="title">if</span> <span class="params">(s.<span class="function_name">ok</span>())</span> {
@@ -105,23 +102,23 @@ db.Put(<span class="keyword">string</span> key, <span class="keyword">string</sp
     S<span class="title">aveError</span><span class="params">(errptr, s)</span>;
   }
 }
-<span class="title">return</span> <span class="title">result</span>;</code></pre>
-<p>And CopyString?</p>
+<span class="title">return</span> <span class="title">result</span>;
+</code></pre><p>And CopyString?</p>
 <pre><code><span class="keyword">static</span> <span class="keyword">char</span>* CopyString(<span class="keyword">const</span> <span class="built_in">std</span>::<span class="built_in">string</span>&amp; str) {
   <span class="keyword">char</span>* result = <span class="keyword">reinterpret_cast</span>&lt;<span class="keyword">char</span>*&gt;(malloc(<span class="keyword">sizeof</span>(<span class="keyword">char</span>) * str.size()));
   memcpy(result, str.data(), <span class="keyword">sizeof</span>(<span class="keyword">char</span>) * str.size());
   <span class="keyword">return</span> result;
-}</code></pre>
-<p><em>urk</em></p>
+}
+</code></pre><p><em>urk</em></p>
 <p>In order to get a stored document from LevelDB, the following operations are performed:</p>
 <pre><code>- Internally, LevelDB will load <span class="keyword">the</span> document <span class="keyword">into</span> memory
 - Internally, LevelDB will <span class="keyword">copy</span> <span class="keyword">that</span> memory <span class="keyword">into</span> a <span class="type">string</span> <span class="function_start"><span class="keyword">on</span> <span class="title">a</span></span> Get call
 - The C API copies <span class="keyword">that</span> memory <span class="keyword">into</span> a mallocced byte array
-- The C<span class="comment"># API copies that memory into a managed string (probably on the Large Object Heap)</span></code></pre>
-<p>What we have here, is a C# wrapper around a C API that is a wrapper around a C++ API, and each of them is trying to be semantically equivalent to the underlying API - and the abstraction is <em>killing us</em>.</p>
+- The C<span class="comment"># API copies that memory into a managed string (probably on the Large Object Heap)</span>
+</code></pre><p>What we have here, is a C# wrapper around a C API that is a wrapper around a C++ API, and each of them is trying to be semantically equivalent to the underlying API - and the abstraction is <em>killing us</em>.</p>
 <p>For small values, this probably isn&#39;t a big deal, but RavenDB documents can be any size, and RavenDB documents often <em>are</em> any size - ideally what we want is</p>
-<pre><code><span class="title">MemoryStream</span> stream = db.Get(string key)</code></pre>
-<p>Where that stream reads from the start of an unmanaged array to the end of that unmanaged array and then disposes it.</p>
+<pre><code><span class="title">MemoryStream</span> stream = db.Get(string key)
+</code></pre><p>Where that stream reads from the start of an unmanaged array to the end of that unmanaged array and then disposes it.</p>
 <p>In essence, the job of getting LevelDB into RavenDB is going to involve writing a new C API for LevelDB specific to our needs, then writing a C# API around that API specific to our needs.</p>
 <p>Thankfully we need about 10% of the exposed functionality in LevelDB so our job isn&#39;t as hard as &quot;writing a set of managed bindings for LevelDB&quot;, but this means that I won&#39;t have time to do this before I leave Israel.</p>
 <p>I put my sad face on and get to work on something more manageable for my final day of work :-(</p>
@@ -129,103 +126,47 @@ db.Put(<span class="keyword">string</span> key, <span class="keyword">string</sp
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="http://twitter.com/robashton">Follow me</a>
       </div>
-      <div id="hire-me">
-        <h6>This used to ask if you wanted to hire me</h6>
-        <p>But chances are I'm not available, as I'm busy shipping stuff.</p>
-        <p>I am available for conference speaking, I like talking and will do so for just T&E (and perhaps a bottle of wine or two).</p>
-        <p>I have done soft keynotes, and usually entertain/rile people in equal proportion, but prefer to talk tech as that's what I do</p>
-        <p><a href="mailto:robashton@codeofrob.com">Email me :)</a></p>
-      </div>
-      <div id="disqus">
-        <div id="disqus_thread"></div>
-<script type="text/javascript">
-    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
-    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
 
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-      </div>
-    </div>
-    <div id="post-comments">
+        <!--=== Copyright ===-->
+        <div class="copyright">
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span2">
+                <a href="/">Rob Ashton</a>
+              </div>
+              <div class="span6">
+                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+        </div><!--/copyright-->
+        <!--=== End Copyright ===-->
 
-    </div>
-
-<div class="footer" style="margin-top: 0px">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span3">
-                <div class="headline"><h3>Get In Touch</h3></div>
-                <address class="address">
-                    <ul class="icons-ul">
-                        <li><i class="icon-li icon-envelope"></i>Email: <a href="mailto:robashton@codeofrob.com" class="">robashton@codeofrob.com</a></li>
-                        <li><i class="icon-li icon-envelope"></i>Skype: <a href="skype:rob_ashton" class="">rob_ashton</a></li>
-                    </ul>
-                </address>
-            </div><!--/span3-->
-            <div class="span5">
-                <div class="headline"><h3>Subscribe</h3></div>
-                <p>I publish an <a href="http://feed.codeofrob.com/RobAshton">RSS feed</a> from my blog and some other activities</p>
-            </div>
-            <div class="span4">
-                <div class="posts">
-                  <div class="headline"><h3>Find me...</h3></div>
-                  <p><a href="http://twitter.com/robashton"><img src="/assets/img/twitter.jpg" alt="" />
-                  <a href="http://github.com/robashton"><img src="/assets/img/github.png" alt="" /></a></p>
-                </div>
-            </div><!--/span4-->
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/footer-->
-<!--=== End Footer ===-->
-
-<!--=== Copyright ===-->
-<div class="copyright">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span2">
-              <a href="/">Rob Ashton</a>
-            </div>
-            <div class="span6">
-              <p class="terms">2014 © Rob Ashton. ALL Rights Reserved.</p>
-            </div>
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/copyright-->
-<!--=== End Copyright ===-->
-
-<!-- JS Global Compulsory -->
-<script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-<script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-<!-- JS Implementing Plugins -->
-<script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-<script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-<script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-<script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-<!-- JS Page Level -->
-<script type="text/javascript" src="/assets/js/app.js"></script>
-<script type="text/javascript" src="/assets/js/pages/index.js"></script>
-<script type="text/javascript">
-    jQuery(document).ready(function() {
-      	App.init();
-        App.initFancybox();
-        App.initSliders();
-        Index.initParallaxSlider();
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
     });
-</script>
-<!--[if lt IE 9]>
+        </script>
+        <!--[if lt IE 9]>
     <script src="assets/js/respond.js"></script>
 <![endif]-->
-  </body>
-</html>
+        </body>
+        </html>
 

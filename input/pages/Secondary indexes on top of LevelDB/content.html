@@ -29,8 +29,8 @@ void Get(<span class="keyword">std</span>::string id, <span class="keyword">std<
   <span class="keyword">st</span> &lt;&lt; id<span class="comment">;</span>
   <span class="keyword">std</span>::string key = <span class="keyword">st</span><span class="preprocessor">.str</span>()<span class="comment">;</span>
   this-&gt;lastStatus = this-&gt;db-&gt;Get(leveldb::ReadOptions(), key, doc)<span class="comment">;</span>
-}</code></pre>
-<p>So I&#39;m sticking a prefix in front of each key to denote what sort of key it is, yay.</p>
+}
+</code></pre><p>So I&#39;m sticking a prefix in front of each key to denote what sort of key it is, yay.</p>
 <p>That means that my secondary index of etags will end up looking like this</p>
 <pre><code><span class="comment">/etags/0</span> <span class="literal">-</span>&gt; <span class="comment">/docs/1</span>
 <span class="comment">/etags/1</span> <span class="literal">-</span>&gt; <span class="comment">/docs/5</span>
@@ -39,8 +39,8 @@ void Get(<span class="keyword">std</span>::string id, <span class="keyword">std<
 <span class="comment">/etags/4</span> <span class="literal">-</span>&gt; <span class="comment">/docs/3</span>
 <span class="comment">/etags/6</span> <span class="literal">-</span>&gt; <span class="comment">/docs/7</span>
 <span class="comment">/etags/8</span> <span class="literal">-</span>&gt; <span class="comment">/docs/12</span>
-<span class="comment">/etags/9</span> <span class="literal">-</span>&gt; <span class="comment">/docs/5</code></pre>
-<p>When I want to index documents newer than /etags/5, I can do</p>
+<span class="comment">/etags/9</span> <span class="literal">-</span>&gt; <span class="comment">/docs/5
+</code></pre><p>When I want to index documents newer than /etags/5, I can do</p>
 <pre><code><span class="keyword">int</span> IndexNewDocumentsNewerThan(<span class="keyword">int</span> etag) {
   std::stringstream st;
   st &lt;&lt; ETAGPREFIX;
@@ -53,7 +53,7 @@ void Get(<span class="keyword">std</span>::string id, <span class="keyword">std<
     IndexDocument(value);
   }
   <span class="keyword">delete</span> it;
-}</code></pre>
-<p>Building up other indexes is a trivial matter of making sure we have a suitable ordering in place, and queries are simply a matter of building up these keys appropriately.</p>
+}
+</code></pre><p>Building up other indexes is a trivial matter of making sure we have a suitable ordering in place, and queries are simply a matter of building up these keys appropriately.</p>
 <p>With all of this, I think we have enough information to go and build persistence for RavenDB on top of LevelDB (and then test test test, performance performance performance etc).</p>
 <p>If you want to check out the spikes and playarounds with LevelDB, you can find them on my <a href="https://github.com/robashton/leveldb-play">Github</a></p>

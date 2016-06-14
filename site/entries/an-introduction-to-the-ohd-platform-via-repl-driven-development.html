@@ -58,10 +58,7 @@
                                 <a href="/blog.html">Blog</a>
                             </li>
                             <li>
-                                <a href="/statements.html">Testimonials</a>
-                            </li>
-                            <li>
-                                <a href="/hire.html">Hire Me</a>
+                                <a href="/testimonials.html">Testimonials</a>
                             </li>
                     </div>
                 </div>
@@ -69,7 +66,7 @@
         </div>
     </div>
 
-  <body>
+    <body>
     <div id="blog-entry">
       <h1 id="post-title">An introduction to the OHD platform via REPL driven development</h1>
       <h6>Published on <span class="date">2013-9-24</span></h6>
@@ -91,14 +88,15 @@
       <span class="list">(<span class="title">ops/sum</span> ?gp-diabetes-patients <span class="attribute">:&gt;</span> ?ccg-diabetes-patients)</span>
       <span class="list">(<span class="title">ops/sum</span> ?gp-total-net-ingredient-cost <span class="attribute">:&gt;</span> ?ccg-total-net-ingredient-cost)</span>
       <span class="list">(<span class="title">has-patients?</span> ?ccg-diabetes-patients)</span>
-      <span class="list">(<span class="title">spend-per-head</span> ?ccg-total-net-ingredient-cost ?ccg-diabetes-patients <span class="attribute">:&gt;</span> ?spend-per-head)</span>)</span>)</span></code></pre>
+      <span class="list">(<span class="title">spend-per-head</span> ?ccg-total-net-ingredient-cost ?ccg-diabetes-patients <span class="attribute">:&gt;</span> ?spend-per-head)</span>)</span>)</span>
+</code></pre>
 <p>This actually makes sense if you&#39;re familiar with logic-based programming or have followed the impatient tutorial so I&#39;m relieved to be able to read through most of this code. If you&#39;ve not been doing this, or it&#39;s 8am and you don&#39;t do this for a living then seeing a codebase of this causes insteant headaches and nausea. An application of coffee later and it all makes sense.</p>
 <p>I am however, on running it met with a couple of problems:</p>
 <ul>
 <li>Where is the data supposed to come from?</li>
 <li>How do I run this stuff?</li>
 </ul>
-<h3>Repl driven development</h3>
+<h3 id="repl-driven-development">Repl driven development</h3>
 <p>The way I&#39;ve been writing Clojure is via tests and a tight feedback loop built up around those tests. I have however been told on numerous occasions that I should be using the repl more and this codebase is an example of where the author is clearly a big fan of the repl!</p>
 <p>There is also little automation in place for getting the data or executing the code because if you&#39;re familiar with the repl and you have the data already, then throwing code at the repl is the fastest way to put this together and that is what has been done.</p>
 <p>So what does this look like? Littered through the codebase are paragraphs of Clojure that look like this:</p>
@@ -109,122 +107,67 @@
          (diabetes-drugs
           (prescriptions/gp-prescriptions
            (hfs-delimited &quot;./input/prescriptions/pdpi&quot; :delimiter &quot;,&quot;))
-          (ods/current-practices (hfs-delimited &quot;./input/ods/gppractice/epraccur.csv&quot; :delimiter &quot;,&quot;))))))</code></pre>
+          (ods/current-practices (hfs-delimited &quot;./input/ods/gppractice/epraccur.csv&quot; :delimiter &quot;,&quot;))))))
+</code></pre>
 <p>See that <em>#_</em> stuff? That&#39;s a comment which means this code isn&#39;t compiled at all normally, but it&#39;s there so a hardy Emacs user can just execute the code by sending it from the editor to the Repl.</p>
 <p><strong>I&#39;m a vim user, get me out of here</strong></p>
 <p>So there&#39;s that.  Thankfully, a few people have written plug-ins to make Clojure development a bit more dreamy in Vim and a good starting point is the <a href="https://github.com/ctford/vim-fireplace-easy/">vim-fireplace-easy</a> repository put together by <a href="https://twitter.com/ctford">@ctford</a> which brings together a few plug-ins.</p>
 <p><em>vim-fireplace</em></p>
 <p>Vim-fireplace means that I get handy short-cuts for sending code to the repl for execution, I simply fire up a repl in one terminal, and vim in another terminal and then sticking my cursor over an expression and typing &#39;cpp&#39; means that expression being evaluated in that repl.</p>
-<pre><code>  <span class="list">(<span class="title">+</span><span class="body"> <span class="number">4</span> <span class="number">5</span>)</span></span></code></pre>
-<p>So, sending this to the repl would mean I&#39;d be given the answer &#39;9&#39;, or putting the cursor over the big expression above would result in a query being sent through Cascalog.</p>
+<pre><code>  <span class="list">(<span class="title">+</span><span class="body"> <span class="number">4</span> <span class="number">5</span>)</span></span>
+</code></pre><p>So, sending this to the repl would mean I&#39;d be given the answer &#39;9&#39;, or putting the cursor over the big expression above would result in a query being sent through Cascalog.</p>
 <p><em>vim-clojure-static</em></p>
 <p>This just brings in lots of good behaviour when dealing with braces/highlighting/etc - a must for any developer witing clojure in vim.</p>
 <p><em>paredit</em></p>
 <p>This will automatically force my parens to be balanced, as well as vectors, sets and double quotes - it also brings in handy keyboard shortcuts such as (LEADER+W) for surrounding my current selection with parens, or (LEADER+w &quot;) to surround it with double quotes.</p>
-<h3>Doing it their way</h3>
+<h3 id="doing-it-their-way">Doing it their way</h3>
 <p>So, over the next few days I&#39;m going to do it <em>their</em> way, by building up a program bit by bit and sending it to the repl for evaluation. </p>
 <p>In the next entry, I&#39;ll look at my task and how I start going about it.</p>
 </div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="http://twitter.com/robashton">Follow me</a>
       </div>
-      <div id="hire-me">
-        <h6>This used to ask if you wanted to hire me</h6>
-        <p>But chances are I'm not available, as I'm busy shipping stuff.</p>
-        <p>I am available for conference speaking, I like talking and will do so for just T&E (and perhaps a bottle of wine or two).</p>
-        <p>I have done soft keynotes, and usually entertain/rile people in equal proportion, but prefer to talk tech as that's what I do</p>
-        <p><a href="mailto:robashton@codeofrob.com">Email me :)</a></p>
-      </div>
-      <div id="disqus">
-        <div id="disqus_thread"></div>
-<script type="text/javascript">
-    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
-    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
 
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-      </div>
-    </div>
-    <div id="post-comments">
+        <!--=== Copyright ===-->
+        <div class="copyright">
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span2">
+                <a href="/">Rob Ashton</a>
+              </div>
+              <div class="span6">
+                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+        </div><!--/copyright-->
+        <!--=== End Copyright ===-->
 
-    </div>
-
-<div class="footer" style="margin-top: 0px">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span3">
-                <div class="headline"><h3>Get In Touch</h3></div>
-                <address class="address">
-                    <ul class="icons-ul">
-                        <li><i class="icon-li icon-envelope"></i>Email: <a href="mailto:robashton@codeofrob.com" class="">robashton@codeofrob.com</a></li>
-                        <li><i class="icon-li icon-envelope"></i>Skype: <a href="skype:rob_ashton" class="">rob_ashton</a></li>
-                    </ul>
-                </address>
-            </div><!--/span3-->
-            <div class="span5">
-                <div class="headline"><h3>Subscribe</h3></div>
-                <p>I publish an <a href="http://feed.codeofrob.com/RobAshton">RSS feed</a> from my blog and some other activities</p>
-            </div>
-            <div class="span4">
-                <div class="posts">
-                  <div class="headline"><h3>Find me...</h3></div>
-                  <p><a href="http://twitter.com/robashton"><img src="/assets/img/twitter.jpg" alt="" />
-                  <a href="http://github.com/robashton"><img src="/assets/img/github.png" alt="" /></a></p>
-                </div>
-            </div><!--/span4-->
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/footer-->
-<!--=== End Footer ===-->
-
-<!--=== Copyright ===-->
-<div class="copyright">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span2">
-              <a href="/">Rob Ashton</a>
-            </div>
-            <div class="span6">
-              <p class="terms">2014 © Rob Ashton. ALL Rights Reserved.</p>
-            </div>
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/copyright-->
-<!--=== End Copyright ===-->
-
-<!-- JS Global Compulsory -->
-<script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-<script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-<!-- JS Implementing Plugins -->
-<script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-<script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-<script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-<script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-<!-- JS Page Level -->
-<script type="text/javascript" src="/assets/js/app.js"></script>
-<script type="text/javascript" src="/assets/js/pages/index.js"></script>
-<script type="text/javascript">
-    jQuery(document).ready(function() {
-      	App.init();
-        App.initFancybox();
-        App.initSliders();
-        Index.initParallaxSlider();
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
     });
-</script>
-<!--[if lt IE 9]>
+        </script>
+        <!--[if lt IE 9]>
     <script src="assets/js/respond.js"></script>
 <![endif]-->
-  </body>
-</html>
+        </body>
+        </html>
 

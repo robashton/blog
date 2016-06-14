@@ -58,10 +58,7 @@
                                 <a href="/blog.html">Blog</a>
                             </li>
                             <li>
-                                <a href="/statements.html">Testimonials</a>
-                            </li>
-                            <li>
-                                <a href="/hire.html">Hire Me</a>
+                                <a href="/testimonials.html">Testimonials</a>
                             </li>
                     </div>
                 </div>
@@ -69,7 +66,7 @@
         </div>
     </div>
 
-  <body>
+    <body>
     <div id="blog-entry">
       <h1 id="post-title">Writing a transaction manager on top of LevelDB</h1>
       <h6>Published on <span class="date">2013-3-5</span></h6>
@@ -81,8 +78,8 @@
 myStore<span class="preprocessor">.Batch</span>(accessor =&gt; {
   var doc = accessor<span class="preprocessor">.Get</span>(<span class="string">"key1"</span>)<span class="comment">;</span>
   accessor<span class="preprocessor">.Put</span>(<span class="string">"key2"</span>, <span class="string">"Hello"</span>)<span class="comment">;</span>
-})<span class="comment">;</span></code></pre>
-<p>What does this look like?</p>
+})<span class="comment">;</span>
+</code></pre><p>What does this look like?</p>
 <pre><code><span class="keyword">public</span> <span class="keyword">void</span> Batch(Action&lt;StorageAccessor&gt; actions) {
   <span class="keyword">var</span> transaction = <span class="keyword">this</span>.CreateTransaction();
   <span class="keyword">var</span> accessor = <span class="keyword">new</span> StorageAccessor(<span class="keyword">this</span>, transaction);
@@ -93,8 +90,8 @@ myStore<span class="preprocessor">.Batch</span>(accessor =&gt; {
     <span class="keyword">throw</span>;
   }
   <span class="keyword">this</span>.CommitTransaction(transaction);
-}</code></pre>
-<p>Where the accessor simply calls the Get/Put/Delete methods on the storage and passes in the transaction associated with it.</p>
+}
+</code></pre><p>Where the accessor simply calls the Get/Put/Delete methods on the storage and passes in the transaction associated with it.</p>
 <pre><code><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="id">StorageAccessor</span> {</span>
   <span class="keyword">private</span> Storage storage;
   <span class="keyword">private</span> StorageTransaction transaction;
@@ -115,8 +112,8 @@ myStore<span class="preprocessor">.Batch</span>(accessor =&gt; {
   <span class="keyword">public</span> <span class="keyword">void</span> Delete(string <span class="keyword">id</span>) {
     <span class="keyword">this</span><span class="variable">.storage</span><span class="variable">.Delete</span>(<span class="keyword">id</span>, <span class="keyword">this</span><span class="variable">.transaction</span>);
   }
-}</code></pre>
-<p>Where we then make a check to see if another transaction has modified that key in the meantime</p>
+}
+</code></pre><p>Where we then make a check to see if another transaction has modified that key in the meantime</p>
 <pre><code><span class="keyword">public</span> <span class="keyword">void</span> Put(string <span class="keyword">id</span>, Object obj, StorageTransaction transaction) {
   <span class="keyword">this</span><span class="variable">.keysToTransactionId</span><span class="variable">.AddOrUpdate</span>(<span class="keyword">id</span>, (key) =&gt; {
       transaction<span class="variable">.AddOperation</span>(storage =&gt; storage<span class="variable">.Put</span>(<span class="keyword">id</span>, obj));
@@ -126,110 +123,54 @@ myStore<span class="preprocessor">.Batch</span>(accessor =&gt; {
     <span class="comment">// NOTE: This doesn't handle the transaction doing multiple operations on the same key</span>
     <span class="keyword">throw</span> new Exception(<span class="string">"This should be a concurrency exception but I'm lazy"</span>);
   });
-}</code></pre>
-<p>Obviously a real implementation needs to do things like keep modified information around so reads can go via that before hitting the LevelDB snapshot, but in essence you can build a pretty simple transaction manager providing your underlying storage does the hard work of managing atomicity of operations.</p>
+}
+</code></pre><p>Obviously a real implementation needs to do things like keep modified information around so reads can go via that before hitting the LevelDB snapshot, but in essence you can build a pretty simple transaction manager providing your underlying storage does the hard work of managing atomicity of operations.</p>
 <p>Next up, back to the C++ as I look at what we&#39;re doing do about large values in RavenDB documents.</p>
 </div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="http://twitter.com/robashton">Follow me</a>
       </div>
-      <div id="hire-me">
-        <h6>This used to ask if you wanted to hire me</h6>
-        <p>But chances are I'm not available, as I'm busy shipping stuff.</p>
-        <p>I am available for conference speaking, I like talking and will do so for just T&E (and perhaps a bottle of wine or two).</p>
-        <p>I have done soft keynotes, and usually entertain/rile people in equal proportion, but prefer to talk tech as that's what I do</p>
-        <p><a href="mailto:robashton@codeofrob.com">Email me :)</a></p>
-      </div>
-      <div id="disqus">
-        <div id="disqus_thread"></div>
-<script type="text/javascript">
-    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
-    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
 
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-      </div>
-    </div>
-    <div id="post-comments">
+        <!--=== Copyright ===-->
+        <div class="copyright">
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span2">
+                <a href="/">Rob Ashton</a>
+              </div>
+              <div class="span6">
+                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+        </div><!--/copyright-->
+        <!--=== End Copyright ===-->
 
-    </div>
-
-<div class="footer" style="margin-top: 0px">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span3">
-                <div class="headline"><h3>Get In Touch</h3></div>
-                <address class="address">
-                    <ul class="icons-ul">
-                        <li><i class="icon-li icon-envelope"></i>Email: <a href="mailto:robashton@codeofrob.com" class="">robashton@codeofrob.com</a></li>
-                        <li><i class="icon-li icon-envelope"></i>Skype: <a href="skype:rob_ashton" class="">rob_ashton</a></li>
-                    </ul>
-                </address>
-            </div><!--/span3-->
-            <div class="span5">
-                <div class="headline"><h3>Subscribe</h3></div>
-                <p>I publish an <a href="http://feed.codeofrob.com/RobAshton">RSS feed</a> from my blog and some other activities</p>
-            </div>
-            <div class="span4">
-                <div class="posts">
-                  <div class="headline"><h3>Find me...</h3></div>
-                  <p><a href="http://twitter.com/robashton"><img src="/assets/img/twitter.jpg" alt="" />
-                  <a href="http://github.com/robashton"><img src="/assets/img/github.png" alt="" /></a></p>
-                </div>
-            </div><!--/span4-->
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/footer-->
-<!--=== End Footer ===-->
-
-<!--=== Copyright ===-->
-<div class="copyright">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span2">
-              <a href="/">Rob Ashton</a>
-            </div>
-            <div class="span6">
-              <p class="terms">2014 © Rob Ashton. ALL Rights Reserved.</p>
-            </div>
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/copyright-->
-<!--=== End Copyright ===-->
-
-<!-- JS Global Compulsory -->
-<script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-<script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-<!-- JS Implementing Plugins -->
-<script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-<script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-<script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-<script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-<!-- JS Page Level -->
-<script type="text/javascript" src="/assets/js/app.js"></script>
-<script type="text/javascript" src="/assets/js/pages/index.js"></script>
-<script type="text/javascript">
-    jQuery(document).ready(function() {
-      	App.init();
-        App.initFancybox();
-        App.initSliders();
-        Index.initParallaxSlider();
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
     });
-</script>
-<!--[if lt IE 9]>
+        </script>
+        <!--[if lt IE 9]>
     <script src="assets/js/respond.js"></script>
 <![endif]-->
-  </body>
-</html>
+        </body>
+        </html>
 

@@ -58,10 +58,7 @@
                                 <a href="/blog.html">Blog</a>
                             </li>
                             <li>
-                                <a href="/statements.html">Testimonials</a>
-                            </li>
-                            <li>
-                                <a href="/hire.html">Hire Me</a>
+                                <a href="/testimonials.html">Testimonials</a>
                             </li>
                     </div>
                 </div>
@@ -69,7 +66,7 @@
         </div>
     </div>
 
-  <body>
+    <body>
     <div id="blog-entry">
       <h1 id="post-title">The core storage protocols for my clojure document database</h1>
       <h6>Published on <span class="date">2014-5-29</span></h6>
@@ -102,8 +99,8 @@
   <span class="list">(<span class="title">as-seq</span><span class="body"> [this])</span></span>)</span></span>
 
 <span class="list">(<span class="title">defprotocol</span><span class="body"> Storage
-  <span class="list">(<span class="title">ensure-transaction</span><span class="body"> [this])</span></span>)</span></span></code></pre>
-<p>Well, you&#39;ll notice immediately that there is no trace of any methods for &quot;put/get/delete&quot; operations and that&#39;s because it seemed to me that this sort of thing was common between all the storage subsystems and actually was a matter of building up a suitable data structure for flushing to the subsystem via that &quot;<em>commit!</em>&quot; method.</p>
+  <span class="list">(<span class="title">ensure-transaction</span><span class="body"> [this])</span></span>)</span></span>
+</code></pre><p>Well, you&#39;ll notice immediately that there is no trace of any methods for &quot;put/get/delete&quot; operations and that&#39;s because it seemed to me that this sort of thing was common between all the storage subsystems and actually was a matter of building up a suitable data structure for flushing to the subsystem via that &quot;<em>commit!</em>&quot; method.</p>
 <p>Why Reader/Writer/Storage as separate protocols? Because a transaction can be a reader and a writer, and the core storage can be a reader and a writer as well (operations outside of a transaction).</p>
 <p><strong>Transaction lifecycle</strong></p>
 <p>So, we actually end up with another module, &quot;<em>storage.clj</em>&quot; to keep these operations over the top of the actual storage mechanism.</p>
@@ -117,8 +114,8 @@
 <p>The storage module exposes the actual functions used to communicate with the underlying storage system, and also surfaces an &quot;ensure-transaction&quot; function.</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> ensure-transaction [storage]
   <span class="list">(<span class="title">assoc</span><span class="body"> <span class="list">(<span class="title">s/ensure-transaction</span><span class="body"> storage)</span></span>
-      <span class="keyword">:last-synctag</span> <span class="list">(<span class="body"><span class="keyword">:last-synctag</span> storage)</span></span>)</span></span>)</span></span></code></pre>
-<p>Any operations happening within this transaction are managed by the storage module and are just a matter of</p>
+      <span class="keyword">:last-synctag</span> <span class="list">(<span class="body"><span class="keyword">:last-synctag</span> storage)</span></span>)</span></span>)</span></span>
+</code></pre><p>Any operations happening within this transaction are managed by the storage module and are just a matter of</p>
 <ul>
 <li>Putting things into that map</li>
 <li>Taking things out of that map</li>
@@ -128,19 +125,19 @@
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> get-obj [ops id]
   <span class="list">(<span class="title">let</span><span class="body"> [cached <span class="list">(<span class="title">get-in</span><span class="body"> ops [<span class="keyword">:cache</span> id])</span></span>]
     <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> cached <span class="keyword">:deleted</span>)</span></span> <span class="literal">nil</span>
-      <span class="list">(<span class="title">or</span><span class="body"> cached <span class="list">(<span class="title">s/from-db</span><span class="body"> ops id)</span></span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>or marking an item as deleted:</p>
+      <span class="list">(<span class="title">or</span><span class="body"> cached <span class="list">(<span class="title">s/from-db</span><span class="body"> ops id)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>
+</code></pre><p>or marking an item as deleted:</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> delete [ops id]
-  <span class="list">(<span class="title">assoc-in</span><span class="body"> ops [<span class="keyword">:cache</span> id] <span class="keyword">:deleted</span>)</span></span>)</span></span></code></pre>
-<p><strong>Zero mutation until flush</strong></p>
+  <span class="list">(<span class="title">assoc-in</span><span class="body"> ops [<span class="keyword">:cache</span> id] <span class="keyword">:deleted</span>)</span></span>)</span></span>
+</code></pre><p><strong>Zero mutation until flush</strong></p>
 <p>Because all the operations taking place are taking place over the top of a plain old Clojure Map, the code written on top of this is easy to follow as there is no incidental mutation, and it&#39;s easy to dump out the contents of the map in the REPL to see what is going on.</p>
 <p>To write a document from a module in the database, as well as some metadata and some useful marker for example, we can take a transaction from the underlying storage and do</p>
 <pre><code><span class="list">(<span class="title">-&gt;</span><span class="body"> <span class="list">(<span class="title">s/ensure-transaction</span><span class="body"> db)</span></span>
     <span class="list">(<span class="title">s/store</span><span class="body"> <span class="string">"doc-1"</span> { <span class="keyword">:id</span> <span class="string">"foo"</span> })</span></span>
     <span class="list">(<span class="title">s/store</span><span class="body"> <span class="string">"metadata-doc-1"</span> { <span class="keyword">:owner</span> <span class="string">"bob"</span> })</span></span>
     <span class="list">(<span class="title">s/store</span><span class="body"> <span class="string">"last-change"</span> <span class="list">(<span class="title">now</span><span class="body">)</span></span>)</span></span>
-    s/commit!)</span></span></code></pre>
-<p>The majority of the logic here is just putting things into a map, and indeed the only code that actually touches the underying storage is the commit call in this instance. This is using data as integration between the different layers of the database and is quite simple to follow and understand.</p>
+    s/commit!)</span></span>
+</code></pre><p>The majority of the logic here is just putting things into a map, and indeed the only code that actually touches the underying storage is the commit call in this instance. This is using data as integration between the different layers of the database and is quite simple to follow and understand.</p>
 <p><strong>Related files</strong></p>
 <ul>
 <li>storageops.clj</li>
@@ -150,103 +147,47 @@
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="http://twitter.com/robashton">Follow me</a>
       </div>
-      <div id="hire-me">
-        <h6>This used to ask if you wanted to hire me</h6>
-        <p>But chances are I'm not available, as I'm busy shipping stuff.</p>
-        <p>I am available for conference speaking, I like talking and will do so for just T&E (and perhaps a bottle of wine or two).</p>
-        <p>I have done soft keynotes, and usually entertain/rile people in equal proportion, but prefer to talk tech as that's what I do</p>
-        <p><a href="mailto:robashton@codeofrob.com">Email me :)</a></p>
-      </div>
-      <div id="disqus">
-        <div id="disqus_thread"></div>
-<script type="text/javascript">
-    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
-    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
 
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-      </div>
-    </div>
-    <div id="post-comments">
+        <!--=== Copyright ===-->
+        <div class="copyright">
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span2">
+                <a href="/">Rob Ashton</a>
+              </div>
+              <div class="span6">
+                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+        </div><!--/copyright-->
+        <!--=== End Copyright ===-->
 
-    </div>
-
-<div class="footer" style="margin-top: 0px">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span3">
-                <div class="headline"><h3>Get In Touch</h3></div>
-                <address class="address">
-                    <ul class="icons-ul">
-                        <li><i class="icon-li icon-envelope"></i>Email: <a href="mailto:robashton@codeofrob.com" class="">robashton@codeofrob.com</a></li>
-                        <li><i class="icon-li icon-envelope"></i>Skype: <a href="skype:rob_ashton" class="">rob_ashton</a></li>
-                    </ul>
-                </address>
-            </div><!--/span3-->
-            <div class="span5">
-                <div class="headline"><h3>Subscribe</h3></div>
-                <p>I publish an <a href="http://feed.codeofrob.com/RobAshton">RSS feed</a> from my blog and some other activities</p>
-            </div>
-            <div class="span4">
-                <div class="posts">
-                  <div class="headline"><h3>Find me...</h3></div>
-                  <p><a href="http://twitter.com/robashton"><img src="/assets/img/twitter.jpg" alt="" />
-                  <a href="http://github.com/robashton"><img src="/assets/img/github.png" alt="" /></a></p>
-                </div>
-            </div><!--/span4-->
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/footer-->
-<!--=== End Footer ===-->
-
-<!--=== Copyright ===-->
-<div class="copyright">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span2">
-              <a href="/">Rob Ashton</a>
-            </div>
-            <div class="span6">
-              <p class="terms">2014 © Rob Ashton. ALL Rights Reserved.</p>
-            </div>
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/copyright-->
-<!--=== End Copyright ===-->
-
-<!-- JS Global Compulsory -->
-<script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-<script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-<!-- JS Implementing Plugins -->
-<script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-<script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-<script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-<script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-<!-- JS Page Level -->
-<script type="text/javascript" src="/assets/js/app.js"></script>
-<script type="text/javascript" src="/assets/js/pages/index.js"></script>
-<script type="text/javascript">
-    jQuery(document).ready(function() {
-      	App.init();
-        App.initFancybox();
-        App.initSliders();
-        Index.initParallaxSlider();
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
     });
-</script>
-<!--[if lt IE 9]>
+        </script>
+        <!--[if lt IE 9]>
     <script src="assets/js/respond.js"></script>
 <![endif]-->
-  </body>
-</html>
+        </body>
+        </html>
 

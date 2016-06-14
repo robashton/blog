@@ -58,10 +58,7 @@
                                 <a href="/blog.html">Blog</a>
                             </li>
                             <li>
-                                <a href="/statements.html">Testimonials</a>
-                            </li>
-                            <li>
-                                <a href="/hire.html">Hire Me</a>
+                                <a href="/testimonials.html">Testimonials</a>
                             </li>
                     </div>
                 </div>
@@ -69,7 +66,7 @@
         </div>
     </div>
 
-  <body>
+    <body>
     <div id="blog-entry">
       <h1 id="post-title">Learn functional programming with me - more idiomatic Clojure</h1>
       <h6>Published on <span class="date">2013-6-27</span></h6>
@@ -100,8 +97,8 @@
       )</span></span>
     )</span></span>
   )</span></span>
-)</span></span></code></pre>
-<p>What I&#39;m essentially doing is </p>
+)</span></span>
+</code></pre><p>What I&#39;m essentially doing is </p>
 <ul>
 <li>Selecting a function to apply based on the direction</li>
 <li>Creating a new enemies collection where that function has been applied to each enemy</li>
@@ -118,13 +115,13 @@
       )</span></span>
     )</span></span>
   )</span></span>
-)</span></span></code></pre>
-<p>update-in takes in a func to enact on the value, rather than the new value and saves us precious reading time. Thinking about it, we can actually save some effort here too.</p>
+)</span></span>
+</code></pre><p>update-in takes in a func to enact on the value, rather than the new value and saves us precious reading time. Thinking about it, we can actually save some effort here too.</p>
 <p>This makes a big difference in cases where I&#39;ve been lazy and done this</p>
-<pre><code><span class="list">(<span class="title">assoc</span><span class="body"> bullet <span class="keyword">:y</span> <span class="list">(<span class="title">dec</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> bullet)</span></span>)</span></span>)</span></span></code></pre>
-<p>Looks better like</p>
-<pre><code><span class="list">(<span class="title">update-in</span><span class="body"> bullet [<span class="keyword">:y</span>] dec)</span></span></code></pre>
-<p>Passing around functions seems pretty functional.</p>
+<pre><code><span class="list">(<span class="title">assoc</span><span class="body"> bullet <span class="keyword">:y</span> <span class="list">(<span class="title">dec</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> bullet)</span></span>)</span></span>)</span></span>
+</code></pre><p>Looks better like</p>
+<pre><code><span class="list">(<span class="title">update-in</span><span class="body"> bullet [<span class="keyword">:y</span>] dec)</span></span>
+</code></pre><p>Passing around functions seems pretty functional.</p>
 <p><strong>State doesn&#39;t define an object</strong></p>
 <p>Why do I have this?</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> initEnemy [x y w h]
@@ -152,8 +149,8 @@
   <span class="keyword">:w</span> w
   <span class="keyword">:h</span> h
  }
-)</span></span></code></pre>
-<p>Seems to me that everything in my game is a rect, and what changes between these everything is the behaviour that is performed over that state.</p>
+)</span></span>
+</code></pre><p>Seems to me that everything in my game is a rect, and what changes between these everything is the behaviour that is performed over that state.</p>
 <p>So, death to these things and in with</p>
 <pre><code><span class="list">(<span class="title"><span class="built_in">defn</span></span> initRect <span class="collection">[x y w h]</span>
  <span class="collection">{
@@ -162,12 +159,12 @@
   <span class="attribute">:w</span> w
   <span class="attribute">:h</span> h
  }</span>
-)</span></code></pre>
-<p>Actually, I&#39;m pulling this structure apart in a number of places, such as my drawing functions</p>
+)</span>
+</code></pre><p>Actually, I&#39;m pulling this structure apart in a number of places, such as my drawing functions</p>
 <pre><code><span class="list">(<span class="title">let</span><span class="body"> [{<span class="keyword">:keys</span> [x y w h]} bullet]
   <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx x y w h <span class="string">"#000"</span>)</span></span>
-)</span></span></code></pre>
-<p>A solution to this would be to make drawSquare take in this map and de-construct it there. I&#39;ve established that this is a primitive I want in my application and I&#39;ll use it as such.</p>
+)</span></span>
+</code></pre><p>A solution to this would be to make drawSquare take in this map and de-construct it there. I&#39;ve established that this is a primitive I want in my application and I&#39;ll use it as such.</p>
 <p>I could further solidify this by turning it into a Record but I&#39;m not yet feeling any pain from not having it as one so I won&#39;t bother..</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> drawSquare [[ctx width height] rect c]
   <span class="list">(<span class="title">set</span><span class="body">! <span class="list">(<span class="body">. ctx -fillStyle)</span></span> c)</span></span>
@@ -194,8 +191,8 @@
   <span class="list">(<span class="title">let</span><span class="body"> [player <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>]
     <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx player <span class="string">"#F00"</span>)</span></span>
   )</span></span>
-)</span></span></code></pre>
-<p>In other thoughts, these functions are all the same apart from the colour of the rect, it seems a bit daft to me, how about</p>
+)</span></span>
+</code></pre><p>In other thoughts, these functions are all the same apart from the colour of the rect, it seems a bit daft to me, how about</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> renderRects [ctx rects colour]
   <span class="list">(<span class="title">doseq</span><span class="body"> [rect rects] 
     <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx enemy colour)</span></span>
@@ -212,8 +209,8 @@
 
 <span class="list">(<span class="title">defn</span><span class="body"> playerRender [ctx state]
   <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span> <span class="string">"#F00"</span>)</span></span>
-)</span></span></code></pre>
-<p>Keeping the number of data structures to a minimum and re-using tiny little functions seems to be a thing in these parts.</p>
+)</span></span>
+</code></pre><p>Keeping the number of data structures to a minimum and re-using tiny little functions seems to be a thing in these parts.</p>
 <p><strong>Naming clojure constructs</strong></p>
 <p>I&#39;ve been a naughy boy and stuck to my JavaScript ways of doing things with the camelCase all up in the show.</p>
 <p>Turns out that Clojure fiends prefer hyphenation-on-their-names and I can kinda get behind that.</p>
@@ -221,12 +218,12 @@
 <p>I&#39;ll not show them all, but in essence </p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> bulletsRender [ctx state]
   <span class="list">(<span class="title">renderRects</span><span class="body"> ctx <span class="list">(<span class="title">get-in</span><span class="body"> state [<span class="keyword">:bullets</span> <span class="keyword">:active</span>])</span></span> <span class="string">"#000"</span>)</span></span>
-)</span></span></code></pre>
-<p>Will become</p>
+)</span></span>
+</code></pre><p>Will become</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> render-bullets [ctx state]
   <span class="list">(<span class="title">render-rects</span><span class="body"> ctx <span class="list">(<span class="title">get-in</span><span class="body"> state [<span class="keyword">:bullets</span> <span class="keyword">:active</span>])</span></span> <span class="string">"#000"</span>)</span></span>
-)</span></span></code></pre>
-<p>And so on (so don&#39;t get confused in latter entries where the names of things have changed!)</p>
+)</span></span>
+</code></pre><p>And so on (so don&#39;t get confused in latter entries where the names of things have changed!)</p>
 <p>The only downside to this arrangement is ctrl-p is now broken in vim for method names, this is a chance for the Emacs people to point and laugh at me.</p>
 <p><strong>Parenthesis white space</strong></p>
 <p>I&#39;m getting little value from new-lining my parentheses.</p>
@@ -238,8 +235,8 @@
       )</span></span>
     )</span></span>
   )</span></span>
-)</span></span></code></pre>
-<p>When re-factoring or moving code around, I&#39;m using the vim shortcuts </p>
+)</span></span>
+</code></pre><p>When re-factoring or moving code around, I&#39;m using the vim shortcuts </p>
 <ul>
 <li>vi(</li>
 <li>va(</li>
@@ -252,111 +249,55 @@
   <span class="list">(<span class="title">update-bullets</span><span class="body">
     <span class="list">(<span class="title">update-player</span><span class="body">
       <span class="list">(<span class="title">update-enemies</span><span class="body">
-        <span class="list">(<span class="title">update-direction</span><span class="body"> state)</span></span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>Gasp. Radical. This will reduce my vertical space usage and allow me to see more context on my screen (I&#39;m a k+r person in C#/JS etc so I&#39;m totally up in this way of doing things)</p>
+        <span class="list">(<span class="title">update-direction</span><span class="body"> state)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>
+</code></pre><p>Gasp. Radical. This will reduce my vertical space usage and allow me to see more context on my screen (I&#39;m a k+r person in C#/JS etc so I&#39;m totally up in this way of doing things)</p>
 <p>The fully tidied up source code can be found at <a href="https://github.com/robashton/clojure-spaceinvaders/blob/d7df1f4671ffe86dd2391d368e7b0169ab263fae/game.cljs">this snapshot on Github</a> if you want to catch up with where I am so far.</p>
 <p>With this, I can go and look at collision detection!</p>
 </div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="http://twitter.com/robashton">Follow me</a>
       </div>
-      <div id="hire-me">
-        <h6>This used to ask if you wanted to hire me</h6>
-        <p>But chances are I'm not available, as I'm busy shipping stuff.</p>
-        <p>I am available for conference speaking, I like talking and will do so for just T&E (and perhaps a bottle of wine or two).</p>
-        <p>I have done soft keynotes, and usually entertain/rile people in equal proportion, but prefer to talk tech as that's what I do</p>
-        <p><a href="mailto:robashton@codeofrob.com">Email me :)</a></p>
-      </div>
-      <div id="disqus">
-        <div id="disqus_thread"></div>
-<script type="text/javascript">
-    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
-    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
 
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-      </div>
-    </div>
-    <div id="post-comments">
+        <!--=== Copyright ===-->
+        <div class="copyright">
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span2">
+                <a href="/">Rob Ashton</a>
+              </div>
+              <div class="span6">
+                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+        </div><!--/copyright-->
+        <!--=== End Copyright ===-->
 
-    </div>
-
-<div class="footer" style="margin-top: 0px">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span3">
-                <div class="headline"><h3>Get In Touch</h3></div>
-                <address class="address">
-                    <ul class="icons-ul">
-                        <li><i class="icon-li icon-envelope"></i>Email: <a href="mailto:robashton@codeofrob.com" class="">robashton@codeofrob.com</a></li>
-                        <li><i class="icon-li icon-envelope"></i>Skype: <a href="skype:rob_ashton" class="">rob_ashton</a></li>
-                    </ul>
-                </address>
-            </div><!--/span3-->
-            <div class="span5">
-                <div class="headline"><h3>Subscribe</h3></div>
-                <p>I publish an <a href="http://feed.codeofrob.com/RobAshton">RSS feed</a> from my blog and some other activities</p>
-            </div>
-            <div class="span4">
-                <div class="posts">
-                  <div class="headline"><h3>Find me...</h3></div>
-                  <p><a href="http://twitter.com/robashton"><img src="/assets/img/twitter.jpg" alt="" />
-                  <a href="http://github.com/robashton"><img src="/assets/img/github.png" alt="" /></a></p>
-                </div>
-            </div><!--/span4-->
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/footer-->
-<!--=== End Footer ===-->
-
-<!--=== Copyright ===-->
-<div class="copyright">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span2">
-              <a href="/">Rob Ashton</a>
-            </div>
-            <div class="span6">
-              <p class="terms">2014 © Rob Ashton. ALL Rights Reserved.</p>
-            </div>
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/copyright-->
-<!--=== End Copyright ===-->
-
-<!-- JS Global Compulsory -->
-<script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-<script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-<!-- JS Implementing Plugins -->
-<script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-<script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-<script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-<script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-<!-- JS Page Level -->
-<script type="text/javascript" src="/assets/js/app.js"></script>
-<script type="text/javascript" src="/assets/js/pages/index.js"></script>
-<script type="text/javascript">
-    jQuery(document).ready(function() {
-      	App.init();
-        App.initFancybox();
-        App.initSliders();
-        Index.initParallaxSlider();
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
     });
-</script>
-<!--[if lt IE 9]>
+        </script>
+        <!--[if lt IE 9]>
     <script src="assets/js/respond.js"></script>
 <![endif]-->
-  </body>
-</html>
+        </body>
+        </html>
 

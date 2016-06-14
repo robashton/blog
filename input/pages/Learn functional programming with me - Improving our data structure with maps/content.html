@@ -19,10 +19,10 @@
      [<span class="list">(<span class="title">*</span><span class="body"> x <span class="number">30</span>)</span></span> <span class="list">(<span class="title">*</span><span class="body"> y <span class="number">30</span>)</span></span> <span class="number">20</span> <span class="number">20</span>]
    )</span></span>
  ]
-)</span></span></code></pre>
-<p>What I&#39;m doing here is creating a vector that looks like this</p>
-<pre><code>[ <span class="number">1</span> [<span class="number">0</span> <span class="number">0</span>] ]</code></pre>
-<p>What is 1? What is the second vector? What is this nonsense?</p>
+)</span></span>
+</code></pre><p>What I&#39;m doing here is creating a vector that looks like this</p>
+<pre><code>[ <span class="number">1</span> [<span class="number">0</span> <span class="number">0</span>] ]
+</code></pre><p>What is 1? What is the second vector? What is this nonsense?</p>
 <p>How about returning a map instead of a vector from initState?</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> initState []
  { 
@@ -32,8 +32,8 @@
                [<span class="list">(<span class="title">*</span><span class="body"> x <span class="number">30</span>)</span></span> <span class="list">(<span class="title">*</span><span class="body"> y <span class="number">30</span>)</span></span> <span class="number">20</span> <span class="number">20</span>]
    )</span></span>
  } 
-)</span></span></code></pre>
-<p>So the difference is we&#39;re now using curly braces, and specifying key-value pairs for our values. (Bear in mind that this returned map is for all intents and purposes going to be immutable, so we haven&#39;t got to worry too much about exposing this state (I think)</p>
+)</span></span>
+</code></pre><p>So the difference is we&#39;re now using curly braces, and specifying key-value pairs for our values. (Bear in mind that this returned map is for all intents and purposes going to be immutable, so we haven&#39;t got to worry too much about exposing this state (I think)</p>
 <p>Well actually, the rest of this is bit opaque as well, why not split out the enemy constructor into its own function?</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> initEnemy [x y w h]
  [<span class="list">(<span class="title">*</span><span class="body"> x <span class="number">30</span>)</span></span> <span class="list">(<span class="title">*</span><span class="body"> y <span class="number">30</span>)</span></span> <span class="number">20</span> <span class="number">20</span>]
@@ -47,8 +47,8 @@
               <span class="list">(<span class="title">initEnemy</span><span class="body"> x y <span class="number">20</span> <span class="number">20</span>)</span></span>
    )</span></span>
  } 
-)</span></span></code></pre>
-<p>And if we&#39;ve gone that far, why not go further and make that a map as well?</p>
+)</span></span>
+</code></pre><p>And if we&#39;ve gone that far, why not go further and make that a map as well?</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> initEnemy [x y w h]
  {
   <span class="keyword">:x</span> <span class="list">(<span class="title">*</span><span class="body"> x <span class="number">30</span>)</span></span>
@@ -56,8 +56,8 @@
   <span class="keyword">:w</span> w
   <span class="keyword">:h</span> h
  }
-)</span></span></code></pre>
-<p>Now my data structure looks like this</p>
+)</span></span>
+</code></pre><p>Now my data structure looks like this</p>
 <pre><code>{
   <span class="method">direction:</span> <span class="number">1</span>
   <span class="method">enemies:</span> [
@@ -68,29 +68,29 @@
     // etc
 
   ]
-}</code></pre>
-<p>Bloomin&#39; marvellous. Now, this all still builds - although if I run it it&#39;ll fall over in disaster. This is because of mis-matched function calls, as I&#39;m passing these maps around and the functions are expecting vectors.</p>
+}
+</code></pre><p>Bloomin&#39; marvellous. Now, this all still builds - although if I run it it&#39;ll fall over in disaster. This is because of mis-matched function calls, as I&#39;m passing these maps around and the functions are expecting vectors.</p>
 <p>Type safety was mentioned in relation to Maps and Records and perhaps Records give me some of that, I&#39;ll look at those later if it becomes a burden.</p>
 <p>I need to update functions where I&#39;m using these data structures (which is everywhere), so let&#39;s have a look how I&#39;ll do that:</p>
 <pre><code>(defn tick [ctx state]
-  (let <span class="string">[[dir enemies] state]</code></pre>
-<p>Well, here is my first change, I&#39;m passing in &#39;state&#39; to &#39;tick&#39;, but the de-structuring assignment assumes that state is a vector and un-packs it accordingly, this is a valid operation against a map but is junk to my code so nothing happens.</p>
+  (let <span class="string">[[dir enemies] state]
+</code></pre><p>Well, here is my first change, I&#39;m passing in &#39;state&#39; to &#39;tick&#39;, but the de-structuring assignment assumes that state is a vector and un-packs it accordingly, this is a valid operation against a map but is junk to my code so nothing happens.</p>
 <p>Instead what I want to do is unpack the state I need from the map so I can use it.</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> tick [ctx state]
-  <span class="list">(<span class="title">let</span><span class="body"> [enemies <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>]</code></pre>
-<p>Now, this is going to say, let &#39;enemies&#39; equal the result of the value found at the key :enemies, so this is how we access maps.</p>
+  <span class="list">(<span class="title">let</span><span class="body"> [enemies <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>]
+</code></pre><p>Now, this is going to say, let &#39;enemies&#39; equal the result of the value found at the key :enemies, so this is how we access maps.</p>
 <p>&#39;<em>enemies</em>&#39; is now a sequence of maps, and in order to render I&#39;ll have to un-pack that too if we&#39;re taking a direct approach to getting this code working again.</p>
 <pre><code><span class="list">(<span class="title">doseq</span><span class="body"> [enemy enemies] 
   <span class="list">(<span class="title">let</span><span class="body"> [{<span class="keyword">:keys</span> [x y w h]} enemy]
     <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx x y w h)</span></span>
   )</span></span>
-)</span></span></code></pre>
-<p>In this case, I&#39;m unpacking several keys from enemy at the same time using the special form &quot;:keys&quot;, that&#39;s kinda cool.</p>
+)</span></span>
+</code></pre><p>In this case, I&#39;m unpacking several keys from enemy at the same time using the special form &quot;:keys&quot;, that&#39;s kinda cool.</p>
 <p>Our call to doLogic remains unchanged, as we merely pass in the state and expect the new state back in the same form.</p>
 <pre><code><span class="list">(<span class="title">js/setTimeout</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> []
   <span class="list">(<span class="title">tick</span><span class="body"> ctx <span class="list">(<span class="title">doLogic</span><span class="body"> state)</span></span>)</span></span>
-)</span></span> <span class="number">33</span>  )</span></span></code></pre>
-<p>However, the doLogic function expects a vector and does things with more vectors, so it&#39;ll need changing as well.</p>
+)</span></span> <span class="number">33</span>  )</span></span>
+</code></pre><p>However, the doLogic function expects a vector and does things with more vectors, so it&#39;ll need changing as well.</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> doLogic [[direction enemies]]
   [
     <span class="list">(<span class="title">getNextDirection</span><span class="body"> direction enemies)</span></span>
@@ -101,15 +101,15 @@
       )</span></span>
     )</span></span>
   ]
-)</span></span></code></pre>
-<p>I&#39;ll not bother un-packing here, at the moment everything needs all of the state, but I will split out the enemy logic into its own function for easier comprehension.</p>
+)</span></span>
+</code></pre><p>I&#39;ll not bother un-packing here, at the moment everything needs all of the state, but I will split out the enemy logic into its own function for easier comprehension.</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> doLogic [state]
   {
     <span class="keyword">:direction</span> <span class="list">(<span class="title">directionLogic</span><span class="body"> state)</span></span>
     <span class="keyword">:enemies</span> <span class="list">(<span class="title">enemiesLogic</span><span class="body"> state)</span></span>
   }
-)</span></span></code></pre>
-<p><em>Now this is the old directionLogic</em>, we&#39;ll need to pull our enemies and direction out of our map.</p>
+)</span></span>
+</code></pre><p><em>Now this is the old directionLogic</em>, we&#39;ll need to pull our enemies and direction out of our map.</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> directionLogic [direction enemies]
   <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> direction <span class="number">1</span>)</span></span>
     <span class="list">(<span class="title">let</span><span class="body"> [right <span class="list">(<span class="title">apply</span><span class="body"> max <span class="list">(<span class="title">map</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> [[x y w h] e] x)</span></span> enemies)</span></span>)</span></span>]
@@ -119,21 +119,21 @@
       <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">&lt;</span><span class="body"> left <span class="number">0</span>)</span></span> <span class="number">1</span> <span class="number">-1</span>)</span></span>
     )</span></span>
   )</span></span>
-)</span></span></code></pre>
-<p>So step by step</p>
+)</span></span>
+</code></pre><p>So step by step</p>
 <p><em>Our new signature and un-packing statement</em></p>
 <pre><code><span class="list">(<span class="title"><span class="built_in">defn</span></span> directionLogic <span class="collection">[state]</span>
-  <span class="list">(<span class="title"><span class="built_in">let</span></span> <span class="collection">[<span class="collection">{<span class="attribute">:keys</span> <span class="collection">[direction enemies]</span>}</span> state]</span></code></pre>
-<p><em>We can pass in :x as the function to invoke (in this case the &#39;map&#39; operation will take :x out of each enemy)</em></p>
+  <span class="list">(<span class="title"><span class="built_in">let</span></span> <span class="collection">[<span class="collection">{<span class="attribute">:keys</span> <span class="collection">[direction enemies]</span>}</span> state]</span>
+</code></pre><p><em>We can pass in :x as the function to invoke (in this case the &#39;map&#39; operation will take :x out of each enemy)</em></p>
 <pre><code><span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> direction <span class="number">1</span>)</span></span>
   <span class="list">(<span class="title">let</span><span class="body"> [right <span class="list">(<span class="title">apply</span><span class="body"> max <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:x</span> enemies)</span></span>)</span></span>]
     <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">&gt;</span><span class="body"> right <span class="number">600</span>)</span></span> <span class="number">-1</span> <span class="number">1</span>)</span></span>
-  )</span></span></code></pre>
-<p><em>And the same for the other direction</em></p>
+  )</span></span>
+</code></pre><p><em>And the same for the other direction</em></p>
 <pre><code>  <span class="list">(<span class="title">let</span><span class="body"> [left <span class="list">(<span class="title">apply</span><span class="body"> min <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:x</span> enemies)</span></span>)</span></span>]
     <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">&lt;</span><span class="body"> left <span class="number">0</span>)</span></span> <span class="number">1</span> <span class="number">-1</span>)</span></span>
-  )</span></span></code></pre>
-<p>I&#39;ll look at tidying this up in a moment, but first I want to sort out my enemiesLogic function and check that my code still works
+  )</span></span>
+</code></pre><p>I&#39;ll look at tidying this up in a moment, but first I want to sort out my enemiesLogic function and check that my code still works
 and I still have moving yellow squares in my browser.</p>
 <p><em>Our old enemies logic</em></p>
 <pre><code><span class="list">(<span class="title">for</span><span class="body"> [[x y w h] enemies]
@@ -141,14 +141,14 @@ and I still have moving yellow squares in my browser.</p>
     [<span class="list">(<span class="title">inc</span><span class="body"> x)</span></span> y w h]
     [<span class="list">(<span class="title">dec</span><span class="body"> x)</span></span> y w h]
   )</span></span>
-)</span></span></code></pre>
-<p><em>Well first off, we now have a function for this, so that looks like this</em></p>
+)</span></span>
+</code></pre><p><em>Well first off, we now have a function for this, so that looks like this</em></p>
 <pre><code><span class="list">(<span class="title"><span class="built_in">defn</span></span> enemiesLogic <span class="collection">[state]</span>
-  <span class="list">(<span class="title"><span class="built_in">let</span></span> <span class="collection">[<span class="collection">{<span class="attribute">:keys</span> <span class="collection">[direction enemies]</span>}</span> state</code></pre>
-<p><em>But I&#39;m going to do something different here</em></p>
+  <span class="list">(<span class="title"><span class="built_in">let</span></span> <span class="collection">[<span class="collection">{<span class="attribute">:keys</span> <span class="collection">[direction enemies]</span>}</span> state
+</code></pre><p><em>But I&#39;m going to do something different here</em></p>
 <pre><code>    func (if(= direction <span class="number">1</span>) <span class="keyword">inc</span> <span class="keyword">dec</span>)
-   ]</code></pre>
-<p>Rather than the old if statement, I&#39;m going to choose a function (called &#39;func&#39;) based on direction to create the new x with.</p>
+   ]
+</code></pre><p>Rather than the old if statement, I&#39;m going to choose a function (called &#39;func&#39;) based on direction to create the new x with.</p>
 <p><em>Creating the new list of enemies</em></p>
 <pre><code><span class="list">(<span class="title">for</span><span class="body"> [enemy enemies]
   {
@@ -157,8 +157,8 @@ and I still have moving yellow squares in my browser.</p>
     <span class="keyword">:w</span> <span class="list">(<span class="body"><span class="keyword">:w</span> enemy)</span></span>
     <span class="keyword">:h</span> <span class="list">(<span class="body"><span class="keyword">:h</span> enemy)</span></span>
   }
-)</span></span></code></pre>
-<p>So here I copy the old state out of the old enemy, and make the new state with a modified x.</p>
+)</span></span>
+</code></pre><p>So here I copy the old state out of the old enemy, and make the new state with a modified x.</p>
 <p>Hitting F5 in my browser</p>
 <p><img src="/img/yellow_squares.png" alt="A load of yellow squares" title="Space invaders"></p>
 <p>Success.</p>

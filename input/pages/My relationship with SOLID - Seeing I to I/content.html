@@ -12,19 +12,19 @@
   <span class="keyword">public</span> <span class="keyword">virtual</span> <span class="keyword">void</span> Read(Byte[] buffer, <span class="keyword">int</span> offset, <span class="keyword">int</span> amount) {}
   <span class="keyword">public</span> <span class="keyword">virtual</span> <span class="keyword">void</span> Write(Byte[] buffer) {}
   <span class="keyword">public</span> <span class="keyword">virtual</span> <span class="keyword">void</span> Seek(<span class="keyword">int</span> offset){}
-}</code></pre>
-<p>Wasn&#39;t necessarily a violation of Liskov because the variations in its behaviour were well described by those slightly uncomfortable properties.</p>
+}
+</code></pre><p>Wasn&#39;t necessarily a violation of Liskov because the variations in its behaviour were well described by those slightly uncomfortable properties.</p>
 <p>However, those awkward properties definitely point towards a violation of the ISP. Why? Because we have an interface - (in this case, an implicit one dictated by the Stream base class) which looks like this:</p>
 <pre><code><span class="class"><span class="keyword">interface</span> <span class="title">Stream</span> {</span>
   <span class="keyword">void</span> Read(Byte[] buffer, <span class="keyword">int</span> offset, <span class="keyword">int</span> amount);
   <span class="keyword">void</span> Write(Byte[] buffer);
   <span class="keyword">void</span> Seek(<span class="keyword">int</span> offset);
-}</code></pre>
-<p>And yet not all Streams can do all of those things, hence we resort to those rather opaque properties.</p>
+}
+</code></pre><p>And yet not all Streams can do all of those things, hence we resort to those rather opaque properties.</p>
 <p>Perhaps another way we&#39;ll often see violations of this in code (let&#39;s say we didn&#39;t have those properties) is the checking for specific types in methods that use the interface such as:</p>
 <pre><code><span class="function"><span class="title">if</span><span class="params">(stream is <span class="variable">FileStream</span>)</span>
-  <span class="title">stream</span>.W<span class="title">rite</span><span class="params">(bytes, <span class="number">0</span>, bytes.<span class="variable">Length</span>)</span></code></pre>
-<p><em>shudder</em>, this stuff be bad as not only do we open up ourselves for runtime crashes when a consumer passes in something we don&#39;t recognise but we&#39;re writing opaque behaviour into our code that&#39;ll confuse consumers of that code.</p>
+  <span class="title">stream</span>.W<span class="title">rite</span><span class="params">(bytes, <span class="number">0</span>, bytes.<span class="variable">Length</span>)</span>
+</code></pre><p><em>shudder</em>, this stuff be bad as not only do we open up ourselves for runtime crashes when a consumer passes in something we don&#39;t recognise but we&#39;re writing opaque behaviour into our code that&#39;ll confuse consumers of that code.</p>
 <p><strong>Interface segregation to the rescue</strong></p>
 <pre><code><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">IRead</span> {</span>
   <span class="keyword">void</span> Read(Byte[] buffer, <span class="keyword">int</span> offset, <span class="keyword">int</span> amount);
@@ -36,16 +36,16 @@
 
 <span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">ISeek</span> {</span>
   <span class="keyword">void</span> Seek(<span class="keyword">int</span> offset);
-}</code></pre>
-<p>When we have methods that require something that Reads, we can pass in IRead, when we have methods that require something that Writes can pass in IWrite, and this is great, what if we need something that Reads <em>and</em> Writes</p>
-<pre><code><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">IReadAndWrite</span> : <span class="title">IRead</span>, <span class="title">IWrite</span> {</span>}</code></pre>
-<p>Okay, maybe we can do this, but what about something that Reads Writes and Seeks?</p>
-<pre><code><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">IReadAndWriteAndSeek</span> : <span class="title">IRead</span>, <span class="title">IWrite</span>, <span class="title">ISeek</span> {</span>}</code></pre>
-<p>Now this is a bit contrived, but this is one of the reasons the .NET team made the decision to go with the CanRead/CanWrite approach beacuse otherwise we&#39;d either simply revert to checks like</p>
-<pre><code><span class="function"><span class="title">if</span><span class="params">(<span class="variable">Stream</span> is <span class="variable">IRead</span>)</span></code></pre>
-<p>or have to do stuff with generics like</p>
-<pre><code><span class="keyword">void</span> WriteToFile&lt;T&gt;(T stream, <span class="keyword">string</span> filename) <span class="keyword">where</span> T : IRead, IWrite, ISeek</code></pre>
-<p><em>shudder</em></p>
+}
+</code></pre><p>When we have methods that require something that Reads, we can pass in IRead, when we have methods that require something that Writes can pass in IWrite, and this is great, what if we need something that Reads <em>and</em> Writes</p>
+<pre><code><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">IReadAndWrite</span> : <span class="title">IRead</span>, <span class="title">IWrite</span> {</span>}
+</code></pre><p>Okay, maybe we can do this, but what about something that Reads Writes and Seeks?</p>
+<pre><code><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">IReadAndWriteAndSeek</span> : <span class="title">IRead</span>, <span class="title">IWrite</span>, <span class="title">ISeek</span> {</span>}
+</code></pre><p>Now this is a bit contrived, but this is one of the reasons the .NET team made the decision to go with the CanRead/CanWrite approach beacuse otherwise we&#39;d either simply revert to checks like</p>
+<pre><code><span class="function"><span class="title">if</span><span class="params">(<span class="variable">Stream</span> is <span class="variable">IRead</span>)</span>
+</code></pre><p>or have to do stuff with generics like</p>
+<pre><code><span class="keyword">void</span> WriteToFile&lt;T&gt;(T stream, <span class="keyword">string</span> filename) <span class="keyword">where</span> T : IRead, IWrite, ISeek
+</code></pre><p><em>shudder</em></p>
 <p><strong>Framework Engineering</strong></p>
 <p>If you&#39;re writing a framework, first off stop and don&#39;t do that... but okay, if you&#39;re writing a framework these are the compromises that you&#39;ll sometimes have to make - and that&#39;s okay.</p>
 <p>Well described behaviour that&#39;s a little bit awkward is better than having a pile of interfaces that we have to dance around if we want to achieve something meaningful.</p>

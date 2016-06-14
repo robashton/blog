@@ -58,10 +58,7 @@
                                 <a href="/blog.html">Blog</a>
                             </li>
                             <li>
-                                <a href="/statements.html">Testimonials</a>
-                            </li>
-                            <li>
-                                <a href="/hire.html">Hire Me</a>
+                                <a href="/testimonials.html">Testimonials</a>
                             </li>
                     </div>
                 </div>
@@ -69,7 +66,7 @@
         </div>
     </div>
 
-  <body>
+    <body>
     <div id="blog-entry">
       <h1 id="post-title">Pushing data into streams in the EventStore</h1>
       <h6>Published on <span class="date">2013-4-26</span></h6>
@@ -84,17 +81,17 @@
     Date: <span class="string">"January 2013"</span>
   },
   EventType: <span class="string">"PonyBorn"</span>
-}</code></pre>
-<p>And I want to get this into a stream, well first I want to package it up</p>
+}
+</code></pre><p>And I want to get this into a stream, well first I want to package it up</p>
 <pre><code>// A package <span class="keyword">with</span> <span class="keyword">the</span> event <span class="keyword">in</span> <span class="keyword">it</span>
 {
   CorrelationId: <span class="string">"something-i-know"</span>,
   ExpectedVersion: <span class="string">"last-version-i-knew-about"</span>,
   Events: [ ev ]
-}</code></pre>
-<p>And serialise it</p>
-<pre><code><span class="keyword">var</span> body = JSON.stringify(<span class="keyword">package</span>)</code></pre>
-<p>I can POST it to the event store with the following code</p>
+}
+</code></pre><p>And serialise it</p>
+<pre><code><span class="keyword">var</span> body = JSON.stringify(<span class="keyword">package</span>)
+</code></pre><p>I can POST it to the event store with the following code</p>
 <pre><code>var req = <span class="transposed_variable">http.</span>request(<span class="cell">{
   host: "<span class="number">127.0</span><span class="number">.0</span><span class="number">.1</span>",
   port: <span class="number">2113</span>,
@@ -110,8 +107,8 @@
 }</span>)
 
 <span class="transposed_variable">req.</span>write(body)
-<span class="transposed_variable">req.</span><span class="keyword">end</span>()</code></pre>
-<p>What do we notice about the data?</p>
+<span class="transposed_variable">req.</span><span class="keyword">end</span>()
+</code></pre><p>What do we notice about the data?</p>
 <ul>
 <li>We can supply a correlation id for our own convenience</li>
 <li>We supply an expected version so our event can be rejected if things are not as they should be</li>
@@ -143,8 +140,8 @@
       <span class="rule"><span class="attribute">type</span>:<span class="value"> <span class="string">"application/atom+x.json"</span>
     }</span></span></span>
   ]
-},</code></pre>
-<p>And that if we go to this ponies stream via the URI specified we&#39;ll see</p>
+},
+</code></pre><p>And that if we go to this ponies stream via the URI specified we&#39;ll see</p>
 <p><em>/streams/ponies</em></p>
 <pre><code>[
   {
@@ -205,8 +202,8 @@
       }
     ]
   }
-]</code></pre>
-<p>We have two events, navigating to them we can see that one of them is for the creation of the stream</p>
+]
+</code></pre><p>We have two events, navigating to them we can see that one of them is for the creation of the stream</p>
 <p><em>/streams/ponies/event/0?format=json</em></p>
 <pre><code>{
   <span class="method">eventStreamId:</span> <span class="comment">"ponies"</span>,
@@ -214,8 +211,8 @@
   <span class="method">eventType:</span> <span class="comment">"$stream-created-implicit"</span>,
   <span class="method">data:</span> <span class="comment">""</span>,
   <span class="method">metadata:</span> <span class="comment">""</span>
-}</code></pre>
-<p>And the other one is the event we pushed</p>
+}
+</code></pre><p>And the other one is the event we pushed</p>
 <p><em>/streams/ponies/event/1?format=json</em></p>
 <pre><code>{
   eventStreamId: <span class="string">"ponies"</span>,
@@ -227,16 +224,16 @@
     <span class="type">Date</span>: "<span class="type">January</span> 2013"
   }</span>,</span>
   metadata: <span class="string">""</span>
-}</code></pre>
-<p>Neato, I guess we notice a few things here then</p>
+}
+</code></pre><p>Neato, I guess we notice a few things here then</p>
 <ul>
 <li>The stream doesn&#39;t contain the actual events, just links to the events</li>
 <li>The stream is pageable, and contains the links to the pages (well, it&#39;s AtomPub)</li>
 <li>Each event has its own unique uri, because events are immutable these can be cached by any intermdiate proxy</li>
 </ul>
 <p>And indeed, if we look at the header on a HTTP request for one of these events we&#39;ll see</p>
-<pre><code><span class="constant">Cache</span>-<span class="constant">Control</span><span class="symbol">:max-age=</span><span class="number">31556926</span></code></pre>
-<p>That&#39;s cool, we&#39;ve discovered that</p>
+<pre><code><span class="constant">Cache</span>-<span class="constant">Control</span><span class="symbol">:max-age=</span><span class="number">31556926</span>
+</code></pre><p>That&#39;s cool, we&#39;ve discovered that</p>
 <ul>
 <li>We can throw events into the event store with a default partitioning (the stream name specified)</li>
 <li>We can get them back out again by paging through the links in that stream</li>
@@ -250,103 +247,47 @@
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="http://twitter.com/robashton">Follow me</a>
       </div>
-      <div id="hire-me">
-        <h6>This used to ask if you wanted to hire me</h6>
-        <p>But chances are I'm not available, as I'm busy shipping stuff.</p>
-        <p>I am available for conference speaking, I like talking and will do so for just T&E (and perhaps a bottle of wine or two).</p>
-        <p>I have done soft keynotes, and usually entertain/rile people in equal proportion, but prefer to talk tech as that's what I do</p>
-        <p><a href="mailto:robashton@codeofrob.com">Email me :)</a></p>
-      </div>
-      <div id="disqus">
-        <div id="disqus_thread"></div>
-<script type="text/javascript">
-    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
-    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
 
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-      </div>
-    </div>
-    <div id="post-comments">
+        <!--=== Copyright ===-->
+        <div class="copyright">
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span2">
+                <a href="/">Rob Ashton</a>
+              </div>
+              <div class="span6">
+                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+        </div><!--/copyright-->
+        <!--=== End Copyright ===-->
 
-    </div>
-
-<div class="footer" style="margin-top: 0px">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span3">
-                <div class="headline"><h3>Get In Touch</h3></div>
-                <address class="address">
-                    <ul class="icons-ul">
-                        <li><i class="icon-li icon-envelope"></i>Email: <a href="mailto:robashton@codeofrob.com" class="">robashton@codeofrob.com</a></li>
-                        <li><i class="icon-li icon-envelope"></i>Skype: <a href="skype:rob_ashton" class="">rob_ashton</a></li>
-                    </ul>
-                </address>
-            </div><!--/span3-->
-            <div class="span5">
-                <div class="headline"><h3>Subscribe</h3></div>
-                <p>I publish an <a href="http://feed.codeofrob.com/RobAshton">RSS feed</a> from my blog and some other activities</p>
-            </div>
-            <div class="span4">
-                <div class="posts">
-                  <div class="headline"><h3>Find me...</h3></div>
-                  <p><a href="http://twitter.com/robashton"><img src="/assets/img/twitter.jpg" alt="" />
-                  <a href="http://github.com/robashton"><img src="/assets/img/github.png" alt="" /></a></p>
-                </div>
-            </div><!--/span4-->
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/footer-->
-<!--=== End Footer ===-->
-
-<!--=== Copyright ===-->
-<div class="copyright">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span2">
-              <a href="/">Rob Ashton</a>
-            </div>
-            <div class="span6">
-              <p class="terms">2014 © Rob Ashton. ALL Rights Reserved.</p>
-            </div>
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/copyright-->
-<!--=== End Copyright ===-->
-
-<!-- JS Global Compulsory -->
-<script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-<script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-<!-- JS Implementing Plugins -->
-<script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-<script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-<script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-<script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-<!-- JS Page Level -->
-<script type="text/javascript" src="/assets/js/app.js"></script>
-<script type="text/javascript" src="/assets/js/pages/index.js"></script>
-<script type="text/javascript">
-    jQuery(document).ready(function() {
-      	App.init();
-        App.initFancybox();
-        App.initSliders();
-        Index.initParallaxSlider();
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
     });
-</script>
-<!--[if lt IE 9]>
+        </script>
+        <!--[if lt IE 9]>
     <script src="assets/js/respond.js"></script>
 <![endif]-->
-  </body>
-</html>
+        </body>
+        </html>
 

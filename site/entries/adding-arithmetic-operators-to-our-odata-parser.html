@@ -58,10 +58,7 @@
                                 <a href="/blog.html">Blog</a>
                             </li>
                             <li>
-                                <a href="/statements.html">Testimonials</a>
-                            </li>
-                            <li>
-                                <a href="/hire.html">Hire Me</a>
+                                <a href="/testimonials.html">Testimonials</a>
                             </li>
                     </div>
                 </div>
@@ -69,7 +66,7 @@
         </div>
     </div>
 
-  <body>
+    <body>
     <div id="blog-entry">
       <h1 id="post-title">Adding arithmetic operators to our OData parser</h1>
       <h6>Published on <span class="date">2013-4-17</span></h6>
@@ -94,8 +91,8 @@
 Sub        Subtraction             /Products?<span class="variable">$filter</span>=Price <span class="sub"><span class="keyword">sub</span> 5 gt 10
 Mul        Multiplication          /Products?$filter=Price mul 2 gt 2000
 Div        Division                /Products?$filter=Price div 2 gt 4
-Mod        Modulo                  /Products?$filter=Price mod 2 eq 0</code></pre>
-<p>Ah yes,</p>
+Mod        Modulo                  /Products?$filter=Price mod 2 eq 0
+</code></pre><p>Ah yes,</p>
 <p>Now, these are all the same, but operator precedence is important so the order in which we want to go through them is:</p>
 <ul>
 <li>Add/Sub</li>
@@ -119,8 +116,8 @@ Mod        Modulo                  /Products?$filter=Price mod 2 eq 0</code></pr
   <span class="keyword">it</span>(<span class="string">"rhr should be 10"</span>, function() {
      assert.<span class="keyword">equal</span>(<span class="constant">result</span>.options.$filterby[<span class="number">2</span>], <span class="number">10</span>)
   })
-})</code></pre>
-<p>This tells us that our &#39;add&#39; operator has higher precedence than the comparisons (which makes sense). This&#39;ll mean we want to sneak it in somewhere after those comparisons. (Assuming in this scheme that And/Or have a higher precedence than add, and it seems to be that way)</p>
+})
+</code></pre><p>This tells us that our &#39;add&#39; operator has higher precedence than the comparisons (which makes sense). This&#39;ll mean we want to sneak it in somewhere after those comparisons. (Assuming in this scheme that And/Or have a higher precedence than add, and it seems to be that way)</p>
 <pre><code>FilterLogicalExpression =
   FilterLogicalExpression:lhs
   FilterByOperand:op
@@ -141,8 +138,8 @@ FilterAddOperand =
   | se<span class="string">q("sub")</span>
   ):op 
   spaces -&gt; op
-,</code></pre>
-<p>Simples, we insert it in the pipeline between &quot;LogicalExpression&quot; and &quot;Checking the value&quot; (Literal values have the highest precedence because they don&#39;t require any work)</p>
+,
+</code></pre><p>Simples, we insert it in the pipeline between &quot;LogicalExpression&quot; and &quot;Checking the value&quot; (Literal values have the highest precedence because they don&#39;t require any work)</p>
 <p>And because Mul/etc have a higher precedence than Add, this exactly the same</p>
 <pre><code>test(<span class="string">"/some/resource?$filterby=Price mul 5 gt 10"</span>, <span class="string">"OData"</span>, function(<span class="constant">result</span>) {
 
@@ -161,8 +158,8 @@ FilterAddOperand =
   <span class="keyword">it</span>(<span class="string">"rhr should be 10"</span>, function() {
      assert.<span class="keyword">equal</span>(<span class="constant">result</span>.options.$filterby[<span class="number">2</span>], <span class="number">10</span>)
   })
-})</code></pre>
-<p>Like so</p>
+})
+</code></pre><p>Like so</p>
 <pre><code><span class="constant">FilterAddExpression</span> =
   <span class="constant">FilterAddExpression</span><span class="symbol">:lhs</span>
   <span class="constant">FilterAddOperand</span><span class="symbol">:op</span>
@@ -175,8 +172,8 @@ FilterAddOperand =
   <span class="constant">FilterMulOperand</span><span class="symbol">:op</span>
   <span class="constant">FilterByValue</span><span class="symbol">:rhs</span> -&gt; [ op, lhs, rhs ]
 | <span class="constant">FilterByValue</span>
-,</code></pre>
-<p>Now what I actually have to do is define operator precedence for mul/div etc independently. So I can&#39;t actually cheat and do</p>
+,
+</code></pre><p>Now what I actually have to do is define operator precedence for mul/div etc independently. So I can&#39;t actually cheat and do</p>
 <pre><code>FilterMulOperand =
   spaces
   (
@@ -185,8 +182,8 @@ FilterAddOperand =
   | se<span class="string">q("mod")</span>
   ):op 
   spaces -&gt; op
-,</code></pre>
-<p>Like I have been doing, or when I write the following test, it will fail.</p>
+,
+</code></pre><p>Like I have been doing, or when I write the following test, it will fail.</p>
 <pre><code>test(<span class="string">"/some/resource?$filterby=Price div Price mul 5 gt 10"</span>, <span class="string">"OData"</span>, function(<span class="constant">result</span>) {
     console.<span class="command">log</span>(JSON.stringify(<span class="constant">result</span>))
 
@@ -212,8 +209,8 @@ FilterAddOperand =
   <span class="keyword">it</span>(<span class="string">"rhr should be 10"</span>, function() {
      assert.<span class="keyword">equal</span>(<span class="constant">result</span>.options.$filterby[<span class="number">2</span>], <span class="number">10</span>)
   })
-})</code></pre>
-<p>What will happen here is we&#39;ll get</p>
+})
+</code></pre><p>What will happen here is we&#39;ll get</p>
 <pre><code>[
   'gt',
   [
@@ -224,8 +221,8 @@ FilterAddOperand =
     <span class="number">5</span>
   ],
   <span class="number">10</span>
-]</code></pre>
-<p>When what we clearly want is</p>
+]
+</code></pre><p>When what we clearly want is</p>
 <pre><code>[
   'gt',
   [
@@ -236,12 +233,12 @@ FilterAddOperand =
     ]
   ],
   <span class="number">10</span>
-]</code></pre>
-<p>Or if you like</p>
-<pre><code><span class="list">(<span class="body"> <span class="list">(<span class="title">price</span><span class="body"> / price)</span></span> <span class="variable">* 5 ) &gt; 10</code></pre>
-<p>Instead of</p>
-<pre><code><span class="list">(<span class="body"> Price / <span class="list">(<span class="title">price</span><span class="body"> <span class="variable">* 5)  ) &gt; 10</code></pre>
-<p>Which is a little bit different to say the least!</p>
+]
+</code></pre><p>Or if you like</p>
+<pre><code><span class="list">(<span class="body"> <span class="list">(<span class="title">price</span><span class="body"> / price)</span></span> <span class="variable">* 5 ) &gt; 10
+</code></pre><p>Instead of</p>
+<pre><code><span class="list">(<span class="body"> Price / <span class="list">(<span class="title">price</span><span class="body"> <span class="variable">* 5)  ) &gt; 10
+</code></pre><p>Which is a little bit different to say the least!</p>
 <p>So, explicit operation order is what we want, and here is how get it:</p>
 <p><strong>One massively explicit set of operator precedences...</strong></p>
 <pre><code>FilterByOption = 
@@ -251,22 +248,22 @@ FilterAddOperand =
 
 FilterByExpression =
   FilterAndExpression
-,</code></pre>
-<p><em>And is the least important in our hierarchy</em></p>
+,
+</code></pre><p><em>And is the least important in our hierarchy</em></p>
 <pre><code><span class="constant">FilterAndExpression</span> =
   <span class="constant">FilterAndExpression</span><span class="symbol">:lhs</span>
   <span class="constant">FilterAndOperand</span><span class="symbol">:op</span>
   <span class="constant">FilterLogicalExpression</span><span class="symbol">:rhs</span> -&gt; [ op, lhs, rhs ]
 | <span class="constant">FilterLogicalExpression</span>
-,</code></pre>
-<p><em>Followed by any logical expression</em></p>
+,
+</code></pre><p><em>Followed by any logical expression</em></p>
 <pre><code><span class="constant">FilterLogicalExpression</span> =
   <span class="constant">FilterLogicalExpression</span><span class="symbol">:lhs</span>
   <span class="constant">FilterByOperand</span><span class="symbol">:op</span>
   <span class="constant">FilterAddExpression</span><span class="symbol">:rhs</span> -&gt; [op, lhs, rhs ]
 | <span class="constant">FilterAddExpression</span>
-,</code></pre>
-<p><em>Then we descend through our mathematical operators in reverse precedence order</em></p>
+,
+</code></pre><p><em>Then we descend through our mathematical operators in reverse precedence order</em></p>
 <pre><code>FilterSubExpression =
   FilterSubExpression:lhs
   spaces se<span class="string">q("sub")</span> spaces
@@ -316,109 +313,53 @@ FilterNegateExpression =
     FilterByValue
   | <span class="string">'('</span> spaces FilterByExpression:expr spaces <span class="string">')'</span> -&gt; expr
   ):value -&gt;  [ <span class="string">"not"</span>, value ]
-,</code></pre>
-<p>How cool is that??!!? That&#39;s pretty much the whole shebang wrapped up as far as expressing parsing goes, and now I can go trigger mad with nested and/or/sub/mul/etc - with the exception of the precedence operators which I&#39;ll add next!</p>
+,
+</code></pre><p>How cool is that??!!? That&#39;s pretty much the whole shebang wrapped up as far as expressing parsing goes, and now I can go trigger mad with nested and/or/sub/mul/etc - with the exception of the precedence operators which I&#39;ll add next!</p>
 </div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="http://twitter.com/robashton">Follow me</a>
       </div>
-      <div id="hire-me">
-        <h6>This used to ask if you wanted to hire me</h6>
-        <p>But chances are I'm not available, as I'm busy shipping stuff.</p>
-        <p>I am available for conference speaking, I like talking and will do so for just T&E (and perhaps a bottle of wine or two).</p>
-        <p>I have done soft keynotes, and usually entertain/rile people in equal proportion, but prefer to talk tech as that's what I do</p>
-        <p><a href="mailto:robashton@codeofrob.com">Email me :)</a></p>
-      </div>
-      <div id="disqus">
-        <div id="disqus_thread"></div>
-<script type="text/javascript">
-    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
-    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
 
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-      </div>
-    </div>
-    <div id="post-comments">
+        <!--=== Copyright ===-->
+        <div class="copyright">
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span2">
+                <a href="/">Rob Ashton</a>
+              </div>
+              <div class="span6">
+                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+        </div><!--/copyright-->
+        <!--=== End Copyright ===-->
 
-    </div>
-
-<div class="footer" style="margin-top: 0px">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span3">
-                <div class="headline"><h3>Get In Touch</h3></div>
-                <address class="address">
-                    <ul class="icons-ul">
-                        <li><i class="icon-li icon-envelope"></i>Email: <a href="mailto:robashton@codeofrob.com" class="">robashton@codeofrob.com</a></li>
-                        <li><i class="icon-li icon-envelope"></i>Skype: <a href="skype:rob_ashton" class="">rob_ashton</a></li>
-                    </ul>
-                </address>
-            </div><!--/span3-->
-            <div class="span5">
-                <div class="headline"><h3>Subscribe</h3></div>
-                <p>I publish an <a href="http://feed.codeofrob.com/RobAshton">RSS feed</a> from my blog and some other activities</p>
-            </div>
-            <div class="span4">
-                <div class="posts">
-                  <div class="headline"><h3>Find me...</h3></div>
-                  <p><a href="http://twitter.com/robashton"><img src="/assets/img/twitter.jpg" alt="" />
-                  <a href="http://github.com/robashton"><img src="/assets/img/github.png" alt="" /></a></p>
-                </div>
-            </div><!--/span4-->
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/footer-->
-<!--=== End Footer ===-->
-
-<!--=== Copyright ===-->
-<div class="copyright">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span2">
-              <a href="/">Rob Ashton</a>
-            </div>
-            <div class="span6">
-              <p class="terms">2014 © Rob Ashton. ALL Rights Reserved.</p>
-            </div>
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/copyright-->
-<!--=== End Copyright ===-->
-
-<!-- JS Global Compulsory -->
-<script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-<script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-<!-- JS Implementing Plugins -->
-<script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-<script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-<script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-<script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-<!-- JS Page Level -->
-<script type="text/javascript" src="/assets/js/app.js"></script>
-<script type="text/javascript" src="/assets/js/pages/index.js"></script>
-<script type="text/javascript">
-    jQuery(document).ready(function() {
-      	App.init();
-        App.initFancybox();
-        App.initSliders();
-        Index.initParallaxSlider();
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
     });
-</script>
-<!--[if lt IE 9]>
+        </script>
+        <!--[if lt IE 9]>
     <script src="assets/js/respond.js"></script>
 <![endif]-->
-  </body>
-</html>
+        </body>
+        </html>
 

@@ -58,10 +58,7 @@
                                 <a href="/blog.html">Blog</a>
                             </li>
                             <li>
-                                <a href="/statements.html">Testimonials</a>
-                            </li>
-                            <li>
-                                <a href="/hire.html">Hire Me</a>
+                                <a href="/testimonials.html">Testimonials</a>
                             </li>
                     </div>
                 </div>
@@ -69,7 +66,7 @@
         </div>
     </div>
 
-  <body>
+    <body>
     <div id="blog-entry">
       <h1 id="post-title">Building a basic JSON parser in OMeta</h1>
       <h6>Published on <span class="date">2013-4-3</span></h6>
@@ -77,69 +74,69 @@
 <p>Nevertheless, I decided the best way to crack the nut of OMeta would be to write something to read JSON (it has already been done so I&#39;ve got something to refer to if I get stuck), and I don&#39;t need to make it complete - just functional enough to say &quot;okay, I can do something more real in OMeta now&quot;</p>
 <p>Oh, and because this is something new and different, my spike into it will involve feeling my way through the problem with tests. I can&#39;t do it all in-line hardcore TDD-style in the test functions and extract because of the OMeta compilation phase - but it should be good enough for fast feedback while learning.</p>
 <p>So first off, I want to know how to match an empty object</p>
-<pre><code><span class="rules">{<span class="rule">}</span></span></code></pre>
-<p>That&#39;s my empty object there, the simplest possible blob of JSON I can come up with :-)</p>
+<pre><code><span class="rules">{<span class="rule">}</span></span>
+</code></pre><p>That&#39;s my empty object there, the simplest possible blob of JSON I can come up with :-)</p>
 <pre><code><span class="function"><span class="title">describe</span><span class="params">(<span class="string">"matching an empty object"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
   var input = <span class="string">"{}"</span>
   var result = <span class="variable">JsonReader</span>.<span class="function_name">matchAll</span>(input, <span class="string">"obj"</span>)
   assert.<span class="function_name">deepEqual</span>(result, <span class="tuple">{}</span>)
-}</span>)</code></pre>
-<p>So how do I match it?</p>
+}</span>)
+</code></pre><p>So how do I match it?</p>
 <pre><code><span class="title">ometa</span> JsonReader {
   <span class="title">obj</span> = <span class="string">"{}"</span> -&gt; {}
-}</code></pre>
-<p>How about matching a single numerical value?</p>
+}
+</code></pre><p>How about matching a single numerical value?</p>
 <pre><code><span class="function"><span class="title">describe</span><span class="params">(<span class="string">"matching a single numerical value"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
   var input = <span class="string">"400"</span>
   var result = jsonreader.<span class="function_name">matchall</span>(input, <span class="string">"num"</span>)
   assert.<span class="function_name">equal</span>(result, <span class="number">400</span>)
-}</span>)</code></pre>
-<p>This won&#39;t work for long, but it&#39;s the easiest solution - match <em>anything</em> over and over again, then parse the result as an integer</p>
+}</span>)
+</code></pre><p>This won&#39;t work for long, but it&#39;s the easiest solution - match <em>anything</em> over and over again, then parse the result as an integer</p>
 <pre><code><span class="title">ometa</span> JsonReader {
   <span class="title">num</span> = anything+:x -&gt; parseInt(x.join(<span class="string">''</span>), <span class="number">10</span>),
   obj = <span class="string">"{}"</span> -&gt; {}
-}</code></pre>
-<p>How about matching some text? we need to match quoted text as it can be both a value or a key.</p>
+}
+</code></pre><p>How about matching some text? we need to match quoted text as it can be both a value or a key.</p>
 <pre><code><span class="function"><span class="title">describe</span><span class="params">(<span class="string">"Matching a single string value"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
   var input = '<span class="string">"hello"</span>'
   var result = <span class="variable">JsonReader</span>.<span class="function_name">matchAll</span>(input, <span class="string">"str"</span>)
   assert.<span class="function_name">equal</span>(result, <span class="string">"hello"</span>)
-}</span>)</code></pre>
-<p>Opting for the simplest I can think of, <em>match anything and them remove the quotes.</em></p>
+}</span>)
+</code></pre><p>Opting for the simplest I can think of, <em>match anything and them remove the quotes.</em></p>
 <pre><code>ometa JsonReader {
   str = anything+:<span class="keyword">x</span> -&gt; <span class="keyword">x</span>.<span class="keyword">join</span>(<span class="string">''</span>).replace(<span class="regexp">/\"/g</span>, <span class="string">''</span>),
   num = anything+:<span class="keyword">x</span> -&gt; parseInt(<span class="keyword">x</span>.<span class="keyword">join</span>(<span class="string">''</span>), <span class="number">10</span>),
   obj = <span class="string">"{}"</span> -&gt; {}
-}</code></pre>
-<p>This will come back to bite me I&#39;m sure - how about matching a basic key value pair?</p>
+}
+</code></pre><p>This will come back to bite me I&#39;m sure - how about matching a basic key value pair?</p>
 <pre><code><span class="function"><span class="title">describe</span><span class="params">(<span class="string">"Matching a key value pair with a numerical value"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
   var input = '<span class="string">"foo"</span>:<span class="number">1337</span>'
   var result = <span class="variable">JsonReader</span>.<span class="function_name">matchAll</span>(input, <span class="string">"kvp"</span>)
   assert.<span class="function_name">deepEqual</span>(result, [ <span class="string">"foo"</span>, <span class="number">1337</span> ])
-}</span>)</code></pre>
-<p>Can we try this? <em>Match a string, then a colon, then a number</em></p>
+}</span>)
+</code></pre><p>Can we try this? <em>Match a string, then a colon, then a number</em></p>
 <pre><code>ometa JsonReader {
   kvp = str:k <span class="string">":"</span> num:v -&gt; [ k, v ],
   str = anything+:<span class="keyword">x</span> -&gt; <span class="keyword">x</span>.<span class="keyword">join</span>(<span class="string">''</span>).replace(<span class="regexp">/\"/g</span>, <span class="string">''</span>),
   num = anything+:<span class="keyword">x</span> -&gt; parseInt(<span class="keyword">x</span>.<span class="keyword">join</span>(<span class="string">''</span>), <span class="number">10</span>),
   obj = <span class="string">"{}"</span> -&gt; {}
-}</code></pre>
-<p>Well we can, but it won&#39;t pass because we&#39;re being lazy and matching &quot;anything&quot; for both strings and numbers. (We&#39;re being greedy and it&#39;ll try and match quotes and braces and then fail) </p>
+}
+</code></pre><p>Well we can, but it won&#39;t pass because we&#39;re being lazy and matching &quot;anything&quot; for both strings and numbers. (We&#39;re being greedy and it&#39;ll try and match quotes and braces and then fail) </p>
 <p>Back to the drawing board, can we specify what we mean by an expected character in a string?</p>
 <pre><code><span class="function"><span class="title">describe</span><span class="params">(<span class="string">"Matching the character 'a'"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
   var input = 'a'
   var result = <span class="variable">JsonReader</span>.<span class="function_name">matchAll</span>(input, <span class="string">"char"</span>)
   assert.<span class="function_name">deepEqual</span>('a', result)
-}</span>)</code></pre>
-<p>Well yes, there is only one! So I&#39;ll cheat and just match <em>anything</em> again :P</p>
+}</span>)
+</code></pre><p>Well yes, there is only one! So I&#39;ll cheat and just match <em>anything</em> again :P</p>
 <pre><code>ometa JsonReader {
   char = anything:<span class="keyword">x</span> -&gt; <span class="keyword">x</span>,
   kvp = str:k <span class="string">":"</span> num:v -&gt; [ k, v ],
   str = anything+:<span class="keyword">x</span> -&gt; <span class="keyword">x</span>.<span class="keyword">join</span>(<span class="string">''</span>).replace(<span class="regexp">/\"/g</span>, <span class="string">''</span>),
   num = anything+:<span class="keyword">x</span> -&gt; parseInt(<span class="keyword">x</span>.<span class="keyword">join</span>(<span class="string">''</span>), <span class="number">10</span>),
   obj = <span class="string">"{}"</span> -&gt; {}
-}</code></pre>
-<p>How about not managing to map something that isn&#39;t a character? <em>anything</em> isn&#39;t going to work remember!</p>
+}
+</code></pre><p>How about not managing to map something that isn&#39;t a character? <em>anything</em> isn&#39;t going to work remember!</p>
 <pre><code>describe(<span class="string">"Character matching doesn't match quotes"</span>, <span class="built_in">function</span>() {
   var input = <span class="string">'"'</span>
     , thrown = <span class="literal">null</span>
@@ -149,8 +146,8 @@
     thrown = ex
   }
   <span class="keyword">assert</span>.notEqual(thrown, <span class="literal">null</span>)
-})</code></pre>
-<p>Not too hard, just <em>check that we haven&#39;t got a double quote and then match anything else</em>:</p>
+})
+</code></pre><p>Not too hard, just <em>check that we haven&#39;t got a double quote and then match anything else</em>:</p>
 <pre><code>ometa JsonReader {
   char =  (
             ~<span class="string">'"'</span>
@@ -160,20 +157,20 @@
   str = anything+:<span class="keyword">x</span> -&gt; <span class="keyword">x</span>.<span class="keyword">join</span>(<span class="string">''</span>).replace(<span class="regexp">/\"/g</span>, <span class="string">''</span>),
   num = anything+:<span class="keyword">x</span> -&gt; parseInt(<span class="keyword">x</span>.<span class="keyword">join</span>(<span class="string">''</span>), <span class="number">10</span>),
   obj = <span class="string">"{}"</span> -&gt; {}
-}</code></pre>
-<p>How about going back to that original test with the string matching?</p>
+}
+</code></pre><p>How about going back to that original test with the string matching?</p>
 <pre><code><span class="function"><span class="title">describe</span><span class="params">(<span class="string">"Matching a single string value"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
   var input = '<span class="string">"hello"</span>'
   var result = <span class="variable">JsonReader</span>.<span class="function_name">matchAll</span>(input, <span class="string">"str"</span>)
   assert.<span class="function_name">equal</span>(result, <span class="string">"hello"</span>)
-}</span>)</code></pre>
-<p>What happens if we come to a quote in the middle of the data?</p>
+}</span>)
+</code></pre><p>What happens if we come to a quote in the middle of the data?</p>
 <pre><code>describe(<span class="string">"Matching a string value with pre-mature quote"</span>, <span class="keyword">function</span>() {
   <span class="keyword">var</span> input = <span class="string">'"hel"lo"'</span>
   <span class="keyword">var</span> result = JsonReader.matchAll(input, <span class="string">"str"</span>)
   assert.equal(result, <span class="string">"hel"</span>)
-})</code></pre>
-<p>If we say that rather than matching &quot;anything&quot; for str, we want to match <em>only a collection of &quot;char&quot; with quotes around it</em> then..</p>
+})
+</code></pre><p>If we say that rather than matching &quot;anything&quot; for str, we want to match <em>only a collection of &quot;char&quot; with quotes around it</em> then..</p>
 <pre><code>ometa JsonReader {
   char =  (
             ~<span class="string">'"'</span>
@@ -183,21 +180,21 @@
   str = <span class="string">'"'</span> char+:<span class="keyword">x</span> <span class="string">'"'</span> -&gt; <span class="keyword">x</span>.<span class="keyword">join</span>(<span class="string">''</span>),
   num = anything+:<span class="keyword">x</span> -&gt; parseInt(<span class="keyword">x</span>.<span class="keyword">join</span>(<span class="string">''</span>), <span class="number">10</span>),
   obj = <span class="string">"{}"</span> -&gt; {}
-}</code></pre>
-<p>Now can we run that key-value one again?</p>
+}
+</code></pre><p>Now can we run that key-value one again?</p>
 <pre><code><span class="function"><span class="title">describe</span><span class="params">(<span class="string">"Matching a key value pair with a numerical value"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
   var input = '<span class="string">"foo"</span>:<span class="number">1337</span>'
   var result = <span class="variable">JsonReader</span>.<span class="function_name">matchAll</span>(input, <span class="string">"kvp"</span>)
   assert.<span class="function_name">deepEqual</span>(result, [ <span class="string">"foo"</span>, <span class="number">1337</span> ])
-}</span>)</code></pre>
-<p>Huzzah. Functional.</p>
+}</span>)
+</code></pre><p>Huzzah. Functional.</p>
 <p>How about a key-value with a string value?</p>
 <pre><code><span class="function"><span class="title">describe</span><span class="params">(<span class="string">"Matching a key value pair with a string value"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
   var input = '<span class="string">"foo"</span>:<span class="string">"bar"</span>'
   var result = <span class="variable">JsonReader</span>.<span class="function_name">matchAll</span>(input, <span class="string">"kvp"</span>)
   assert.<span class="function_name">deepEqual</span>(result, [ <span class="string">"foo"</span>, <span class="string">"bar"</span> ])
-}</span>)</code></pre>
-<p>Well this is where the our parsing language shines, as we can specify <em>&quot;any valid value&quot;, where &quot;value -&gt; num | str&quot;</em></p>
+}</span>)
+</code></pre><p>Well this is where the our parsing language shines, as we can specify <em>&quot;any valid value&quot;, where &quot;value -&gt; num | str&quot;</em></p>
 <pre><code>ometa JsonReader {
   char =  (
             ~<span class="string">'"'</span>
@@ -211,14 +208,14 @@
   str = <span class="string">'"'</span> char+:<span class="keyword">x</span> <span class="string">'"'</span> -&gt; <span class="keyword">x</span>.<span class="keyword">join</span>(<span class="string">''</span>),
   num = anything+:<span class="keyword">x</span> -&gt; parseInt(<span class="keyword">x</span>.<span class="keyword">join</span>(<span class="string">''</span>), <span class="number">10</span>),
   obj = <span class="string">"{}"</span> -&gt; {}
-}</code></pre>
-<p>Actually, this probably means that matching objects shouldn&#39;t be too hard.</p>
+}
+</code></pre><p>Actually, this probably means that matching objects shouldn&#39;t be too hard.</p>
 <pre><code><span class="function"><span class="title">describe</span><span class="params">(<span class="string">"Matching a key value pair with an object value"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
   var input = '<span class="string">"foo"</span>:<span class="tuple">{}</span>'
   var result = <span class="variable">JsonReader</span>.<span class="function_name">matchAll</span>(input, <span class="string">"kvp"</span>)
   assert.<span class="function_name">deepEqual</span>(result, [ <span class="string">"foo"</span>, <span class="tuple">{}</span>])
-}</span>) </code></pre>
-<p>Just add the obj to the list of possible values expected (<em>note it comes before number because number is still really greedy!</em>)</p>
+}</span>) 
+</code></pre><p>Just add the obj to the list of possible values expected (<em>note it comes before number because number is still really greedy!</em>)</p>
 <pre><code>ometa JsonReader {
   char =  (
             ~<span class="string">'"'</span>
@@ -233,20 +230,20 @@
   str = <span class="string">'"'</span> char+:<span class="keyword">x</span> <span class="string">'"'</span> -&gt; <span class="keyword">x</span>.<span class="keyword">join</span>(<span class="string">''</span>),
   num = anything+:<span class="keyword">x</span> -&gt; parseInt(<span class="keyword">x</span>.<span class="keyword">join</span>(<span class="string">''</span>), <span class="number">10</span>),
   obj = <span class="string">"{}"</span> -&gt; {}
-}</code></pre>
-<p>Now, this obj definition isn&#39;t actually correct - because objects contain one or more key value pairs.</p>
+}
+</code></pre><p>Now, this obj definition isn&#39;t actually correct - because objects contain one or more key value pairs.</p>
 <pre><code><span class="function"><span class="title">describe</span><span class="params">(<span class="string">"Matching an object with a single key value pair"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
   var input = '<span class="tuple">{<span class="string">"foo"</span>:<span class="number">1337</span>}</span>'
   var result = <span class="variable">JsonReader</span>.<span class="function_name">matchAll</span>(input, <span class="string">"obj"</span>)
   assert.<span class="function_name">deepEqual</span>(result, <span class="tuple">{ foo: <span class="number">1337</span> }</span>)
-}</span>)</code></pre>
-<p>This won&#39;t actually work because as mentioned above, &#39;num&#39; is still greedy and needs changing so it only matches numerical digits.</p>
+}</span>)
+</code></pre><p>This won&#39;t actually work because as mentioned above, &#39;num&#39; is still greedy and needs changing so it only matches numerical digits.</p>
 <pre><code>describe(<span class="string">"Matching a number with an early termination"</span>, <span class="keyword">function</span>() {
   <span class="keyword">var</span> input = <span class="string">'133"7'</span>
   <span class="keyword">var</span> result = JsonReader.matchAll(input, <span class="string">"num"</span>)
   assert.equal(result, <span class="number">133</span>)
-})</code></pre>
-<p>Turns out that there is a built-in called &#39;digit&#39; to help us with this ( there is probably a built-in for strings too, but documentation for OMeta is not very good and I didn&#39;t see it)</p>
+})
+</code></pre><p>Turns out that there is a built-in called &#39;digit&#39; to help us with this ( there is probably a built-in for strings too, but documentation for OMeta is not very good and I didn&#39;t see it)</p>
 <pre><code><span class="comment">ometa</span> <span class="comment">JsonReader</span> <span class="comment">{</span>
   <span class="comment">char</span> <span class="comment">=</span>  <span class="comment">(</span>
             <span class="comment">~'"'</span>
@@ -261,14 +258,14 @@
   <span class="comment">str</span> <span class="comment">=</span> <span class="comment">'"'</span> <span class="comment">char</span>+<span class="comment">:x</span> <span class="comment">'"'</span> <span class="literal">-</span>&gt; <span class="comment">x</span>.<span class="comment">join('')</span>,
   <span class="comment">num</span> <span class="comment">=</span> &lt;<span class="comment">digit</span>+&gt;<span class="comment">:x</span> <span class="literal">-</span>&gt; <span class="comment">parseInt(x</span>, <span class="comment">10)</span>,
   <span class="comment">obj</span> <span class="comment">=</span> <span class="comment">"{}"</span> <span class="literal">-</span>&gt; <span class="comment">{}</span>
-<span class="comment">}</code></pre>
-<p>Groovy, now perhaps we can try that test again:</p>
+<span class="comment">}
+</code></pre><p>Groovy, now perhaps we can try that test again:</p>
 <pre><code><span class="function"><span class="title">describe</span><span class="params">(<span class="string">"Matching an object with a single key value pair"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
   var input = '<span class="tuple">{<span class="string">"foo"</span>:<span class="number">1337</span>}</span>'
   var result = <span class="variable">JsonReader</span>.<span class="function_name">matchAll</span>(input, <span class="string">"obj"</span>)
   assert.<span class="function_name">deepEqual</span>(result, <span class="tuple">{ foo: <span class="number">1337</span> }</span>)
-}</span>)</code></pre>
-<p>I decide to call an external function to help build up the object which has key/value pairs - that&#39;s the <em>makeObject(args):output</em> bit:</p>
+}</span>)
+</code></pre><p>I decide to call an external function to help build up the object which has key/value pairs - that&#39;s the <em>makeObject(args):output</em> bit:</p>
 <pre><code>ometa JsonReader {
   char =  (
             ~<span class="string">'"'</span>
@@ -294,14 +291,14 @@ JsonReader.makeObject = function(kv) {
   var obj = {}
   obj[kv[<span class="number">0</span>]] = kv[<span class="number">1</span>]
   <span class="keyword">return</span> obj
-}</code></pre>
-<p>Finally, how about lists of arguments?</p>
+}
+</code></pre><p>Finally, how about lists of arguments?</p>
 <pre><code><span class="function"><span class="title">describe</span><span class="params">(<span class="string">"Matching an object with multiple key value pairs"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
   var input = '<span class="tuple">{<span class="string">"foo"</span>:<span class="number">43</span>,<span class="string">"bar"</span>:<span class="number">343</span>}</span>'
   var result = <span class="variable">JsonReader</span>.<span class="function_name">matchAll</span>(input, <span class="string">"obj"</span>)
   assert.<span class="function_name">deepEqual</span>(result, <span class="tuple">{ foo: <span class="number">1337</span>, bar: <span class="number">343</span> }</span>)
-}</span>)</code></pre>
-<p>Turns out that there is another construct in OMeta for this scenario (The best way to find these constructs is to read the ometa-js source - sorry.) <em>listOf</em></p>
+}</span>)
+</code></pre><p>Turns out that there is another construct in OMeta for this scenario (The best way to find these constructs is to read the ometa-js source - sorry.) <em>listOf</em></p>
 <pre><code>ometa JsonReader {
   <span class="keyword">char</span> =  (
             ~<span class="string">'"'</span>
@@ -330,8 +327,8 @@ JsonReader.makeObject = function(kvs) {
     obj[kv[<span class="number">0</span>]] = kv[<span class="number">1</span>]
   }
   <span class="keyword">return</span> obj
-}</code></pre>
-<p><strong>Summary</strong></p>
+}
+</code></pre><p><strong>Summary</strong></p>
 <p>It&#39;s pretty trivial to build up a parser for something if you built up a test suite as you go and have some way of</p>
 <ul>
 <li>Seeing examples for the syntax that OMeta supports</li>
@@ -342,103 +339,47 @@ JsonReader.makeObject = function(kvs) {
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="http://twitter.com/robashton">Follow me</a>
       </div>
-      <div id="hire-me">
-        <h6>This used to ask if you wanted to hire me</h6>
-        <p>But chances are I'm not available, as I'm busy shipping stuff.</p>
-        <p>I am available for conference speaking, I like talking and will do so for just T&E (and perhaps a bottle of wine or two).</p>
-        <p>I have done soft keynotes, and usually entertain/rile people in equal proportion, but prefer to talk tech as that's what I do</p>
-        <p><a href="mailto:robashton@codeofrob.com">Email me :)</a></p>
-      </div>
-      <div id="disqus">
-        <div id="disqus_thread"></div>
-<script type="text/javascript">
-    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
-    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
 
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-      </div>
-    </div>
-    <div id="post-comments">
+        <!--=== Copyright ===-->
+        <div class="copyright">
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span2">
+                <a href="/">Rob Ashton</a>
+              </div>
+              <div class="span6">
+                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+        </div><!--/copyright-->
+        <!--=== End Copyright ===-->
 
-    </div>
-
-<div class="footer" style="margin-top: 0px">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span3">
-                <div class="headline"><h3>Get In Touch</h3></div>
-                <address class="address">
-                    <ul class="icons-ul">
-                        <li><i class="icon-li icon-envelope"></i>Email: <a href="mailto:robashton@codeofrob.com" class="">robashton@codeofrob.com</a></li>
-                        <li><i class="icon-li icon-envelope"></i>Skype: <a href="skype:rob_ashton" class="">rob_ashton</a></li>
-                    </ul>
-                </address>
-            </div><!--/span3-->
-            <div class="span5">
-                <div class="headline"><h3>Subscribe</h3></div>
-                <p>I publish an <a href="http://feed.codeofrob.com/RobAshton">RSS feed</a> from my blog and some other activities</p>
-            </div>
-            <div class="span4">
-                <div class="posts">
-                  <div class="headline"><h3>Find me...</h3></div>
-                  <p><a href="http://twitter.com/robashton"><img src="/assets/img/twitter.jpg" alt="" />
-                  <a href="http://github.com/robashton"><img src="/assets/img/github.png" alt="" /></a></p>
-                </div>
-            </div><!--/span4-->
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/footer-->
-<!--=== End Footer ===-->
-
-<!--=== Copyright ===-->
-<div class="copyright">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span2">
-              <a href="/">Rob Ashton</a>
-            </div>
-            <div class="span6">
-              <p class="terms">2014 © Rob Ashton. ALL Rights Reserved.</p>
-            </div>
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/copyright-->
-<!--=== End Copyright ===-->
-
-<!-- JS Global Compulsory -->
-<script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-<script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-<!-- JS Implementing Plugins -->
-<script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-<script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-<script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-<script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-<!-- JS Page Level -->
-<script type="text/javascript" src="/assets/js/app.js"></script>
-<script type="text/javascript" src="/assets/js/pages/index.js"></script>
-<script type="text/javascript">
-    jQuery(document).ready(function() {
-      	App.init();
-        App.initFancybox();
-        App.initSliders();
-        Index.initParallaxSlider();
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
     });
-</script>
-<!--[if lt IE 9]>
+        </script>
+        <!--[if lt IE 9]>
     <script src="assets/js/respond.js"></script>
 <![endif]-->
-  </body>
-</html>
+        </body>
+        </html>
 

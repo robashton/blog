@@ -12,12 +12,12 @@
 </ul>
 <p>Before we get onto some more fuzzy stuff, it would be good to deal with &#39;not&#39;</p>
 <p>Not is an interesting case because it&#39;s not really  the same as the rest of the expressions so far</p>
-<pre><code><span class="keyword">Not</span>  Logical negation  /Products?$<span class="built_in">filter</span>=<span class="keyword">not</span> endswith(Description,<span class="comment">'milk')</span></code></pre>
-<p>It can&#39;t apply in situations like this however</p>
-<pre><code>/<span class="constant">Products</span>?<span class="variable">$filter</span>=<span class="keyword">not</span> <span class="constant">Product</span> eq <span class="number">5</span></code></pre>
-<p>But it can probably apply in situations like this</p>
-<pre><code>/<span class="constant">Products</span>?<span class="variable">$filter</span>=<span class="keyword">not</span> <span class="constant">Published</span></code></pre>
-<p>This tells us something, which is that not isn&#39;t going to be expecting an expression unless it&#39;s in braces, otherwise it&#39;s going to be looking for a value.</p>
+<pre><code><span class="keyword">Not</span>  Logical negation  /Products?$<span class="built_in">filter</span>=<span class="keyword">not</span> endswith(Description,<span class="comment">'milk')</span>
+</code></pre><p>It can&#39;t apply in situations like this however</p>
+<pre><code>/<span class="constant">Products</span>?<span class="variable">$filter</span>=<span class="keyword">not</span> <span class="constant">Product</span> eq <span class="number">5</span>
+</code></pre><p>But it can probably apply in situations like this</p>
+<pre><code>/<span class="constant">Products</span>?<span class="variable">$filter</span>=<span class="keyword">not</span> <span class="constant">Published</span>
+</code></pre><p>This tells us something, which is that not isn&#39;t going to be expecting an expression unless it&#39;s in braces, otherwise it&#39;s going to be looking for a value.</p>
 <p>I&#39;m not supporting methods yet, so I&#39;ll ignore that requirement for now.</p>
 <pre><code><span class="function"><span class="title">test</span><span class="params">(<span class="string">"/some/resource?$filterby=not Published"</span>, <span class="string">"OData"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>(result) <span class="tuple">{
 
@@ -31,8 +31,8 @@
   <span class="function_name">it</span>(<span class="string">"value should be 'Published'"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
     assert.<span class="function_name">equal</span>(result.options.$filterby[<span class="number">1</span>].name, <span class="string">"Published"</span>)
   }</span>)
-})</code></pre>
-<p>First off, this one</p>
+})
+</code></pre><p>First off, this one</p>
 <pre><code>FilterByValue = 
   FilterNegateExpression
 |  Number
@@ -45,8 +45,8 @@ FilterNegateExpression =
   se<span class="string">q("not")</span>
   spaces
   FilterByValue:value       -&gt;  [ <span class="string">"not"</span>, value ]
-,</code></pre>
-<p>Quite simple, if we get as far as checking for a value, it means we haven&#39;t found an expression, so we&#39;ll check for &quot;Not&quot; - I guess this is where we&#39;ll probably stick methods later too. </p>
+,
+</code></pre><p>Quite simple, if we get as far as checking for a value, it means we haven&#39;t found an expression, so we&#39;ll check for &quot;Not&quot; - I guess this is where we&#39;ll probably stick methods later too. </p>
 <p>A &quot;NegateExpression&quot; is simply a &quot;not&quot; followed by a value, we&#39;ll allow double negatives too because there is no harm in this.</p>
 <p>Next up, we&#39;ll check for braces, and inside braces we&#39;ll allow further expressions (recurse recurse recurse)</p>
 <pre><code>test(<span class="string">"/some/resource?$filterby=not (Price gt 5)"</span>, <span class="string">"OData"</span>, function(<span class="constant">result</span>) {
@@ -63,8 +63,8 @@ FilterNegateExpression =
      assert.<span class="keyword">equal</span>(rhs[<span class="number">1</span>].<span class="property">name</span>, <span class="string">"Price"</span>)
      assert.<span class="keyword">equal</span>(rhs[<span class="number">2</span>], <span class="number">5</span>)
   })
-})</code></pre>
-<p>Solved by</p>
+})
+</code></pre><p>Solved by</p>
 <pre><code>FilterNegateExpression = 
   spaces
   se<span class="string">q("not")</span>
@@ -73,5 +73,5 @@ FilterNegateExpression =
     FilterByValue
   | <span class="string">'('</span> spaces FilterByExpression:expr spaces <span class="string">')'</span> -&gt; expr
   ):value -&gt;  [ <span class="string">"not"</span>, value ]
-,</code></pre>
-<p>Dead easy, now it&#39;s time to get our heads stuck into Arithmetic Operators.</p>
+,
+</code></pre><p>Dead easy, now it&#39;s time to get our heads stuck into Arithmetic Operators.</p>

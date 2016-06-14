@@ -58,10 +58,7 @@
                                 <a href="/blog.html">Blog</a>
                             </li>
                             <li>
-                                <a href="/statements.html">Testimonials</a>
-                            </li>
-                            <li>
-                                <a href="/hire.html">Hire Me</a>
+                                <a href="/testimonials.html">Testimonials</a>
                             </li>
                     </div>
                 </div>
@@ -69,7 +66,7 @@
         </div>
     </div>
 
-  <body>
+    <body>
     <div id="blog-entry">
       <h1 id="post-title">Impatiently learning Cascalog - Part 4</h1>
       <h6>Published on <span class="date">2013-9-17</span></h6>
@@ -88,31 +85,36 @@
 <li><a href="/entries/impatiently-learning-cascalog---part-3.html">Part 3</a></li>
 </ul>
 <p>I&#39;ve opened up the source for part4 and it is doing something a bit different so I guess I should be a little less impatient and have a look at the tutorial to see what I&#39;m looking at...</p>
-<pre><code>Today's lesson takes <span class="keyword">that</span> same Word Count app <span class="keyword">and</span> expands <span class="function_start"><span class="keyword">on</span> <span class="title">it</span></span> <span class="keyword">to</span> implement a stop <span class="property">words</span> filter.</code></pre>
-<p>There is some waffle about the TF-IDF algorithm doing some of this for us, but we might want to do it ourselves because of swear-words. I suppose I should go and read about TD-IDF at some point but for now I&#39;m going to move on with this Cascalog stuff and accept that stuff exists and I don&#39;t know about it yet.</p>
-<h1>Left join</h1>
+<pre><code>Today's lesson takes <span class="keyword">that</span> same Word Count app <span class="keyword">and</span> expands <span class="function_start"><span class="keyword">on</span> <span class="title">it</span></span> <span class="keyword">to</span> implement a stop <span class="property">words</span> filter.
+</code></pre><p>There is some waffle about the TF-IDF algorithm doing some of this for us, but we might want to do it ourselves because of swear-words. I suppose I should go and read about TD-IDF at some point but for now I&#39;m going to move on with this Cascalog stuff and accept that stuff exists and I don&#39;t know about it yet.</p>
+<h1 id="left-join">Left join</h1>
 <p>Feasibly we could write a custom filter method and check if a word is valid, but that&#39;s going to be a bit of a ball-ache. So, we&#39;re told that we&#39;re doing a left-join between the two sets of data.</p>
 <p>That&#39;s an interesting notion to me because we&#39;re in the world of Map/Reduce and that&#39;s not something I&#39;m used to reading in this world.</p>
 <p>So how does this work?</p>
 <pre><code class="lang-clojure">  <span class="list">(<span class="title"><span class="built_in">let</span></span> <span class="collection">[rain <span class="list">(<span class="title">hfs-delimited</span> in <span class="attribute">:skip-header?</span> <span class="literal">true</span>)</span>
-        stop <span class="list">(<span class="title">hfs-delimited</span> stop <span class="attribute">:skip-header?</span> <span class="literal">true</span>)</span>]</span></code></pre>
+        stop <span class="list">(<span class="title">hfs-delimited</span> stop <span class="attribute">:skip-header?</span> <span class="literal">true</span>)</span>]</span>
+</code></pre>
 <p>Unlike  in the previous codes, rather than simply invoke the generator with the variables, we stick it in a let block alongside another generator containing stop words.</p>
 <p>At this point in my mind I&#39;m viewing them as two tables of data, ripe for <em>doing stuff with</em>.</p>
 <p>The next line we start going about things the way we&#39;re used to</p>
 <pre><code class="lang-clojure">    <span class="list">(<span class="title">?&lt;-</span> <span class="list">(<span class="title">hfs-delimited</span> out)</span>
-         <span class="collection">[?word ?count]</span></code></pre>
+         <span class="collection">[?word ?count]</span>
+</code></pre>
 <p>So we&#39;re sinking words and counts into the destination file again - that&#39;s cool.</p>
 <p>We then invoke the rain generator and tidy it up like in the past two examples</p>
 <pre><code class="lang-clojure">    (rain _ ?line)
     (split ?line :&gt; ?word-dirty)
-    ((c/comp s/trim s/lower-case) ?word-dirty :&gt; ?word)</code></pre>
+    ((c/comp s/trim s/lower-case) ?word-dirty :&gt; ?word)
+</code></pre>
 <p>I can&#39;t really see why we wouldn&#39;t just write this with the generator inline like this</p>
 <pre><code class="lang-clojure">    ((hfs-delimited in :skip-header? true) _ ?line)
     (split ?line :&gt; ?word-dirty)
-    ((c/comp s/trim s/lower-case) ?word-dirty :&gt; ?word)</code></pre>
+    ((c/comp s/trim s/lower-case) ?word-dirty :&gt; ?word)
+</code></pre>
 <p>Other than I guess declaring the generators at the top just makes it clear to the reader where our data is coming from.</p>
 <p>The interesting bit is where we then invoke the stop word generator wit hteh word that we have</p>
-<pre><code class="lang-clojure"><span class="list">(<span class="title">stop</span> ?word <span class="attribute">:&gt;</span> <span class="literal">false</span>)</span></code></pre>
+<pre><code class="lang-clojure"><span class="list">(<span class="title">stop</span> ?word <span class="attribute">:&gt;</span> <span class="literal">false</span>)</span>
+</code></pre>
 <p>Well wow, I&#39;m not really sure what I&#39;m looking at here at all, I guess there is some more magic going on where it knows I&#39;ve used the <em>?word</em> as a field and it can work out that I want to do a join on these two things based on that. I&#39;m mapping the result of this to &#39;false&#39; which I assume means <em>I don&#39;t want that crap if it returns something</em>.</p>
 <p>The major difference between the files I&#39;m looking at here (the stop file, and the rain file) is that the rain file has two columns and the stop file has one column so it has to just be the fact that I used the same name here that made the magic happen.</p>
 <p>I don&#39;t find any of this intuitive - but I can take it at face value once more and accept that it works if I do it this way. My urge to go and see how this stuff is implemented is growing and there are only two more stages of this tutorial left for me to follow.</p>
@@ -126,120 +128,65 @@
          (split ?line :&gt; ?word-dirty)
          ((c/comp s/trim s/lower-case) ?word-dirty :&gt; ?word)
          (stop ?word :&gt; false)
-         (c/count ?count))))</code></pre>
+         (c/count ?count))))
+</code></pre>
 <p>Running the demo with</p>
-<pre><code>~/build/hadoop-<span class="number">1.2</span><span class="number">.1</span>/bin/hadoop jar target/impatient.jar <span class="typedef"><span class="keyword">data</span>/rain.txt output/wc <span class="keyword">data</span>/en.stop</span></code></pre>
-<p>Seems to yield in a sensible word count being generated like so</p>
+<pre><code>~/build/hadoop-<span class="number">1.2</span><span class="number">.1</span>/bin/hadoop jar target/impatient.jar <span class="typedef"><span class="keyword">data</span>/rain.txt output/wc <span class="keyword">data</span>/en.stop</span>
+</code></pre><p>Seems to yield in a sensible word count being generated like so</p>
 <pre><code><span class="title">air</span>             <span class="number">1</span>
 <span class="title">area</span>            <span class="number">4</span>
 <span class="title">australia</span>       <span class="number">1</span>
 <span class="title">broken</span>          <span class="number">1</span>
 <span class="title">california's</span>    <span class="number">1</span>
-<span class="title">cause</span>           <span class="number">1</span></code></pre>
-<p>etc</p>
+<span class="title">cause</span>           <span class="number">1</span>
+</code></pre><p>etc</p>
 <p>So, I guess the lesson here is that you can do joins between generators by using the same field name when running them. Neato.</p>
 <p>At this point I have to go away for the weekend to get drunk in a field, so I&#39;ll have to skip the rest of the tutorial and start work on something real at the Mastodon C office.</p>
 </div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="http://twitter.com/robashton">Follow me</a>
       </div>
-      <div id="hire-me">
-        <h6>This used to ask if you wanted to hire me</h6>
-        <p>But chances are I'm not available, as I'm busy shipping stuff.</p>
-        <p>I am available for conference speaking, I like talking and will do so for just T&E (and perhaps a bottle of wine or two).</p>
-        <p>I have done soft keynotes, and usually entertain/rile people in equal proportion, but prefer to talk tech as that's what I do</p>
-        <p><a href="mailto:robashton@codeofrob.com">Email me :)</a></p>
-      </div>
-      <div id="disqus">
-        <div id="disqus_thread"></div>
-<script type="text/javascript">
-    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
-    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
 
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-      </div>
-    </div>
-    <div id="post-comments">
+        <!--=== Copyright ===-->
+        <div class="copyright">
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span2">
+                <a href="/">Rob Ashton</a>
+              </div>
+              <div class="span6">
+                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+        </div><!--/copyright-->
+        <!--=== End Copyright ===-->
 
-    </div>
-
-<div class="footer" style="margin-top: 0px">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span3">
-                <div class="headline"><h3>Get In Touch</h3></div>
-                <address class="address">
-                    <ul class="icons-ul">
-                        <li><i class="icon-li icon-envelope"></i>Email: <a href="mailto:robashton@codeofrob.com" class="">robashton@codeofrob.com</a></li>
-                        <li><i class="icon-li icon-envelope"></i>Skype: <a href="skype:rob_ashton" class="">rob_ashton</a></li>
-                    </ul>
-                </address>
-            </div><!--/span3-->
-            <div class="span5">
-                <div class="headline"><h3>Subscribe</h3></div>
-                <p>I publish an <a href="http://feed.codeofrob.com/RobAshton">RSS feed</a> from my blog and some other activities</p>
-            </div>
-            <div class="span4">
-                <div class="posts">
-                  <div class="headline"><h3>Find me...</h3></div>
-                  <p><a href="http://twitter.com/robashton"><img src="/assets/img/twitter.jpg" alt="" />
-                  <a href="http://github.com/robashton"><img src="/assets/img/github.png" alt="" /></a></p>
-                </div>
-            </div><!--/span4-->
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/footer-->
-<!--=== End Footer ===-->
-
-<!--=== Copyright ===-->
-<div class="copyright">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span2">
-              <a href="/">Rob Ashton</a>
-            </div>
-            <div class="span6">
-              <p class="terms">2014 © Rob Ashton. ALL Rights Reserved.</p>
-            </div>
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/copyright-->
-<!--=== End Copyright ===-->
-
-<!-- JS Global Compulsory -->
-<script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-<script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-<!-- JS Implementing Plugins -->
-<script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-<script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-<script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-<script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-<!-- JS Page Level -->
-<script type="text/javascript" src="/assets/js/app.js"></script>
-<script type="text/javascript" src="/assets/js/pages/index.js"></script>
-<script type="text/javascript">
-    jQuery(document).ready(function() {
-      	App.init();
-        App.initFancybox();
-        App.initSliders();
-        Index.initParallaxSlider();
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
     });
-</script>
-<!--[if lt IE 9]>
+        </script>
+        <!--[if lt IE 9]>
     <script src="assets/js/respond.js"></script>
 <![endif]-->
-  </body>
-</html>
+        </body>
+        </html>
 

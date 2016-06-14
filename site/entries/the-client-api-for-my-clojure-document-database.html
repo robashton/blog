@@ -58,10 +58,7 @@
                                 <a href="/blog.html">Blog</a>
                             </li>
                             <li>
-                                <a href="/statements.html">Testimonials</a>
-                            </li>
-                            <li>
-                                <a href="/hire.html">Hire Me</a>
+                                <a href="/testimonials.html">Testimonials</a>
                             </li>
                     </div>
                 </div>
@@ -69,7 +66,7 @@
         </div>
     </div>
 
-  <body>
+    <body>
     <div id="blog-entry">
       <h1 id="post-title">The client API for my clojure document database</h1>
       <h6>Published on <span class="date">2014-5-1</span></h6>
@@ -95,8 +92,8 @@
   <span class="list">(<span class="title">put-index</span><span class="body"> [this index])</span></span>
   <span class="list">(<span class="title">load-index-metadata</span><span class="body"> [this id])</span></span>
   <span class="list">(<span class="title">delete-index</span><span class="body"> [this id])</span></span>
-  <span class="list">(<span class="title">load-index</span><span class="body"> [this id])</span></span>)</span></span></code></pre>
-<p>This is a low level interface obviously, the key operations being</p>
+  <span class="list">(<span class="title">load-index</span><span class="body"> [this id])</span></span>)</span></span>
+</code></pre><p>This is a low level interface obviously, the key operations being</p>
 <ul>
 <li>put-document</li>
 <li>load-document</li>
@@ -110,17 +107,17 @@
 <span class="comment">; Embedded on disk</span>
 <span class="list">(<span class="title">def</span><span class="body"> instance <span class="list">(<span class="title">embedded/create</span><span class="body"> <span class="string">"var/db"</span>)</span></span>)</span></span>
 <span class="comment">; Remote via HTTP</span>
-<span class="list">(<span class="title">def</span><span class="body"> instance <span class="list">(<span class="title">remote/create</span><span class="body"> <span class="string">"http://example.host:8000"</span>)</span></span>)</span></span></code></pre>
-<p>And then each of those implementations supports the above operations transparently.</p>
+<span class="list">(<span class="title">def</span><span class="body"> instance <span class="list">(<span class="title">remote/create</span><span class="body"> <span class="string">"http://example.host:8000"</span>)</span></span>)</span></span>
+</code></pre><p>And then each of those implementations supports the above operations transparently.</p>
 <p>I wanted to support transactions with this database too, so a <em>bulk</em> operation is supported which is just a combination of the above operations.</p>
 <pre><code><span class="list">(<span class="title">-&gt;</span><span class="body"> <span class="list">(<span class="title">t/open</span><span class="body"> instance)</span></span>
     <span class="list">(<span class="title">t/store</span><span class="body"> <span class="string">"doc-1"</span> { <span class="keyword">:message</span> <span class="string">"hello world"</span> })</span></span>
     <span class="list">(<span class="title">t/store</span><span class="body"> <span class="string">"doc-2"</span> { <span class="keyword">:message</span> <span class="string">"hello alice"</span> })</span></span>
     <span class="list">(<span class="title">t/store</span><span class="body"> <span class="string">"doc-3"</span> { <span class="keyword">:message</span> <span class="string">"hello bob"</span> })</span></span>
     <span class="list">(<span class="title">t/delete</span><span class="body"> <span class="string">"doc-4"</span>)</span></span>
-    <span class="list">(<span class="title">t/commit</span><span class="body">!)</span></span></code></pre>
-<p>I only have two implementations of this and they&#39;re actually pretty empty because they merely farm out into the code that really does something.</p>
-<h3>The remote implementation</h3>
+    <span class="list">(<span class="title">t/commit</span><span class="body">!)</span></span>
+</code></pre><p>I only have two implementations of this and they&#39;re actually pretty empty because they merely farm out into the code that really does something.</p>
+<h3 id="the-remote-implementation">The remote implementation</h3>
 <p>I ended up using a couple of packages from Clojars to do the hard work for me here</p>
 <ul>
 <li><em><a href="https://github.com/neotyk/http.async.client">http.async.client</a></em>: This was an arbitrary choice, I just wanted a HTTP client that worked and supported async</li>
@@ -138,8 +135,8 @@
 <span class="list">(<span class="title">defn</span><span class="body"> url-for-conflict-id [url id]
   <span class="list">(<span class="title">str</span><span class="body"> url <span class="string">"/conflict/"</span> id)</span></span>)</span></span>
 <span class="list">(<span class="title">defn</span><span class="body"> url-for-stream [url synctag]
-  <span class="list">(<span class="title">str</span><span class="body"> url <span class="string">"/stream?synctag="</span> <span class="list">(<span class="title">or</span><span class="body"> synctag <span class="string">""</span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>An actual operation in the record (others removed for brevity)</p>
+  <span class="list">(<span class="title">str</span><span class="body"> url <span class="string">"/stream?synctag="</span> <span class="list">(<span class="title">or</span><span class="body"> synctag <span class="string">""</span>)</span></span>)</span></span>)</span></span>
+</code></pre><p>An actual operation in the record (others removed for brevity)</p>
 <pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> RemoteDatabase [url]
   DocumentDatabase
   <span class="list">(<span class="title">close</span><span class="body"> [this])</span></span>
@@ -150,19 +147,19 @@
         <span class="list">(<span class="title">process-response</span><span class="body">
           <span class="list">(<span class="title">http/GET</span><span class="body"> client <span class="list">(<span class="title">url-for-query</span><span class="body"> url opts)</span></span>
                     <span class="keyword">:headers</span> default-headers
-                    <span class="keyword">:query</span> <span class="list">(<span class="title">dissoc</span><span class="body"> opts <span class="keyword">:filter</span> <span class="keyword">:index</span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>I really like the brevity of Clojure for this. The &quot;close&quot; isn&#39;t really needed for this implementation so it&#39;s an empty function that returns nothing. The rest of the operations look the same, a http request and the processing of that http request. Lovely.</p>
-<h3>The embedded implementation</h3>
+                    <span class="keyword">:query</span> <span class="list">(<span class="title">dissoc</span><span class="body"> opts <span class="keyword">:filter</span> <span class="keyword">:index</span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>
+</code></pre><p>I really like the brevity of Clojure for this. The &quot;close&quot; isn&#39;t really needed for this implementation so it&#39;s an empty function that returns nothing. The rest of the operations look the same, a http request and the processing of that http request. Lovely.</p>
+<h3 id="the-embedded-implementation">The embedded implementation</h3>
 <p>The embedded implementation is obviously the heart and soul of the whole database, everything comes through this (it sits behind the HTTP interface we&#39;ll see in the next post).</p>
-<pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> EmbeddedDatabase [storage index-engine ifh counters]</code></pre>
-<p>The constructor for this record takes in the underlying storage engine, index engine, the in-flight transaction system and some performance counters. This wasn&#39;t really what I had in mind when I through it together, but the <a href="https://github.com/robashton/cravendb/blob/master/src/cravendb/embedded.clj#L24">code itself</a> is quite concise as it mostly just farms out the work to modules responsible for managing document operations, indexing operations and etc.</p>
+<pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> EmbeddedDatabase [storage index-engine ifh counters]
+</code></pre><p>The constructor for this record takes in the underlying storage engine, index engine, the in-flight transaction system and some performance counters. This wasn&#39;t really what I had in mind when I through it together, but the <a href="https://github.com/robashton/cravendb/blob/master/src/cravendb/embedded.clj#L24">code itself</a> is quite concise as it mostly just farms out the work to modules responsible for managing document operations, indexing operations and etc.</p>
 <p>For example</p>
 <pre><code><span class="list">(<span class="title">put-index</span><span class="body"> [this index]
   <span class="list">(<span class="title">with-open</span><span class="body"> [tx <span class="list">(<span class="title">s/ensure-transaction</span><span class="body"> storage)</span></span>]
     <span class="list">(<span class="title">s/commit</span><span class="body">! <span class="list">(<span class="title">indexes/put-index</span><span class="body"> tx index {<span class="keyword">:synctag</span> <span class="list">(<span class="title">s/next-synctag</span><span class="body"> tx)</span></span>})</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">ie/notify-of-new-index</span><span class="body"> index-engine index)</span></span>)</span></span></code></pre>
-<p>In this case (and most of the other cases), the code sitting in the record is just coordinating the actions between a few different modules.</p>
-<h3>Lessons learned about Protocols and Records</h3>
+  <span class="list">(<span class="title">ie/notify-of-new-index</span><span class="body"> index-engine index)</span></span>)</span></span>
+</code></pre><p>In this case (and most of the other cases), the code sitting in the record is just coordinating the actions between a few different modules.</p>
+<h3 id="lessons-learned-about-protocols-and-records">Lessons learned about Protocols and Records</h3>
 <p>It seems from this (and it carries across into other places I&#39;ve used protocols too). I tend to end up using a protocol for the polymorphism and the records to hold some handles/state and then delegate the work out into pure functions.</p>
 <p>I could probably have used multi-methods for this (based on some property in the state), but I found them to be a bit messy because it meant bundling several implementations in the same file. I quickly moved away from the attempts where I did this when it got hard to follow.</p>
 <p>Apparently protocols are also faster, but given performance was not really one of my goals I doubt that is a bottleneck in the database.</p>
@@ -170,103 +167,47 @@
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="http://twitter.com/robashton">Follow me</a>
       </div>
-      <div id="hire-me">
-        <h6>This used to ask if you wanted to hire me</h6>
-        <p>But chances are I'm not available, as I'm busy shipping stuff.</p>
-        <p>I am available for conference speaking, I like talking and will do so for just T&E (and perhaps a bottle of wine or two).</p>
-        <p>I have done soft keynotes, and usually entertain/rile people in equal proportion, but prefer to talk tech as that's what I do</p>
-        <p><a href="mailto:robashton@codeofrob.com">Email me :)</a></p>
-      </div>
-      <div id="disqus">
-        <div id="disqus_thread"></div>
-<script type="text/javascript">
-    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
-    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
 
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-      </div>
-    </div>
-    <div id="post-comments">
+        <!--=== Copyright ===-->
+        <div class="copyright">
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span2">
+                <a href="/">Rob Ashton</a>
+              </div>
+              <div class="span6">
+                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+        </div><!--/copyright-->
+        <!--=== End Copyright ===-->
 
-    </div>
-
-<div class="footer" style="margin-top: 0px">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span3">
-                <div class="headline"><h3>Get In Touch</h3></div>
-                <address class="address">
-                    <ul class="icons-ul">
-                        <li><i class="icon-li icon-envelope"></i>Email: <a href="mailto:robashton@codeofrob.com" class="">robashton@codeofrob.com</a></li>
-                        <li><i class="icon-li icon-envelope"></i>Skype: <a href="skype:rob_ashton" class="">rob_ashton</a></li>
-                    </ul>
-                </address>
-            </div><!--/span3-->
-            <div class="span5">
-                <div class="headline"><h3>Subscribe</h3></div>
-                <p>I publish an <a href="http://feed.codeofrob.com/RobAshton">RSS feed</a> from my blog and some other activities</p>
-            </div>
-            <div class="span4">
-                <div class="posts">
-                  <div class="headline"><h3>Find me...</h3></div>
-                  <p><a href="http://twitter.com/robashton"><img src="/assets/img/twitter.jpg" alt="" />
-                  <a href="http://github.com/robashton"><img src="/assets/img/github.png" alt="" /></a></p>
-                </div>
-            </div><!--/span4-->
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/footer-->
-<!--=== End Footer ===-->
-
-<!--=== Copyright ===-->
-<div class="copyright">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span2">
-              <a href="/">Rob Ashton</a>
-            </div>
-            <div class="span6">
-              <p class="terms">2014 © Rob Ashton. ALL Rights Reserved.</p>
-            </div>
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/copyright-->
-<!--=== End Copyright ===-->
-
-<!-- JS Global Compulsory -->
-<script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-<script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-<!-- JS Implementing Plugins -->
-<script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-<script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-<script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-<script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-<!-- JS Page Level -->
-<script type="text/javascript" src="/assets/js/app.js"></script>
-<script type="text/javascript" src="/assets/js/pages/index.js"></script>
-<script type="text/javascript">
-    jQuery(document).ready(function() {
-      	App.init();
-        App.initFancybox();
-        App.initSliders();
-        Index.initParallaxSlider();
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
     });
-</script>
-<!--[if lt IE 9]>
+        </script>
+        <!--[if lt IE 9]>
     <script src="assets/js/respond.js"></script>
 <![endif]-->
-  </body>
-</html>
+        </body>
+        </html>
 

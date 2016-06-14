@@ -16,25 +16,25 @@
   <span class="keyword">public</span> <span class="keyword">virtual</span> <span class="keyword">void</span> Read(Byte[] buffer, <span class="keyword">int</span> offset, <span class="keyword">int</span> amount) {}
   <span class="keyword">public</span> <span class="keyword">virtual</span> <span class="keyword">void</span> Write(Byte[] buffer) {}
   <span class="keyword">public</span> <span class="keyword">virtual</span> <span class="keyword">void</span> Seek(<span class="keyword">int</span> offset){}
-}</code></pre>
-<p>Now, the default behaviour of this is to throw an exception on any of those methods, and derived instances can do proper implementations of these, like so</p>
+}
+</code></pre><p>Now, the default behaviour of this is to throw an exception on any of those methods, and derived instances can do proper implementations of these, like so</p>
 <pre><code><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">FileStream</span> : <span class="title">Stream</span> {</span>
   <span class="keyword">public</span> <span class="keyword">override</span> <span class="keyword">void</span> Read(Byte[] buffer, <span class="keyword">int</span> offset, <span class="keyword">int</span> amount) { <span class="comment">// Read from the file }</span>
   <span class="keyword">public</span> <span class="keyword">override</span> <span class="keyword">void</span> Write(Byte[] buffer) { <span class="comment">// Write to the file }</span>
   <span class="keyword">public</span> <span class="keyword">override</span> <span class="keyword">void</span> Seek(<span class="keyword">int</span> offset){ <span class="comment">// Seek to a position within the file }</span>
-}</code></pre>
-<p>And maybe an implementation that reads from a HTTP request</p>
+}
+</code></pre><p>And maybe an implementation that reads from a HTTP request</p>
 <pre><code><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">HttpStream</span> : <span class="title">Stream</span> {</span>
   <span class="keyword">public</span> <span class="keyword">override</span> <span class="keyword">void</span> Read(Byte[] buffer, <span class="keyword">int</span> offset, <span class="keyword">int</span> amount) { <span class="comment">// Read from the file }</span>
   <span class="keyword">public</span> <span class="keyword">override</span> <span class="keyword">void</span> Write(Byte[] buffer) { throw <span class="keyword">new</span> NotSupportedException(); }
   <span class="keyword">public</span> <span class="keyword">override</span> <span class="keyword">void</span> Seek(<span class="keyword">int</span> offset){  throw <span class="keyword">new</span> NotSupportedException(); }
-}</code></pre>
-<p> Now, at this point if we were to pass around the Stream object to a method like this</p>
-<pre><code><span class="keyword">public</span> <span class="keyword">void</span> ReadStreamIntoFile(<span class="keyword">string</span> filename, Stream stream);</code></pre>
-<p>Then our two streams would work just fine. </p>
+}
+</code></pre><p> Now, at this point if we were to pass around the Stream object to a method like this</p>
+<pre><code><span class="keyword">public</span> <span class="keyword">void</span> ReadStreamIntoFile(<span class="keyword">string</span> filename, Stream stream);
+</code></pre><p>Then our two streams would work just fine. </p>
 <p>However, if we were to pass the stream object into this method:</p>
-<pre><code><span class="keyword">public</span> <span class="keyword">void</span> WriteFileIntoStream(<span class="keyword">string</span> filename, Stream stream);</code></pre>
-<p>The FileStream would function correctly, and the HttpStream would throw a NotSupportedException.</p>
+<pre><code><span class="keyword">public</span> <span class="keyword">void</span> WriteFileIntoStream(<span class="keyword">string</span> filename, Stream stream);
+</code></pre><p>The FileStream would function correctly, and the HttpStream would throw a NotSupportedException.</p>
 <p>This is why the Stream class is often quoted as an example, the derived instances change the behaviour in program-breaking ways.</p>
 <p><em>However</em></p>
 <pre><code><span class="keyword">public</span> <span class="keyword">class</span> Stream {
@@ -45,8 +45,8 @@
   <span class="keyword">public</span> <span class="keyword">virtual</span> <span class="keyword">void</span> Read(Byte[] buffer, <span class="keyword">int</span> offset, <span class="keyword">int</span> amount) {}
   <span class="keyword">public</span> <span class="keyword">virtual</span> <span class="keyword">void</span> Write(Byte[] buffer) {}
   <span class="keyword">public</span> <span class="keyword">virtual</span> <span class="keyword">void</span> Seek(<span class="keyword">int</span> offset){}
-}</code></pre>
-<p>The behaviour as described, is that if those properties return true, then the methods are safe to call, if they return false, they&#39;re not safe to call.</p>
+}
+</code></pre><p>The behaviour as described, is that if those properties return true, then the methods are safe to call, if they return false, they&#39;re not safe to call.</p>
 <p>It&#39;s opaque, and feels a bit wrong - but we don&#39;t necessarily have a violation of Liskov and we&#39;re happy on this front. This is a good example of where the pragmatics of developer usage have overidden the following of arbitrary software-design &quot;rules&quot;.</p>
 <p><strong>Back to my relationship with Liskov</strong></p>
 <p>I do not have a relationship with the Liskov substitution principle because I don&#39;t generally write code that has any sort of inheritance chain within it, but if I did - sometimes I guess I&#39;d end up in the situation like the above and that would be okay. I&#39;m okay with that for the most part.</p>

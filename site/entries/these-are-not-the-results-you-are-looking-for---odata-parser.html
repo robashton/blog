@@ -58,10 +58,7 @@
                                 <a href="/blog.html">Blog</a>
                             </li>
                             <li>
-                                <a href="/statements.html">Testimonials</a>
-                            </li>
-                            <li>
-                                <a href="/hire.html">Hire Me</a>
+                                <a href="/testimonials.html">Testimonials</a>
                             </li>
                     </div>
                 </div>
@@ -69,7 +66,7 @@
         </div>
     </div>
 
-  <body>
+    <body>
     <div id="blog-entry">
       <h1 id="post-title">These are NOT the results you are looking for - OData parser</h1>
       <h6>Published on <span class="date">2013-4-16</span></h6>
@@ -87,12 +84,12 @@
 </ul>
 <p>Before we get onto some more fuzzy stuff, it would be good to deal with &#39;not&#39;</p>
 <p>Not is an interesting case because it&#39;s not really  the same as the rest of the expressions so far</p>
-<pre><code><span class="keyword">Not</span>  Logical negation  /Products?$<span class="built_in">filter</span>=<span class="keyword">not</span> endswith(Description,<span class="comment">'milk')</span></code></pre>
-<p>It can&#39;t apply in situations like this however</p>
-<pre><code>/<span class="constant">Products</span>?<span class="variable">$filter</span>=<span class="keyword">not</span> <span class="constant">Product</span> eq <span class="number">5</span></code></pre>
-<p>But it can probably apply in situations like this</p>
-<pre><code>/<span class="constant">Products</span>?<span class="variable">$filter</span>=<span class="keyword">not</span> <span class="constant">Published</span></code></pre>
-<p>This tells us something, which is that not isn&#39;t going to be expecting an expression unless it&#39;s in braces, otherwise it&#39;s going to be looking for a value.</p>
+<pre><code><span class="keyword">Not</span>  Logical negation  /Products?$<span class="built_in">filter</span>=<span class="keyword">not</span> endswith(Description,<span class="comment">'milk')</span>
+</code></pre><p>It can&#39;t apply in situations like this however</p>
+<pre><code>/<span class="constant">Products</span>?<span class="variable">$filter</span>=<span class="keyword">not</span> <span class="constant">Product</span> eq <span class="number">5</span>
+</code></pre><p>But it can probably apply in situations like this</p>
+<pre><code>/<span class="constant">Products</span>?<span class="variable">$filter</span>=<span class="keyword">not</span> <span class="constant">Published</span>
+</code></pre><p>This tells us something, which is that not isn&#39;t going to be expecting an expression unless it&#39;s in braces, otherwise it&#39;s going to be looking for a value.</p>
 <p>I&#39;m not supporting methods yet, so I&#39;ll ignore that requirement for now.</p>
 <pre><code><span class="function"><span class="title">test</span><span class="params">(<span class="string">"/some/resource?$filterby=not Published"</span>, <span class="string">"OData"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>(result) <span class="tuple">{
 
@@ -106,8 +103,8 @@
   <span class="function_name">it</span>(<span class="string">"value should be 'Published'"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
     assert.<span class="function_name">equal</span>(result.options.$filterby[<span class="number">1</span>].name, <span class="string">"Published"</span>)
   }</span>)
-})</code></pre>
-<p>First off, this one</p>
+})
+</code></pre><p>First off, this one</p>
 <pre><code>FilterByValue = 
   FilterNegateExpression
 |  Number
@@ -120,8 +117,8 @@ FilterNegateExpression =
   se<span class="string">q("not")</span>
   spaces
   FilterByValue:value       -&gt;  [ <span class="string">"not"</span>, value ]
-,</code></pre>
-<p>Quite simple, if we get as far as checking for a value, it means we haven&#39;t found an expression, so we&#39;ll check for &quot;Not&quot; - I guess this is where we&#39;ll probably stick methods later too. </p>
+,
+</code></pre><p>Quite simple, if we get as far as checking for a value, it means we haven&#39;t found an expression, so we&#39;ll check for &quot;Not&quot; - I guess this is where we&#39;ll probably stick methods later too. </p>
 <p>A &quot;NegateExpression&quot; is simply a &quot;not&quot; followed by a value, we&#39;ll allow double negatives too because there is no harm in this.</p>
 <p>Next up, we&#39;ll check for braces, and inside braces we&#39;ll allow further expressions (recurse recurse recurse)</p>
 <pre><code>test(<span class="string">"/some/resource?$filterby=not (Price gt 5)"</span>, <span class="string">"OData"</span>, function(<span class="constant">result</span>) {
@@ -138,8 +135,8 @@ FilterNegateExpression =
      assert.<span class="keyword">equal</span>(rhs[<span class="number">1</span>].<span class="property">name</span>, <span class="string">"Price"</span>)
      assert.<span class="keyword">equal</span>(rhs[<span class="number">2</span>], <span class="number">5</span>)
   })
-})</code></pre>
-<p>Solved by</p>
+})
+</code></pre><p>Solved by</p>
 <pre><code>FilterNegateExpression = 
   spaces
   se<span class="string">q("not")</span>
@@ -148,109 +145,53 @@ FilterNegateExpression =
     FilterByValue
   | <span class="string">'('</span> spaces FilterByExpression:expr spaces <span class="string">')'</span> -&gt; expr
   ):value -&gt;  [ <span class="string">"not"</span>, value ]
-,</code></pre>
-<p>Dead easy, now it&#39;s time to get our heads stuck into Arithmetic Operators.</p>
+,
+</code></pre><p>Dead easy, now it&#39;s time to get our heads stuck into Arithmetic Operators.</p>
 </div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="http://twitter.com/robashton">Follow me</a>
       </div>
-      <div id="hire-me">
-        <h6>This used to ask if you wanted to hire me</h6>
-        <p>But chances are I'm not available, as I'm busy shipping stuff.</p>
-        <p>I am available for conference speaking, I like talking and will do so for just T&E (and perhaps a bottle of wine or two).</p>
-        <p>I have done soft keynotes, and usually entertain/rile people in equal proportion, but prefer to talk tech as that's what I do</p>
-        <p><a href="mailto:robashton@codeofrob.com">Email me :)</a></p>
-      </div>
-      <div id="disqus">
-        <div id="disqus_thread"></div>
-<script type="text/javascript">
-    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
-    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
 
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-      </div>
-    </div>
-    <div id="post-comments">
+        <!--=== Copyright ===-->
+        <div class="copyright">
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span2">
+                <a href="/">Rob Ashton</a>
+              </div>
+              <div class="span6">
+                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+        </div><!--/copyright-->
+        <!--=== End Copyright ===-->
 
-    </div>
-
-<div class="footer" style="margin-top: 0px">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span3">
-                <div class="headline"><h3>Get In Touch</h3></div>
-                <address class="address">
-                    <ul class="icons-ul">
-                        <li><i class="icon-li icon-envelope"></i>Email: <a href="mailto:robashton@codeofrob.com" class="">robashton@codeofrob.com</a></li>
-                        <li><i class="icon-li icon-envelope"></i>Skype: <a href="skype:rob_ashton" class="">rob_ashton</a></li>
-                    </ul>
-                </address>
-            </div><!--/span3-->
-            <div class="span5">
-                <div class="headline"><h3>Subscribe</h3></div>
-                <p>I publish an <a href="http://feed.codeofrob.com/RobAshton">RSS feed</a> from my blog and some other activities</p>
-            </div>
-            <div class="span4">
-                <div class="posts">
-                  <div class="headline"><h3>Find me...</h3></div>
-                  <p><a href="http://twitter.com/robashton"><img src="/assets/img/twitter.jpg" alt="" />
-                  <a href="http://github.com/robashton"><img src="/assets/img/github.png" alt="" /></a></p>
-                </div>
-            </div><!--/span4-->
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/footer-->
-<!--=== End Footer ===-->
-
-<!--=== Copyright ===-->
-<div class="copyright">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span2">
-              <a href="/">Rob Ashton</a>
-            </div>
-            <div class="span6">
-              <p class="terms">2014 © Rob Ashton. ALL Rights Reserved.</p>
-            </div>
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/copyright-->
-<!--=== End Copyright ===-->
-
-<!-- JS Global Compulsory -->
-<script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-<script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-<!-- JS Implementing Plugins -->
-<script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-<script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-<script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-<script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-<!-- JS Page Level -->
-<script type="text/javascript" src="/assets/js/app.js"></script>
-<script type="text/javascript" src="/assets/js/pages/index.js"></script>
-<script type="text/javascript">
-    jQuery(document).ready(function() {
-      	App.init();
-        App.initFancybox();
-        App.initSliders();
-        Index.initParallaxSlider();
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
     });
-</script>
-<!--[if lt IE 9]>
+        </script>
+        <!--[if lt IE 9]>
     <script src="assets/js/respond.js"></script>
 <![endif]-->
-  </body>
-</html>
+        </body>
+        </html>
 

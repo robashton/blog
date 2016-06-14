@@ -58,10 +58,7 @@
                                 <a href="/blog.html">Blog</a>
                             </li>
                             <li>
-                                <a href="/statements.html">Testimonials</a>
-                            </li>
-                            <li>
-                                <a href="/hire.html">Hire Me</a>
+                                <a href="/testimonials.html">Testimonials</a>
                             </li>
                     </div>
                 </div>
@@ -69,7 +66,7 @@
         </div>
     </div>
 
-  <body>
+    <body>
     <div id="blog-entry">
       <h1 id="post-title">My relationship with SOLID - Seeing I to I</h1>
       <h6>Published on <span class="date">2013-3-28</span></h6>
@@ -87,19 +84,19 @@
   <span class="keyword">public</span> <span class="keyword">virtual</span> <span class="keyword">void</span> Read(Byte[] buffer, <span class="keyword">int</span> offset, <span class="keyword">int</span> amount) {}
   <span class="keyword">public</span> <span class="keyword">virtual</span> <span class="keyword">void</span> Write(Byte[] buffer) {}
   <span class="keyword">public</span> <span class="keyword">virtual</span> <span class="keyword">void</span> Seek(<span class="keyword">int</span> offset){}
-}</code></pre>
-<p>Wasn&#39;t necessarily a violation of Liskov because the variations in its behaviour were well described by those slightly uncomfortable properties.</p>
+}
+</code></pre><p>Wasn&#39;t necessarily a violation of Liskov because the variations in its behaviour were well described by those slightly uncomfortable properties.</p>
 <p>However, those awkward properties definitely point towards a violation of the ISP. Why? Because we have an interface - (in this case, an implicit one dictated by the Stream base class) which looks like this:</p>
 <pre><code><span class="class"><span class="keyword">interface</span> <span class="title">Stream</span> {</span>
   <span class="keyword">void</span> Read(Byte[] buffer, <span class="keyword">int</span> offset, <span class="keyword">int</span> amount);
   <span class="keyword">void</span> Write(Byte[] buffer);
   <span class="keyword">void</span> Seek(<span class="keyword">int</span> offset);
-}</code></pre>
-<p>And yet not all Streams can do all of those things, hence we resort to those rather opaque properties.</p>
+}
+</code></pre><p>And yet not all Streams can do all of those things, hence we resort to those rather opaque properties.</p>
 <p>Perhaps another way we&#39;ll often see violations of this in code (let&#39;s say we didn&#39;t have those properties) is the checking for specific types in methods that use the interface such as:</p>
 <pre><code><span class="function"><span class="title">if</span><span class="params">(stream is <span class="variable">FileStream</span>)</span>
-  <span class="title">stream</span>.W<span class="title">rite</span><span class="params">(bytes, <span class="number">0</span>, bytes.<span class="variable">Length</span>)</span></code></pre>
-<p><em>shudder</em>, this stuff be bad as not only do we open up ourselves for runtime crashes when a consumer passes in something we don&#39;t recognise but we&#39;re writing opaque behaviour into our code that&#39;ll confuse consumers of that code.</p>
+  <span class="title">stream</span>.W<span class="title">rite</span><span class="params">(bytes, <span class="number">0</span>, bytes.<span class="variable">Length</span>)</span>
+</code></pre><p><em>shudder</em>, this stuff be bad as not only do we open up ourselves for runtime crashes when a consumer passes in something we don&#39;t recognise but we&#39;re writing opaque behaviour into our code that&#39;ll confuse consumers of that code.</p>
 <p><strong>Interface segregation to the rescue</strong></p>
 <pre><code><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">IRead</span> {</span>
   <span class="keyword">void</span> Read(Byte[] buffer, <span class="keyword">int</span> offset, <span class="keyword">int</span> amount);
@@ -111,16 +108,16 @@
 
 <span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">ISeek</span> {</span>
   <span class="keyword">void</span> Seek(<span class="keyword">int</span> offset);
-}</code></pre>
-<p>When we have methods that require something that Reads, we can pass in IRead, when we have methods that require something that Writes can pass in IWrite, and this is great, what if we need something that Reads <em>and</em> Writes</p>
-<pre><code><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">IReadAndWrite</span> : <span class="title">IRead</span>, <span class="title">IWrite</span> {</span>}</code></pre>
-<p>Okay, maybe we can do this, but what about something that Reads Writes and Seeks?</p>
-<pre><code><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">IReadAndWriteAndSeek</span> : <span class="title">IRead</span>, <span class="title">IWrite</span>, <span class="title">ISeek</span> {</span>}</code></pre>
-<p>Now this is a bit contrived, but this is one of the reasons the .NET team made the decision to go with the CanRead/CanWrite approach beacuse otherwise we&#39;d either simply revert to checks like</p>
-<pre><code><span class="function"><span class="title">if</span><span class="params">(<span class="variable">Stream</span> is <span class="variable">IRead</span>)</span></code></pre>
-<p>or have to do stuff with generics like</p>
-<pre><code><span class="keyword">void</span> WriteToFile&lt;T&gt;(T stream, <span class="keyword">string</span> filename) <span class="keyword">where</span> T : IRead, IWrite, ISeek</code></pre>
-<p><em>shudder</em></p>
+}
+</code></pre><p>When we have methods that require something that Reads, we can pass in IRead, when we have methods that require something that Writes can pass in IWrite, and this is great, what if we need something that Reads <em>and</em> Writes</p>
+<pre><code><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">IReadAndWrite</span> : <span class="title">IRead</span>, <span class="title">IWrite</span> {</span>}
+</code></pre><p>Okay, maybe we can do this, but what about something that Reads Writes and Seeks?</p>
+<pre><code><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">IReadAndWriteAndSeek</span> : <span class="title">IRead</span>, <span class="title">IWrite</span>, <span class="title">ISeek</span> {</span>}
+</code></pre><p>Now this is a bit contrived, but this is one of the reasons the .NET team made the decision to go with the CanRead/CanWrite approach beacuse otherwise we&#39;d either simply revert to checks like</p>
+<pre><code><span class="function"><span class="title">if</span><span class="params">(<span class="variable">Stream</span> is <span class="variable">IRead</span>)</span>
+</code></pre><p>or have to do stuff with generics like</p>
+<pre><code><span class="keyword">void</span> WriteToFile&lt;T&gt;(T stream, <span class="keyword">string</span> filename) <span class="keyword">where</span> T : IRead, IWrite, ISeek
+</code></pre><p><em>shudder</em></p>
 <p><strong>Framework Engineering</strong></p>
 <p>If you&#39;re writing a framework, first off stop and don&#39;t do that... but okay, if you&#39;re writing a framework these are the compromises that you&#39;ll sometimes have to make - and that&#39;s okay.</p>
 <p>Well described behaviour that&#39;s a little bit awkward is better than having a pile of interfaces that we have to dance around if we want to achieve something meaningful.</p>
@@ -130,103 +127,47 @@
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="http://twitter.com/robashton">Follow me</a>
       </div>
-      <div id="hire-me">
-        <h6>This used to ask if you wanted to hire me</h6>
-        <p>But chances are I'm not available, as I'm busy shipping stuff.</p>
-        <p>I am available for conference speaking, I like talking and will do so for just T&E (and perhaps a bottle of wine or two).</p>
-        <p>I have done soft keynotes, and usually entertain/rile people in equal proportion, but prefer to talk tech as that's what I do</p>
-        <p><a href="mailto:robashton@codeofrob.com">Email me :)</a></p>
-      </div>
-      <div id="disqus">
-        <div id="disqus_thread"></div>
-<script type="text/javascript">
-    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
-    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
 
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-      </div>
-    </div>
-    <div id="post-comments">
+        <!--=== Copyright ===-->
+        <div class="copyright">
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span2">
+                <a href="/">Rob Ashton</a>
+              </div>
+              <div class="span6">
+                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+        </div><!--/copyright-->
+        <!--=== End Copyright ===-->
 
-    </div>
-
-<div class="footer" style="margin-top: 0px">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span3">
-                <div class="headline"><h3>Get In Touch</h3></div>
-                <address class="address">
-                    <ul class="icons-ul">
-                        <li><i class="icon-li icon-envelope"></i>Email: <a href="mailto:robashton@codeofrob.com" class="">robashton@codeofrob.com</a></li>
-                        <li><i class="icon-li icon-envelope"></i>Skype: <a href="skype:rob_ashton" class="">rob_ashton</a></li>
-                    </ul>
-                </address>
-            </div><!--/span3-->
-            <div class="span5">
-                <div class="headline"><h3>Subscribe</h3></div>
-                <p>I publish an <a href="http://feed.codeofrob.com/RobAshton">RSS feed</a> from my blog and some other activities</p>
-            </div>
-            <div class="span4">
-                <div class="posts">
-                  <div class="headline"><h3>Find me...</h3></div>
-                  <p><a href="http://twitter.com/robashton"><img src="/assets/img/twitter.jpg" alt="" />
-                  <a href="http://github.com/robashton"><img src="/assets/img/github.png" alt="" /></a></p>
-                </div>
-            </div><!--/span4-->
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/footer-->
-<!--=== End Footer ===-->
-
-<!--=== Copyright ===-->
-<div class="copyright">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span2">
-              <a href="/">Rob Ashton</a>
-            </div>
-            <div class="span6">
-              <p class="terms">2014 © Rob Ashton. ALL Rights Reserved.</p>
-            </div>
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/copyright-->
-<!--=== End Copyright ===-->
-
-<!-- JS Global Compulsory -->
-<script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-<script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-<!-- JS Implementing Plugins -->
-<script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-<script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-<script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-<script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-<!-- JS Page Level -->
-<script type="text/javascript" src="/assets/js/app.js"></script>
-<script type="text/javascript" src="/assets/js/pages/index.js"></script>
-<script type="text/javascript">
-    jQuery(document).ready(function() {
-      	App.init();
-        App.initFancybox();
-        App.initSliders();
-        Index.initParallaxSlider();
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
     });
-</script>
-<!--[if lt IE 9]>
+        </script>
+        <!--[if lt IE 9]>
     <script src="assets/js/respond.js"></script>
 <![endif]-->
-  </body>
-</html>
+        </body>
+        </html>
 

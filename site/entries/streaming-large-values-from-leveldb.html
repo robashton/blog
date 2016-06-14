@@ -58,10 +58,7 @@
                                 <a href="/blog.html">Blog</a>
                             </li>
                             <li>
-                                <a href="/statements.html">Testimonials</a>
-                            </li>
-                            <li>
-                                <a href="/hire.html">Hire Me</a>
+                                <a href="/testimonials.html">Testimonials</a>
                             </li>
                     </div>
                 </div>
@@ -69,7 +66,7 @@
         </div>
     </div>
 
-  <body>
+    <body>
     <div id="blog-entry">
       <h1 id="post-title">Streaming large values from LevelDB</h1>
       <h6>Published on <span class="date">2013-3-6</span></h6>
@@ -77,123 +74,67 @@
 <p>Why don&#39;t we want to load them into memory in one go? Because large objects can wreck havoc with the garbage collector (the large object heap), and we also have streaming APIs in RavenDB that allow us to limit this sort of thing that we&#39;d like to honour.</p>
 <p>So, back to C++ as we answer the question &quot;What about large objects inside LevelDB&quot;?</p>
 <p>Looking at the APIs in our first entry, we can see that &quot;Get&quot; will load entire value into memory ala this:</p>
-<pre><code>db-&gt;Get(leveldb::ReadOptions(), key, &amp;document);</code></pre>
-<p>We <em>could</em> simply read bytes from this document (remember, it&#39;s an std::string) and marshal them through to C# bit by bit, but that means copying the whole document out of the store before doing this. This isn&#39;t a big deal as it&#39;s still completely on the native side at this point, but it&#39;s still an expense I&#39;d prefer to skip if we&#39;re reading more than a few documents.</p>
+<pre><code>db-&gt;Get(leveldb::ReadOptions(), key, &amp;document);
+</code></pre><p>We <em>could</em> simply read bytes from this document (remember, it&#39;s an std::string) and marshal them through to C# bit by bit, but that means copying the whole document out of the store before doing this. This isn&#39;t a big deal as it&#39;s still completely on the native side at this point, but it&#39;s still an expense I&#39;d prefer to skip if we&#39;re reading more than a few documents.</p>
 <p>That&#39;s where Slice comes in.</p>
 <pre><code>  leveldb::Iterator* it = this-&gt;db-&gt;NewIterator(leveldb::ReadOptions());
   <span class="keyword">for</span> (it-&gt;Seek(start_key); it-&gt;Valid() &amp;&amp; it-&gt;key().ToString() &lt;= end_key; it-&gt;Next()) {
     Slice* slice = it-&gt;value();
 
     <span class="regexp">//</span> Do stuff with a slice
-  }</code></pre>
-<p>This is quite cool, LevelDB gives us the notion of a &quot;Slice&quot;, which is merely a pointer to the beginning of the value, and the length of the value.</p>
+  }
+</code></pre><p>This is quite cool, LevelDB gives us the notion of a &quot;Slice&quot;, which is merely a pointer to the beginning of the value, and the length of the value.</p>
 <p>A &quot;Get&quot; operation merely copies this data into an std::string, and calling slice-&gt;ToString() will do this as well.</p>
 <p>What we can do is </p>
 <pre><code><span class="title">char</span> buffer[<span class="type">BUFFER_SIZE</span>];
-<span class="title">memcpy</span>(slice-&gt;<span class="typedef"><span class="keyword">data</span><span class="container">()</span>, buffer, <span class="type">BUFFER_SIZE</span>);</span></code></pre>
-<p>Rinse and repeat, we can actually do this within an enumerator and send appropriately sized chunks aross to C# to be processed without copying the whole thing out at once.  This could be useful when iterating over a set of documents, although most likely simply copying into the string and using string.c_str() to get the pointer to the copied data will give us easier code - we&#39;ll see how that works out when it comes to actually writing the C# we need.</p>
+<span class="title">memcpy</span>(slice-&gt;<span class="typedef"><span class="keyword">data</span><span class="container">()</span>, buffer, <span class="type">BUFFER_SIZE</span>);</span>
+</code></pre><p>Rinse and repeat, we can actually do this within an enumerator and send appropriately sized chunks aross to C# to be processed without copying the whole thing out at once.  This could be useful when iterating over a set of documents, although most likely simply copying into the string and using string.c_str() to get the pointer to the copied data will give us easier code - we&#39;ll see how that works out when it comes to actually writing the C# we need.</p>
 <p>Anyway, now we just need support for secondary indexes, and for this I&#39;ll write a rudimentary document store.</p>
 </div>
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="http://twitter.com/robashton">Follow me</a>
       </div>
-      <div id="hire-me">
-        <h6>This used to ask if you wanted to hire me</h6>
-        <p>But chances are I'm not available, as I'm busy shipping stuff.</p>
-        <p>I am available for conference speaking, I like talking and will do so for just T&E (and perhaps a bottle of wine or two).</p>
-        <p>I have done soft keynotes, and usually entertain/rile people in equal proportion, but prefer to talk tech as that's what I do</p>
-        <p><a href="mailto:robashton@codeofrob.com">Email me :)</a></p>
-      </div>
-      <div id="disqus">
-        <div id="disqus_thread"></div>
-<script type="text/javascript">
-    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
-    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
 
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-      </div>
-    </div>
-    <div id="post-comments">
+        <!--=== Copyright ===-->
+        <div class="copyright">
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span2">
+                <a href="/">Rob Ashton</a>
+              </div>
+              <div class="span6">
+                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+        </div><!--/copyright-->
+        <!--=== End Copyright ===-->
 
-    </div>
-
-<div class="footer" style="margin-top: 0px">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span3">
-                <div class="headline"><h3>Get In Touch</h3></div>
-                <address class="address">
-                    <ul class="icons-ul">
-                        <li><i class="icon-li icon-envelope"></i>Email: <a href="mailto:robashton@codeofrob.com" class="">robashton@codeofrob.com</a></li>
-                        <li><i class="icon-li icon-envelope"></i>Skype: <a href="skype:rob_ashton" class="">rob_ashton</a></li>
-                    </ul>
-                </address>
-            </div><!--/span3-->
-            <div class="span5">
-                <div class="headline"><h3>Subscribe</h3></div>
-                <p>I publish an <a href="http://feed.codeofrob.com/RobAshton">RSS feed</a> from my blog and some other activities</p>
-            </div>
-            <div class="span4">
-                <div class="posts">
-                  <div class="headline"><h3>Find me...</h3></div>
-                  <p><a href="http://twitter.com/robashton"><img src="/assets/img/twitter.jpg" alt="" />
-                  <a href="http://github.com/robashton"><img src="/assets/img/github.png" alt="" /></a></p>
-                </div>
-            </div><!--/span4-->
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/footer-->
-<!--=== End Footer ===-->
-
-<!--=== Copyright ===-->
-<div class="copyright">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span2">
-              <a href="/">Rob Ashton</a>
-            </div>
-            <div class="span6">
-              <p class="terms">2014 © Rob Ashton. ALL Rights Reserved.</p>
-            </div>
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/copyright-->
-<!--=== End Copyright ===-->
-
-<!-- JS Global Compulsory -->
-<script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-<script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-<!-- JS Implementing Plugins -->
-<script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-<script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-<script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-<script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-<!-- JS Page Level -->
-<script type="text/javascript" src="/assets/js/app.js"></script>
-<script type="text/javascript" src="/assets/js/pages/index.js"></script>
-<script type="text/javascript">
-    jQuery(document).ready(function() {
-      	App.init();
-        App.initFancybox();
-        App.initSliders();
-        Index.initParallaxSlider();
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
     });
-</script>
-<!--[if lt IE 9]>
+        </script>
+        <!--[if lt IE 9]>
     <script src="assets/js/respond.js"></script>
 <![endif]-->
-  </body>
-</html>
+        </body>
+        </html>
 

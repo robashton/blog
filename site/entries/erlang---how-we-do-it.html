@@ -1,0 +1,131 @@
+<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
+<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
+<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
+<!--[if !ie]><!-->
+<html lang="en"> <!--<![endif]-->
+<head>
+    <title id="title">Erlang - How we do it</title>
+    <meta charset="utf-8">
+    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <meta name="author" content="">
+    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
+    <link rel="stylesheet" href="/assets/css/style_responsive.css">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
+    <link rel="stylesheet" href="/assets/css/themes/default.css">
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
+    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="header">
+        <div class="container">
+            <div class="logo">
+             <h2><a href="/index.html">Rob Ashton</a></h2>
+            </div>
+            <div class="navbar">
+                <div class="navbar-inner">
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </a>
+                    <div class="nav-collapse collapse">
+                        <ul class="nav top-2">
+                          <li>
+                                <a href="/">Home</a>
+                            </li>
+                            <li>
+                                <a href="/blog.html">Blog</a>
+                            </li>
+                            <li>
+                                <a href="/testimonials.html">Testimonials</a>
+                            </li>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <body>
+    <div id="blog-entry">
+      <h1 id="post-title">Erlang - How we do it</h1>
+      <h6>Published on <span class="date">2015-3-17</span></h6>
+      <div id="post"><p>Having <a href="/entries/the-ashton-disinterest-curve---c.html">established</a> that I <a href="/entries/the-ashton-disinterest-curve---javascript-and-node.html">apparently</a> <a href="/entries/the-ashton-disinterest-curve---clojure.html">hate</a> <a href="/entries/the-ashton-disinterest-curve---erlang.html">everything</a>, let&#39;s get a bit more constructive and go over how at the company I work at, we do Erlang and do Erlang effectively.</p>
+<p>Let&#39;s start off with a little history first though to build context for this series... I&#39;ll use &quot;we&quot; a lot, but what I really mean is &quot;me and my current understanding of our way&quot;.</p>
+<h1 id="where-we-are">Where we are</h1>
+<p>There were a couple of .NET developers, and they had need to build a distributed system and they looked at .NET and went &quot;hell no, let&#39;s do that little bit in Erlang&quot; and then a little bit later &quot;Oh sod it, let&#39;s do everyting in Erlang this is actually great&quot;. Lots of mistakes were made over the next few years and they were learned from as they were made. Eventually a developer called Rob (me) joined the team and most of the important mistakes had already been made and a lot of decisions had been made about how best to be effective at Erlang development.</p>
+<p>We&#39;ve been through our own custom build systems/runners, to using <a href="https://github.com/rebar/rebar">Rebar</a>, to using fairly <a href="https://github.com/ninenines/erlang.mk">poorly written</a> Makefiles to using <a href="https://github.com/fenollp/erl-mk">reasonably written</a> Makefiles to just forking the best one and making it <a href="https://github.com/id3as/erl-mk">our own</a>. We&#39;ve been through the &quot;let&#39;s make everything a gen server&quot; to &quot;why do we need gen servers anyway&quot; to &quot;okay, here is the happy medium&quot;. We&#39;ve had bash scripts lying around a bunch of projects for automation purposes that have diverged from each other, converged again and been merged into a &quot;<a href="https://github.com/robashton/vir">single tool to rule them all</a>&quot;. We have sensible ways to build up APIs between gen servers, between running applications and we have a common swiss army knife of a common library that every time I go to write Erlang without for personal stuff I wonder how on earth I ever got on without.</p>
+<p>It&#39;s a pretty mature stack and because we own most of it outside of our basic dependencies we&#39;re not subject to the whims of third parties changing their minds about how projects should be written and managed. Leaning on a large platform like Erlang is relaxing because it has been around for a few decades and generally doesn&#39;t undergo massive shifts every year just because some hipster somewhere decides they don&#39;t like <em>that sort</em> of paren or semi-colon.</p>
+<p>We&#39;re pretty much against package managers, binary dependencies or other opaque tooling that we can&#39;t understand and simply make our own. We&#39;ve learned the hard way that sometimes the best tools are the ones that we&#39;ve all been using since the dawn of time (Bash and Make) and slowly over time these ideas have converged and become crystalised as a standard set of tools we all understand and are happy with.</p>
+<h1 id="a-series-then">A series then</h1>
+<p>So we have these bash scripts and makefiles and our standard application structure and while we&#39;ve been using them for years in various forms we&#39;ve never really publicised that they&#39;re actually OSS on Github. We&#39;ve never talked about how to use them to build Erlang applications (new starters? Pair for half a year and you&#39;ll have it all down like second nature anyway).</p>
+<p>Now that most of this has stabilised (for now), it&#39;s quite a good time to write a blog series about our workflow, how to bootstrap a new application, how to do builds and releases and best practises around gen servers and processes and APIs and inter-process communication. We&#39;re also heavy Docker users (for now) so I&#39;ll cover our loose workflow around how we use that for development etc.</p>
+<p>On board? The next entry will be about bootstrapping an empty application.</p>
+</div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+      </div>
+
+        <!--=== Copyright ===-->
+        <div class="copyright">
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span2">
+                <a href="/">Rob Ashton</a>
+              </div>
+              <div class="span6">
+                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+        </div><!--/copyright-->
+        <!--=== End Copyright ===-->
+
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
+    });
+        </script>
+        <!--[if lt IE 9]>
+    <script src="assets/js/respond.js"></script>
+<![endif]-->
+        </body>
+        </html>
+

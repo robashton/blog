@@ -58,10 +58,7 @@
                                 <a href="/blog.html">Blog</a>
                             </li>
                             <li>
-                                <a href="/statements.html">Testimonials</a>
-                            </li>
-                            <li>
-                                <a href="/hire.html">Hire Me</a>
+                                <a href="/testimonials.html">Testimonials</a>
                             </li>
                     </div>
                 </div>
@@ -69,7 +66,7 @@
         </div>
     </div>
 
-  <body>
+    <body>
     <div id="blog-entry">
       <h1 id="post-title">Frameworkless JS - A module per widget</h1>
       <h6>Published on <span class="date">2013-11-26</span></h6>
@@ -84,13 +81,14 @@
 <li><a href="/entries/frameworkless-js---what-jquery-did-right.html">A lesson from jQuery</a></li>
 </ul>
 <p>Let&#39;s do it ourselves.</p>
-<h3>Creating our customer list as a module</h3>
+<h3 id="creating-our-customer-list-as-a-module">Creating our customer list as a module</h3>
 <p>I&#39;m going to do things a bit differently in this blog series to the example on Github to make the point that it&#39;s entirely up to us to do things how feel like. In the example on Github the modules are exposed as an instantiable object in a presenter-ish pattern.</p>
 <p>Instead, this module is going to be exposed as a single function like so</p>
 <p><em>customerlist/index.js</em></p>
 <pre><code class="lang-javascript">module.exports = <span class="keyword">function</span>(element) {
 
-}</code></pre>
+}
+</code></pre>
 <p>In this, we need to render the customers, so our whole module will look something like this</p>
 <p><em>customerlist/index.js</em></p>
 <pre><code class="lang-javascript">
@@ -106,15 +104,16 @@
 
 module.exports = <span class="keyword">function</span>(element) {
   render(element, testdata.customers)
-}</code></pre>
+}
+</code></pre>
 <p><em>customerlist/template.html</em></p>
 <pre><code>  <span class="tag">&lt;<span class="title">table</span>&gt;</span>
     <span class="variable">{{#customers}}</span>
       <span class="tag">&lt;<span class="title">tr</span>&gt;</span><span class="tag">&lt;<span class="title">td</span>&gt;</span><span class="variable">{{name}}</span><span class="tag">&lt;/<span class="title">td</span>&gt;</span><span class="tag">&lt;<span class="title">td</span>&gt;</span><span class="variable">{{bank}}</span><span class="tag">&lt;/<span class="title">td</span>&gt;</span><span class="tag">&lt;/<span class="title">tr</span>&gt;</span>
     <span class="variable">{{/customers}}</span>
-  <span class="tag">&lt;/<span class="title">table</span>&gt;</span></code></pre>
-<p>One thing that is immediately apparent is that I&#39;ve bundled both the presentation logic and the template together in a single folder and exposed only a single function to represent that.</p>
-<h3>Creating our bank dropdown as a module</h3>
+  <span class="tag">&lt;/<span class="title">table</span>&gt;</span>
+</code></pre><p>One thing that is immediately apparent is that I&#39;ve bundled both the presentation logic and the template together in a single folder and exposed only a single function to represent that.</p>
+<h3 id="creating-our-bank-dropdown-as-a-module">Creating our bank dropdown as a module</h3>
 <p>We can do the same for the bank dropdown and have that in its own little folder too.</p>
 <p><em>bankdropdown/index.js</em></p>
 <pre><code class="lang-javascript"><span class="keyword">var</span> ko = require(<span class="string">'knockout'</span>)
@@ -133,10 +132,11 @@ module.exports = <span class="keyword">function</span>(element) {
   model.selectedBank.subscribe(<span class="keyword">function</span>(bank) {
 
   })
-}</code></pre>
+}
+</code></pre>
 <p><em>bankdropdown/template.html</em></p>
-<pre><code><span class="tag">&lt;<span class="title">select</span> <span class="attribute">name</span>=<span class="value">"banks"</span> <span class="attribute">data-bind</span>=<span class="value">"options: banks, value: selectedBank"</span>&gt;</span><span class="tag">&lt;/<span class="title">select</span>&gt;</span></code></pre>
-<h3>Using these modules</h3>
+<pre><code><span class="tag">&lt;<span class="title">select</span> <span class="attribute">name</span>=<span class="value">"banks"</span> <span class="attribute">data-bind</span>=<span class="value">"options: banks, value: selectedBank"</span>&gt;</span><span class="tag">&lt;/<span class="title">select</span>&gt;</span>
+</code></pre><h3 id="using-these-modules">Using these modules</h3>
 <p>Ignoring that I&#39;m not handling the above events yet, our <em>app.js</em> now looks a bit like this</p>
 <pre><code>var customerlist = require(<span class="comment">'./customerlist')</span>
   , bankselection = require(./bankselection<span class="comment">')</span>
@@ -145,9 +145,9 @@ module.exports = <span class="keyword">function</span>(element) {
 domReady(<span class="keyword">function</span>() {
   customerlist(document.getElementById(<span class="comment">'customer-list'))</span>
   bankselection(document.getElementById(<span class="comment">'bank-selection'))</span>
-})</code></pre>
-<p>Assuming in this case that those elements exist in our document somewhere on start-up. Of course, they could equally be rendered from a template, or I could be using a document fragment for this and doing it detached... well yes - options, we have options.</p>
-<h3>Communication between modules</h3>
+})
+</code></pre><p>Assuming in this case that those elements exist in our document somewhere on start-up. Of course, they could equally be rendered from a template, or I could be using a document fragment for this and doing it detached... well yes - options, we have options.</p>
+<h3 id="communication-between-modules">Communication between modules</h3>
 <p>One thing we&#39;ve not done yet is re-enabled that dropdown to re-render that customer list. One guideline I tend to follow (although not strictly) is that these little self contained widgets shouldn&#39;t  generally be nested too deeply or be too coupled to each other.</p>
 <p>For the customer list, there is no reason why it should know about the bank selection dropdown, as there are number of reasons why you might choose to filter the data being displayed there. </p>
 <p>For the bank selection, there is no reason why it should know about the customer list, as we might have a bank selection widget anywhere else in our app.</p>
@@ -164,7 +164,8 @@ domReady(function() {
   banks.on(&#39;bank-selected&#39;, function(bank) {
     customers.filterByBank(bank)
   })
-})</code></pre>
+})
+</code></pre>
 <p>I&#39;ve not written the code to support this yet, but this acts as a statement of intent, that my bank selection widget is going to raise domain specific events and I&#39;m going to issue commands to the customer list based on those events. This is pleasantly explicit and from app.js easy to navigate into the approprate widgets to see what they do and how they work.</p>
 <p>To support that, I need to issue events from the bank widget</p>
 <pre><code class="lang-javascript"><span class="keyword">var</span> EventEmitter = require(<span class="string">'events'</span>).EventEmitter
@@ -177,10 +178,11 @@ module.exports = <span class="keyword">function</span>(element) {
     events.emit(<span class="string">'bank-selected'</span>, bank)
   })
   <span class="keyword">return</span> events
-}</code></pre>
+}
+</code></pre>
 <p>EventEmitter is just a built-in node thing which I don&#39;t like all that much but it&#39;ll do in this example. I could have gone and found an alternative module in NPM for doing events but I don&#39;t have a strong opinion on how this is supposed to work.</p>
 <p>The filtering code in customerlist is pretty obvious and just re-renders the HTML inside the element</p>
-<h3>We could go further</h3>
+<h3 id="we-could-go-further">We could go further</h3>
 <p>In the real world we might decide to package these up as their own modules and stick them in our own private NPM repository (or a git repository).  This would mean they&#39;d come with their own package.json and their own README. We might leave them in their little folder and stick a README inside there instead - that works too, although more discipline might be required to keep things isolated from each other.</p>
 <p>The documentation on what these widgets returned and the small surface area they expose could fit in a single markdown file in that repository and each widget would be easily re-writeable if we decided to do things differently. Consistency doesn&#39;t necessarily have to be enforced and each widget can be done in its own style quite happily. </p>
 <p>Next up let&#39;s see what we can do about perhaps supporting some client-side navigation, as that&#39;s all the rage these days apparently.</p>
@@ -188,103 +190,47 @@ module.exports = <span class="keyword">function</span>(element) {
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="http://twitter.com/robashton">Follow me</a>
       </div>
-      <div id="hire-me">
-        <h6>This used to ask if you wanted to hire me</h6>
-        <p>But chances are I'm not available, as I'm busy shipping stuff.</p>
-        <p>I am available for conference speaking, I like talking and will do so for just T&E (and perhaps a bottle of wine or two).</p>
-        <p>I have done soft keynotes, and usually entertain/rile people in equal proportion, but prefer to talk tech as that's what I do</p>
-        <p><a href="mailto:robashton@codeofrob.com">Email me :)</a></p>
-      </div>
-      <div id="disqus">
-        <div id="disqus_thread"></div>
-<script type="text/javascript">
-    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
-    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
 
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-      </div>
-    </div>
-    <div id="post-comments">
+        <!--=== Copyright ===-->
+        <div class="copyright">
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span2">
+                <a href="/">Rob Ashton</a>
+              </div>
+              <div class="span6">
+                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+        </div><!--/copyright-->
+        <!--=== End Copyright ===-->
 
-    </div>
-
-<div class="footer" style="margin-top: 0px">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span3">
-                <div class="headline"><h3>Get In Touch</h3></div>
-                <address class="address">
-                    <ul class="icons-ul">
-                        <li><i class="icon-li icon-envelope"></i>Email: <a href="mailto:robashton@codeofrob.com" class="">robashton@codeofrob.com</a></li>
-                        <li><i class="icon-li icon-envelope"></i>Skype: <a href="skype:rob_ashton" class="">rob_ashton</a></li>
-                    </ul>
-                </address>
-            </div><!--/span3-->
-            <div class="span5">
-                <div class="headline"><h3>Subscribe</h3></div>
-                <p>I publish an <a href="http://feed.codeofrob.com/RobAshton">RSS feed</a> from my blog and some other activities</p>
-            </div>
-            <div class="span4">
-                <div class="posts">
-                  <div class="headline"><h3>Find me...</h3></div>
-                  <p><a href="http://twitter.com/robashton"><img src="/assets/img/twitter.jpg" alt="" />
-                  <a href="http://github.com/robashton"><img src="/assets/img/github.png" alt="" /></a></p>
-                </div>
-            </div><!--/span4-->
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/footer-->
-<!--=== End Footer ===-->
-
-<!--=== Copyright ===-->
-<div class="copyright">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span2">
-              <a href="/">Rob Ashton</a>
-            </div>
-            <div class="span6">
-              <p class="terms">2014 © Rob Ashton. ALL Rights Reserved.</p>
-            </div>
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/copyright-->
-<!--=== End Copyright ===-->
-
-<!-- JS Global Compulsory -->
-<script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-<script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-<!-- JS Implementing Plugins -->
-<script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-<script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-<script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-<script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-<!-- JS Page Level -->
-<script type="text/javascript" src="/assets/js/app.js"></script>
-<script type="text/javascript" src="/assets/js/pages/index.js"></script>
-<script type="text/javascript">
-    jQuery(document).ready(function() {
-      	App.init();
-        App.initFancybox();
-        App.initSliders();
-        Index.initParallaxSlider();
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
     });
-</script>
-<!--[if lt IE 9]>
+        </script>
+        <!--[if lt IE 9]>
     <script src="assets/js/respond.js"></script>
 <![endif]-->
-  </body>
-</html>
+        </body>
+        </html>
 

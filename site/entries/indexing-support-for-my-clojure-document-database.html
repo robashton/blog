@@ -58,10 +58,7 @@
                                 <a href="/blog.html">Blog</a>
                             </li>
                             <li>
-                                <a href="/statements.html">Testimonials</a>
-                            </li>
-                            <li>
-                                <a href="/hire.html">Hire Me</a>
+                                <a href="/testimonials.html">Testimonials</a>
                             </li>
                     </div>
                 </div>
@@ -69,7 +66,7 @@
         </div>
     </div>
 
-  <body>
+    <body>
     <div id="blog-entry">
       <h1 id="post-title">Indexing support for my clojure document database</h1>
       <h6>Published on <span class="date">2014-6-12</span></h6>
@@ -88,15 +85,15 @@
 <pre><code><span class="rules">{ <span class="rule"><span class="attribute">name</span>:<span class="value"> <span class="string">"Pinkie Pie"</span>
   address: {
     :town <span class="string">"Ponyville"</span>
-  }</span></span></span>}</code></pre>
-<p>We might write the following map function</p>
-<pre><code><span class="list">(<span class="title"><span class="built_in">defn</span></span> pony-by-town <span class="collection">[pony]</span> <span class="collection">{ <span class="string">"town"</span> <span class="list">(<span class="title"><span class="built_in">get-in</span></span> pony <span class="collection">[<span class="attribute">:address</span> <span class="attribute">:town</span>]</span>)</span>}</span>)</span></code></pre>
-<p>The results of this might be put in some form of secondary index (in Couch this would be a variety of b-tree) for look-up purposes.</p>
+  }</span></span></span>}
+</code></pre><p>We might write the following map function</p>
+<pre><code><span class="list">(<span class="title"><span class="built_in">defn</span></span> pony-by-town <span class="collection">[pony]</span> <span class="collection">{ <span class="string">"town"</span> <span class="list">(<span class="title"><span class="built_in">get-in</span></span> pony <span class="collection">[<span class="attribute">:address</span> <span class="attribute">:town</span>]</span>)</span>}</span>)</span>
+</code></pre><p>The results of this might be put in some form of secondary index (in Couch this would be a variety of b-tree) for look-up purposes.</p>
 <p>This index definition needs storing in the database too, as the database will need to run all of these indexes on documents as they are written/modified.  Sadly there is no &quot;tidy&quot; way to serialize functions in Clojure and while I now know about macros and could probably make them do it for me, I opted for taking in strings representing these index functions.</p>
 <pre><code>{ <span class="symbol">:id</span> <span class="string">"ponies-by-town"</span>
   <span class="symbol">:map</span> <span class="string">"(fn [doc] { \"town\" (get-in doc [:address :town])})"</span>
-}</code></pre>
-<p>These have their own GET/PUT/DELETE methods in the HTTP API and Document API and are treated just like documents. (indeed, indexes.clj looks very much like documents.clj)</p>
+}
+</code></pre><p>These have their own GET/PUT/DELETE methods in the HTTP API and Document API and are treated just like documents. (indeed, indexes.clj looks very much like documents.clj)</p>
 <p><strong>The index store itself</strong></p>
 <p>Again, no way am I writing a secondary index store from scratch and just like RavenDB did, I&#39;m reaching for Lucene to provide these capabilities.</p>
 <p>Looking around, there are a few half-finished wrappers for Lucene written in Clojure - presumably to the point where they did what the authors needed and then no further. Code owned is often better than code borrowed and I therefore decided to write my own domain specific wrappers of Lucene.</p>
@@ -108,8 +105,8 @@
           (org<span class="variable">.apache</span><span class="variable">.lucene</span><span class="variable">.search</span> IndexSearcher Sort SortField SortField$Type)
           (org<span class="variable">.apache</span><span class="variable">.lucene</span><span class="variable">.queryparser</span><span class="variable">.classic</span> QueryParser)
           (org<span class="variable">.apache</span><span class="variable">.lucene</span><span class="variable">.document</span> Document Field Field$Store Field$Index
-                                      TextField IntField FloatField StringField)))</code></pre>
-<p>Very classes. Much namespace. Wow.</p>
+                                      TextField IntField FloatField StringField)))
+</code></pre><p>Very classes. Much namespace. Wow.</p>
 <p><strong>Some more protocols</strong></p>
 <p>While in the rest of the database, protocols have been used for convenient polymorphism, in this case they were used to provide very thin wrappers over Lucene (hiding the immense object construction required to build up the various reader/writer/indexes) and ensuring the consistent use of Lucene.</p>
 <pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> LuceneIndexWriting [writer analyzer]
@@ -123,8 +120,8 @@
 <span class="list">(<span class="title">defrecord</span><span class="body"> LuceneIndex [analyzer directory config]
   java.io.Closeable
   <span class="list">(<span class="title">close</span><span class="body"> [this]
-    <span class="list">(<span class="body">.close directory)</span></span>)</span></span>)</span></span></code></pre>
-<p>And lo, the following factory methods were born.</p>
+    <span class="list">(<span class="body">.close directory)</span></span>)</span></span>)</span></span>
+</code></pre><p>And lo, the following factory methods were born.</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> open-writer [index] <span class="list">(<span class="title">LuceneIndexWriting</span><span class="body">.
                       <span class="list">(<span class="title">IndexWriter</span><span class="body">. <span class="list">(<span class="body"><span class="keyword">:directory</span> index)</span></span> <span class="list">(<span class="body"><span class="keyword">:config</span> index)</span></span>)</span></span>
                         <span class="list">(<span class="body"><span class="keyword">:analyzer</span> index)</span></span>)</span></span>)</span></span>
@@ -142,8 +139,8 @@
   <span class="list">(<span class="title">let</span><span class="body"> [analyzer <span class="list">(<span class="title">StandardAnalyzer</span><span class="body">. Version/LUCENE_CURRENT)</span></span>
         directory <span class="list">(<span class="title">RAMDirectory</span><span class="body">.)</span></span>
         config <span class="list">(<span class="title">IndexWriterConfig</span><span class="body">. Version/LUCENE_CURRENT analyzer)</span></span>]
-    <span class="list">(<span class="title">LuceneIndex</span><span class="body">. analyzer directory config)</span></span>)</span></span>)</span></span></code></pre>
-<p>Not much to it, but how do we write to this?</p>
+    <span class="list">(<span class="title">LuceneIndex</span><span class="body">. analyzer directory config)</span></span>)</span></span>)</span></span>
+</code></pre><p>Not much to it, but how do we write to this?</p>
 <p><strong>Writing to our indexes</strong></p>
 <p>The only important function really, is this.</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> put-entry [index ref-id content]
@@ -151,8 +148,8 @@
     <span class="list">(<span class="title">doseq</span><span class="body"> [f <span class="list">(<span class="title">map-to-lucene</span><span class="body"> content)</span></span>] <span class="list">(<span class="body">.add doc f)</span></span>)</span></span>
     <span class="list">(<span class="body">.add doc <span class="list">(<span class="title">document-id-field</span><span class="body"> ref-id)</span></span>)</span></span>
     <span class="list">(<span class="body">.addDocument <span class="list">(<span class="body"><span class="keyword">:writer</span> index)</span></span> doc)</span></span>)</span></span>
-  index)</span></span></code></pre>
-<p>So, somehow we&#39;ll need to go through all of our documents as they are written/modified and execute all the indexes we have against them before calling put-entry and storing the results in Lucene.</p>
+  index)</span></span>
+</code></pre><p>So, somehow we&#39;ll need to go through all of our documents as they are written/modified and execute all the indexes we have against them before calling put-entry and storing the results in Lucene.</p>
 <p>That&#39;s a job for the indexing engine, but we&#39;ll leave that for now as it&#39;s one of the more complicated pieces of code and will need a bit of explanation.</p>
 <p><strong>Summary</strong></p>
 <p>Again, interop with Java is a useful tool if we want to make the most of the existing OSS ecosystem. Obviously the Java interface to Lucene is butt ugly and hiding it from the rest of the database within this <em>lucene.clj</em> module makes sense and that&#39;s exactly what I&#39;ve done.</p>
@@ -165,103 +162,47 @@
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="http://twitter.com/robashton">Follow me</a>
       </div>
-      <div id="hire-me">
-        <h6>This used to ask if you wanted to hire me</h6>
-        <p>But chances are I'm not available, as I'm busy shipping stuff.</p>
-        <p>I am available for conference speaking, I like talking and will do so for just T&E (and perhaps a bottle of wine or two).</p>
-        <p>I have done soft keynotes, and usually entertain/rile people in equal proportion, but prefer to talk tech as that's what I do</p>
-        <p><a href="mailto:robashton@codeofrob.com">Email me :)</a></p>
-      </div>
-      <div id="disqus">
-        <div id="disqus_thread"></div>
-<script type="text/javascript">
-    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
-    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
 
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-      </div>
-    </div>
-    <div id="post-comments">
+        <!--=== Copyright ===-->
+        <div class="copyright">
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span2">
+                <a href="/">Rob Ashton</a>
+              </div>
+              <div class="span6">
+                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+        </div><!--/copyright-->
+        <!--=== End Copyright ===-->
 
-    </div>
-
-<div class="footer" style="margin-top: 0px">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span3">
-                <div class="headline"><h3>Get In Touch</h3></div>
-                <address class="address">
-                    <ul class="icons-ul">
-                        <li><i class="icon-li icon-envelope"></i>Email: <a href="mailto:robashton@codeofrob.com" class="">robashton@codeofrob.com</a></li>
-                        <li><i class="icon-li icon-envelope"></i>Skype: <a href="skype:rob_ashton" class="">rob_ashton</a></li>
-                    </ul>
-                </address>
-            </div><!--/span3-->
-            <div class="span5">
-                <div class="headline"><h3>Subscribe</h3></div>
-                <p>I publish an <a href="http://feed.codeofrob.com/RobAshton">RSS feed</a> from my blog and some other activities</p>
-            </div>
-            <div class="span4">
-                <div class="posts">
-                  <div class="headline"><h3>Find me...</h3></div>
-                  <p><a href="http://twitter.com/robashton"><img src="/assets/img/twitter.jpg" alt="" />
-                  <a href="http://github.com/robashton"><img src="/assets/img/github.png" alt="" /></a></p>
-                </div>
-            </div><!--/span4-->
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/footer-->
-<!--=== End Footer ===-->
-
-<!--=== Copyright ===-->
-<div class="copyright">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span2">
-              <a href="/">Rob Ashton</a>
-            </div>
-            <div class="span6">
-              <p class="terms">2014 © Rob Ashton. ALL Rights Reserved.</p>
-            </div>
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/copyright-->
-<!--=== End Copyright ===-->
-
-<!-- JS Global Compulsory -->
-<script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-<script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-<!-- JS Implementing Plugins -->
-<script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-<script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-<script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-<script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-<!-- JS Page Level -->
-<script type="text/javascript" src="/assets/js/app.js"></script>
-<script type="text/javascript" src="/assets/js/pages/index.js"></script>
-<script type="text/javascript">
-    jQuery(document).ready(function() {
-      	App.init();
-        App.initFancybox();
-        App.initSliders();
-        Index.initParallaxSlider();
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
     });
-</script>
-<!--[if lt IE 9]>
+        </script>
+        <!--[if lt IE 9]>
     <script src="assets/js/respond.js"></script>
 <![endif]-->
-  </body>
-</html>
+        </body>
+        </html>
 

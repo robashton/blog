@@ -1,0 +1,73 @@
+<p>We don&#39;t tread the same path as most Erlangers, as <a href="/entries/the-ashton-disinterest-curve---erlang.html">mentioned</a> having been through more than a few of the standard build systems in that ecosystem we&#39;ve settled on our own (the original hard work done by somebody else). All on top of a <a href="/entries/erlang---getting-started-with-vir.html">pile of bash</a> that organically came from real world production use of Erlang.</p>
+<h1 id="so-why-make-">So why Make?</h1>
+<p>Well firstly we already know it; our other language other than Erlang at work is C (okay and (<em>spit</em>) JavaScript, oky three languages - and Bash... etc). Secondly if you look at an Erlang project and compilation of that Erlang project you&#39;ll see that we have a bunch of files that need compiling into another format (mostly independent to each other), let&#39;s have a wee look at that.</p>
+<pre><code>src/<span class="variable">%.</span>erl       -&gt;    ebin/<span class="variable">%.</span>beam
+src/<span class="variable">%.</span>app.src   -&gt;    ebin/<span class="variable">%.</span>app
+src/<span class="variable">%.</span>xrl       -&gt;    ebin/<span class="variable">%.</span>beam
+src/<span class="variable">%.</span>yrl       -&gt;    ebin/<span class="variable">%.</span>beam
+priv/mibs/<span class="variable">%.</span>bin -&gt;    mins/<span class="variable">%.</span>mib
+</code></pre><p>Etc.</p>
+<p>If only there was a tool which allowed you to declaratively wildcard a bunch of inputs to a bunch of outputs and use timestamps to determine whether individual files needed re-compiling again. Hmmmmm.</p>
+<p>So yeah, this is our fork of <a href="http://github.com/id3as/erl-mk.git">erl-mk</a>, although in a few days this will be renamed to <a href="http://github.com/id3as/id3as.mk">id3as.mk</a> so check which link doesn&#39;t 404 and this will see you right.</p>
+<h1 id="conventions">Conventions</h1>
+<p>There is a standard structure to an Erlang project, and it looks like this</p>
+<pre><code class="lang-bash">    relx.config
+    src/%.erl
+    src/%.app.src
+    release-files/sys.config
+    release-files/*.anything.<span class="keyword">else</span>
+    include/%.hrl
+</code></pre>
+<p>We can only get away with using a standard one-size-fits-all Makefile if you conform to some convention and given that there is already a convention to Erlang projects this is the one that we are using. Additionally you can also have</p>
+<pre><code class="lang-bash">    apps/&lt;app-name&gt;/&lt;the same as above&gt;
+</code></pre>
+<p>To have multiple apps in the same project, and</p>
+<pre><code class="lang-bash">    deps/&lt;dep-name&gt;/&lt;the same as above&gt;
+</code></pre>
+<p>To rely on other Erlang projects and their source code - more on that in a little bit.</p>
+<h1 id="using-id3as-mk">Using id3as.mk</h1>
+<p>To configure and use id3as.mk, we use an entry point Makefile to set up some variables and download id3as.mk - this would usually be called &quot;Makefile&quot; or &quot;makefile&quot; and sit in the top level of the project (vir will generate this if you&#39;re using it).</p>
+<pre><code class="lang-cmake">    DEPS_DIR = $(addsuffix /deps, $(realpath .))
+    ERL_LIBS = $(DEPS_DIR):$(realpath apps)
+
+    <span class="keyword">export</span> DEPS_DIR
+    <span class="keyword">export</span> ERL_LIBS
+
+    <span class="keyword">export</span> ERLCFLAGS = +debug_info +warn_export_vars +warn_shadow_vars +warn_obsolete_guard +'{lager_truncation_size, <span class="number">10240</span>}'
+    <span class="keyword">export</span> ERLMIBFLAGS =
+
+    DEPS = lager cowboy gproc jsx
+
+    dep_lager = git://github.com/basho/lager.git <span class="number">2.0</span>.<span class="number">1</span>
+    dep_cowboy = git@github.com:extend/cowboy.git master
+    dep_gproc = git://github.com/esl/gproc.git <span class="number">0.2</span>.<span class="number">12</span>
+    dep_jsx = git://github.com/talentdeficit/jsx.git master
+
+    id3as.mk:
+      @wget --no-cache -nv -O $@ 'https://raw.github.com/id3as/id3as.mk/master/id3as.mk' || rm -f $@
+
+    -<span class="keyword">include</span> id3as.mk
+</code></pre>
+<p>I&#39;m not a huge fan of using this for dependency downloads (I&#39;d prefer a bash script) but it&#39;s just a single operation at the start to download all dependencies to the DEPS_DIR and then build is just standard Make. You&#39;d still need to specify which dependencies you had because the Makefile uses this to build up a dependency tree and only build each dependency once (in the right order).</p>
+<p>Anyway, it&#39;s self explanatory - you&#39;ll see that in Erlang we haven&#39;t got a package manager (although some misguided but well meaning folk are trying to change that), and we just download source into a deps folder and build that ourselves. (No, they&#39;re not submodules, <em>ew</em>)</p>
+<p>For each dep, id3as.mk checks if there is a Makefile present (in which case it&#39;ll run that), checks if there is a rebar.config present (in which case it&#39;ll run rebar) and falls back to re-executing itself in the dep dir. For all the id3as.mk based dependencies it&#39;ll honour timestamps all the way down. Rebar is a little more dumb and once you&#39;re in the world of rebar it can be a little slow as it insists on recursing over deps multiple times during a single build (boo, hiss).</p>
+<p>I&#39;m a big fan of having dep source available - it means if you build up a tags file for your editor you can jump into the source code of even the third party dependencies you&#39;re using and see how they work (what better documentation than the actual code okay just joking devs we should all be writing better documentation).</p>
+<h1 id="make-commands">Make commands</h1>
+<ul>
+<li>&quot;make get-deps&quot; - initial download of deps</li>
+<li>&quot;make&quot; - build <em>everything</em></li>
+<li>&quot;make apps&quot; - just build the apps</li>
+<li>&quot;make clean&quot; - clean up our app</li>
+<li>&quot;make clean-all&quot; - ruthlessly gut everything</li>
+<li>&quot;make apps/[foo]&quot; - just build the foo app</li>
+<li>&quot;make deps&quot; - just build the deps</li>
+<li>&quot;make deps/[foo]&quot; - just build that dep (useful if you&#39;re debugging a third party dep)</li>
+<li>&quot;make rel&quot; - make a release</li>
+</ul>
+<p>Neato. Everything is just timestamp checking and then for bonus points</p>
+<ul>
+<li>make -j <anything from above>   - DO IT IN PARALLEL</li>
+</ul>
+<p>Seeing as most of these steps and most of the erl/beams are independent of each other a build is much faster if you run it in parallel.</p>
+<h1 id="on-package-managers">On package managers</h1>
+<p>I often get a few eyebrows raised when I say we don&#39;t need one of these - so the next entry will write about why they&#39;re unnecessary (in any of the incarnations so far) and why we should do without.</p>

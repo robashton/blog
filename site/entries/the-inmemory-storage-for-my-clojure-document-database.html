@@ -58,10 +58,7 @@
                                 <a href="/blog.html">Blog</a>
                             </li>
                             <li>
-                                <a href="/statements.html">Testimonials</a>
-                            </li>
-                            <li>
-                                <a href="/hire.html">Hire Me</a>
+                                <a href="/testimonials.html">Testimonials</a>
                             </li>
                     </div>
                 </div>
@@ -69,7 +66,7 @@
         </div>
     </div>
 
-  <body>
+    <body>
     <div id="blog-entry">
       <h1 id="post-title">The InMemory storage for my clojure document database</h1>
       <h6>Published on <span class="date">2014-6-5</span></h6>
@@ -83,8 +80,8 @@
 </ul>
 <p>Well, this is quite a simple thing. As described in the last two entries - we have a very small surface area to implement for our storage system, and all objects are passed in as Plain Old Clojure data structures. The implemention therefore clocks in at under 40 lines of code and is shown in its entirety below.</p>
 <p>Memory storage is implemented as an atom containing a sorted map.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> create [] <span class="list">(<span class="title">MemoryStorage</span><span class="body">. <span class="list">(<span class="title">atom</span><span class="body"> <span class="list">(<span class="title">sorted-map</span><span class="body">)</span></span>)</span></span>)</span></span>)</span></span></code></pre>
-<p>MemoryStorage merely returns whatever is in this atom at the start of a transaction (giving read isolation)</p>
+<pre><code><span class="list">(<span class="title">defn</span><span class="body"> create [] <span class="list">(<span class="title">MemoryStorage</span><span class="body">. <span class="list">(<span class="title">atom</span><span class="body"> <span class="list">(<span class="title">sorted-map</span><span class="body">)</span></span>)</span></span>)</span></span>)</span></span>
+</code></pre><p>MemoryStorage merely returns whatever is in this atom at the start of a transaction (giving read isolation)</p>
 <pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> MemoryStorage [memory]
   java.io.Closeable
   Reader
@@ -92,8 +89,8 @@
   <span class="list">(<span class="title">ensure-transaction</span><span class="body"> [ops] <span class="list">(<span class="title">MemoryTransaction</span><span class="body">. @<span class="list">(<span class="body"><span class="keyword">:memory</span> ops)</span></span> <span class="list">(<span class="body"><span class="keyword">:memory</span> ops)</span></span>)</span></span>)</span></span>
   <span class="list">(<span class="title">from-db</span><span class="body"> [this id] <span class="list">(<span class="title">get</span><span class="body"> @memory id)</span></span>)</span></span>
   <span class="list">(<span class="title">open-iterator</span><span class="body"> [this] <span class="list">(<span class="title">MemoryIterator</span><span class="body">. <span class="literal">nil</span> memory <span class="list">(<span class="title">atom</span><span class="body"> <span class="literal">nil</span>)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span></code></pre>
-<p>Commiting the transaction, is just a reduction of operations inside the transaction into whatever is in the atom.</p>
+  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span>
+</code></pre><p>Commiting the transaction, is just a reduction of operations inside the transaction into whatever is in the atom.</p>
 <pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> MemoryTransaction [snapshot memory]
   java.io.Closeable
   Writer
@@ -103,8 +100,8 @@
   <span class="list">(<span class="title">commit</span><span class="body">! [this] <span class="list">(<span class="title">swap</span><span class="body">! memory #<span class="list">(<span class="title">reduce</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> [m [k v]]
                   <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> <span class="keyword">:deleted</span> v)</span></span> <span class="list">(<span class="title">dissoc</span><span class="body"> m k)</span></span> <span class="list">(<span class="title">assoc</span><span class="body"> m k v)</span></span>)</span></span>)</span></span>
                                         %<span class="number">1</span> <span class="list">(<span class="body"><span class="keyword">:cache</span> this)</span></span>)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span></code></pre>
-<p>And because we created a sorted map, iterating means dropping up to the point where we want to begin iterating, and returning the sequence.</p>
+  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span>
+</code></pre><p>And because we created a sorted map, iterating means dropping up to the point where we want to begin iterating, and returning the sequence.</p>
 <pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> MemoryIterator [snapshot memory start]
   java.io.Closeable
   Iterator
@@ -112,8 +109,8 @@
   <span class="list">(<span class="title">as-seq</span><span class="body"> [this]
     <span class="list">(<span class="title">map</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> [i] {<span class="keyword">:k</span> <span class="list">(<span class="title">key</span><span class="body"> i)</span></span> <span class="keyword">:v</span> <span class="list">(<span class="title">val</span><span class="body"> i)</span></span>})</span></span>
       <span class="list">(<span class="title">drop-while</span><span class="body"> #<span class="list">(<span class="title">&gt;</span><span class="body"> <span class="number">0</span> <span class="list">(<span class="title">compare</span><span class="body"> <span class="list">(<span class="title">key</span><span class="body"> %<span class="number">1</span>)</span></span> @start)</span></span>)</span></span> <span class="list">(<span class="title">or</span><span class="body"> snapshot @memory)</span></span>)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span></code></pre>
-<p>Obviously not suitable for production, but it keeps the tests fast (and runnable on various environments without needing native compiles). It also makes it easier to work in the REPL as there is no need to worry about on-disk artifacts or locking.</p>
+  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span>
+</code></pre><p>Obviously not suitable for production, but it keeps the tests fast (and runnable on various environments without needing native compiles). It also makes it easier to work in the REPL as there is no need to worry about on-disk artifacts or locking.</p>
 <p><strong>Summary</strong></p>
 <p>Having a small surface area for storage implementation, and keeping communication with core storage a matter of using plain old clojure data structures made this easy to write.</p>
 <p><strong>Related Files</strong></p>
@@ -124,103 +121,47 @@
       <div id="links">
         <a href="/">Index</a>
         <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="http://twitter.com/robashton">Follow me</a>
       </div>
-      <div id="hire-me">
-        <h6>This used to ask if you wanted to hire me</h6>
-        <p>But chances are I'm not available, as I'm busy shipping stuff.</p>
-        <p>I am available for conference speaking, I like talking and will do so for just T&E (and perhaps a bottle of wine or two).</p>
-        <p>I have done soft keynotes, and usually entertain/rile people in equal proportion, but prefer to talk tech as that's what I do</p>
-        <p><a href="mailto:robashton@codeofrob.com">Email me :)</a></p>
-      </div>
-      <div id="disqus">
-        <div id="disqus_thread"></div>
-<script type="text/javascript">
-    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
-    var disqus_shortname = 'codeofrob'; // required: replace example with your forum shortname
 
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-      </div>
-    </div>
-    <div id="post-comments">
+        <!--=== Copyright ===-->
+        <div class="copyright">
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span2">
+                <a href="/">Rob Ashton</a>
+              </div>
+              <div class="span6">
+                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+        </div><!--/copyright-->
+        <!--=== End Copyright ===-->
 
-    </div>
-
-<div class="footer" style="margin-top: 0px">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span3">
-                <div class="headline"><h3>Get In Touch</h3></div>
-                <address class="address">
-                    <ul class="icons-ul">
-                        <li><i class="icon-li icon-envelope"></i>Email: <a href="mailto:robashton@codeofrob.com" class="">robashton@codeofrob.com</a></li>
-                        <li><i class="icon-li icon-envelope"></i>Skype: <a href="skype:rob_ashton" class="">rob_ashton</a></li>
-                    </ul>
-                </address>
-            </div><!--/span3-->
-            <div class="span5">
-                <div class="headline"><h3>Subscribe</h3></div>
-                <p>I publish an <a href="http://feed.codeofrob.com/RobAshton">RSS feed</a> from my blog and some other activities</p>
-            </div>
-            <div class="span4">
-                <div class="posts">
-                  <div class="headline"><h3>Find me...</h3></div>
-                  <p><a href="http://twitter.com/robashton"><img src="/assets/img/twitter.jpg" alt="" />
-                  <a href="http://github.com/robashton"><img src="/assets/img/github.png" alt="" /></a></p>
-                </div>
-            </div><!--/span4-->
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/footer-->
-<!--=== End Footer ===-->
-
-<!--=== Copyright ===-->
-<div class="copyright">
-    <div class="container">
-        <div class="row-fluid">
-            <div class="span2">
-              <a href="/">Rob Ashton</a>
-            </div>
-            <div class="span6">
-              <p class="terms">2014 © Rob Ashton. ALL Rights Reserved.</p>
-            </div>
-        </div><!--/row-fluid-->
-    </div><!--/container-->
-</div><!--/copyright-->
-<!--=== End Copyright ===-->
-
-<!-- JS Global Compulsory -->
-<script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-<script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-<!-- JS Implementing Plugins -->
-<script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-<script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-<script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-<script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-<script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-<!-- JS Page Level -->
-<script type="text/javascript" src="/assets/js/app.js"></script>
-<script type="text/javascript" src="/assets/js/pages/index.js"></script>
-<script type="text/javascript">
-    jQuery(document).ready(function() {
-      	App.init();
-        App.initFancybox();
-        App.initSliders();
-        Index.initParallaxSlider();
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
     });
-</script>
-<!--[if lt IE 9]>
+        </script>
+        <!--[if lt IE 9]>
     <script src="assets/js/respond.js"></script>
 <![endif]-->
-  </body>
-</html>
+        </body>
+        </html>
 
