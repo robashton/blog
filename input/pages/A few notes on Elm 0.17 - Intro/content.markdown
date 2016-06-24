@@ -1,6 +1,6 @@
 I've been writing a bit of Elm lately for work as we have never really liked Javascript and with Elm 0.17.0 it looks like some sensible decisions have been made and it's going to be a viable replacement for our currect defacto choice of React + NPM.
 
-Obviously I'm in favour of that, I'm a big fan of Haskell and Haskell type languages and the only reason I hadn't thrust down this direction already is my own reluctance to spend time learning an immature technology for application code that has generally been "good enough" (I'd prefer to spend the time on my guitar/coffee sorry not sorry).
+Obviously I'm in favour of that, I'm a big fan of Haskell and Haskell type languages and the only reason I hadn't thrust down this direction already is my own reluctance to spend time learning an immature technology for application code that has generally been "good enough" up until now (I'd prefer to spend the time on my guitar/coffee sorry not sorry).
 
 Now I've written a couple of Elm applications (one of which will have gone into production by the time this post is published), I just want to make a few remarks about the 'state of things', knowing that I don't really have the full history of things regarding Elm and there may well be reasons behind some of the design decisions I'm having a hard time with.
 
