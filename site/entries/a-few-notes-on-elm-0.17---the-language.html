@@ -1,0 +1,201 @@
+<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
+<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
+<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
+<!--[if !ie]><!-->
+<html lang="en"> <!--<![endif]-->
+<head>
+    <title id="title">A few notes on Elm 0.17 - The Language</title>
+    <meta charset="utf-8">
+    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <meta name="author" content="">
+    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
+    <link rel="stylesheet" href="/assets/css/style_responsive.css">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
+    <link rel="stylesheet" href="/assets/css/themes/default.css">
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
+    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="header">
+        <div class="container">
+            <div class="logo">
+             <h2><a href="/index.html">Rob Ashton</a></h2>
+            </div>
+            <div class="navbar">
+                <div class="navbar-inner">
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </a>
+                    <div class="nav-collapse collapse">
+                        <ul class="nav top-2">
+                          <li>
+                                <a href="/">Home</a>
+                            </li>
+                            <li>
+                                <a href="/blog.html">Blog</a>
+                            </li>
+                            <li>
+                                <a href="/testimonials.html">Testimonials</a>
+                            </li>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <body>
+    <div id="blog-entry">
+      <h1 id="post-title">A few notes on Elm 0.17 - The Language</h1>
+      <h6>Published on <span class="date">2016-6-30</span></h6>
+      <div id="post"><p>Continuing on then</p>
+<ul>
+<li><a href="/entries/a-few-notes-on-elm-0.17---intro.html">A few notes - Intro</a></li>
+<li>A few notes - The Language</li>
+</ul>
+<h1 id="so-it-s-haskell-">So it&#39;s Haskell?</h1>
+<p>Not really, there are a lot of things in common with Haskell but there are a lot of things that are different too. Syntax wise they are same same but different:</p>
+<pre><code class="lang-haskell">    <span class="comment">-- Haskell</span>
+    doSomething :: <span class="type">Foo</span> -&gt; <span class="type">Bar</span>
+
+    <span class="comment">-- Elm</span>
+    doSomething : <span class="type">Foo</span> -&gt; <span class="type">Bar</span>
+</code></pre>
+<p>or</p>
+<pre><code class="lang-haskell">    <span class="comment">-- Haskell</span>
+    doSomething x y = x $ somethingElse y
+
+    <span class="comment">-- Elm</span>
+    doSomething x y = x &lt;| somethingElse y
+</code></pre>
+<p>Not to mention the presence of &quot;Maybe&quot; exposing slightly different methods</p>
+<pre><code class="lang-haskell">    <span class="comment">-- Haskell</span>
+    maybe input <span class="string">"default"</span>
+
+    <span class="comment">-- Elm</span>
+    withDefault input <span class="string">"default"</span>
+</code></pre>
+<p>I don&#39;t really care about any of these differences, as they are largely arbitrary syntax/naming decisions - although I do feel as though maintaining more of a similarity with Haskell seeing as these choices <em>are</em> arbitrary would make it easier to port code or read documentation across the two.  (The Elm compiler is hosted in Haskell after all anyway...)</p>
+<h1 id="the-types">The types</h1>
+<p>No type classes, there is a whole history of conversation about the lack of need for them (and the ability for ADTs to do the job admirably), this hasn&#39;t caused me any bother so far so I&#39;m happy with this design decision.</p>
+<p>By getting rid (in name anyway) of Monads, Applicative, etc - Elm seems much more acessible to the average user. That&#39;s not to say that they don&#39;t exist in some form in the codebase but side effects/etc have been shoved into the more domain specific &quot;<a href="https://github.com/elm-lang/core/blob/master/src/Task.elm">Task</a>&quot; module and in the Elm Architecture itself it&#39;s rare you have to touch anything that isn&#39;t &quot;just data&quot;.</p>
+<p>This is a sensible design decision on the surface although it means that some of the patterns of composition I&#39;m used to in the Haskell world (especially fmap) don&#39;t quite work the same way. This feels a bit awkward because I&#39;m used to breaking out &lt;*&gt; and instead I have to use the implementation specific &#39;andThen&#39;. Is this so bad? Probably not and I&#39;ll get used to it.</p>
+<p>By placing focus on ADTs and records and inferring expected structure from usage the error messages can be a bit perplexing to start off with, despite them being very well written.</p>
+<p>Consider this function for example</p>
+<pre><code class="lang-haskell">    <span class="typedef"><span class="keyword">type</span> alias <span class="type">Model</span> = <span class="container">{
+      <span class="title">realField</span> : <span class="type">String</span>
+    }</span></span>
+
+    extractThingy : <span class="type">Model</span> -&gt; <span class="type">String</span>
+    extractThingy model = model.missingField
+</code></pre>
+<p>The error from this both simultaneously very useful and counter-intuitive:</p>
+<pre>
+    -- TYPE MISMATCH ------------------------------------------------------ Test.elm
+
+    The type annotation for `extractThingy` does not match its definition.
+
+    23| extractThingy : Model -> String
+                        ^^^^^^^^^^^^^^^
+    The type annotation is saying:
+
+        { realField : ... } -> String
+
+    But I am inferring that the definition has this type:
+
+        { b | missingField : ... } -> a
+
+    Detected errors in 1 module.  
+</pre>
+
+<p>Instead of &quot;Hey, Model doesn&#39;t have a field called missingField&quot; we get a complaint that the code is inferring a structure with &#39;missingField&#39; by usage and it doesn&#39;t match the definition it has been supplied. This is because the compiler works backwards from the point of usage and gives its error messages from that context.</p>
+<p>I&#39;m not the only one who got confused initially by this and with more complicated structures and nested code the errors being dumped out can be pretty daunting. It&#39;s something you get the hang of though and the descriptive nature of the error messages make them look a lot more excessive than they really are.</p>
+<h1 id="functional-records">Functional Records</h1>
+<p><a href="http://lexi-lambda.github.io/blog/2015/11/06/functionally-updating-record-types-in-elm/">This has been covered before</a>, but records have &#39;getters&#39; generated for them so we can do things like this</p>
+<pre><code class="lang-haskell">    <span class="typedef"><span class="keyword">type</span> alias <span class="type">Model</span> = <span class="container">{ 
+          <span class="title">realField</span> : <span class="type">String</span>
+        }</span></span>
+
+    extractThingy : <span class="type">List</span> <span class="type">Model</span> -&gt; <span class="type">List</span> <span class="type">String</span>
+    extractThingy items = <span class="type">List</span>.map .realField items
+</code></pre>
+<p>This can be quite handy if we&#39;re writing functional code around records, sadly no equivalent setters are generated so it&#39;s hard to compose operations against records.</p>
+<h1 id="development-environment">Development environment</h1>
+<p>I&#39;m in Emacs these days on account of our company&#39;s switch to <a href="https://www.rebar3.org/">Rebar3</a> in the <a href="http://erlang.org/">Erlang</a> world and my reluctance to sit there and fix my Vim plug-ins; I&#39;m therefore using <a href="https://github.com/jcollard/elm-mode">elm-mode</a> which gives me access to some integration with elm-reactor and elm-format which we use and don&#39;t even bother arguing about.</p>
+<p>Following the <a href="https://github.com/NoRedInk/elm-style-guide">elm-style guide</a> from No-Red-Ink leaves us one less thing to worry about when writing code.</p>
+<p>I currently really miss the following things from my Haskell development:</p>
+<ul>
+<li><a href="http://www.mew.org/~kazu/proj/ghc-mod/en/">ghc-mod</a></li>
+<li><a href="www.haskell.org/hoogle/">hoogle</a></li>
+<li>compile-on-save insta-feedback-in-repl</li>
+</ul>
+<p>I think I can probably do the latter in an hour or so with existing tooling, but right now I feel one of the biggest benefits of having a sensible type system is missing: Being able to inspect the darned types and work out how functions are supposed to compose without having to constantly jump to documentation.</p>
+<p>Hoogle or a hoogle-like is a must, even with something as low on surface area as Elm; when you know the types of what you&#39;re working with and you know the types of the things you want then Hoogle is one of the most useful things in your arsenal.</p>
+<p>That said, a lot of the time in Haskell we are dealing with parametric types and the functions we are looking for go from (a -&gt; b) -&gt; b, in our record and ADT oriented world we don&#39;t have the interchangeability that we&#39;d get in that world and Hoogle is less useful. I don&#39;t know how I feel about that yet.</p>
+<h1 id="next-up-">Next up..</h1>
+<p>I&#39;ll look at the structure of our web apps and highlight some of the issues and decisions we&#39;ve encountered so far in 0.17</p>
+</div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="mailto:robashton@codeofrob.com">Respond</a>
+      </div>
+
+        <!--=== Copyright ===-->
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span6">
+                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
+    });
+        </script>
+        <!--[if lt IE 9]>
+    <script src="assets/js/respond.js"></script>
+<![endif]-->
+        </body>
+        </html>
+
