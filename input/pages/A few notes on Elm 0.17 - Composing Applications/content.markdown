@@ -30,12 +30,14 @@ At the heart of it all is [The Elm Architecture](http://guide.elm-lang.org/archi
 
 This seems inherently sensible and you can nest components simply by storing their child models on the parent model, and calling into the child 'view' and 'update' functions with messages and that model that are entirely opaque to the parent.
 
-This is great but two things are of concern here
+This is great, two things stand out here
 
-- This seems to encourage local state in components (I'm from React, this is a pretty outlandish thing!!)
+- Unlike in React, control over the state you use is kept inside the component (updates/etc)
 - How do you get useful events back up to the parent or send commands to the child when something changes?
 
-The former isn't too much of a concern if we view each "Component" as being an entirely standalone thing. We are currently rolling with the following concepts for our Elm apps.
+The first one is a bit weird because it means while you have a top level state object most of it is generally opaque to the code at the top level. A component will create its initial state, send messages to itself to update its state and then use that state to render. The "parent" then has boilerplate to route those messages. Components are therefore entirely standalone.
+
+We are currently rolling with the following concepts for our Elm apps.
 
 - *Routing*: Top level component, doesn't have any state other than current page and current model. Handles top level shared events (more on this coming up)
 - *Pages*: isolated components following the init/update/view/subscriptions pattern and doing all their own data loading/saving internally
