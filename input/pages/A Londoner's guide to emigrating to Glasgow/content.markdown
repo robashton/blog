@@ -58,13 +58,13 @@ Ah the west end; this is where a lot of the more "posh" restaurants and bars are
 
 I'd probably not advise people to set up here, the extra cost isn't really worth it and you're better off being somewhere quieter nearby if you're wanting to hang out here a lot. If you're wanting to get the train regularly from Glasgow Central then you're best off between here and centre (The M8 is smack between the two locations, so somehwere near that) but if you're not fussed go further west around the Subway for cheaper digs and quieter evenings.
 
-Similar to: Soho/Covent Garden/etc
+Similar to: The posher bits of Shoreditch
 
 *The East End*
 
 There is a lot of theatre around here and it's where the Barrowlands is. You can have a very good night out in this neck of the woods without spending anywhere near as much as you would in Finnieston. There is an occasional lost tourist looking for the Glasgow Museum of Modern Art or the Necropolis (both worth checking out by the way) but again you're better off being somewhere quieter nearby if you're wanting to hang out here a lot. Further east is lots of housing (and a good deli!) but the Subway doesn't reach out that far so you're either going to be looking at the mainline trains or buses to get back into town if you're in a hurry.
 
-Similar to: North London, think zone 2/3 onwards
+Similar to: North London, think zone 2/3 onwards if they had theatres
 
 *Southside*
 
