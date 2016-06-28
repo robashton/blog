@@ -37,7 +37,7 @@ But you can't deny it, Glasgow is a cheap place to live - from the rent, the bus
 
 They can be scary at times the Glaswegians, but that's mostly because we've been indoctrinated by the media to view their accent as one step away from getting a "bottling" to the face (Pretty sure that the verbification of the word "bottle" was a Scottish thing too) but honestly it's not like that at all. I have found conversations in the most unlikely of places with the most unlikely of people and so long as you're not putting on airs or trying to be something you're not you'll get on well with everybody up here.
 
-I'm often asked (especially since I started spending time in Japan) why I'd return to Glasgow and the answer is always the people. Doing my circuit of the coffee shops and bars when I get back is an absolute pleasure and it's amazing to see the hard work people are putting in to building sustainable businesses that don't alienate the local crowd.
+I'm often asked (especially since I started spending time in Japan) why I'd return to Glasgow and the answer is always the people. Doing my circuit of the coffee shops and bars when I get back is an absolute pleasure and it's amazing to see the hard work people are putting in to building sustainable business that doesn't alienate the local crowd.
 
 
 So where do I move to?
@@ -49,14 +49,14 @@ One of the other great things about Glasgow is that no matter where you live, is
 
 Taxis are cheap too, so if you end up going for a night out in Finnieston and you want to get home to your apartment in East Glasgow you're not going to have to take out a new mortgage to afford one.
 
-So location isn't actually that important and I'd probably encourage the tech community to think before clustering together in a single area and pricing everyone else out of it. That said, let's look at a few of the distinct areas and see what you're getting into if you hit that area.
+So location isn't actually that important and I'd probably encourage the tech community to think before clustering together in a single area and pricing everyone else out of it. That said, let's look at a few of the distinct areas and see what you're getting into if you hit them.
 
 
 *The West End*
 
 Ah the west end; this is where a lot of the more "posh" restaurants and bars are, Porter and Rye, The Finnieston, Ox & Finch, Kelvingrove Cafe etc. It can be a bit pricey to plonk yourself in the "nicer" looking parts of this because it's probably also one of the wealthiest parts of town. It's surprisingly unconnected to the Subway - the nearest stops being a 20 minute walk across Kelvingrove park or west across to Kelvinhall or Partick.
 
-I'd probably not advise people to set up here, the extra cost isn't really worth it and you're better off being somewhere quieter nearby if you're wanting to hang out here a lot. If you're wanting to get the train regularly from Glasgow Central then you're best off between here and centre (The M8 is smack between the two locations, so somehwere near that) but if you're not fussed go further west around the Subway for cheaper digs and quieter evenings.
+I'd probably not advise people to set up here, the extra cost isn't really worth it and you're better off being somewhere quieter nearby if you're wanting to hang out here a lot. If you're wanting to get the train regularly from Glasgow Central then you're best off between here and centre (The M8 is smack between the two locations, so somewhere near that) but if you're not fussed go further west around the Subway for cheaper digs and quieter evenings.
 
 Similar to: The posher bits of Shoreditch
 
@@ -70,18 +70,18 @@ Similar to: North London, think zone 2/3 onwards if they had theatres
 
 I'm starting to think that this is where it's all happening but it's only just kicking off. The best bakery in the world is down here (Bakery47) and down in Strathbungo there are some interesting restaurant happenings. It's cheap and it's not sexy and it's also (mostly) not on the Subway but there are so many trains both in and out of Glasogw (plus NextBike + Bus) that this isn't a big deal. If you're going out in the East/West ends then it's a definite taxi home but that's only going to be a tenner so it's probably worth it.
 
-Similar to: I don't think we can really draw comparisons, London is too busy to have a place like this
+Similar to: I don't think we can really draw comparisons, London is far too busy to have a place like this - even in the outskirts.
 
 
 *The Centre*
 
 I wouldn't try and live here, you won't be spending that much time here anyway outside of the occasional coffee shop visit, to go shopping or to catch a train; it's not worth it for the lack of sleep all the noise would cost you.
 
-Similar to: Probably that bit of scrub between Farringdon and City, er yeah
+Similar to: Probably that bit of scrub between Farringdon and City, er yeah.
 
 *The North*
 
-I'm sure I'll offend some people here but there is nothing there but housing, maybe if you're buying a house and don't mind a bit of a trek to get into town then I'm sure this is fine.
+I'm sure I'll offend some people here but there is nothing there but housing, maybe if you're buying a house and don't mind a bit of a trek to get into town then I'm sure this is fine. Think Borehamwood, look it up - you have time.
 
 
 *Recommendation*
@@ -196,7 +196,7 @@ Bigger version of the above with a slightly different menu and a different coffe
 
 *[Avenue Byres Road](http://avenue.coffee/location/byres-road/)*
 
-Weekends will see you a good fry up here alongside some pretty decent coffee, gerronit. No Booze
+Weekends will see you a good fry up here alongside some pretty decent coffee, gerronit. No Booze.
 
 *[Riverhill West Nile Street](http://www.riverhillcafe.com/west-nile.htm)*
 
