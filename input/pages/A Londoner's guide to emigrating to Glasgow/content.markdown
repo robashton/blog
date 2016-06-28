@@ -216,7 +216,7 @@ Vegetarian breakfast :) Booze once the law allows it..
 
 *[Cafe Gandolfi](http://www.cafegandolfi.com/)*
 
-I've been here for a dinner date and it was reeet good. Holy crap though if the breakfast doesn't completely blow the socks off the East End; huge evariety including vegetarian options and I assume given they have a license that at some point towards lunchtime the booze will start flowing.
+I've been here for a dinner date and it was reeet good. Holy crap though if the breakfast doesn't completely blow the socks off the East End; huge variety including vegetarian options and I assume given they have a license that at some point towards lunchtime the booze will start flowing.
 
 Date night - Eating/Boozing
 ==
