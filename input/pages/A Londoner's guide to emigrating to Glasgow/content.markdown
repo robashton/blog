@@ -45,7 +45,7 @@ So where do I move to?
 
 You're sold? Excellent; my advice would be to get on a train up this way and get yourself in an AirBNB for a week, walk around and find an area that suits you. One of the great things about Glasgow not being London is that you don't need to sign the paperwork in blood before renting a house and pay up to six months in advance. Nae bother - sign your contract, pay a month's rent and deposit and that apartment is yours. This isn't the same level of commitment you have previously been used to.
 
-One of the other great things about Glasgow is that no matter where you live, is that most places around the Subway are within 20 minutes of everywhere else around the SUbway. There is only one Subway, it is a circle and it goes to most of the places you'd like to be.
+One of the other great things about Glasgow is that no matter where you live, is that most places around the Subway are within 20 minutes of everywhere else around the Subway. There is only one Subway, it is a circle and it goes to most of the places you'd like to be.
 
 Taxis are cheap too, so if you end up going for a night out in Finnieston and you want to get home to your apartment in East Glasgow you're not going to have to take out a new mortgage to afford one.
 
