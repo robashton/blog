@@ -123,6 +123,11 @@ Hoogle or a hoogle-like is a must, even with something as low on surface area as
 
 That said, a lot of the time in Haskell we are dealing with parametric types and the functions we are looking for go from (a -> b) -> b, in our record and ADT oriented world we don't have the interchangeability that we'd get in that world and Hoogle is less useful. I don't know how I feel about that yet.
 
+A note on Purescript at this point
+==
+
+I see that the Almighty [@bodil](http://twitter.com/bodil) [Got there already](https://github.com/bodil/purescript-signal) as I was just musing about using the patterns in Elm in a better programming language, I'd be interested in seeing 0.17 "bye bye FRP" patterns written in Purescript for sure.
+
 Next up..
 ==
 
