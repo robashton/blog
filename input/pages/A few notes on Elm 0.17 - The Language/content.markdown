@@ -31,11 +31,6 @@ I don't really care about any of these differences, as they are largely arbitrar
 The lack of typeclasses has lead to things like this though
 
 ```haskell
-    -- Haskell
-    maybe input "default"
-    
-    -- Elm
-    Maybe.withDefault input "default"
 ```
 
 Agh.
