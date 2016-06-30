@@ -6,7 +6,7 @@ Continuing on then
 So it's Haskell?
 ==
 
-Not really, there are a lot of things in common with Haskell but there are a lot of things that are different too. Syntax wise they are same same but different:
+Not really, there are a lot of things in common with Haskell but on closer inspection they are typically same-same-but-different.
 
 ```haskell
     -- Haskell
@@ -35,9 +35,10 @@ The lack of typeclasses has lead to things like this though
     maybe input "default"
     
     -- Elm
-    withDefault input "default"
+    Maybe.withDefault input "default"
 ```
 
+Agh.
 
 Typeclasses
 ==
@@ -46,7 +47,7 @@ No type classes, there is a whole history of conversation about the lack of need
 
 By getting rid (in name anyway) of Monads, Applicative, etc - Elm seems much more acessible to the average user. That's not to say that they don't exist in some form in the codebase but side effects/etc have been shoved into the more domain specific "[Task](https://github.com/elm-lang/core/blob/master/src/Task.elm)" module and in the Elm Architecture itself it's rare you have to touch anything that isn't "just data". 
 
-This is a sensible design decision on the surface, as users who are new to functional programming aren't overwhelmed by concepts but I can't help but feel that the data-oriented patterns in Elm couldn't be exposed in Haskell itself without surfacing those "tricky" concepts whilst keeping them available (there's a weekend project then).
+This is a sensible design decision on the surface, as users who are new to functional programming aren't overwhelmed by concepts but I can't help but feel that the data-oriented patterns in Elm couldn't be exposed in Haskell itself without surfacing those "tricky" concepts whilst keeping them available (there's a weekend project then). 
 
 Moving on, by placing focus on ADTs and records and inferring expected structure from usage the error messages can be a bit perplexing to start off with, despite them being very well written.
 
