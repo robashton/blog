@@ -26,7 +26,9 @@ or
     doSomething x y = x <| somethingElse y
 ```    
 
-Not to mention the presence of "Maybe" exposing slightly different methods
+I don't really care about any of these differences, as they are largely arbitrary syntax/naming decisions - although I do feel as though maintaining more of a similarity with Haskell seeing as these choices *are* arbitrary would make it easier to port code or read documentation across the two.  (The Elm compiler is hosted in Haskell after all anyway...)
+
+The lack of typeclasses has lead to things like this though
 
 ```haskell
     -- Haskell
@@ -36,18 +38,17 @@ Not to mention the presence of "Maybe" exposing slightly different methods
     withDefault input "default"
 ```
 
-I don't really care about any of these differences, as they are largely arbitrary syntax/naming decisions - although I do feel as though maintaining more of a similarity with Haskell seeing as these choices *are* arbitrary would make it easier to port code or read documentation across the two.  (The Elm compiler is hosted in Haskell after all anyway...)
 
-The types
+Typeclasses
 ==
 
-No type classes, there is a whole history of conversation about the lack of need for them (and the ability for ADTs to do the job admirably), this hasn't caused me any bother so far so I'm happy with this design decision.
+No type classes, there is a whole history of conversation about the lack of need for them (and the ability for ADTs to do the job admirably), I have yet to see this promised land however, all I see is a bunch of modules for different data structures with methods dangling off them and it reminds me a bit of Erlang where my ability to write sensibly composed functional code is often hampered by its fudge of modules.
 
-By getting rid (in name anyway) of Monads, Applicative, etc - Elm seems much more acessible to the average user. That's not to say that they don't exist in some form in the codebase but side effects/etc have been shoved into the more domain specific "[Task](https://github.com/elm-lang/core/blob/master/src/Task.elm)" module and in the Elm Architecture itself it's rare you have to touch anything that isn't "just data".
+By getting rid (in name anyway) of Monads, Applicative, etc - Elm seems much more acessible to the average user. That's not to say that they don't exist in some form in the codebase but side effects/etc have been shoved into the more domain specific "[Task](https://github.com/elm-lang/core/blob/master/src/Task.elm)" module and in the Elm Architecture itself it's rare you have to touch anything that isn't "just data". 
 
-This is a sensible design decision on the surface although it means that some of the patterns of composition I'm used to in the Haskell world (especially fmap) don't quite work the same way. This feels a bit awkward because I'm used to breaking out <\*> and instead I have to use the implementation specific 'andThen'. Is this so bad? Probably not and I'll get used to it.
+This is a sensible design decision on the surface, as users who are new to functional programming aren't overwhelmed by concepts but I can't help but feel that the data-oriented patterns in Elm couldn't be exposed in Haskell itself without surfacing those "tricky" concepts whilst keeping them available (there's a weekend project then).
 
-By placing focus on ADTs and records and inferring expected structure from usage the error messages can be a bit perplexing to start off with, despite them being very well written.
+Moving on, by placing focus on ADTs and records and inferring expected structure from usage the error messages can be a bit perplexing to start off with, despite them being very well written.
 
 Consider this function for example
 

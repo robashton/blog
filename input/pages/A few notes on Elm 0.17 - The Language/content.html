@@ -18,19 +18,19 @@
     <span class="comment">-- Elm</span>
     doSomething x y = x &lt;| somethingElse y
 </code></pre>
-<p>Not to mention the presence of &quot;Maybe&quot; exposing slightly different methods</p>
+<p>I don&#39;t really care about any of these differences, as they are largely arbitrary syntax/naming decisions - although I do feel as though maintaining more of a similarity with Haskell seeing as these choices <em>are</em> arbitrary would make it easier to port code or read documentation across the two.  (The Elm compiler is hosted in Haskell after all anyway...)</p>
+<p>The lack of typeclasses has lead to things like this though</p>
 <pre><code class="lang-haskell">    <span class="comment">-- Haskell</span>
     maybe input <span class="string">"default"</span>
 
     <span class="comment">-- Elm</span>
     withDefault input <span class="string">"default"</span>
 </code></pre>
-<p>I don&#39;t really care about any of these differences, as they are largely arbitrary syntax/naming decisions - although I do feel as though maintaining more of a similarity with Haskell seeing as these choices <em>are</em> arbitrary would make it easier to port code or read documentation across the two.  (The Elm compiler is hosted in Haskell after all anyway...)</p>
-<h1 id="the-types">The types</h1>
-<p>No type classes, there is a whole history of conversation about the lack of need for them (and the ability for ADTs to do the job admirably), this hasn&#39;t caused me any bother so far so I&#39;m happy with this design decision.</p>
-<p>By getting rid (in name anyway) of Monads, Applicative, etc - Elm seems much more acessible to the average user. That&#39;s not to say that they don&#39;t exist in some form in the codebase but side effects/etc have been shoved into the more domain specific &quot;<a href="https://github.com/elm-lang/core/blob/master/src/Task.elm">Task</a>&quot; module and in the Elm Architecture itself it&#39;s rare you have to touch anything that isn&#39;t &quot;just data&quot;.</p>
-<p>This is a sensible design decision on the surface although it means that some of the patterns of composition I&#39;m used to in the Haskell world (especially fmap) don&#39;t quite work the same way. This feels a bit awkward because I&#39;m used to breaking out &lt;*&gt; and instead I have to use the implementation specific &#39;andThen&#39;. Is this so bad? Probably not and I&#39;ll get used to it.</p>
-<p>By placing focus on ADTs and records and inferring expected structure from usage the error messages can be a bit perplexing to start off with, despite them being very well written.</p>
+<h1 id="typeclasses">Typeclasses</h1>
+<p>No type classes, there is a whole history of conversation about the lack of need for them (and the ability for ADTs to do the job admirably), I have yet to see this promised land however, all I see is a bunch of modules for different data structures with methods dangling off them and it reminds me a bit of Erlang where my ability to write sensibly composed functional code is often hampered by its fudge of modules.</p>
+<p>By getting rid (in name anyway) of Monads, Applicative, etc - Elm seems much more acessible to the average user. That&#39;s not to say that they don&#39;t exist in some form in the codebase but side effects/etc have been shoved into the more domain specific &quot;<a href="https://github.com/elm-lang/core/blob/master/src/Task.elm">Task</a>&quot; module and in the Elm Architecture itself it&#39;s rare you have to touch anything that isn&#39;t &quot;just data&quot;. </p>
+<p>This is a sensible design decision on the surface, as users who are new to functional programming aren&#39;t overwhelmed by concepts but I can&#39;t help but feel that the data-oriented patterns in Elm couldn&#39;t be exposed in Haskell itself without surfacing those &quot;tricky&quot; concepts whilst keeping them available (there&#39;s a weekend project then).</p>
+<p>Moving on, by placing focus on ADTs and records and inferring expected structure from usage the error messages can be a bit perplexing to start off with, despite them being very well written.</p>
 <p>Consider this function for example</p>
 <pre><code class="lang-haskell">    <span class="typedef"><span class="keyword">type</span> alias <span class="type">Model</span> = <span class="container">{
       <span class="title">realField</span> : <span class="type">String</span>
