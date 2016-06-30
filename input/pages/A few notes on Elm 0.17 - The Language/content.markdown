@@ -45,7 +45,7 @@ Typeclasses
 
 No type classes, there is a whole history of conversation about the lack of need for them (and the ability for ADTs to do the job admirably), I have yet to see this promised land however, all I see is a bunch of modules for different data structures with methods dangling off them and it reminds me a bit of Erlang where my ability to write sensibly composed functional code is often hampered by its fudge of modules.
 
-By getting rid (in name anyway) of Monads, Applicative, etc - Elm seems much more acessible to the average user. That's not to say that they don't exist in some form in the codebase but side effects/etc have been shoved into the more domain specific "[Task](https://github.com/elm-lang/core/blob/master/src/Task.elm)" module and in the Elm Architecture itself it's rare you have to touch anything that isn't "just data". 
+By getting rid (in name anyway) of Monads, Applicative, etc - Elm seems much more acessible to the average user. That's not to say that they don't exist in some form in the codebase but side effects/etc have been shoved into the more domain specific "[Task](https://github.com/elm-lang/core/blob/master/src/Task.elm)" and Effect managers and in the Elm Architecture itself it's rare you have to touch anything that isn't "just data". 
 
 This is a sensible design decision on the surface, as users who are new to functional programming aren't overwhelmed by concepts but I can't help but feel that the data-oriented patterns in Elm couldn't be exposed in Haskell itself without surfacing those "tricky" concepts whilst keeping them available (there's a weekend project then). 
 
