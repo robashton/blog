@@ -164,6 +164,8 @@ I haven't seen a tidy way of doing this yet, an example of lifting the child mod
 
 I think if records had 'setter' functions then most of these functions for update/init/view/etc could be generated on start-up by calling a builder repeatedly with each route, something worth musing on but not seen in the wild yet.
 
+Honestly I think Elm needs some metaprogramming up in its face, Haskell templating or something similar.  There are arguments against it along the lines of it "It's complicated and it will scare people off" but currently I think the boilerplate is a growing issue of annoyance with no good solution as of yet.
+
 
 Some modules
 ==
