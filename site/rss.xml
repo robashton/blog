@@ -1,32 +1,182 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Tue, 05 Jul 2016 09:24:36 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[A few notes on Elm 0.17 - The Language]]></title><description><![CDATA[<p>Continuing on then</p>
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Fri, 02 Nov 2018 22:56:47 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Functional Erlang - Purescript on the BEAM - Intro]]></title><description><![CDATA[<p>Not gonna make a big deal or fanfare about this, but I&#39;m going to jot down my thoughts as the company I work for starts moving into using Purescript for more of our day to day work instead of Erlang.</p>
+<h3 id="what-">WHAT?</h3>
+<p>Indeed, our codebases are starting to get pretty unwieldy with their sizes and as much as we keep a tight ship with Dialyzer and such, writing all of our code in a language like Erlang is just asking for easily avoidable bugs to enter the room.</p>
+<p>So, what is there to look at in this space?</p>
+<ul>
+<li>The project has a <a href="https://github.com/purerl">Github Org</a></li>
+<li>There are a <a href="https://github.com/purerl/package-sets">pile of packages</a> for getting started with</li>
+<li>Purescript itself has a ton of users and <a href="http://www.purescript.org/">documentation</a> so we&#39;re not working in unfamiliar lands</li>
+<li>There has been some <a href="https://github.com/purerl/purerl_otp_sandbox">experimentation with OTP</a> already, with a few different strategies</li>
+</ul>
+<p>Our strategy going forward is to take a greenfield app, and start to write it in Purescript, accepting that there will be marginal gains if any when writing the periphery code in Purescript as opposed to the meaty stuff that already exists. (Not to mention all the interop required). This will at least give us in-roads into the language and platform, and highlight any core-work required in the Purerl space to support our needs as we go forwards.</p>
+<p>The first targets therefore for our attack, and I&#39;ll do these posts fairly bite-size over the coming weeks to keep things easily digestible..</p>
+<ul>
+<li>Writing a gen server in Purescript </li>
+<li>Persisting data from Purescript</li>
+<li>Serving a JS frontend (presumably interop with Cowboy)</li>
+</ul>
+<p>I imagine there will be a lot of stumbling blocks and &quot;This isn&#39;t quite right yet&quot; comments along the way, nonetheless, it&#39;s going to be fun to write and hopefully to read as well - enjoy.</p>
+]]></description><link>http://codeofrob.com/entries/functional-erlang---purescript-on-the-beam---intro.html</link><guid isPermaLink="true">http://codeofrob.com/entries/functional-erlang---purescript-on-the-beam---intro.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 02 Nov 2018 09:30:00 GMT</pubDate></item><item><title><![CDATA[A few notes on Elm 0.17 - Composing Applications]]></title><description><![CDATA[<p>Last little &#39;note&#39; on Elm</p>
+<ul>
+<li><a href="/entries/a-few-notes-on-elm-0.17---intro.html">A few notes - Intro</a></li>
+<li><a href="/entries/a-few-notes-on-elm-0.17---the-language.html">A few notes - The Language</a></li>
+<li>A few notes - Composing Applications</li>
+</ul>
+<p>One of the most common questions in the Slack channels right now is </p>
+<pre>
+  "How do I do parent/child communication in Elm 0.17"
+</pre>
+
+<p>At the heart of it all is <a href="http://guide.elm-lang.org/architecture/index.html">The Elm Architecture</a> enouraging developers to write modules that look like this</p>
+<pre><code class="language-haskell">    <span class="import"><span class="keyword">import</span> Html exposing <span class="container">(..)</span></span>
+
+    <span class="typedef"><span class="keyword">type</span> alias <span class="type">Model</span> = <span class="container">{ ... }</span></span>
+    <span class="typedef"><span class="keyword">type</span> <span class="type">Msg</span> = <span class="type">Reset</span> | ...</span>
+
+    update : <span class="type">Msg</span> -&gt; <span class="type">Model</span> -&gt; ( <span class="type">Model</span>, <span class="type">Cmd</span> <span class="type">Msg</span> )
+    update msg model =
+      <span class="keyword">case</span> msg <span class="keyword">of</span>
+        <span class="type">Reset</span> -&gt; handleReset model
+
+    view : <span class="type">Model</span> -&gt; <span class="type">Html</span> <span class="type">Msg</span>
+    view model = someHtml model</code></pre>
+<p>This seems inherently sensible and you can nest components simply by storing their child models on the parent model, and calling into the child &#39;view&#39; and &#39;update&#39; functions with messages and that model that are entirely opaque to the parent.</p>
+<p>This is great, two things stand out here</p>
+<ul>
+<li>Unlike in React, control over the state you use is kept inside the component (updates/etc)</li>
+<li>How do you get useful events back up to the parent or send commands to the child when something changes?</li>
+</ul>
+<p>The first one is a bit weird because it means while you have a top level state object most of it is generally opaque to the code at the top level. A component will create its initial state, send messages to itself to update its state and then use that state to render. The &quot;parent&quot; then has boilerplate to route those messages. Components are therefore entirely standalone.</p>
+<p>We are currently rolling with the following concepts for our Elm apps.</p>
+<ul>
+<li><em>Routing</em>: Top level component, doesn&#39;t have any state other than current page and current model. Handles top level shared events (more on this coming up)</li>
+<li><em>Pages</em>: isolated components following the init/update/view/subscriptions pattern and doing all their own data loading/saving internally</li>
+<li><em>Children</em>: Mostly don&#39;t require their own models, just dumb rendering functions, no init/update/etc. Raise events from attributes passed in in &#39;view&#39;</li>
+</ul>
+<p>There are some exceptions to Children, but mostly events come from the DOM and we can just wire them up pretty much directly without any need for intermediate models. You don&#39;t tend to need much more nesting than this. I&#39;m a bit concerned that the Html module seems to load its source of truth from the dom instead of relying on the model passed in but <em>shrug</em>.</p>
+<p>What this effectively means is that each Page holds the &quot;Single Source of Truth&quot; and simply renders a tree based on that source of truth, wires up events from that tree into messages within the page, handles those messages, updates the single source of truth and the cycle goes on. </p>
+<pre><code class="language-haskell">    update : <span class="type">Msg</span> -&gt; <span class="type">Model</span> -&gt; ( <span class="type">Model</span>, <span class="type">Cmd</span> <span class="type">Msg</span> )
+    update msg model = 
+        <span class="keyword">case</span> msg <span class="keyword">of</span> 
+          <span class="type">MyClickMessage</span> -&gt; ( model, loadSomethingCool )
+
+    view : <span class="type">Model</span> -&gt; <span class="type">Html</span>.<span class="type">Msg</span>
+    view model -&gt;
+       <span class="type">MyButton</span>.default [ onClick <span class="type">MyClickMessage</span> ] <span class="string">"Click me!"</span></code></pre>
+<p>There are some things that need to be handled globally however, changes to navigation, displaying generic error messages/feedback, dialog management (okay, not dialog management, don&#39;t use dialogs please), global data management (which user are we?) and sometimes we need to </p>
+<ul>
+<li>Tell a Page that something has changed while it wasn&#39;t looking</li>
+<li>Tell the Router that we want something to happen</li>
+</ul>
+<p>There have been (in the last few days) a couple of posts written on this subject</p>
+<ul>
+<li><a href="http://folkertdev.nl/blog/elm-child-parent-communication">Child/Parent Communication in Elm</a></li>
+<li><a href="https://medium.com/@alex.lew/f4bfaa1d3f98#.otdxecxl8">The Translator Pattern</a></li>
+</ul>
+<p>Our current preferred method for getting messages to the Router is detailed in the first post and looks a bit like this</p>
+<p><em>Update method in Page</em></p>
+<pre><code class="language-haskell">  update : <span class="type">Msg</span> -&gt; <span class="type">Model</span> -&gt; ( <span class="type">Model</span>, <span class="type">Cmd</span> <span class="type">Msg</span>, <span class="type">Cmd</span> <span class="type">Common</span>.<span class="type">Event</span> )
+  update msg model =
+      <span class="keyword">case</span> msg <span class="keyword">of</span>
+          <span class="type">FetchFail</span> err -&gt;
+              handleError err model
+
+          <span class="type">Tick</span> -&gt;
+              ( model, <span class="type">Cmd</span>.none, <span class="type">Cmd</span>.none )
+
+          <span class="type">ReloadSomeState</span> -&gt;
+              ( model, updateSomeState, <span class="type">Cmd</span>.none )
+
+          <span class="type">VisitResource</span> id -&gt;
+              changeRoute (<span class="type">ResourcePageRoute</span> id) model
+
+          <span class="type">FetchSomeStateSucceed</span> state -&gt;
+              ( { model | <span class="type">SomeState</span> = <span class="type">Just</span> state }, <span class="type">Cmd</span>.none, <span class="type">Cmd</span>.none )
+</code></pre>
+<p>See the tuple? Pages return a triplet where the third item can be something from Common.Event. Common also exports ways of making those events to keep life easy for us in our Pages.</p>
+<pre><code class="language-haskell">
+    changeRoute : <span class="type">Route</span> -&gt; model -&gt; ( model, <span class="type">Cmd</span> msg, <span class="type">Cmd</span> <span class="type">Event</span> )
+    changeRoute route model =
+        ( model, <span class="type">Cmd</span>.none, event (<span class="type">RouteChanged</span> route) )
+</code></pre>
+<p>I wouldn&#39;t try and force this any further down than the Page level, most Components below this can get away with just using [ onEvent SomeMsg ] and we don&#39;t want too much child-&gt;parent communication anyway, it&#39;s usually indicative that we&#39;re trying to keep state in the wrong place.</p>
+<p>Our current preferred method for getting messages from the Router to the Child (this is very rare) is simply to export a method from the child component which knows what sort of message to return.</p>
+<pre><code class="language-haskell">    <span class="module"><span class="keyword">module</span> Child exposing <span class="container">(<span class="type">Msg</span>, <span class="type">Model</span>, <span class="title">doSomethingInteresting</span>)</span> 
+
+    doSomethingInteresting : SomeArgumentType -&gt; Model -&gt; <span class="container">( <span class="type">Model</span>, <span class="type">Cmd</span> <span class="type">Msg</span> )</span>
+    doSomethingInteresting arg model = <span class="container">( <span class="title">model</span>, <span class="title">kickTaskOffFor</span> <span class="title">arg</span> )</span>
+</code></pre>
+<p>This can just be called in the &#39;update&#39; method of the parent.</p>
+<h1 id="the-ugly-bit-of-routing">The ugly bit of routing</h1>
+<p>Dynamic dispatch in a typed language is a pain and currently we have a lot of boilerplate around child components, it looks a bit like this in our &#39;update&#39; function in our Router, you can easily imagine our init/subscriptions/view methods.</p>
+<pre><code class="language-haskell">
+    bubble : (a -&gt; <span class="type">Msg</span>) -&gt; <span class="type">Cmd</span> a -&gt; <span class="type">Cmd</span> <span class="type">Common</span>.<span class="type">Event</span> -&gt; <span class="type">Cmd</span> <span class="type">Msg</span>
+    bubble lifter cmd ev =
+        <span class="type">Cmd</span>.batch
+            [ <span class="type">Cmd</span>.map lifter cmd
+            , <span class="type">Cmd</span>.map <span class="type">Event</span> ev
+            ]
+
+    update : <span class="type">Msg</span> -&gt; <span class="type">Model</span> -&gt; ( <span class="type">Model</span>, <span class="type">Cmd</span> <span class="type">Msg</span> )
+    update msg model =
+        <span class="keyword">case</span> msg <span class="keyword">of</span>
+            <span class="type">HomePageMsg</span> act -&gt;
+                <span class="keyword">let</span>
+                    ( newPage, cmd, ev ) =
+                        <span class="type">HomePage</span>.update act model.homePage
+                <span class="keyword">in</span>
+                    ( { model | homePage = newPage }, bubble <span class="type">HomePageMsg</span> cmd ev )
+
+            <span class="type">ResourcePageMsg</span> act -&gt;
+                <span class="keyword">let</span>
+                    ( newPage, cmd, ev ) =
+                        <span class="type">ResourcePage</span>.update act model.resourcePage
+                <span class="keyword">in</span>
+                    ( { model | resourcePage = newPage }, bubble <span class="type">ResourcePageMsg</span> cmd ev )
+
+            <span class="type">Event</span> ev -&gt;
+                <span class="keyword">case</span> ev <span class="keyword">of</span>
+                    <span class="type">Common</span>.<span class="type">RouteChanged</span> newRoute -&gt;
+                        ( model, newUrl (toHash newRoute) )
+
+                    <span class="type">Common</span>.<span class="type">HttpError</span> err -&gt;
+                        <span class="type">Debug</span>.log (toString err) ( model, <span class="type">Cmd</span>.none )
+</code></pre>
+<p>That&#39;s a whopping case clause for each child component. It&#39;s avoidable if they all share the same model and you can do tricks by lifting the model into a parametric type but you still need to write a clause for each child because you can&#39;t have a heterogenous list of &#39;routes&#39; to dispatch from.</p>
+<p>I haven&#39;t seen a tidy way of doing this yet, an example of lifting the child models into a parametric type can be found in the <a href="https://github.com/debois/elm-parts">elm-parts</a> repo, but it&#39;s a bit invasive while not adding all that much (it&#39;s a good start though).</p>
+<p>I think if records had &#39;setter&#39; functions then most of these functions for update/init/view/etc could be generated on start-up by calling a builder repeatedly with each route, something worth musing on but not seen in the wild yet.</p>
+<p>Honestly I think Elm needs some metaprogramming up in its face, Haskell templating or something similar.  There are arguments against it along the lines of it &quot;It&#39;s complicated and it will scare people off&quot; but currently I think the boilerplate is a growing issue of annoyance with no good solution as of yet.</p>
+<h1 id="some-modules">Some modules</h1>
+<p>We&#39;re using <a href="https://github.com/elm-lang/navigation">elm navigation</a> and <a href="https://github.com/evancz/url-parser">evancz UrlParser</a> to do our routing and that&#39;s all fairly simple, just onerous as far as updates go. </p>
+<p>Nuff said, I don&#39;t have opinions beyond &quot;this is going to get a bit clunky when our web-app has a few dozen routes. There is an argument that we should just do this on the server and go all progressive-enhancement on our app - no thanks, we&#39;re using Erlang for most of our apps and it&#39;s not a path we want to tread.</p>
+]]></description><link>http://codeofrob.com/entries/a-few-notes-on-elm-0.17---composing-applications.html</link><guid isPermaLink="true">http://codeofrob.com/entries/a-few-notes-on-elm-0.17---composing-applications.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 05 Jul 2016 09:30:00 GMT</pubDate></item><item><title><![CDATA[A few notes on Elm 0.17 - The Language]]></title><description><![CDATA[<p>Continuing on then</p>
 <ul>
 <li><a href="/entries/a-few-notes-on-elm-0.17---intro.html">A few notes - Intro</a></li>
 <li>A few notes - The Language</li>
 </ul>
 <h1 id="so-it-s-haskell-">So it&#39;s Haskell?</h1>
 <p>Not really, there are a lot of things in common with Haskell but on closer inspection they are typically same-same-but-different.</p>
-<pre><code class="lang-haskell">    <span class="comment">-- Haskell</span>
+<pre><code class="language-haskell">    <span class="comment">-- Haskell</span>
     doSomething :: <span class="type">Foo</span> -&gt; <span class="type">Bar</span>
 
     <span class="comment">-- Elm</span>
-    doSomething : <span class="type">Foo</span> -&gt; <span class="type">Bar</span>
-</code></pre>
+    doSomething : <span class="type">Foo</span> -&gt; <span class="type">Bar</span></code></pre>
 <p>or</p>
-<pre><code class="lang-haskell">    <span class="comment">-- Haskell</span>
+<pre><code class="language-haskell">    <span class="comment">-- Haskell</span>
     doSomething x y = x $ somethingElse y
 
     <span class="comment">-- Elm</span>
-    doSomething x y = x &lt;| somethingElse y
-</code></pre>
+    doSomething x y = x &lt;| somethingElse y</code></pre>
 <p>I don&#39;t really care about any of these differences, as they are largely arbitrary syntax/naming decisions - although I do feel as though maintaining more of a similarity with Haskell seeing as these choices <em>are</em> arbitrary would make it easier to port code or read documentation across the two.  (The Elm compiler is hosted in Haskell after all anyway...)</p>
 <p>The lack of typeclasses has lead to things like this though</p>
-<pre><code class="lang-haskell">
+<pre><code class="language-haskell">
 
     <span class="comment">-- Haskell</span>
     andFinally &lt;$&gt; somethingElse &lt;$&gt; something
 
     <span class="comment">-- Elm</span>
     <span class="type">Maybe</span>.andThen (<span class="type">Maybe</span>.andThen something somethingElse) andFinally
+
 </code></pre>
 <p>Not to mention the functions that List has that String doesn&#39;t (I don&#39;t care if String is a list or not, a lot of the same operations do apply and having to look up functions for &#39;String&#39; or &#39;List&#39; instead of just functions that apply against monoids - bleh.</p>
 <p>Agh.</p>
@@ -36,7 +186,7 @@
 <p>This is a sensible design decision on the surface, as users who are new to functional programming aren&#39;t overwhelmed by concepts but I can&#39;t help but feel that the data-oriented patterns in Elm couldn&#39;t be exposed in Haskell itself without surfacing those &quot;tricky&quot; concepts whilst keeping them available (there&#39;s a weekend project then). </p>
 <p>Moving on, by placing focus on ADTs and records and inferring expected structure from usage the error messages can be a bit perplexing to start off with, despite them being very well written.</p>
 <p>Consider this function for example</p>
-<pre><code class="lang-haskell">    <span class="typedef"><span class="keyword">type</span> alias <span class="type">Model</span> = <span class="container">{
+<pre><code class="language-haskell">    <span class="typedef"><span class="keyword">type</span> alias <span class="type">Model</span> = <span class="container">{
       <span class="title">realField</span> : <span class="type">String</span>
     }</span></span>
 
@@ -66,7 +216,7 @@
 <p>I&#39;m not the only one who got confused initially by this and with more complicated structures and nested code the errors being dumped out can be pretty daunting. It&#39;s something you get the hang of though and the descriptive nature of the error messages make them look a lot more excessive than they really are.</p>
 <h1 id="functional-records">Functional Records</h1>
 <p><a href="http://lexi-lambda.github.io/blog/2015/11/06/functionally-updating-record-types-in-elm/">This has been covered before</a>, but records have &#39;getters&#39; generated for them so we can do things like this</p>
-<pre><code class="lang-haskell">    <span class="typedef"><span class="keyword">type</span> alias <span class="type">Model</span> = <span class="container">{ 
+<pre><code class="language-haskell">    <span class="typedef"><span class="keyword">type</span> alias <span class="type">Model</span> = <span class="container">{ 
           <span class="title">realField</span> : <span class="type">String</span>
         }</span></span>
 
@@ -162,34 +312,34 @@
 <p>Assuming you already have a job (if you don&#39;t then you&#39;re on your own, they do exist though) you probably want to find coffee shops and co-working spaces to hang in.</p>
 <p>Let&#39;s start with coffee shops/etc.
 -</p>
-<p><em><a href="http://labespr.tumblr.com/">Laboratorio Espresso</a></em></p>
+<p>*<a href="http://labespr.tumblr.com/">Laboratorio Espresso</a>*</p>
 <p>Probably some of the best coffee in Glasgow, it isn&#39;t a large establishment but most of their custom comes from takeaway so nobody is going to worry if you&#39;re sat there with a laptop for an hour or two (especially if you share a table with somebody else). I usually perch on the bar so I can natter to the baristas/customers as they come by and can do this for an hour or two. No power but there is wifi.</p>
 <p>Best: In the early morning when you still have battery left on the laptop.</p>
-<p><em><a href="http://avenue.coffee/location/great-western-road/">Avenue GWR</a></em></p>
+<p>*<a href="http://avenue.coffee/location/great-western-road/">Avenue GWR</a>*</p>
 <p>A great place to work, plenty of space although they do get busy around lunchtime; I usually perch on the bar (this is a trend I know) but there are ample tables to set up shop on too and most people do just that.</p>
 <p>Best: Either side of lunch is good, not lunch though</p>
-<p><em><a href="http://www.spitfireespresso.com/">Spitfire Espresso</a></em></p>
+<p>*<a href="http://www.spitfireespresso.com/">Spitfire Espresso</a>*</p>
 <p>Amazing breakfasts, fun sound track (you&#39;ll get bored of it after a while though), wifi and lots of seating and tables and power. This is a good place to recharge for an hour with a bite to eat while you get some work done.</p>
 <p>Best: Either at breakfast time or anytime in the afternoon; the lunchtime rush is strong here so don&#39;t be taking up those tables if you&#39;re not eating lunch.</p>
-<p><em><a href="http://allthatissolid.co.uk/">All that is Coffee</a></em></p>
+<p>*<a href="http://allthatissolid.co.uk/">All that is Coffee</a>*</p>
 <p>Bright and airy artspace with a coffee shop on the ground floor. I usually tether to my phone for internet and I don&#39;t think there is power down here but there is a lot of space and it&#39;s a good place to hit up for a couple of hours when you&#39;re with other people because of the ample seating.</p>
-<p>Across the road is <em><a href="http://www.monocafebar.com/">Mono</a></em>, a vegan restaurant/record shop where you can usually get a bit of work done with a beer or two for very little money but when it&#39;s busy it&#39;s very busy indeed and it&#39;s always worth bearing that in mind.</p>
-<p><em><a href="http://www.stereocafebar.com/">Stereo</a></em></p>
+<p>Across the road is *<a href="http://www.monocafebar.com/">Mono</a>*, a vegan restaurant/record shop where you can usually get a bit of work done with a beer or two for very little money but when it&#39;s busy it&#39;s very busy indeed and it&#39;s always worth bearing that in mind.</p>
+<p>*<a href="http://www.stereocafebar.com/">Stereo</a>*</p>
 <p>Vegetarian bar near central station - banging tunes and food and nobody minds you sitting there in the afternoon plugging away at work with a plate of nachos and a beer to hand (or diet coke, whatever floats your boat). </p>
-<p><em><a href="http://theoldhairdressers.com/">The Old Hairdressers</a></em></p>
+<p>*<a href="http://theoldhairdressers.com/">The Old Hairdressers</a>*</p>
 <p>Across the road from Stereo, often a good place to head if Stereo is too busy.</p>
-<p><em><a href="http://www.stravaigin.co.uk/">Stravaigin</a></em></p>
+<p>*<a href="http://www.stravaigin.co.uk/">Stravaigin</a>*</p>
 <p>This is a restaurant with two floors, the ground floor is a less formal bar area and you can happily sit here with a glass of wine and a laptop and not get bothered for a couple of hours. Again lunchtime is busy and you know the drill - the lunch is great though so perhaps an hour of work before lunch and an hour or two after lunch and you&#39;re golden.</p>
-<p><em><a href="http://www.alstonglasgow.co.uk/">Alston Bar &amp; Beef</a></em></p>
+<p>*<a href="http://www.alstonglasgow.co.uk/">Alston Bar &amp; Beef</a>*</p>
 <p>It&#39;s a gin bar underneath Glasgow Central that has power and wifi and gin - you&#39;ll find me here towards the end of a day working in town when I need to recharge both mentally and electrically.</p>
 <p>Co-working spaces
 -</p>
 <p>There are a few that I know of and they&#39;re fairly decent..</p>
-<p><em><a href="http://www.thewhiskybond.co.uk/">The Whisky Bond</a></em></p>
+<p>*<a href="http://www.thewhiskybond.co.uk/">The Whisky Bond</a>*</p>
 <p>£200 a month for a fixed desk, £20 day rate, fast wifi etc. This is a place that advertised heavily and is pretty commercial. It&#39;s in &quot;the north&quot;, but is actually only 10 minutes from Cowcaddens Subway so isn&#39;t so bad to get to. There is little nearby but thankfully there is a cafe in the building and while their coffee isn&#39;t to my taste they do some great sandwiches. Convenient.</p>
-<p><em><a href="https://rookieoven.com">Rookie Oven</a></em></p>
+<p>*<a href="https://rookieoven.com">Rookie Oven</a>*</p>
 <p>Younger and fresher and at a cool location at the Fairfield Shipyard Offices just south of the river, this is also 10 minutes walk from a Subway station (Govan) and again there isn&#39;t that much around here. It&#39;s cheaper than the Whisky Bond (£175 monthly fixed desk) and for better or for worse they advertise as having a Sonos playing the very best 80s tunes but hey - did I mention it&#39;s at the Fairfield Shipyard Offices? They have a museum to visit! This is where the Glasgow Elixir/Erlang meet-up takes place so it&#39;s not a bad place to be.</p>
-<p><em><a href="http://thinktankglasgow.com">Thinktank</a></em></p>
+<p>*<a href="http://thinktankglasgow.com">Thinktank</a>*</p>
 <p>Super professional city-centre co-working at £300 a desk. This is quieter and more serious than Rookie Oven and comes with free tea/coffee. Advantage of being in the centre is there are no shortage of lunch spots nearby and all the amenities (post offices/etc) are there so those little things can get done that need doing during the day.</p>
 <p>What Rob Does
 -</p>
@@ -198,47 +348,47 @@
 <h1 id="the-basics-coffee-and-brunch-">The basics (Coffee and Brunch)</h1>
 <p>I get it, you&#39;re coming from London where you have a gazillion options for brunching around and coming to Glasgow can be a bit of a culture shock on that front. Nowhere serves booze before 11am/12pm and  that 9am bloody mary just ain&#39;t gonna happen.</p>
 <p>That said there are some great options for some really good breakfasts with coffee at the start of the day and your liver will thank you for not killing it with the London drinking culture. Some of these were covered above for &#39;working spaces&#39; but I&#39;ll cover them again with more detail here.</p>
-<p><em><a href="http://papercupcoffeecompany.bigcartel.com/where">Papercup GWR</a></em></p>
+<p>*<a href="http://papercupcoffeecompany.bigcartel.com/where">Papercup GWR</a>*</p>
 <p>Tiny shop, small menu but AMAZING EATS. This is my favourite breakfast in Glasgow and I love coming here. Some of the filter coffee is <em>great</em> - get here early if you don&#39;t want an awkward wait for a table. No booze.</p>
-<p><em><a href="http://papercupcoffeecompany.bigcartel.com/where">Papercup High Street</a></em></p>
+<p>*<a href="http://papercupcoffeecompany.bigcartel.com/where">Papercup High Street</a>*</p>
 <p>Bigger version of the above with a slightly different menu and a different coffee set-up. I&#39;ve not had the espresso here yet as they only opened recently but they&#39;re rocking an EK43 so it&#39;s probably quite good. No booze.</p>
-<p><em><a href="http://avenue.coffee/location/byres-road/">Avenue Byres Road</a></em></p>
+<p>*<a href="http://avenue.coffee/location/byres-road/">Avenue Byres Road</a>*</p>
 <p>Weekends will see you a good fry up here alongside some pretty decent coffee, gerronit. No Booze.</p>
-<p><em><a href="http://www.riverhillcafe.com/west-nile.htm">Riverhill West Nile Street</a></em></p>
+<p>*<a href="http://www.riverhillcafe.com/west-nile.htm">Riverhill West Nile Street</a>*</p>
 <p>Brunchy lunchy, they do a bone marrow bloody mary and some damned good breakfasts to boot. Coffee is from the local roastery Dear Green and while the espresso isn&#39;t usually to my tastes you can order a flat white and be happy with what you get. But you&#39;re here for the bloody mary anyway aren&#39;t you?</p>
-<p><em><a href="http://www.spitfireespresso.com/">Spitfire Espresso</a></em></p>
+<p>*<a href="http://www.spitfireespresso.com/">Spitfire Espresso</a>*</p>
 <p>Eggs and eggs and fry ups and eggs, this is the stuff of dreams when you just need some stodge to get over that hangover. Espresso is a very safe medium roast and I prefer it in milk. OH GOD THOSE FRY UPS. No Booze.</p>
-<p><em><a href="http://www.hutchesonsglasgow.com">Hutchesons Glasgow</a></em></p>
+<p>*<a href="http://www.hutchesonsglasgow.com">Hutchesons Glasgow</a>*</p>
 <p>Posh breakfast or brunch - the latter comes with bubbles and this is definitely a place to head to when you want something a bit more special.</p>
-<p><em><a href="http://13thnote.co.uk/">Thirteenth Note</a></em></p>
+<p>*<a href="http://13thnote.co.uk/">Thirteenth Note</a>*</p>
 <p>Vegetarian breakfast :) Booze once the law allows it..</p>
-<p><em><a href="http://www.cafegandolfi.com/">Cafe Gandolfi</a></em></p>
+<p>*<a href="http://www.cafegandolfi.com/">Cafe Gandolfi</a>*</p>
 <p>I&#39;ve been here for a dinner date and it was reeet good. Holy crap though if the breakfast doesn&#39;t completely blow the socks off the East End; huge variety including vegetarian options and I assume given they have a license that at some point towards lunchtime the booze will start flowing.</p>
 <h1 id="date-night-eating-boozing">Date night - Eating/Boozing</h1>
 <p>Okay most of these are in the West End, like I said above that&#39;s just where this stuff is clustered. Some of these places are owned by larger companies or by the same people - you can look this up yourself if you&#39;re bothered. The G1 group own a lot of things in Glasgow and we try to avoid anything they have their grubby mitts on.</p>
-<p><em><a href="http://www.oxandfinch.com">Ox and Finch</a></em></p>
+<p>*<a href="http://www.oxandfinch.com">Ox and Finch</a>*</p>
 <p>Some of the best foods; classic western stuff with an occasional twist. Large vegetarian menu as well as a non-patronising children&#39;s menu make this a pretty great place to bring an inclusive party.</p>
-<p><em><a href="http://www.thefinniestonbar.com/">The Finnieston</a></em></p>
+<p>*<a href="http://www.thefinniestonbar.com/">The Finnieston</a>*</p>
 <p>Seafood focused restaurant with a fairly decent cocktail bar which you can go to even if you&#39;re not dining (and a lot of people do!). It gets crowded in the evenings but don&#39;t let that put you off ordering a couple of good drinks to stand around and natter with.</p>
-<p><em><a href="http://www.porterandrye.com/">Porter &amp; Rye</a></em></p>
+<p>*<a href="http://www.porterandrye.com/">Porter &amp; Rye</a>*</p>
 <p>Sometimes the steak here is better than some of the best I&#39;ve had from Hawksmoor, it&#39;s all dry-aged in-house and they do some stonking rye-based cocktails (as well as other classics). I love this place and I love their menu and I often treat myself to a solo-dinner here when I&#39;m feeling blue.</p>
-<p><em><a href="http://www.kelvingrovecafe.com/">Kelvingrove Cafe</a></em></p>
+<p>*<a href="http://www.kelvingrovecafe.com/">Kelvingrove Cafe</a>*</p>
 <p>Probably the best cocktails in Glasgow, nice long bar to sit on if you&#39;re by yourself. Best off reserving a table if you&#39;re coming with a party - they do food too.</p>
-<p><em><a href="http://www.alstonglasgow.co.uk/">Alston Bar &amp; Beef</a></em></p>
+<p>*<a href="http://www.alstonglasgow.co.uk/">Alston Bar &amp; Beef</a>*</p>
 <p>Second best steak in Glasgow and SO MUCH GIN TO CHOOSE FROM. A few barrel aged cocktails too, definitely a great place to come if you&#39;re in the area.</p>
-<p><em><a href="http://www.stravaigin.co.uk/">Stravaigin</a></em></p>
+<p>*<a href="http://www.stravaigin.co.uk/">Stravaigin</a>*</p>
 <p>Posh food downstairs in the basement, more rustic food upstairs and it&#39;s all great and all local. I&#39;d say it has an Indian/Asian theme going for it as most of the good stuff is curry-based but it&#39;s hard to pin it down as the ingredients are locally sourced and black pudding and haggis aren&#39;t exactly asian fare...</p>
 <h1 id="some-other-cool-stuff">Some other cool stuff</h1>
-<p><em><a href="http://www.bakery47.com/">Bakery47</a></em></p>
+<p>*<a href="http://www.bakery47.com/">Bakery47</a>*</p>
 <p>Mostly baking for catering, the owners Sam and Anna open some days of the week (and usually post a picture of their opening hours on Instagram each week). </p>
 <p>Usually they&#39;ll open shop on Sunday morning at 9am with a rotating guest barista (All Started Here/Back to Black/Fun in a cup/Dear Green) serving coffee and stay open until they&#39;re sold out; a process that usually takes about three hours.</p>
 <p>Get there at 9am for the best croissants you&#39;re going to get probably in the UK, and grab a loaf of bread to take home for the week ahead. Weep because it&#39;s going to be another week until you get to come here again.</p>
-<p><em><a href="http://www.ranjitskitchen.com">Ranjit&#39;s Kitchen</a></em></p>
+<p>*<a href="http://www.ranjitskitchen.com">Ranjit&#39;s Kitchen</a>*</p>
 <p>Homemade punjabi food, super busy, super affordable, south of the river. I don&#39;t need to say anything else about this.</p>
 <h1 id="getting-around">Getting around</h1>
-<p>The <em><a href="http://www.spt.co.uk/subway/">Subway</a></em> will do 90% of the job for you, it runs in a circle through most of the neighbourhoods that you&#39;ll need access to on a day to day basis and is affordable as it&#39;s a flat day rate (£3.4 at time of writing) once you&#39;ve used it twice in one day.</p>
+<p>The *<a href="http://www.spt.co.uk/subway/">Subway</a>* will do 90% of the job for you, it runs in a circle through most of the neighbourhoods that you&#39;ll need access to on a day to day basis and is affordable as it&#39;s a flat day rate (£3.4 at time of writing) once you&#39;ve used it twice in one day.</p>
 <p>That said, it&#39;s not open on Sunday mornings or evenings, public holidays tend to be an issue as well and if you want to get somewhere it doesn&#39;t go you&#39;ll need to find other options.</p>
-<p><em><a href="http://www.nextbike.co.uk/en/glasgow/">Nextbike</a></em> is our equivalent to the Boris Bike - they&#39;re lighter and more balanced, cheaper and you can download an app to your phone that lets you pay by the bike (you can press the right buttons on your walk to the bike stand and know which bike is yours before you even get there). There is an annual rate available if this is something you&#39;re going to use a lot. This is how I get to the Bakery on Sunday mornings.</p>
+<p>*<a href="http://www.nextbike.co.uk/en/glasgow/">Nextbike</a>* is our equivalent to the Boris Bike - they&#39;re lighter and more balanced, cheaper and you can download an app to your phone that lets you pay by the bike (you can press the right buttons on your walk to the bike stand and know which bike is yours before you even get there). There is an annual rate available if this is something you&#39;re going to use a lot. This is how I get to the Bakery on Sunday mornings.</p>
 <p><em>The buses</em> are frustration incarnate, exact change required, ran by various different companies and who even knows how much it&#39;s going to cost in advance without being the kind of person who looks that up and counts out the right money in advance. One day they&#39;ll upgrade to contactless payment but until then I&#39;m going to cary on relying on the bikes and subway.</p>
 <p><em>Taxi</em>s are cheap and plentiful from the town centre, but I mostly only use them once it gets late and I can&#39;t be bothered walking home. It&#39;s cheaper if you call private hire</p>
 <p>You only need a <em>car</em> if you&#39;re going to be doing your large weekly shop at one of the large out of town supermarkets or wanting to do tourism outside of Glasgow without relying on public transport.</p>
@@ -251,23 +401,27 @@
 <h1 id="getting-out-of-glasgow">Getting out of Glasgow</h1>
 <p>One of the greatest things until last then; </p>
 <h2 id="this-is-what-awaits-you-a-mere-30-minute-train-ride-out-of-glasgow">This is what awaits you a mere 30 minute train ride out of Glasgow</h2>
-<p><img src="/img/lomond.jpg" width="400px" /></p>
+<img src="/img/lomond.jpg" width="400px" />
+
 <h2 id="this-is-what-awaits-you-30-minutes-train-30-minutes-boat-out-of-glasgow">This is what awaits you 30 minutes train + 30 minutes boat out of Glasgow</h2>
-<p><img src="/img/arran.jpg" width="400px" /></p>
+<img src="/img/arran.jpg" width="400px" />
+
 <h2 id="this-is-what-awaits-you-in-autumn">This is what awaits you in Autumn</h2>
-<p><img src="/img/autumn.jpg" width="400px" /></p>
+<img src="/img/autumn.jpg" width="400px" />
+
 <h2 id="and-over-in-edinburgh">And over in Edinburgh</h2>
-<p><img src="/img/edinburgh.jpg" width="400px" /></p>
+<img src="/img/edinburgh.jpg" width="400px" />
+
 <h1 id="summary">Summary</h1>
 <p>Sod England, it&#39;s all down hill from here; come and make Scotland great again, it&#39;s a cheaper place to do business, full of really great people and amazing ways to relax the brain (whisky!). It&#39;s going to take a lot less effort to make this the kind of open and liberal place we want to live in because we&#39;re already 90% of the way there; let&#39;s do this together.</p>
 <p>I&#39;ll make you some coffee at Cafe Ashton once you&#39;re in town. It&#39;s a promise.</p>
 ]]></description><link>http://codeofrob.com/entries/a-londoners-guide-to-emigrating-to-glasgow.html</link><guid isPermaLink="true">http://codeofrob.com/entries/a-londoners-guide-to-emigrating-to-glasgow.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 27 Jun 2016 09:30:00 GMT</pubDate></item><item><title><![CDATA[Why you can't be a good .NET developer]]></title><description><![CDATA[<p>I was on Twitter today and I saw this tweet by <a href="https://twitter.com/ICooper/">Ian Cooper</a></p>
-<p><blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr"><a href="https://twitter.com/jbogard">@jbogard</a> Agreed, it&#39;s crazy. The self-loathing mystifies me. All web C# use multiple languages (SQL and JS?) <a href="https://twitter.com/Adron">@Adron</a> <a href="https://twitter.com/aliostad">@aliostad</a> <a href="https://twitter.com/randompunter">@randompunter</a></p>&mdash; Ian Cooper (@ICooper) <a href="https://twitter.com/ICooper/status/742758275133890560">June 14, 2016</a></blockquote></p>
+<blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr"><a href="https://twitter.com/jbogard">@jbogard</a> Agreed, it&#39;s crazy. The self-loathing mystifies me. All web C# use multiple languages (SQL and JS?) <a href="https://twitter.com/Adron">@Adron</a> <a href="https://twitter.com/aliostad">@aliostad</a> <a href="https://twitter.com/randompunter">@randompunter</a></p>&mdash; Ian Cooper (@ICooper) <a href="https://twitter.com/ICooper/status/742758275133890560">June 14, 2016</a></blockquote>
 <script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
 
 <p>My first reaction was simply to laugh, because the idea of self-loathing .NET developers is a funny one, my second reaction was to say something pithy on Twitter and then I remembered I had a blog which <em>somehow</em> despite my best efforts is still running for some reason &quot;in the cloud&quot; and thought I&#39;d disagree here instead.</p>
 <h1 id="it-s-not-self-loathing">It&#39;s not self loathing</h1>
-<p><blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr"><a href="https://twitter.com/jbogard">@jbogard</a> The worst part of this is the old belief that I have to classify as an X developer and join or leave <a href="https://twitter.com/Adron">@Adron</a> <a href="https://twitter.com/aliostad">@aliostad</a> <a href="https://twitter.com/randompunter">@randompunter</a></p>&mdash; Ian Cooper (@ICooper) <a href="https://twitter.com/ICooper/status/742756504642674688">June 14, 2016</a></blockquote></p>
+<blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr"><a href="https://twitter.com/jbogard">@jbogard</a> The worst part of this is the old belief that I have to classify as an X developer and join or leave <a href="https://twitter.com/Adron">@Adron</a> <a href="https://twitter.com/aliostad">@aliostad</a> <a href="https://twitter.com/randompunter">@randompunter</a></p>&mdash; Ian Cooper (@ICooper) <a href="https://twitter.com/ICooper/status/742756504642674688">June 14, 2016</a></blockquote>
 <script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
 
 <p>There is a reason this mentality exists and it isn&#39;t one of self loathing. The reason why people &quot;leave&quot; .NET is because <em>it is impossible to be a good .NET developer</em>. To work in a development shop with a team is to continually cater for the lowest common denominator of that team and the vast majority of software shops using .NET have a whole lot of lowest common denominator to choose their bad development decisions for.</p>
@@ -283,29 +437,25 @@
 src/<span class="variable">%.</span>app.src   -&gt;    ebin/<span class="variable">%.</span>app
 src/<span class="variable">%.</span>xrl       -&gt;    ebin/<span class="variable">%.</span>beam
 src/<span class="variable">%.</span>yrl       -&gt;    ebin/<span class="variable">%.</span>beam
-priv/mibs/<span class="variable">%.</span>bin -&gt;    mins/<span class="variable">%.</span>mib
-</code></pre><p>Etc.</p>
+priv/mibs/<span class="variable">%.</span>bin -&gt;    mins/<span class="variable">%.</span>mib</code></pre><p>Etc.</p>
 <p>If only there was a tool which allowed you to declaratively wildcard a bunch of inputs to a bunch of outputs and use timestamps to determine whether individual files needed re-compiling again. Hmmmmm.</p>
 <p>So yeah, this is our fork of <a href="http://github.com/id3as/erl-mk.git">erl-mk</a>, although in a few days this will be renamed to <a href="http://github.com/id3as/id3as.mk">id3as.mk</a> so check which link doesn&#39;t 404 and this will see you right.</p>
 <h1 id="conventions">Conventions</h1>
 <p>There is a standard structure to an Erlang project, and it looks like this</p>
-<pre><code class="lang-bash">    relx.config
+<pre><code class="language-bash">    relx.config
     src/%.erl
     src/%.app.src
     release-files/sys.config
     release-files/*.anything.<span class="keyword">else</span>
-    include/%.hrl
-</code></pre>
+    include/%.hrl</code></pre>
 <p>We can only get away with using a standard one-size-fits-all Makefile if you conform to some convention and given that there is already a convention to Erlang projects this is the one that we are using. Additionally you can also have</p>
-<pre><code class="lang-bash">    apps/&lt;app-name&gt;/&lt;the same as above&gt;
-</code></pre>
+<pre><code class="language-bash">    apps/&lt;app-name&gt;/&lt;the same as above&gt;</code></pre>
 <p>To have multiple apps in the same project, and</p>
-<pre><code class="lang-bash">    deps/&lt;dep-name&gt;/&lt;the same as above&gt;
-</code></pre>
+<pre><code class="language-bash">    deps/&lt;dep-name&gt;/&lt;the same as above&gt;</code></pre>
 <p>To rely on other Erlang projects and their source code - more on that in a little bit.</p>
 <h1 id="using-id3as-mk">Using id3as.mk</h1>
 <p>To configure and use id3as.mk, we use an entry point Makefile to set up some variables and download id3as.mk - this would usually be called &quot;Makefile&quot; or &quot;makefile&quot; and sit in the top level of the project (vir will generate this if you&#39;re using it).</p>
-<pre><code class="lang-cmake">    DEPS_DIR = $(addsuffix /deps, $(realpath .))
+<pre><code class="language-cmake">    DEPS_DIR = $(addsuffix /deps, $(realpath .))
     ERL_LIBS = $(DEPS_DIR):$(realpath apps)
 
     <span class="keyword">export</span> DEPS_DIR
@@ -324,8 +474,7 @@ priv/mibs/<span class="variable">%.</span>bin -&gt;    mins/<span class="variabl
     id3as.mk:
       @wget --no-cache -nv -O $@ 'https://raw.github.com/id3as/id3as.mk/master/id3as.mk' || rm -f $@
 
-    -<span class="keyword">include</span> id3as.mk
-</code></pre>
+    -<span class="keyword">include</span> id3as.mk</code></pre>
 <p>I&#39;m not a huge fan of using this for dependency downloads (I&#39;d prefer a bash script) but it&#39;s just a single operation at the start to download all dependencies to the DEPS_DIR and then build is just standard Make. You&#39;d still need to specify which dependencies you had because the Makefile uses this to build up a dependency tree and only build each dependency once (in the right order).</p>
 <p>Anyway, it&#39;s self explanatory - you&#39;ll see that in Erlang we haven&#39;t got a package manager (although some misguided but well meaning folk are trying to change that), and we just download source into a deps folder and build that ourselves. (No, they&#39;re not submodules, <em>ew</em>)</p>
 <p>For each dep, id3as.mk checks if there is a Makefile present (in which case it&#39;ll run that), checks if there is a rebar.config present (in which case it&#39;ll run rebar) and falls back to re-executing itself in the dep dir. For all the id3as.mk based dependencies it&#39;ll honour timestamps all the way down. Rebar is a little more dumb and once you&#39;re in the world of rebar it can be a little slow as it insists on recursing over deps multiple times during a single build (boo, hiss).</p>
@@ -356,25 +505,20 @@ priv/mibs/<span class="variable">%.</span>bin -&gt;    mins/<span class="variabl
 cd awesomeapp
 git init
 vir init -t web awesome
-git commit <span class="keyword">...</span>
-</code></pre><p>This creates an application called &quot;<em>awesome</em>&quot; (and builds it) based off the <em>web</em> and gives us a folder structure that looks similar to below:</p>
+git commit <span class="keyword">...</span></code></pre><p>This creates an application called &quot;<em>awesome</em>&quot; (and builds it) based off the <em>web</em> and gives us a folder structure that looks similar to below:</p>
 <p>As mentioned in a previous blog entry, this is at immediate glance a lot to digest, but we can go through it a little at a time and see just what has been created for us.</p>
 <p><strong>Config</strong></p>
 <pre><code><span class="title">apps</span>/awesome/release-files/sys.config
-<span class="title">apps</span>/awesome/src/awesome_config.erl
-</code></pre><p>sys.config is a standalone file containing various key-value pairs of config and awesome_config is a wrapper that provides an API to read that file. Not much to see here.</p>
+<span class="title">apps</span>/awesome/src/awesome_config.erl</code></pre><p>sys.config is a standalone file containing various key-value pairs of config and awesome_config is a wrapper that provides an API to read that file. Not much to see here.</p>
 <p><strong>Application startup</strong></p>
 <pre><code><span class="title">apps</span>/awesome/src/awesome_app.erl
-<span class="title">apps</span>/awesome/src/awesome_sup.erl
-</code></pre><p>An application requires something that implements the OTP Behaviour &quot;Application&quot; (<em>awesome_app.erl</em>), and if I want child processes within the structure I&#39;ll need a supervisor to manager them, that&#39;s (<em>awesome_sup.erl</em>).</p>
+<span class="title">apps</span>/awesome/src/awesome_sup.erl</code></pre><p>An application requires something that implements the OTP Behaviour &quot;Application&quot; (<em>awesome_app.erl</em>), and if I want child processes within the structure I&#39;ll need a supervisor to manager them, that&#39;s (<em>awesome_sup.erl</em>).</p>
 <p><strong>A web application</strong></p>
-<pre><code>apps/awesome/src/<span class="filename">awesome_cowboy.erl
-</code></pre><p>This is just a OTP genserver that uses Cowboy (one of our dependencies) to create a simple http listener.</p>
+<pre><code>apps/awesome/src/<span class="filename">awesome_cowboy.erl</code></pre><p>This is just a OTP genserver that uses Cowboy (one of our dependencies) to create a simple http listener.</p>
 <p><strong>Release artifacts</strong></p>
 <pre><code><span class="title">deployment</span>/build_no
 <span class="title">deployment</span>/major_ver
-<span class="title">deployment</span>/minor_ver
-</code></pre><p>This is a cheap way of bumping version for the application during a release cycle.</p>
+<span class="title">deployment</span>/minor_ver</code></pre><p>This is a cheap way of bumping version for the application during a release cycle.</p>
 <p><strong>Dependencies</strong></p>
 <pre><code><span class="title">deps</span>/cowboy/
 <span class="title">deps</span>/cowlib/
@@ -384,24 +528,19 @@ git commit <span class="keyword">...</span>
 <span class="title">deps</span>/gproc/
 <span class="title">deps</span>/jsx/
 <span class="title">deps</span>/lager/
-<span class="title">deps</span>/ranch/
-</code></pre><p>Lots of folders containing lots more of the above. They were cloned and brought in because the Makefile contains a list of dependencies.</p>
+<span class="title">deps</span>/ranch/</code></pre><p>Lots of folders containing lots more of the above. They were cloned and brought in because the Makefile contains a list of dependencies.</p>
 <p>In reality we&#39;re only explicitly bringing in <em>cowboy</em>, <em>gproc</em>, <em>jsx</em> and <em>lager</em> and the others are further dependencies of these. Because Erlang operates in a single global namespace you can&#39;t do explicit imports ala NodeJS and have multiple versions of things in the application.</p>
 <p>It doesn&#39;t matter too much anyway because dependency applications often spin up a fleet of processes on start-up rather than simply operating as library code, so you wouldn&#39;t want more than one version of an application running within a project.</p>
 <p><strong>Various Manifests</strong></p>
 <pre><code>apps/awesome/relx<span class="variable">.config</span>
-apps/awesome/src/awesome<span class="variable">.app</span><span class="variable">.src</span>
-</code></pre><p><em>relx.config</em> is a manifest specifying how to do a release with all the appropriate files, and <em>awesome.app.src</em> tells the boot system what state our application needs to be in before it can be started.</p>
+apps/awesome/src/awesome<span class="variable">.app</span><span class="variable">.src</span></code></pre><p><em>relx.config</em> is a manifest specifying how to do a release with all the appropriate files, and <em>awesome.app.src</em> tells the boot system what state our application needs to be in before it can be started.</p>
 <p><strong>A Makefile</strong></p>
-<pre><code><span class="attribute">Makefile
-</code></pre><p>Yup, we use make.</p>
+<pre><code><span class="attribute">Makefile</code></pre><p>Yup, we use make.</p>
 <h1 id="using-it">Using it</h1>
 <p>So how do we use this? Well the bash script we just ran probably did all this already but loosely our general dev cycle will be</p>
 <pre><code><span class="title">make</span> -j apps         <span class="comment">#  "make in parallel, the apps only, ignore the deps"</span>
-vir run awesome      <span class="comment">#  "vir, run the app please"</span>
-</code></pre><p>If we add new dependencies, then we&#39;ll need to run the following command after a build before running</p>
-<pre><code>vir boot             # <span class="keyword">Generate</span> bootscripts <span class="keyword">for</span> each application based <span class="keyword">on</span> the manifests
-</code></pre><p>So what do we have when it starts up? Well, let&#39;s look at the logs first</p>
+vir run awesome      <span class="comment">#  "vir, run the app please"</span></code></pre><p>If we add new dependencies, then we&#39;ll need to run the following command after a build before running</p>
+<pre><code>vir boot             # <span class="keyword">Generate</span> bootscripts <span class="keyword">for</span> each application based <span class="keyword">on</span> the manifests</code></pre><p>So what do we have when it starts up? Well, let&#39;s look at the logs first</p>
 <pre><code>Erlang/OTP <span class="number">17</span> [erts-<span class="number">6.1</span>] [source] [<span class="number">64</span>-bit] [smp:<span class="number">4</span>:<span class="number">4</span>] [async-threads:<span class="number">10</span>] [kernel-poll:<span class="constant">false</span>]
 
 <span class="number">13</span>:<span class="number">08</span>:<span class="number">49.978</span> [info] Application lager started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
@@ -413,8 +552,7 @@ vir run awesome      <span class="comment">#  "vir, run the app please"</span>
 <span class="number">13</span>:<span class="number">08</span>:<span class="number">49.998</span> [info] Application shared started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
 Mode dev <span class="keyword">not</span> found
 <span class="number">13</span>:<span class="number">08</span>:<span class="number">50.024</span> [info] Application awesome started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
-Eshell V6<span class="number">.1</span>  (abort <span class="keyword">with</span> ^G)
-</code></pre><p>Neato, we see all the applications specified in <em>awesome.app.src</em> started up. (Mode dev isn&#39;t found because we haven&#39;t got one and that&#39;s the default mode)</p>
+Eshell V6<span class="number">.1</span>  (abort <span class="keyword">with</span> ^G)</code></pre><p>Neato, we see all the applications specified in <em>awesome.app.src</em> started up. (Mode dev isn&#39;t found because we haven&#39;t got one and that&#39;s the default mode)</p>
 <p>This is awesome.app.src for reference.</p>
 <pre><code><span class="cell">{application, awesome,
  [
@@ -435,8 +573,7 @@ Eshell V6<span class="number">.1</span>  (abort <span class="keyword">with</span
    ]}</span>,
   <span class="cell">{mod, { awesome_app, []}</span>},
   <span class="cell">{env, []}</span>
-  ]}.
-</code></pre><p>See what I mean about dependencies not simply being a pile of code, that list of folders we have in deps contain actual applications that are started up before awesome_app itself.</p>
+  ]}.</code></pre><p>See what I mean about dependencies not simply being a pile of code, that list of folders we have in deps contain actual applications that are started up before awesome_app itself.</p>
 <p>Is it working?</p>
 <pre><code>curl http://localhost:3000/index.html
 <span class="tag">&lt;<span class="title">html</span>&gt;</span>
@@ -445,8 +582,7 @@ Eshell V6<span class="number">.1</span>  (abort <span class="keyword">with</span
   <span class="tag">&lt;<span class="title">body</span>&gt;</span>
     <span class="tag">&lt;<span class="title">h1</span>&gt;</span>Hello world<span class="tag">&lt;/<span class="title">h1</span>&gt;</span>
   <span class="tag">&lt;/<span class="title">body</span>&gt;</span>
-<span class="tag">&lt;/<span class="title">html</span>&gt;</span>
-</code></pre><p>Yup.</p>
+<span class="tag">&lt;/<span class="title">html</span>&gt;</span></code></pre><p>Yup.</p>
 <h1 id="next-up">Next up</h1>
 <p>I&#39;ll look at our Makefile and how we handle dependencies, and explain a bit more our decisions around that.</p>
 ]]></description><link>http://codeofrob.com/entries/erlang---getting-started-with-vir.html</link><guid isPermaLink="true">http://codeofrob.com/entries/erlang---getting-started-with-vir.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 19 Mar 2015 09:30:00 GMT</pubDate></item><item><title><![CDATA[Erlang - How we do it]]></title><description><![CDATA[<p>Having <a href="/entries/the-ashton-disinterest-curve---c.html">established</a> that I <a href="/entries/the-ashton-disinterest-curve---javascript-and-node.html">apparently</a> <a href="/entries/the-ashton-disinterest-curve---clojure.html">hate</a> <a href="/entries/the-ashton-disinterest-curve---erlang.html">everything</a>, let&#39;s get a bit more constructive and go over how at the company I work at, we do Erlang and do Erlang effectively.</p>
@@ -466,7 +602,7 @@ Eshell V6<span class="number">.1</span>  (abort <span class="keyword">with</span
 <p>Let&#39;s get something out of the way then, I&#39;m not an Erlang evangelist - I was even asked in a talk the other day what my three sentence elevator pitch for Erlang would be and I haven&#39;t got one. If you want to put in the effort to work in the Erlang ecosystem then the rewards will become apparent fast enough but trying to explain how exactly such an ugly language contributes positively in any way to our product quality/stability in a tidy soundbite just isn&#39;t something I&#39;m interested in doing.</p>
 <h1 id="erlang-is-ugly">Erlang is Ugly</h1>
 <p>Contrived bit of code I just wrote in the airport:</p>
-<pre><code class="lang-erlang">
+<pre><code class="language-erlang">
     -module(greeter).
 
     -export([hello/2]).
@@ -501,8 +637,7 @@ Eshell V6<span class="number">.1</span>  (abort <span class="keyword">with</span
 
     register_name(State = #state { targets = Targets }, Name, Cfg) -&gt;
       State#state { targets = [ { Name, Cfg } | Targets ] }.
-`
-</code></pre>
+`</code></pre>
 <p>Or whatever. This is all fairly standard code and certainly there is nothing unusual in here that you&#39;d not expect to see in any old module from around the place. This is probably about 5% of the syntax of Erlang and you can start to see why a lot of people start to pick up Erlang via the medium of &quot;Learn Erlang for Great Good&quot; or something similar and after a week of syntax lessons throw their arms in frustration and exclaim &quot;What on earth is the point?&quot; and either switch to Elixir or something even worse (okay it&#39;s relative) like NodeJs.</p>
 <p>No <em>real</em> type system, no polymorphism, hilariously inconsistent APIs for processing lists, queues, dictionaries (even within the list API itself it&#39;s not consistent with the argument orders etc), no real way of doing function composition or guaranteeing purity in functions (which means guard clauses can only use built-ins) and what you really have is a way of writing locally &quot;pure&quot; code across imperative operations on networks and filesystems.</p>
 <h1 id="erlang-has-moving-parts">Erlang has moving parts</h1>
@@ -531,8 +666,7 @@ Eshell V6<span class="number">.1</span>  (abort <span class="keyword">with</span
 <p>It doesn&#39;t just work, it excels. Once you&#39;ve fought and made peace with all of the above (and more) and you&#39;re using the bash scripts and makefiles that the rest of your company is using for automating the build/test/release process and you&#39;ve spent the time learning how all of it fits together then you can spend some time looking at supervision trees and process ownership and you realise that it&#39;s pretty hard to crash an Erlang application and leave anything open or dangling or in a weird state if you reasoned about your supervision structure at all.</p>
 <p>OTP is pure wonder (gen_server, supervisors, applications etc) and the libraries that ship wth Erlang using the process model and underlying abstractions are battle-tested, stable and well thought out.</p>
 <p>Consider that I can write the following code anywhere in any old gen server and if it fails (IE, write doesn&#39;t return &#39;ok&#39;, the entire process tree crashes and subject to the rules in the supervisor either will be restarted, kill siblings or parents or pass the error up automatically to the next supervision level and we&#39;ll have a log about all of this including the current state of the offending process and there won&#39;t be a dangling open handle to the file and a whole bunch of other useful &quot;none-artifacts&quot; that you&#39;d easily overlook if you hadn&#39;t put in the time to avoid them.</p>
-<pre><code><span class="setting">ok = <span class="value">file:write(Handle, Bytes).</span></span>
-</code></pre><p>Not having to dance around exceptional error cases in most file or networking scenarios and writing your code on top of these built-ins means you can spend more time writing the code you need to write for the feature itself (Okay admittedly if you&#39;ve gotten around the syntax issues). This philosophy and things like it hold true across the various libraries we use from across the ecosystem and mean we don&#39;t tend to get too many support calls at 2am because web servers have disappeared because something is locked, crashed, down permanently, corrupt or whatever.</p>
+<pre><code><span class="setting">ok = <span class="value">file:write(Handle, Bytes).</span></span></code></pre><p>Not having to dance around exceptional error cases in most file or networking scenarios and writing your code on top of these built-ins means you can spend more time writing the code you need to write for the feature itself (Okay admittedly if you&#39;ve gotten around the syntax issues). This philosophy and things like it hold true across the various libraries we use from across the ecosystem and mean we don&#39;t tend to get too many support calls at 2am because web servers have disappeared because something is locked, crashed, down permanently, corrupt or whatever.</p>
 <p>Easy inter process communication means it is easy to build self-contained little workers around little balls of state and not worry about concurrency (most of the time) because everything is safe if you&#39;re following the happy path. Generally it also means that shifting cpu heavy stuff around our stack is easy because we can always take one of these processes and spin it up somewhere else. I mentioned that in Clojure we ended up with Actors in core.async but without error handling or safe handle management and here is the answer neatly packaged for us in a platform that has been around and battle-tested for 10x as long. Neat.</p>
 <h1 id="but-what-about-elixir">But what about Elixir</h1>
 <p>If I mention Erlang, this is always the first thing that comes up and it sorta annoys me. I have a few issues with Elixir and they&#39;re not really to do with the language itself because y&#39;know, I couldn&#39;t care less about syntax in general but I do care about philosophy/focus. It&#39;s irrational but here goes:</p>
@@ -554,60 +688,4 @@ Eshell V6<span class="number">.1</span>  (abort <span class="keyword">with</span
 <p>Bonus: It&#39;s not being ran by Ruby script kiddies, so that&#39;s a Good Thing (tm).</p>
 <h1 id="state-on-the-disinterest-curve">State on the disinterest curve</h1>
 <p>Still not really that interested in Erlang, simply building things in it and enjoying it - this process is pretty mundane and perhaps that&#39;s what I&#39;ve been looking for all this time. I&#39;m going to throw in some more blog entries after this one covering how <em>we</em> build things in Erlang because we do things <em>our</em> way and I&#39;ve been asked about this a few times now. This should be fun.</p>
-]]></description><link>http://codeofrob.com/entries/the-ashton-disinterest-curve---erlang.html</link><guid isPermaLink="true">http://codeofrob.com/entries/the-ashton-disinterest-curve---erlang.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 09 Mar 2015 10:30:00 GMT</pubDate></item><item><title><![CDATA[The Ashton Disinterest Curve - Clojure]]></title><description><![CDATA[<p>Do you like <em>anything</em> Rob? You said you were going to be nice and all you&#39;ve done is complain about <a href="/entries/the-ashton-disinterest-curve---c.html">.NET</a> and <a href="/entries/the-ashton-disinterest-curve---javascript-and-node.html">JS</a> so far. Point taken - let&#39;s talk about Clojure.</p>
-<h1 id="an-ode-to-the-lisp">An ode to the lisp</h1>
-<p><em>(parens (love (i)))</em>. I love s-expressions; code written in Clojure tends to be beautifully expressive thanks to the terseness and minimal syntax provided the humble s-expr. When you go on to add easy composition and a rich library of &quot;All the basic things you might want to do to a list or a key-value structure&quot; the magic starts to happen. The focus on data-oriented code that gave birth to that heavily re-usable core library and an emphasis on referential transparency means that things generally do just what you expect them to and you can usually just focus on the functionality that led you to open up an editor in the first place.</p>
-<p>Speaking of editors, once you have your editor of choice set up with REPL integration, Paredit (if you want to edit expressions and not lines) and you&#39;ve downloaded the internet with Maven, the low syntastical burden of the language makes it ideal for hacking around in even for people who are new to the language. Spending evenings at the London Clojure Dojo was one of my favouite ways to use time as every week there would be new people to play with in whatever bizarre challenge had been set by the group.</p>
-<p>That community was instrumental in keeping me going with the journey as I wrote <a href="http://robashton.github.io/cravendb/">CravenDB</a> and did my best to learn through that action. Over the year I wrote that I entered the top 100 committers on Github and entered the top five committers for Clojure itself. Being able to spend some time at <a href="/entries/the-use-of-clojure-in-the-cdec-open-health-data-platform.html">MastodonC</a> working on some unrelated OSS in Clojure was also an amazing experience and cemented my love of the humble paren and the people who wielded them.</p>
-<p>Clojure is therefore a great gateway language in that it makes functional programming accessible to anybody with the JVM installed.</p>
-<h1 id="concurrency">Concurrency</h1>
-<p>Clojure had a goal of making concurrency on the JVM easy with its built in constructs for utilising STM. Atoms, agents and simple support for transactions meant that managing access to shared data structures was very simple indeed. Then core.async came along and pretty much took over every library and application I tried writing with it. Core.async definitely made the experience of writing Clojurescript more elegant given its hosting environment and the forced asynchronisity of the JavaScript world. Setting up your entire application as a series of communicating sequential processes around managable chunks of state is definitely something to be celebrated in that ecosystem.</p>
-<p>This is where the love affair starts to unravel however as there is some amount of pain this world.</p>
-<h1 id="the-pain">The pain</h1>
-<p><em>Stack traces and errors</em>; Ever seen a Java stack trace? Now add a few more pages of scrolling for all the Java written to make Clojure possible (shudder) - now make those errors occur inside a core.async block and be amazed if anything useful gets  dumped out as your application ceases to work.</p>
-<p><em>Start-up time</em>; build a real application, now it takes 30 seconds to start-up on my MBA before hitting any actual code. The ardent Clojurites therefore commit a great deal of time and energy avoiding ever having to bounce the REPL - indeed designing their entire systems around development from a REPL standpoint. That isn&#39;t such an awful thing because I really enjoyed the feedback loop that REPL-first development provides and keeping small parts of your system bootstrappable makes it easy to write tests when needed but having this start-up time on my pet database and having to re-engineer it around not wanting to bounce the REPL just felt awkward.</p>
-<p><em>The real world</em>: Occasionally when programming it becomes useful to do things like read and write from files/sockets/etc. In Haskell we talk about Laziness requiring Purity, in most other places we&#39;re Strict and Impure (Unless you count the 100s of gloriously awful things done in the name of LINQ/C#). Clojure is both Lazy and Impure with no real control over where those side effects take place. You can call a seemingly pure function that calls a dozen other pure fuctions and at the bottom somebody is holding onto an atom just to spite you. That&#39;s a made up problem but replace that atom with a file handle and we start to have issues.</p>
-<p><em>Types</em>: Or lack of; we&#39;re lazy and impure and we have no type system, combine that with a complete lack of decent error handling constructs and giant stack traces and say hello to wasting hours debugging problems if they&#39;re so cruel as to slip through your REPL driven development process. Yes there is core.typed which is a wonderful project but it makes Erlang&#39;s spec notation looks beautiful and completely ruins the elegance of the original code. A big bucket of nope.</p>
-<p><em>JVM</em>: &#39;nuff said.</p>
-<p>Rather than just repeat myself, there is a <a href="https://skillsmatter.com/skillscasts/6040-resource-management-in-clojure">10 minute video</a> and <a href="http://slides.com/robashton/resource-management-in-clojure">slides</a> of me trolling a Clojure conference with a talk on this very subject.</p>
-<h1 id="the-path-towards-erlang">The path towards Erlang</h1>
-<p>So okay; simplifying things a lot - you either need to pass file handles (or something that represents them, so handle handles) up to the users of your library for short lived access or wrap up long lived resources in core.async blocks to manage concurrent access to them.</p>
-<p>This ends up looking like this (keeping most of the code out of the core.async block so it can be tested in the REPL easily)</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> go-index-head [_ {<span class="keyword">:keys</span> [command-channel] <span class="keyword">:as</span> engine}]
-  <span class="list">(<span class="title">debug</span><span class="body"> <span class="string">"being asked to start"</span>)</span></span>
-  <span class="list">(<span class="title">go</span><span class="body">
-    <span class="list">(<span class="title">loop</span><span class="body"> [state <span class="list">(<span class="title">initial-state</span><span class="body"> engine)</span></span>]
-    <span class="list">(<span class="title">if-let</span><span class="body"> [{<span class="keyword">:keys</span> [cmd data]} <span class="list">(<span class="title">&lt;</span><span class="body">! command-channel)</span></span>]
-     <span class="list">(<span class="title">do</span><span class="body">
-      <span class="list">(<span class="title">debug</span><span class="body"> <span class="string">"handling index loop command"</span> cmd)</span></span>
-       <span class="list">(<span class="title">recur</span><span class="body"> <span class="list">(<span class="title">case</span><span class="body"> cmd
-         <span class="keyword">:schedule-indexing</span> <span class="list">(<span class="title">main-indexing-process</span><span class="body"> state)</span></span>
-         <span class="keyword">:notify-finished-indexing</span> <span class="list">(<span class="title">main-indexing-process-ended</span><span class="body"> state)</span></span>
-         <span class="keyword">:new-index</span> <span class="list">(<span class="title">add-chaser</span><span class="body"> state data)</span></span>
-         <span class="keyword">:chaser-finished</span> <span class="list">(<span class="title">finish-chaser</span><span class="body"> state data)</span></span>
-         <span class="keyword">:storage-request</span> <span class="list">(<span class="title">storage-request</span><span class="body"> state data)</span></span>)</span></span>)</span></span>)</span></span>
-      <span class="list">(<span class="title">do</span><span class="body">
-        <span class="list">(<span class="title">debug</span><span class="body"> <span class="string">"being asked to shut down"</span>)</span></span>
-        <span class="list">(<span class="title">wait-for-main-indexing</span><span class="body"> state)</span></span>
-        <span class="list">(<span class="title">wait-for-chasers</span><span class="body"> state)</span></span>
-        <span class="list">(<span class="title">close-open-indexes</span><span class="body"> state)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>
-</code></pre><p>Basically re-invent actors but without decent error handling, supervision trees, named processes... So yeah - Clojure, glorious syntax, clever libraries, great data structures, but it&#39;s not Erlang for getting things done in the kind of projects I&#39;m working on at the moment.</p>
-<h1 id="where-is-it-then-">Where is it then?</h1>
-<p>I can&#39;t see myself using Clojure as a backend language on its own anytime soon. If I&#39;m forced to do something on the JVM (legacy integration, cross my fingers I haven&#39;t got to do that for a while) I can see myself using Clojure to integrate with the legacy syste and export data using the wonderful library Liberator.</p>
-<p>I <em>can</em> see myself using Clojurescript rather than the mess that is JS if I have to do any higher value front-end code. (Some of the React wrappers look <em>amazing</em>) and it&#39;s a lot more professional than trying to bodge it together in a broken language. There is a project coming up next year that represents value on the front-end and I suspect it&#39;ll make an appearance there if I can persuade our editors to do sensible CLJS/REPL integration and I can persuade my colleagues to adopt a REPL driven development method on the front-end.</p>
-<p><em>Position on the curve:</em> Still interested, I just don&#39;t have use for it at the moment.</p>
-]]></description><link>http://codeofrob.com/entries/the-ashton-disinterest-curve---clojure.html</link><guid isPermaLink="true">http://codeofrob.com/entries/the-ashton-disinterest-curve---clojure.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 19 Dec 2014 09:30:00 GMT</pubDate></item><item><title><![CDATA[The Ashton Disinterest Curve - Javascript and Node]]></title><description><![CDATA[<p>So far on the &quot;making a point that I&#39;m not all bitterness and hatred&quot; over things tried in the past, I have managed to pretty much write the same <a href="/entries/the-ashton-disinterest-curve---c.html">negative diatribe about .NET</a> that everybody else seems to write after an age of bashing their head against the wall. (Note to naysayers: Maybe there is something to this after all, and no, the decision to OSS a bunch of .NET changes very little about the root problems found in most shops that choose that technology)</p>
-<h1 id="i-digress">I digress</h1>
-<p>Aaaanyway - when the crippling pain in my wrists got too bad, the first place I sought refuge was a combination of Linux + Vim + JavaScript.</p>
-<p>I had always used JS and I had written some pretty cool things in it; It seemed like a natural progression if I wanted to carry on being paid decent money for developing software without having to immediately just drop everything and develop a new career from scratch. Sadly the need to integrate with the Visual Studio users (JS in project files, seriously piss off) eventually put an end to that attempt and I ended up doing node.js at actual node.js based development shops and accidentally ditching Windows forever.</p>
-<p>I got a <em>lot</em> done in JS (both on client and server) and for a while really enjoyed writing software in it. A large part of this was because I was used to the type systems in C# and Java style languages and being able to develop software without needless layers of interfaces impeding my progress made feel very warm and fuzzy.</p>
-<p>Obviously this came with the price of requiring many more tests, develop everything in self contained modules (not necessarily a bad thing) and dealing with some wildly varying opinions on what constituted &quot;readable JS&quot;.</p>
-<p>The saving grace of this language was that it was still pretty untamed and the language had very few features to abuse; maintaining explicitness at the expense of terseness meant that you could fling together some relatively comprehensible systems rather quickly without too much forethought or trouble. Obviously my feelings on steps to &quot;improve&quot; JS are well known, Typescript, Dart and frameworks like Angular trying to treat JS as an actually sensible platform were akin to biblical efforts to build houses on sand or whatever parable you prefer for that purpose here.</p>
-<h1 id="where-i-now-stand">Where I now stand</h1>
-<p>Since starting to learn languages like Haskell and realising that type systems don&#39;t have to be burdemsone, since developing with Erlang/OTP and seeing first-hand what a sensible networking platform should look like, since learning Clojure and realising terseness doesn&#39;t have to come at the expense of understandability - JS has lost a lot of that initial appeal. Since acknowledging the value of &quot;hammock time&quot; and how certain languages can encourage the use of up-front reasoning I can see that the &quot;<em>just ship some code</em>&quot; mentality  found in the JS world is probably harmful to our long term survival as a professional industry.</p>
-<p>It is a language that as an profession we should be pretty ashamed for letting become so popular; it is for cowboy developers writing cowboy systems and anybody setting out to build new applications on top of this (with the intention of longevity) should strongly reconsider. I think that the motivation of using JS to teach programming is understandable because of how accessible it can be to new people but it is also a mistake because it teaches the wrong message about our industry - it is the antithesis to professionalism. If we were ever in a &quot;race to the bottom&quot; then JS can be considered to have won; it has lowered the barrier to entry so far that we&#39;ll be dealing with the consequences of this mistake for decades to come.</p>
-<p>For low value UIs, for hackdays, for gamejams, for rapidly building that proof of concept, for that minimal viable product I think that both JS and Node probably have their place. JS is an incredibly fun language to get shit done in providing that you don&#39;t plan on being responsible for that code two <s>years</s> weeks down the line. Every Ludum Dare that I write games for I pick up JS, put on a Stetson and arm myself with a whip and yell YEEHHAAWWW because I&#39;m a cowboy and I like to ride my horse without a saddle.</p>
-<p>I <em>love</em> JS for this - despite its contradictions (and mine in this post), I can&#39;t think of any other language or platform where I can simply arm myself with a text editor and see results on my screen immediately in the form of shiny graphics and interactivity. While it is true that more professional languages would aid me in writing something that would be more formal and surviveable - just like writing tests, in the short term it would slow you down and diminish that immediate fun factor.</p>
-<p>When we&#39;re are only dealing with the short term or we&#39;re happy that what we are writing is disposable (or just incredibly dull) then JS is a great language because it doesn&#39;t have any of the safeguards that any of the more professional languages or platforms do and as we all know - safeguards are for wusses.</p>
-<p>Position on the curve: <em>Shrodingeresque - until directly observed you won&#39;t know if I love it or hate it.</em></p>
-]]></description><link>http://codeofrob.com/entries/the-ashton-disinterest-curve---javascript-and-node.html</link><guid isPermaLink="true">http://codeofrob.com/entries/the-ashton-disinterest-curve---javascript-and-node.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 17 Nov 2014 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/the-ashton-disinterest-curve---erlang.html</link><guid isPermaLink="true">http://codeofrob.com/entries/the-ashton-disinterest-curve---erlang.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 09 Mar 2015 10:30:00 GMT</pubDate></item></channel></rss>

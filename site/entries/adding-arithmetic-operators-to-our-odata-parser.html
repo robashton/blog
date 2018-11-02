@@ -91,8 +91,7 @@
 Sub        Subtraction             /Products?<span class="variable">$filter</span>=Price <span class="sub"><span class="keyword">sub</span> 5 gt 10
 Mul        Multiplication          /Products?$filter=Price mul 2 gt 2000
 Div        Division                /Products?$filter=Price div 2 gt 4
-Mod        Modulo                  /Products?$filter=Price mod 2 eq 0
-</code></pre><p>Ah yes,</p>
+Mod        Modulo                  /Products?$filter=Price mod 2 eq 0</code></pre><p>Ah yes,</p>
 <p>Now, these are all the same, but operator precedence is important so the order in which we want to go through them is:</p>
 <ul>
 <li>Add/Sub</li>
@@ -116,8 +115,7 @@ Mod        Modulo                  /Products?$filter=Price mod 2 eq 0
   <span class="keyword">it</span>(<span class="string">"rhr should be 10"</span>, function() {
      assert.<span class="keyword">equal</span>(<span class="constant">result</span>.options.$filterby[<span class="number">2</span>], <span class="number">10</span>)
   })
-})
-</code></pre><p>This tells us that our &#39;add&#39; operator has higher precedence than the comparisons (which makes sense). This&#39;ll mean we want to sneak it in somewhere after those comparisons. (Assuming in this scheme that And/Or have a higher precedence than add, and it seems to be that way)</p>
+})</code></pre><p>This tells us that our &#39;add&#39; operator has higher precedence than the comparisons (which makes sense). This&#39;ll mean we want to sneak it in somewhere after those comparisons. (Assuming in this scheme that And/Or have a higher precedence than add, and it seems to be that way)</p>
 <pre><code>FilterLogicalExpression =
   FilterLogicalExpression:lhs
   FilterByOperand:op
@@ -138,8 +136,7 @@ FilterAddOperand =
   | se<span class="string">q("sub")</span>
   ):op 
   spaces -&gt; op
-,
-</code></pre><p>Simples, we insert it in the pipeline between &quot;LogicalExpression&quot; and &quot;Checking the value&quot; (Literal values have the highest precedence because they don&#39;t require any work)</p>
+,</code></pre><p>Simples, we insert it in the pipeline between &quot;LogicalExpression&quot; and &quot;Checking the value&quot; (Literal values have the highest precedence because they don&#39;t require any work)</p>
 <p>And because Mul/etc have a higher precedence than Add, this exactly the same</p>
 <pre><code>test(<span class="string">"/some/resource?$filterby=Price mul 5 gt 10"</span>, <span class="string">"OData"</span>, function(<span class="constant">result</span>) {
 
@@ -158,8 +155,7 @@ FilterAddOperand =
   <span class="keyword">it</span>(<span class="string">"rhr should be 10"</span>, function() {
      assert.<span class="keyword">equal</span>(<span class="constant">result</span>.options.$filterby[<span class="number">2</span>], <span class="number">10</span>)
   })
-})
-</code></pre><p>Like so</p>
+})</code></pre><p>Like so</p>
 <pre><code><span class="constant">FilterAddExpression</span> =
   <span class="constant">FilterAddExpression</span><span class="symbol">:lhs</span>
   <span class="constant">FilterAddOperand</span><span class="symbol">:op</span>
@@ -172,8 +168,7 @@ FilterAddOperand =
   <span class="constant">FilterMulOperand</span><span class="symbol">:op</span>
   <span class="constant">FilterByValue</span><span class="symbol">:rhs</span> -&gt; [ op, lhs, rhs ]
 | <span class="constant">FilterByValue</span>
-,
-</code></pre><p>Now what I actually have to do is define operator precedence for mul/div etc independently. So I can&#39;t actually cheat and do</p>
+,</code></pre><p>Now what I actually have to do is define operator precedence for mul/div etc independently. So I can&#39;t actually cheat and do</p>
 <pre><code>FilterMulOperand =
   spaces
   (
@@ -182,8 +177,7 @@ FilterAddOperand =
   | se<span class="string">q("mod")</span>
   ):op 
   spaces -&gt; op
-,
-</code></pre><p>Like I have been doing, or when I write the following test, it will fail.</p>
+,</code></pre><p>Like I have been doing, or when I write the following test, it will fail.</p>
 <pre><code>test(<span class="string">"/some/resource?$filterby=Price div Price mul 5 gt 10"</span>, <span class="string">"OData"</span>, function(<span class="constant">result</span>) {
     console.<span class="command">log</span>(JSON.stringify(<span class="constant">result</span>))
 
@@ -209,8 +203,7 @@ FilterAddOperand =
   <span class="keyword">it</span>(<span class="string">"rhr should be 10"</span>, function() {
      assert.<span class="keyword">equal</span>(<span class="constant">result</span>.options.$filterby[<span class="number">2</span>], <span class="number">10</span>)
   })
-})
-</code></pre><p>What will happen here is we&#39;ll get</p>
+})</code></pre><p>What will happen here is we&#39;ll get</p>
 <pre><code>[
   'gt',
   [
@@ -221,8 +214,7 @@ FilterAddOperand =
     <span class="number">5</span>
   ],
   <span class="number">10</span>
-]
-</code></pre><p>When what we clearly want is</p>
+]</code></pre><p>When what we clearly want is</p>
 <pre><code>[
   'gt',
   [
@@ -233,12 +225,9 @@ FilterAddOperand =
     ]
   ],
   <span class="number">10</span>
-]
-</code></pre><p>Or if you like</p>
-<pre><code><span class="list">(<span class="body"> <span class="list">(<span class="title">price</span><span class="body"> / price)</span></span> <span class="variable">* 5 ) &gt; 10
-</code></pre><p>Instead of</p>
-<pre><code><span class="list">(<span class="body"> Price / <span class="list">(<span class="title">price</span><span class="body"> <span class="variable">* 5)  ) &gt; 10
-</code></pre><p>Which is a little bit different to say the least!</p>
+]</code></pre><p>Or if you like</p>
+<pre><code><span class="list">(<span class="body"> <span class="list">(<span class="title">price</span><span class="body"> / price)</span></span> <span class="variable">* 5 ) &gt; 10</code></pre><p>Instead of</p>
+<pre><code><span class="list">(<span class="body"> Price / <span class="list">(<span class="title">price</span><span class="body"> <span class="variable">* 5)  ) &gt; 10</code></pre><p>Which is a little bit different to say the least!</p>
 <p>So, explicit operation order is what we want, and here is how get it:</p>
 <p><strong>One massively explicit set of operator precedences...</strong></p>
 <pre><code>FilterByOption = 
@@ -248,22 +237,19 @@ FilterAddOperand =
 
 FilterByExpression =
   FilterAndExpression
-,
-</code></pre><p><em>And is the least important in our hierarchy</em></p>
+,</code></pre><p><em>And is the least important in our hierarchy</em></p>
 <pre><code><span class="constant">FilterAndExpression</span> =
   <span class="constant">FilterAndExpression</span><span class="symbol">:lhs</span>
   <span class="constant">FilterAndOperand</span><span class="symbol">:op</span>
   <span class="constant">FilterLogicalExpression</span><span class="symbol">:rhs</span> -&gt; [ op, lhs, rhs ]
 | <span class="constant">FilterLogicalExpression</span>
-,
-</code></pre><p><em>Followed by any logical expression</em></p>
+,</code></pre><p><em>Followed by any logical expression</em></p>
 <pre><code><span class="constant">FilterLogicalExpression</span> =
   <span class="constant">FilterLogicalExpression</span><span class="symbol">:lhs</span>
   <span class="constant">FilterByOperand</span><span class="symbol">:op</span>
   <span class="constant">FilterAddExpression</span><span class="symbol">:rhs</span> -&gt; [op, lhs, rhs ]
 | <span class="constant">FilterAddExpression</span>
-,
-</code></pre><p><em>Then we descend through our mathematical operators in reverse precedence order</em></p>
+,</code></pre><p><em>Then we descend through our mathematical operators in reverse precedence order</em></p>
 <pre><code>FilterSubExpression =
   FilterSubExpression:lhs
   spaces se<span class="string">q("sub")</span> spaces
@@ -313,8 +299,7 @@ FilterNegateExpression =
     FilterByValue
   | <span class="string">'('</span> spaces FilterByExpression:expr spaces <span class="string">')'</span> -&gt; expr
   ):value -&gt;  [ <span class="string">"not"</span>, value ]
-,
-</code></pre><p>How cool is that??!!? That&#39;s pretty much the whole shebang wrapped up as far as expressing parsing goes, and now I can go trigger mad with nested and/or/sub/mul/etc - with the exception of the precedence operators which I&#39;ll add next!</p>
+,</code></pre><p>How cool is that??!!? That&#39;s pretty much the whole shebang wrapped up as far as expressing parsing goes, and now I can go trigger mad with nested and/or/sub/mul/etc - with the exception of the precedence operators which I&#39;ll add next!</p>
 </div>
       <div id="links">
         <a href="/">Index</a>
@@ -326,7 +311,7 @@ FilterNegateExpression =
           <div class="container">
             <div class="row-fluid">
               <div class="span6">
-                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+                <p class="terms">2018 © Rob Ashton. ALL Rights Reserved.</p>
               </div>
             </div><!--/row-fluid-->
           </div><!--/container-->

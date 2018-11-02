@@ -1,6 +1,6 @@
 <p>I&#39;ve had a bit of a duck in my <a href="http://github.com/robashton/cravendb">database</a> for a while (and I&#39;m not making reference to the read-strings that were in there for months while I got on with more important things).</p>
 <p>The duck came in the form of this method</p>
-<pre><code class="lang-clojure"><span class="list">(<span class="title"><span class="built_in">defn</span></span> perform-query 
+<pre><code class="language-clojure"><span class="list">(<span class="title"><span class="built_in">defn</span></span> perform-query 
   <span class="collection">[tx reader query offset amount sort-field sort-order]</span>
   <span class="list">(<span class="title"><span class="built_in">loop</span></span> <span class="collection">[results <span class="list">()</span>
          current-offset offset
@@ -24,8 +24,7 @@
                     new-offset 
                     new-total
                     <span class="list">(<span class="title"><span class="built_in">inc</span></span> attempt)</span>)</span>
-             new-results)</span>)</span>)</span>)</span>
-</code></pre>
+             new-results)</span>)</span>)</span>)</span></code></pre>
 <p>Essentially we have a lucene reader and we want to</p>
 <ul>
 <li>Query it for some results (offset + amount-ish)</li>
@@ -41,16 +40,14 @@
 <p>One thing I&#39;ve learned so far in Clojure that if you have a abnormal construct (in this case my lucene reader), is that we should try and get that into either a <em>map</em> or a <em>sequence</em> as early on as possible so as to be able to leverage all the Clojure built-ins on it.</p>
 <h3 id="what-i-want-here-is-a-lazy-sequence-built-up-with-recursion">What I want here, is a lazy sequence built up with recursion</h3>
 <p>I wrote a quick proof of concept of that sort of thing, it looks like this:</p>
-<pre><code class="lang-clojure">(defn number-seq 
+<pre><code class="language-clojure">(defn number-seq 
   ([] (number-seq 0))
   ([i]
-  (cons (inc i) (lazy-seq (form-sequence (inc i))))))
-</code></pre>
+  (cons (inc i) (lazy-seq (form-sequence (inc i))))))</code></pre>
 <p>What I have here is a function I can call with all the usual suspects like</p>
-<pre><code class="lang-clojure"><span class="list">(<span class="title"><span class="built_in">take</span></span><span class="number"> 100</span> <span class="list">(<span class="title">number-seq</span>)</span>)</span> <span class="comment">;; Get me 0 to 100</span>
+<pre><code class="language-clojure"><span class="list">(<span class="title"><span class="built_in">take</span></span><span class="number"> 100</span> <span class="list">(<span class="title">number-seq</span>)</span>)</span> <span class="comment">;; Get me 0 to 100</span>
 <span class="list">(<span class="title"><span class="built_in">drop</span></span><span class="number"> 10</span> <span class="list">(<span class="title"><span class="built_in">take</span></span><span class="number"> 100</span> <span class="list">(<span class="title">number-seq</span>)</span>)</span> <span class="comment">;; Get me 10 to 100</span>
-<span class="comment">;; etc</span>
-</code></pre>
+<span class="comment">;; etc</span></code></pre>
 <p>And it&#39;s fully lazy and potentially infinite and all those things. The whole &quot;cons a value onto a lazy sequence&quot; trick is the solution to quite a few of the Clojure koans and had I done them perhaps I&#39;d not have written the above loop.</p>
 <h3 id="first-step-reduce-the-arguments">First step - reduce the arguments</h3>
 <p>Before ripping apart this loop, I thought it better to jump in the repl to create the constructs that go into the loop, then sit there and pull the loop apart into its constituent parts before using them in a recursive function.</p>
@@ -66,7 +63,7 @@
 </ul>
 <p>It is quite clear that only two of these values actually change during the recursive loop, and the rest are only used with a single object (reader) the same way over and over again.</p>
 <p>My first step in C# would probably be to &quot;create another object&quot;, in this case here though a producer function of some sort is what springs to mind</p>
-<pre><code class="lang-clojure"><span class="list">(<span class="title"><span class="built_in">defn</span></span> lucene-producer <span class="collection">[tx reader query sort-field sort-order]</span>
+<pre><code class="language-clojure"><span class="list">(<span class="title"><span class="built_in">defn</span></span> lucene-producer <span class="collection">[tx reader query sort-field sort-order]</span>
 
   <span class="list">(<span class="title"><span class="built_in">fn</span></span> <span class="collection">[offset amount]</span>
     <span class="list">(<span class="title">-&gt;&gt;</span> 
@@ -76,26 +73,23 @@
                     sort-field 
                     sort-order)</span> 
       <span class="list">(<span class="title"><span class="built_in">drop</span></span> offset)</span> 
-      <span class="list">(<span class="title">convert-results-to-documents</span> tx)</span>)</span>)</span>)</span>
-</code></pre>
+      <span class="list">(<span class="title">convert-results-to-documents</span> tx)</span>)</span>)</span>)</span></code></pre>
 <p>I actually go a bit further and bring in the loading of the documents as well, now I can call this over again like so</p>
-<pre><code class="lang-clojure"><span class="list">(<span class="title">producer</span><span class="number"> 0</span><span class="number"> 100</span>)</span> <span class="comment">;; Get me the first 100 items in the index</span>
-<span class="list">(<span class="title">producer</span><span class="number"> 10</span><span class="number"> 100</span>)</span> <span class="comment">;; Get me the items 10-100 in the index</span>
-</code></pre>
+<pre><code class="language-clojure"><span class="list">(<span class="title">producer</span><span class="number"> 0</span><span class="number"> 100</span>)</span> <span class="comment">;; Get me the first 100 items in the index</span>
+<span class="list">(<span class="title">producer</span><span class="number"> 10</span><span class="number"> 100</span>)</span> <span class="comment">;; Get me the items 10-100 in the index</span></code></pre>
 <p>Now of course, this producer function might not actually return the requested number of results because the underlying code is doing de-duping and removing documents that have been deleted and not yet cleared from the index.</p>
 <p>I slot this into my original loop function, verify it all still works and then look at the next step:</p>
 <h3 id="second-step-split-out-the-paging">Second step - split out the paging</h3>
 <p>What I really want is the ability to skip through pages of the index and not keep accumulators around in the loop itself, I can employ a similar trick and write a function that knows about the current page and how to get the next page. I&#39;ll store the results in a map and a function to get the next page in the map as well.</p>
-<pre><code class="lang-clojure"><span class="list">(<span class="title"><span class="built_in">defn</span></span> lucene-page 
+<pre><code class="language-clojure"><span class="list">(<span class="title"><span class="built_in">defn</span></span> lucene-page 
   <span class="list">([<span class="title">producer</span> page-size] <span class="list">(<span class="title">lucene-page</span> producer<span class="number"> 0</span> page-size)</span>)</span>
   <span class="list">([<span class="title">producer</span> current-offset page-size]
    <span class="collection">{
     <span class="attribute">:results</span> <span class="list">(<span class="title">producer</span> current-offset page-size)</span>
     <span class="attribute">:next</span> <span class="list">(<span class="title"><span class="built_in">fn</span></span> <span class="collection">[]</span> <span class="list">(<span class="title">lucene-page</span> producer <span class="list">(<span class="title"><span class="built_in">+</span></span> current-offset page-size)</span> page-size)</span>)</span>
-   }</span>)</span>)</span>
-</code></pre>
+   }</span>)</span>)</span></code></pre>
 <p>An alternative might be to just assoc the paging values into the map itself and create a next-page function like so</p>
-<pre><code class="lang-clojure"><span class="list">(<span class="title"><span class="built_in">defn</span></span> lucene-page 
+<pre><code class="language-clojure"><span class="list">(<span class="title"><span class="built_in">defn</span></span> lucene-page 
   <span class="list">([<span class="title">producer</span> page-size] <span class="list">(<span class="title">lucene-page</span> producer<span class="number"> 0</span> page-size)</span>)</span>
   <span class="list">([<span class="title">producer</span> current-offset page-size]
    <span class="collection">{
@@ -106,8 +100,7 @@
    }</span>)</span>)</span>
 
 <span class="list">(<span class="title"><span class="built_in">defn</span></span> next-page <span class="collection">[<span class="collection">{<span class="attribute">:keys</span> <span class="collection">[producer offset page-size]</span>}</span>]</span>
-  <span class="list">(<span class="title">lucene-page</span> producer <span class="list">(<span class="title"><span class="built_in">+</span></span> offset page-size)</span> page-size)</span>)</span>
-</code></pre>
+  <span class="list">(<span class="title">lucene-page</span> producer <span class="list">(<span class="title"><span class="built_in">+</span></span> offset page-size)</span> page-size)</span>)</span></code></pre>
 <p>But I quite like the little function and it&#39;s smaller so I&#39;m rolling with it until I&#39;m told that it&#39;s a bad thing and I&#39;m a naughty boy.</p>
 <p>With this, I can consume the results I have and and simply call &quot;next&quot; to get the next lucene page without worrying about the accumulators in the loop function, this means I&#39;m now left with quite a stripped down loop:</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> perform-query 
@@ -121,8 +114,7 @@
                     <span class="list">(<span class="title">not=</span><span class="body"> new-total amount)</span></span>)</span></span>
             <span class="list">(<span class="title">recur</span><span class="body"> new-results 
                     <span class="list">(<span class="body"><span class="list">(<span class="body"><span class="keyword">:next</span> page)</span></span>)</span></span>)</span></span>
-            new-results)</span></span>)</span></span>)</span></span>)</span></span>
-</code></pre><h3 id="to-the-recursive-lazy-sequence">To the recursive lazy sequence</h3>
+            new-results)</span></span>)</span></span>)</span></span>)</span></span></code></pre><h3 id="to-the-recursive-lazy-sequence">To the recursive lazy sequence</h3>
 <p>Now I&#39;ve pulled out the important bits of this code into two different stages (pulling data from lucene, paging data over that), it&#39;s quite trivial to convert the loop into a lazy sequence</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> lucene-seq 
   <span class="list">(<span class="body">[page] <span class="list">(<span class="title">lucene-seq</span><span class="body"> page <span class="list">(<span class="body"><span class="keyword">:results</span> page)</span></span>)</span></span>)</span></span>
@@ -130,8 +122,7 @@
   <span class="list">(<span class="title">cond</span><span class="body">
     <span class="list">(<span class="title">empty</span><span class="body">? <span class="list">(<span class="body"><span class="keyword">:results</span> page)</span></span>)</span></span> <span class="list">(<span class="body">)</span></span>
     <span class="list">(<span class="title">empty</span><span class="body">? src)</span></span> <span class="list">(<span class="title">lucene-seq</span><span class="body"> <span class="list">(<span class="body"><span class="list">(<span class="body"><span class="keyword">:next</span> page)</span></span>)</span></span>)</span></span>
-    <span class="keyword">:else</span> <span class="list">(<span class="title">cons</span><span class="body"> <span class="list">(<span class="title">first</span><span class="body"> src)</span></span> <span class="list">(<span class="title">lazy-seq</span><span class="body"> <span class="list">(<span class="title">lucene-seq</span><span class="body"> page <span class="list">(<span class="title">rest</span><span class="body"> src)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>
-</code></pre><p>I&#39;m pretty pleased with this, tidying up the rest of the code around the rest of the file reduces my line count by 50% and leaves the complete solution looking like this:</p>
+    <span class="keyword">:else</span> <span class="list">(<span class="title">cons</span><span class="body"> <span class="list">(<span class="title">first</span><span class="body"> src)</span></span> <span class="list">(<span class="title">lazy-seq</span><span class="body"> <span class="list">(<span class="title">lucene-seq</span><span class="body"> page <span class="list">(<span class="title">rest</span><span class="body"> src)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre><p>I&#39;m pretty pleased with this, tidying up the rest of the code around the rest of the file reduces my line count by 50% and leaves the complete solution looking like this:</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> lucene-producer [tx reader opts]
   <span class="list">(<span class="title">fn</span><span class="body"> [offset amount]
     <span class="list">(<span class="title">-&gt;&gt;</span><span class="body"> 
@@ -157,5 +148,4 @@
   <span class="list">(<span class="title">cond</span><span class="body">
     <span class="list">(<span class="title">empty</span><span class="body">? <span class="list">(<span class="body"><span class="keyword">:results</span> page)</span></span>)</span></span> <span class="list">(<span class="body">)</span></span>
     <span class="list">(<span class="title">empty</span><span class="body">? src)</span></span> <span class="list">(<span class="title">lucene-seq</span><span class="body"> <span class="list">(<span class="body"><span class="list">(<span class="body"><span class="keyword">:next</span> page)</span></span>)</span></span>)</span></span>
-    <span class="keyword">:else</span> <span class="list">(<span class="title">cons</span><span class="body"> <span class="list">(<span class="title">first</span><span class="body"> src)</span></span> <span class="list">(<span class="title">lazy-seq</span><span class="body"> <span class="list">(<span class="title">lucene-seq</span><span class="body"> page <span class="list">(<span class="title">rest</span><span class="body"> src)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>
-</code></pre><p>No doubt a seasoned Clojure developer would further reduce this (and there are probably a couple of snafus), but I&#39;m pretty pleased that the interface I&#39;m now exposing to the rest of my code is just a plain old sequence and even if I go and play golf with the underlying code the behaviour of that sequence shouldn&#39;t change. </p>
+    <span class="keyword">:else</span> <span class="list">(<span class="title">cons</span><span class="body"> <span class="list">(<span class="title">first</span><span class="body"> src)</span></span> <span class="list">(<span class="title">lazy-seq</span><span class="body"> <span class="list">(<span class="title">lucene-seq</span><span class="body"> page <span class="list">(<span class="title">rest</span><span class="body"> src)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre><p>No doubt a seasoned Clojure developer would further reduce this (and there are probably a couple of snafus), but I&#39;m pretty pleased that the interface I&#39;m now exposing to the rest of my code is just a plain old sequence and even if I go and play golf with the underlying code the behaviour of that sequence shouldn&#39;t change. </p>

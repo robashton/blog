@@ -84,7 +84,8 @@
 </ul>
 <p>This is just typical .NET behaviour, and to make things worse, when the issues first started being noticed the first port of call was to open Raven Studio and start inspecting the server (performing queries), thus adding to the problem and causing even more hilarious memory spikes.</p>
 <p>To give an indication, when opening up the performance counters for the server the kind of thing we were seeing looked like this:</p>
-<p>  <img src="/img/lho.png"></p>
+  <img src="/img/lho.png">
+
 <p>Yes indeed, that&#39;s nearly all the memory on the server being allocated to the LHO as a result of excessive large objects of varying sizes being aggressively loaded through the indexing and querying processes.</p>
 <h1 id="the-solution-">The solution?</h1>
 <p>Much like with every other database out there, storing binary blobs in a store which is built for querying/transactions isn&#39;t ideal - but there are two options available here</p>
@@ -93,7 +94,8 @@
 <li>RavenDB Attachments</li>
 </ul>
 <p>The latter isn&#39;t encouraged as it&#39;s just a convenience - but to prove a point I generated 1.5 million documents of varying sizes with byte arrays on the fields to reproduce the problem successfully on my laptop (that&#39;s actually the screenshot above), then migrated them into attachments to show what a difference this would make as attachments are <em>never</em> loaded fully into memory.</p>
-<p>  <img src="/img/beforeafter.jpg"></p>
+  <img src="/img/beforeafter.jpg">
+
 <p>What a difference choosing an appropriate store makes! In the second number the &quot;PDFs&quot; are <em>still being stored in RavenDB</em>, just not in the primary document store.</p>
 <p>When I left the client their server was sitting flat at 4gb consumption (with the database still full of PDFs, but instructions in how to avoid causing issues until they had been purged)</p>
 <h1 id="the-summary">The summary</h1>

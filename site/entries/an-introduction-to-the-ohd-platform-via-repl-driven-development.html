@@ -80,7 +80,7 @@
 </ul>
 <p>I&#39;ve been asked to look at the <a href="http://openhealthdata.cdehub.org/">CDEC Open Health Data Platform</a> which takes data from the <a href="http://www.hscic.gov.uk/">HSCIC</a> to work out a few things such as the cost to the health service for Diabetes, or breakdowns across regions for the costs/prevalence of diabetes.</p>
 <p>It&#39;s a nice example of what can be done with <a href="https://github.com/nathanmarz/cascalog">Cascalog</a>, although diving into it can be daunting as you&#39;re immediately met with walls of Clojure that look like this</p>
-<pre><code class="lang-clojure"><span class="list">(<span class="title"><span class="built_in">defn</span></span> diabetes-spend-per-head-per-ccg-per-month <span class="collection">[gp-spend gp-prevalence]</span>
+<pre><code class="language-clojure"><span class="list">(<span class="title"><span class="built_in">defn</span></span> diabetes-spend-per-head-per-ccg-per-month <span class="collection">[gp-spend gp-prevalence]</span>
   <span class="list">(<span class="title">&lt;-</span> <span class="collection">[?ccg ?year ?month ?ccg-registered-patients ?ccg-diabetes-patients ?ccg-total-net-ingredient-cost ?spend-per-head]</span>
       <span class="list">(<span class="title">gp-spend</span> <span class="attribute">:&gt;</span> ?ccg ?practice ?year ?month ?gp-total-net-ingredient-cost)</span>
       <span class="list">(<span class="title">gp-prevalence</span> <span class="attribute">:&gt;</span> ?practice ?gp-name ?gp-registered-patients ?gp-diabetes-patients ?gp-prevalence)</span>
@@ -88,8 +88,7 @@
       <span class="list">(<span class="title">ops/sum</span> ?gp-diabetes-patients <span class="attribute">:&gt;</span> ?ccg-diabetes-patients)</span>
       <span class="list">(<span class="title">ops/sum</span> ?gp-total-net-ingredient-cost <span class="attribute">:&gt;</span> ?ccg-total-net-ingredient-cost)</span>
       <span class="list">(<span class="title">has-patients?</span> ?ccg-diabetes-patients)</span>
-      <span class="list">(<span class="title">spend-per-head</span> ?ccg-total-net-ingredient-cost ?ccg-diabetes-patients <span class="attribute">:&gt;</span> ?spend-per-head)</span>)</span>)</span>
-</code></pre>
+      <span class="list">(<span class="title">spend-per-head</span> ?ccg-total-net-ingredient-cost ?ccg-diabetes-patients <span class="attribute">:&gt;</span> ?spend-per-head)</span>)</span>)</span></code></pre>
 <p>This actually makes sense if you&#39;re familiar with logic-based programming or have followed the impatient tutorial so I&#39;m relieved to be able to read through most of this code. If you&#39;ve not been doing this, or it&#39;s 8am and you don&#39;t do this for a living then seeing a codebase of this causes insteant headaches and nausea. An application of coffee later and it all makes sense.</p>
 <p>I am however, on running it met with a couple of problems:</p>
 <ul>
@@ -100,22 +99,20 @@
 <p>The way I&#39;ve been writing Clojure is via tests and a tight feedback loop built up around those tests. I have however been told on numerous occasions that I should be using the repl more and this codebase is an example of where the author is clearly a big fan of the repl!</p>
 <p>There is also little automation in place for getting the data or executing the code because if you&#39;re familiar with the repl and you have the data already, then throwing code at the repl is the fastest way to put this together and that is what has been done.</p>
 <p>So what does this look like? Littered through the codebase are paragraphs of Clojure that look like this:</p>
-<pre><code class="lang-clojure">;; month,total_spend
+<pre><code class="language-clojure">;; month,total_spend
 #_ (?- (hfs-delimited &quot;./output/diabetes-total-spend-per-month-england&quot; :delimiter &quot;,&quot; :sinkmode :replace)
        (total-spend-per-month-england
         (diabetes-spend-per-ccg-per-month
          (diabetes-drugs
           (prescriptions/gp-prescriptions
            (hfs-delimited &quot;./input/prescriptions/pdpi&quot; :delimiter &quot;,&quot;))
-          (ods/current-practices (hfs-delimited &quot;./input/ods/gppractice/epraccur.csv&quot; :delimiter &quot;,&quot;))))))
-</code></pre>
+          (ods/current-practices (hfs-delimited &quot;./input/ods/gppractice/epraccur.csv&quot; :delimiter &quot;,&quot;))))))</code></pre>
 <p>See that <em>#_</em> stuff? That&#39;s a comment which means this code isn&#39;t compiled at all normally, but it&#39;s there so a hardy Emacs user can just execute the code by sending it from the editor to the Repl.</p>
 <p><strong>I&#39;m a vim user, get me out of here</strong></p>
 <p>So there&#39;s that.  Thankfully, a few people have written plug-ins to make Clojure development a bit more dreamy in Vim and a good starting point is the <a href="https://github.com/ctford/vim-fireplace-easy/">vim-fireplace-easy</a> repository put together by <a href="https://twitter.com/ctford">@ctford</a> which brings together a few plug-ins.</p>
 <p><em>vim-fireplace</em></p>
 <p>Vim-fireplace means that I get handy short-cuts for sending code to the repl for execution, I simply fire up a repl in one terminal, and vim in another terminal and then sticking my cursor over an expression and typing &#39;cpp&#39; means that expression being evaluated in that repl.</p>
-<pre><code>  <span class="list">(<span class="title">+</span><span class="body"> <span class="number">4</span> <span class="number">5</span>)</span></span>
-</code></pre><p>So, sending this to the repl would mean I&#39;d be given the answer &#39;9&#39;, or putting the cursor over the big expression above would result in a query being sent through Cascalog.</p>
+<pre><code>  <span class="list">(<span class="title">+</span><span class="body"> <span class="number">4</span> <span class="number">5</span>)</span></span></code></pre><p>So, sending this to the repl would mean I&#39;d be given the answer &#39;9&#39;, or putting the cursor over the big expression above would result in a query being sent through Cascalog.</p>
 <p><em>vim-clojure-static</em></p>
 <p>This just brings in lots of good behaviour when dealing with braces/highlighting/etc - a must for any developer witing clojure in vim.</p>
 <p><em>paredit</em></p>
@@ -134,7 +131,7 @@
           <div class="container">
             <div class="row-fluid">
               <div class="span6">
-                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+                <p class="terms">2018 © Rob Ashton. ALL Rights Reserved.</p>
               </div>
             </div><!--/row-fluid-->
           </div><!--/container-->

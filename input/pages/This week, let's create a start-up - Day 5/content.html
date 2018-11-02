@@ -44,13 +44,11 @@
 <span class="keyword">if</span> (!string<span class="variable">.IsNullOrEmpty</span>(input<span class="variable">.Search</span>))
 {
     query = query<span class="variable">.Where</span>(x =&gt; x<span class="variable">.Title</span> == input<span class="variable">.Search</span> || x<span class="variable">.SpeakerName</span> == input<span class="variable">.Search</span> || x<span class="variable">.BibleReference</span> == input<span class="variable">.Search</span> || x<span class="variable">.ServiceType</span> == input<span class="variable">.Search</span>);
-}
-</code></pre><p>Can&#39;t argue with how easy that was, and it still all works with that original paging stuff I wrote on the first day.</p>
+}</code></pre><p>Can&#39;t argue with how easy that was, and it still all works with that original paging stuff I wrote on the first day.</p>
 <p><em>Adding the series info for a sermon</em></p>
 <pre><code>var sermon = session.Load<span class="tag">&lt;<span class="title">Sermon</span>&gt;</span>(id)
 // if null etc
-var series = session.Load<span class="tag">&lt;<span class="title">Series</span>&gt;</span>(sermon.SeriesId)
-</code></pre><p>Remember that ISecureDocumentSession <a href="/entries/this-week,-lets-create-a-start-up---day-4.html">I wrote yesterday</a>? That made the Include stuff hard to cater for on a Load, so I just do two load calls instead - in a more evolved system we&#39;d have to do this better somehow because it isn&#39;t going to scale across all the other usages that IDocumentSession can give us.</p>
+var series = session.Load<span class="tag">&lt;<span class="title">Series</span>&gt;</span>(sermon.SeriesId)</code></pre><p>Remember that ISecureDocumentSession <a href="/entries/this-week,-lets-create-a-start-up---day-4.html">I wrote yesterday</a>? That made the Include stuff hard to cater for on a Load, so I just do two load calls instead - in a more evolved system we&#39;d have to do this better somehow because it isn&#39;t going to scale across all the other usages that IDocumentSession can give us.</p>
 <p>Instead I&#39;d look at hooking into RavenDB properly to do this security (either using its server-side security bundle, or adding appropriate extension points for this sort of filtering job on the client)</p>
 <p>For this sort of thing though, it&#39;s two remote calls rather than one on a fairly low traffic system so it should be okay for now.</p>
 <p><em>Deploying</em></p>

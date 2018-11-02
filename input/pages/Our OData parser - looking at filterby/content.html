@@ -23,8 +23,7 @@ Add        Addition                /Products?$<span class="built_in">filter</spa
 Mul        Multiplication          /Products?$<span class="built_in">filter</span>=Price mul <span class="number">2</span> gt <span class="number">2000</span>
 Div        Division                /Products?$<span class="built_in">filter</span>=Price div <span class="number">2</span> gt <span class="number">4</span>
 Mod        Modulo                  /Products?$<span class="built_in">filter</span>=Price mod <span class="number">2</span> eq <span class="number">0</span>
-( )        Precedence grouping     /Products?$<span class="built_in">filter</span>=(Price <span class="keyword">sub</span> <span class="number">5</span>) gt <span class="number">10</span>
-</code></pre><p>And this is before we even have a look at the supported <em>&quot;functions&quot;</em> (we&#39;ll leave these until the next entry I think!)</p>
+( )        Precedence grouping     /Products?$<span class="built_in">filter</span>=(Price <span class="keyword">sub</span> <span class="number">5</span>) gt <span class="number">10</span></code></pre><p>And this is before we even have a look at the supported *&quot;functions&quot;* (we&#39;ll leave these until the next entry I think!)</p>
 <p>Thankfully this is all pretty much the same deal and boils down to simple recursive expression parsing. </p>
 <p><strong>Implementing Eq</strong></p>
 <p>I&#39;ll not do this for all of them, but you can assume I&#39;ve just implemented them the same way only with &quot;Ge, etc&quot; substituted for whatever...</p>
@@ -41,8 +40,7 @@ Mod        Modulo                  /Products?$<span class="built_in">filter</spa
   <span class="function_name">it</span>(<span class="string">"rhr should be 2"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
      assert.<span class="function_name">equal</span>(result.options.$filterby[<span class="number">2</span>], <span class="number">2</span>)
   }</span>)
-})
-</code></pre><p>The idea for this stuff is that I want to generate an AST for further processing by say, a SQL generator. The easiest way to do this is to generate arrays for consumption. This can be ran through a further OMeta processing step to generate SQL later on.</p>
+})</code></pre><p>The idea for this stuff is that I want to generate an AST for further processing by say, a SQL generator. The easiest way to do this is to generate arrays for consumption. This can be ran through a further OMeta processing step to generate SQL later on.</p>
 <p>I&#39;m not so comfortable with the bit where I address the filterby[1].name, it feels as addressing down a path should be dealt with in the same way as the rest of the AST (perhaps everywhere else I should be generating an array instead of those nested objects).</p>
 <p>I actually have some other ideas about how I&#39;d do this so I&#39;ll park that as well (as I&#39;m having a conversation and review of this code tomorrow in the office)</p>
 <p><strong>The implementation</strong></p>
@@ -54,8 +52,7 @@ FilterByExpression =
   PropertyPath:lhs
   se<span class="string">q(" eq ")</span>
   Number:rhs           -&gt; [ <span class="string">"eq"</span>, lhs, rhs ]
-,
-</code></pre><p>So I&#39;m keeping it simple by making some assumptions that&#39;ll get proved wrong in a sec</p>
+,</code></pre><p>So I&#39;m keeping it simple by making some assumptions that&#39;ll get proved wrong in a sec</p>
 <ul>
 <li>Only accepting number for rhs</li>
 <li>Only accepting &#39;eq as the operand</li>
@@ -75,8 +72,7 @@ FilterByExpression =
   <span class="function_name">it</span>(<span class="string">"rhr should be 2"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
      assert.<span class="function_name">equal</span>(result.options.$filterby[<span class="number">2</span>], <span class="number">2</span>)
   }</span>)
-})
-</code></pre><p>Can be dealt with by saying that our Operand is a choice</p>
+})</code></pre><p>Can be dealt with by saying that our Operand is a choice</p>
 <pre><code>FilterByOption = 
   se<span class="string">q("<span class="variable">$filterby</span>=")</span>
   FilterByExpression:expr -&gt; { name: <span class="string">"<span class="variable">$filterby</span>"</span>, value: expr }
@@ -90,8 +86,7 @@ FilterByExpression =
 
 FilterByOperand =
   se<span class="string">q(" eq ")</span> -&gt; <span class="string">"eq"</span>
-| se<span class="string">q(" ne ")</span> -&gt; <span class="string">"ne"</span>
-</code></pre><p>Can now do the same for </p>
+| se<span class="string">q(" ne ")</span> -&gt; <span class="string">"ne"</span></code></pre><p>Can now do the same for </p>
 <ul>
 <li>Gt</li>
 <li>Ge</li>
@@ -110,8 +105,7 @@ FilterByOperand =
   | se<span class="string">q("le")</span>
   ):op 
   spaces -&gt; op
-  ,
-</code></pre><p>Note that I tidied it up, and allowed any white space either side and got rid of my own strings (the last return result is automatically assigned to &#39;op&#39;</p>
+  ,</code></pre><p>Note that I tidied it up, and allowed any white space either side and got rid of my own strings (the last return result is automatically assigned to &#39;op&#39;</p>
 <p>And I&#39;ll parameterise the test to get this covered easily and document my progress</p>
 <pre><code><span class="function"><span class="keyword">function</span> <span class="title">operandTest</span><span class="params">(op)</span> <span class="comment">{
   test("/some/resource?$filterby=Foo " + op + " 2", "OData", function(result) {
@@ -134,8 +128,7 @@ FilterByOperand =
 <span class="title">operandTest</span><span class="params">("gt")</span>
 <span class="title">operandTest</span><span class="params">("ge")</span>
 <span class="title">operandTest</span><span class="params">("lt")</span>
-<span class="title">operandTest</span><span class="params">("le")</span>
-</code></pre><p><strong>Not everything is a number</strong></p>
+<span class="title">operandTest</span><span class="params">("le")</span></code></pre><p><strong>Not everything is a number</strong></p>
 <p>Now for the next thing, what can we have as that Rhs? Well, let&#39;s go with</p>
 <ul>
 <li>Number (eg 2, 3, 5 )</li>
@@ -156,22 +149,18 @@ FilterByOperand =
     <span class="keyword">it</span>(<span class="string">"rhr should be 2"</span>, function() {
        assert.<span class="keyword">equal</span>(<span class="constant">result</span>.options.$filterby[<span class="number">2</span>], 'bar')
     })
-  })
-</code></pre><p>Same deal again, let&#39;s make this extendable</p>
+  })</code></pre><p>Same deal again, let&#39;s make this extendable</p>
 <pre><code><span class="constant">FilterByExpression</span> =
   <span class="constant">PropertyPath</span><span class="symbol">:lhs</span>
   <span class="constant">FilterByOperand</span><span class="symbol">:op</span>
   <span class="constant">FilterByValue</span><span class="symbol">:rhs</span>           -&gt; [ op, lhs, rhs ]
-,
-</code></pre><p>With</p>
+,</code></pre><p>With</p>
 <pre><code><span class="title">FilterByValue</span> = 
   Number
-| QuotedText
-</code></pre><p>Where QuotedText looks something like this:</p>
+| QuotedText</code></pre><p>Where QuotedText looks something like this:</p>
 <pre><code><span class="comment">QuotedText</span> <span class="comment">=</span>
   <span class="comment">'\''</span>
   <span class="comment">Text:t</span> 
   <span class="comment">'\''</span> <span class="literal">-</span>&gt; <span class="comment">t</span>
-<span class="string">,</span>
-</code></pre><p>Imaginative.</p>
+<span class="string">,</span></code></pre><p>Imaginative.</p>
 <p>Next up we&#39;ll have to think about what else we can expect to see in our expressions - thinking about the Arithmetic operators and grouping operators. <em>shudder</em></p>

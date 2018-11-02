@@ -90,7 +90,7 @@
 <p>That said, some people don&#39;t do this, every commit is a push - maybe it&#39;s because they&#39;re not used to using a system where they can work offline, or maybe they&#39;re just paranoid because they&#39;re working on a laptop they don&#39;t trust.</p>
 <p>Either way, this is a great example of a temporal query we could write.</p>
 <p><strong>A query on Git</strong></p>
-<p><em>&quot;Find the instances of pushes within X minutes of each other from the same user and same repo&quot;, is there a trend across different languages for this kind of usage?</em></p>
+<p>*&quot;Find the instances of pushes within X minutes of each other from the same user and same repo&quot;, is there a trend across different languages for this kind of usage?*</p>
 <p>I would <em>not</em> enjoy doing this in a standard database, but that&#39;s neither here nor there, let&#39;s see what we have.</p>
 <p>First off, the important question is &quot;what is the unique combination we&#39;re looking for&quot;</p>
 <p>We care about <em>PushEvent</em>s for a unique <em>User</em> and <em>Repo</em>, so it makes sense that what we should do is <em>partition by UserAndRepo</em>  so we can easily keep state around per repo.</p>
@@ -102,8 +102,7 @@
       var repo = ev.body.repo.full_name
       <span class="function_name">linkTo</span>('pushesbyrepo-' + repo, ev)
     }</span>
-  })
-</code></pre><p>So far so good, I now have a stream per repo called &quot;pushesbyrepo-{reponame}&quot; - now what?</p>
+  })</code></pre><p>So far so good, I now have a stream per repo called &quot;pushesbyrepo-{reponame}&quot; - now what?</p>
 <p>Well, the key thing I mentioned above was that we&#39;re &quot;looking for all the events where&quot;, this suggests that perhaps the thing we are looking for should be considered an event in its own right.</p>
 <p>We can do this, we can for each of thse streams keep a note of when the last push was, and if we encounter another push within a certain time-frame, emit an event for this find of ours.</p>
 <p><strong>Running a projection per generated stream</strong></p>
@@ -112,8 +111,7 @@
   <span class="title">foreachStream</span><span class="params">()</span>
   .<span class="title">when</span><span class="params">(<span class="tuple">{
     $init: // etc
-  }</span>)</span>
-</code></pre><p>There is a built in projection in the EventStore that will automatically use the character &#39;-&#39; to sort a collection of streams into categories, and if we have</p>
+  }</span>)</span></code></pre><p>There is a built in projection in the EventStore that will automatically use the character &#39;-&#39; to sort a collection of streams into categories, and if we have</p>
 <ul>
 <li>pushesbyrepo-bob</li>
 <li>pushesbyrepo-alice</li>
@@ -143,8 +141,7 @@
       state.last<span class="variable">Push</span> = ev
       return state
     }
-  })
-</code></pre><p>Seems legit, simply keep the last PushEvent around at all times, when we get a new one, check the difference and emit an event if it&#39;s less than X minutes. NICE</p>
+  })</code></pre><p>Seems legit, simply keep the last PushEvent around at all times, when we get a new one, check the difference and emit an event if it&#39;s less than X minutes. NICE</p>
 <p>Running this, I now have a stream at </p>
 <p><em>/streams/paranoidpushes</em> </p>
 <p>So, how many paranoid pushes have I had in the time period I&#39;ve been sampling over? (roughly three hours at time of writing)</p>
@@ -156,10 +153,8 @@
     <span class="string">"ParanoidPush"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
       state.count++
     }</span>
-  })
-</code></pre><p>And the result?</p>
-<pre><code><span class="rules">{ <span class="rule"><span class="attribute">count</span>:<span class="value"> <span class="number">104533</span> }</span></span></span>
-</code></pre><p>Voila, that&#39;s an incredibly simply temporal query that just works and gives me the total number of pushes that happened within 2 minutes of each other to the same repository - and it&#39;s pretty easy too. We have two steps:</p>
+  })</code></pre><p>And the result?</p>
+<pre><code><span class="rules">{ <span class="rule"><span class="attribute">count</span>:<span class="value"> <span class="number">104533</span> }</span></span></span></code></pre><p>Voila, that&#39;s an incredibly simply temporal query that just works and gives me the total number of pushes that happened within 2 minutes of each other to the same repository - and it&#39;s pretty easy too. We have two steps:</p>
 <ul>
 <li>Push out events for each instance of some temporal correlation</li>
 <li>Aggregate on those events to get the result</li>
@@ -176,7 +171,7 @@
           <div class="container">
             <div class="row-fluid">
               <div class="span6">
-                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+                <p class="terms">2018 © Rob Ashton. ALL Rights Reserved.</p>
               </div>
             </div><!--/row-fluid-->
           </div><!--/container-->

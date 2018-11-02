@@ -96,64 +96,52 @@
 
 develop:
   cljs-watch game.cljs <span class="command">\
-</span>    '<span class="special">{</span>:optimizations :simple :pretty-print true :output-to "./game.js"<span class="special">}</span>'</span>
-</code></pre><p>Hacky, but if I type &quot;make develop&quot;, I can get on and write code without having to worry about compilation so I&#39;m happier with life, now I just make changes and hit refresh and they&#39;re there.</p>
+</span>    '<span class="special">{</span>:optimizations :simple :pretty-print true :output-to "./game.js"<span class="special">}</span>'</span></code></pre><p>Hacky, but if I type &quot;make develop&quot;, I can get on and write code without having to worry about compilation so I&#39;m happier with life, now I just make changes and hit refresh and they&#39;re there.</p>
 <p><strong>Reminding myself of where I was</strong></p>
 <p><em>First off, I specify that I&#39;m sticking this all in the namespace &#39;game&#39;</em></p>
-<pre><code class="lang-clojure">    <span class="list">(<span class="title"><span class="built_in">ns</span></span> game)</span>
-</code></pre>
+<pre><code class="language-clojure">    <span class="list">(<span class="title"><span class="built_in">ns</span></span> game)</span></code></pre>
 <p><em>I define a method called &#39;context&#39;, which takes no args</em></p>
-<pre><code class="lang-clojure">    <span class="list">(<span class="title"><span class="built_in">defn</span></span> context <span class="collection">[]</span>
-</code></pre>
+<pre><code class="language-clojure">    <span class="list">(<span class="title"><span class="built_in">defn</span></span> context <span class="collection">[]</span></code></pre>
 <p><em>I let &#39;target&#39; be thbe result of calling .getElementById (interop)</em></p>
-<pre><code class="lang-clojure">      <span class="list">(<span class="title"><span class="built_in">let</span></span> <span class="collection">[target <span class="list">(<span class="title">.getElementById</span> js/document <span class="string">"target"</span>)</span>]</span>
-</code></pre>
+<pre><code class="language-clojure">      <span class="list">(<span class="title"><span class="built_in">let</span></span> <span class="collection">[target <span class="list">(<span class="title">.getElementById</span> js/document <span class="string">"target"</span>)</span>]</span></code></pre>
 <p><em>Return a &#39;vector&#39; containing the context, the width, and the height</em></p>
-<pre><code class="lang-clojure">        [
+<pre><code class="language-clojure">        [
           (.getContext target &quot;2d&quot;) 
           (. target -width)
           (. target -height)
         ]
       )
-    )
-</code></pre>
+    )</code></pre>
 <p><em>Define a function called clearScreen, taking in a vector of &#39;ctx, width, height&#39; - see above</em></p>
-<pre><code class="lang-clojure">    <span class="list">(<span class="title"><span class="built_in">defn</span></span> clearScreen <span class="collection">[<span class="collection">[ctx width height]</span>]</span>
-</code></pre>
+<pre><code class="language-clojure">    <span class="list">(<span class="title"><span class="built_in">defn</span></span> clearScreen <span class="collection">[<span class="collection">[ctx width height]</span>]</span></code></pre>
 <p><em>Set a property on the context of fillStyle &#39;#FFF&#39;</em></p>
-<pre><code class="lang-clojure">      <span class="list">(<span class="title"><span class="built_in">set!</span></span> <span class="list">(<span class="title"><span class="built_in">.</span></span> ctx -fillStyle)</span> <span class="string">"#FFF"</span>)</span>
-</code></pre>
+<pre><code class="language-clojure">      <span class="list">(<span class="title"><span class="built_in">set!</span></span> <span class="list">(<span class="title"><span class="built_in">.</span></span> ctx -fillStyle)</span> <span class="string">"#FFF"</span>)</span></code></pre>
 <p><em>Call clearRect on the context, with 0,0,width,height</em></p>
-<pre><code class="lang-clojure">      (.clearRect ctx 0 0 width height) 
-    )
-</code></pre>
+<pre><code class="language-clojure">      (.clearRect ctx 0 0 width height) 
+    )</code></pre>
 <p><em>Same again, only parameterised so we&#39;re drawing a square</em></p>
-<pre><code class="lang-clojure">    <span class="list">(<span class="title"><span class="built_in">defn</span></span> drawSquare <span class="collection">[<span class="collection">[ctx width height]</span> x y w h]</span>
+<pre><code class="language-clojure">    <span class="list">(<span class="title"><span class="built_in">defn</span></span> drawSquare <span class="collection">[<span class="collection">[ctx width height]</span> x y w h]</span>
       <span class="list">(<span class="title"><span class="built_in">set!</span></span> <span class="list">(<span class="title"><span class="built_in">.</span></span> ctx -fillStyle)</span> <span class="string">"#FF0"</span>)</span>
       <span class="list">(<span class="title">.fillRect</span> ctx x y w h)</span> 
-    )</span>
-</code></pre>
+    )</span></code></pre>
 <p><em>Now we have a function called tick which will call clearScreen over and over again, with drawSquare over again</em></p>
-<pre><code class="lang-clojure">    <span class="list">(<span class="title"><span class="built_in">defn</span></span> tick <span class="collection">[x]</span>
+<pre><code class="language-clojure">    <span class="list">(<span class="title"><span class="built_in">defn</span></span> tick <span class="collection">[x]</span>
       <span class="list">(<span class="title"><span class="built_in">let</span></span> <span class="collection">[ctx <span class="list">(<span class="title">context</span>)</span>]</span> 
         <span class="list">(<span class="title">clearScreen</span> ctx)</span> 
         <span class="list">(<span class="title">drawSquare</span> ctx x<span class="number"> 0</span><span class="number"> 100</span><span class="number"> 100</span>)</span>  
         <span class="list">(<span class="title"><span class="built_in">if</span></span> <span class="list">(<span class="title"><span class="built_in">&lt;=</span></span> x<span class="number"> 1000</span>)</span> 
-          <span class="list">(<span class="title">js/setTimeout</span> <span class="list">(<span class="title"><span class="built_in">fn</span></span> <span class="collection">[]</span>
-</code></pre>
+          <span class="list">(<span class="title">js/setTimeout</span> <span class="list">(<span class="title"><span class="built_in">fn</span></span> <span class="collection">[]</span></code></pre>
 <p><em>And every frame, we call tick with a new version of the state, in this case an increased &#39;x&#39;</em></p>
-<pre><code class="lang-clojure">            (tick (inc x)) 
+<pre><code class="language-clojure">            (tick (inc x)) 
 
           ) 33  )
         )
       )
-    )
-</code></pre>
+    )</code></pre>
 <p><em>We export a function called &#39;init&#39; so I can call this from JS and make the game happen</em></p>
-<pre><code class="lang-clojure">    <span class="list">(<span class="title"><span class="built_in">defn</span></span> ^<span class="attribute">:export</span> init <span class="collection">[]</span>
+<pre><code class="language-clojure">    <span class="list">(<span class="title"><span class="built_in">defn</span></span> ^<span class="attribute">:export</span> init <span class="collection">[]</span>
       <span class="list">(<span class="title">tick</span><span class="number"> 0</span>)</span> 
-    )</span>
-</code></pre>
+    )</span></code></pre>
 <p>Wow. There is a lot to (re)-take in here.</p>
 <p>First off, some observations</p>
 <ul>
@@ -172,7 +160,7 @@ develop:
           <div class="container">
             <div class="row-fluid">
               <div class="span6">
-                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+                <p class="terms">2018 © Rob Ashton. ALL Rights Reserved.</p>
               </div>
             </div><!--/row-fluid-->
           </div><!--/container-->

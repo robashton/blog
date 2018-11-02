@@ -5,71 +5,60 @@
 <p>How do I start a project if I have no framework? What are the first things I do and how do I organise it? Let&#39;s have a look shall we?</p>
 <h1 id="create-the-repo">Create the repo</h1>
 <p>I use git, no brainer.</p>
-<pre><code class="lang-bash">git init
+<pre><code class="language-bash">git init
 touch README.md
 git add README.md 
 git commit -m <span class="string">"Readme"</span>
 git remote add origin githubetc
-git push -u origin master
-</code></pre>
+git push -u origin master</code></pre>
 <p>#Create a manifest</p>
 <p>I use npm to manage my dependencies, makes sense</p>
-<pre><code class="lang-bash">npm init
+<pre><code class="language-bash">npm init
 git add package.json 
-git commit -m <span class="string">"package.json"</span>
-</code></pre>
+git commit -m <span class="string">"package.json"</span></code></pre>
 <p>#Install grunt</p>
 <p>I use grunt to run my various build/test/deploy scripts, I could just use all the tools I use stand-alone but having a single build system with tasks is documentation we then haven&#39;t got to write. It&#39;s no fun if new joiners have to install and run crap.
 Grunt comes in two parts. the package itself (&quot;grunt&quot;) and the command line package for running it (&quot;grunt-cli&quot;)</p>
-<pre><code class="lang-bash">npm install grunt --save-dev
-npm install -g grunt-cli
-</code></pre>
+<pre><code class="language-bash">npm install grunt --save-dev
+npm install -g grunt-cli</code></pre>
 <p>Client/script/dev dependencies I usually stick in as dev dependencies ala above, we build and then we deploy the compiled assets so we don&#39;t need them in production.</p>
 <p>What I often do is put global dependencies like this as a pre-install script for the package.json so people haven&#39;t got to remember to install them (note, not in OSS stuff as that might annoy folk):</p>
-<pre><code class="lang-bash">vim package.json
-`
-</code></pre>
-<pre><code class="lang-json">{
+<pre><code class="language-bash">vim package.json
+`</code></pre>
+<pre><code class="language-json">{
   &quot;name&quot;: &quot;awesome-app&quot;,
   &quot;version&quot;: &quot;etc&quot;,
   &quot;scripts&quot;: {
     &quot;preinstall&quot;: &quot;npm install -g grunt-cli&quot;
   },
   &quot;etc&quot;
-}
-</code></pre>
+}</code></pre>
 <p>Grunt needs a Gruntfile, this looks like this:</p>
-<pre><code class="lang-bash">vim Gruntfile.js
-</code></pre>
-<pre><code class="lang-javascript">module.exports = <span class="keyword">function</span>(grunt) {
+<pre><code class="language-bash">vim Gruntfile.js</code></pre>
+<pre><code class="language-javascript">module.exports = <span class="keyword">function</span>(grunt) {
   grunt.initConfig({
     pkg: grunt.file.readJSON(<span class="string">'package.json'</span>)
   })
-}
-</code></pre>
-<pre><code class="lang-bash">git add Gruntfile.js 
-git commit -am <span class="string">"Grunt setup"</span>
-</code></pre>
+}</code></pre>
+<pre><code class="language-bash">git add Gruntfile.js 
+git commit -am <span class="string">"Grunt setup"</span></code></pre>
 <h1 id="create-the-app">Create the app</h1>
 <p>I&#39;ll usually have a folder called &quot;client&quot;, which contains all the HTMl/CSS/JS in it. The build script will take these assets and build them into a &quot;public&quot; directory which is empty by default. I say HTML/CSS, but I actually mean Jade/Stylus.</p>
 <p>I&#39;m not going to write about the server code for any of this, because I don&#39;t care if we&#39;re using ASP.NET/Ruby/Node - this is a client application and the server is irrelevant.</p>
 <p>What matters is that somehow these jade/stylus files can be rendered by the server or pre-built somehow.</p>
 <p>Then </p>
-<pre><code class="lang-bash">touch client/index.jade
+<pre><code class="language-bash">touch client/index.jade
 touch client/theme.styl
-touch client/app.js
-</code></pre>
+touch client/app.js</code></pre>
 <p>I don&#39;t bother with elaborate folder hierarchies to begin with, lumping everything in a single folder to begin with makes perfect sense and when/if it gets too big it&#39;ll probably be split up by feature rather than by whether it&#39;s CSS or not.</p>
 <h1 id="build-script-for-my-app-js">Build script for my app.js</h1>
 <p>app.js is the entry point to my client application, it&#39;ll be imported in my HTML like so</p>
-<pre><code class="lang-xml"><span class="tag">&lt;<span class="title">script</span> <span class="attribute">type</span>=<span class="value">"text/javascript"</span> <span class="attribute">src</span>=<span class="value">"/app.js"</span>&gt;</span><span class="javascript"></span><span class="tag">&lt;/<span class="title">script</span>&gt;</span>
-</code></pre>
+<pre><code class="language-xml"><span class="tag">&lt;<span class="title">script</span> <span class="attribute">type</span>=<span class="value">"text/javascript"</span> <span class="attribute">src</span>=<span class="value">"/app.js"</span>&gt;</span><span class="javascript"></span><span class="tag">&lt;/<span class="title">script</span>&gt;</span></code></pre>
 <p>I don&#39;t bother with <a href="/entries/why-i-stopped-using-amd.html">any of that AMD stuff</a> for the obvious reasons, but obviously I&#39;m not going to have everythingin the same file. I like to use Browserify cos that&#39;s kinda neat and encourages us to push code into modules and install them via npm.</p>
 <p>Now, we can get our web server to do this stuff on request, but I like to run a build script and get errors immediately when changing my files. I now have grunt, so I&#39;ll use the &quot;grunt-browserify&quot; package to make this part of my build.</p>
-<pre><code class="lang-bash">npm install grunt-browserify --save-dev
-vim Gruntfile.js
-</code></pre>
-<pre><code class="lang-javascript">module.exports = <span class="keyword">function</span>(grunt) {
+<pre><code class="language-bash">npm install grunt-browserify --save-dev
+vim Gruntfile.js</code></pre>
+<pre><code class="language-javascript">module.exports = <span class="keyword">function</span>(grunt) {
   grunt.initConfig({
     pkg: grunt.file.readJSON(<span class="string">'package.json'</span>),
     browserify: {
@@ -77,17 +66,14 @@ vim Gruntfile.js
     }
   })
   grunt.loadNpmTasks(<span class="string">'grunt-browserify'</span>)
-}
-</code></pre>
+}</code></pre>
 <p>This now means I can run</p>
-<pre><code class="lang-bash">grunt browserify
-</code></pre>
+<pre><code class="language-bash">grunt browserify</code></pre>
 <p>And the application will be built from &quot;client/app&quot; to &quot;public/app&quot;</p>
 <p>This actually gets tedious after a while, so I often end up with another grunt module &quot;grunt-contrib-watch&quot;, to watch for changes and automatically r-erun this file.</p>
-<pre><code class="lang-bash">npm install grunt-contrib-watch --save-dev
-vim Gruntfile.js
-</code></pre>
-<pre><code class="lang-javascript">module.exports = <span class="keyword">function</span>(grunt) {
+<pre><code class="language-bash">npm install grunt-contrib-watch --save-dev
+vim Gruntfile.js</code></pre>
+<pre><code class="language-javascript">module.exports = <span class="keyword">function</span>(grunt) {
   grunt.initConfig({
     pkg: grunt.file.readJSON(<span class="string">'package.json'</span>),
     browserify: {
@@ -100,11 +86,9 @@ vim Gruntfile.js
   })
   grunt.loadNpmTasks(<span class="string">'grunt-browserify'</span>)
   grunt.loadNpmTasks(<span class="string">'grunt-contrib-watch'</span>)
-}
-</code></pre>
+}</code></pre>
 <p>This means I can now run</p>
-<pre><code class="lang-bash">grunt watch
-</code></pre>
+<pre><code class="language-bash">grunt watch</code></pre>
 <p>And not think about this again.</p>
 <h1 id="automate-all-the-things">Automate all the things</h1>
 <p>I actually go much further than the above, and use grunt to</p>
@@ -121,8 +105,7 @@ vim Gruntfile.js
 <li>grunt-env</li>
 </ul>
 <p>I&#39;ll register a custom task called &#39;develop&#39; which means all any developer needs to do in order to start any work on my project is type</p>
-<pre><code class="lang-bash">grunt develop
-</code></pre>
+<pre><code class="language-bash">grunt develop</code></pre>
 <p>And they can get to work immediately.</p>
 <h1 id="this-is-quite-a-lot-of-set-up">This is quite a lot of set-up</h1>
 <p>I don&#39;t do this very often, this is a collection of tools/libraries that I really like and have come to appreciate very much. Anything is interchangeable for other things and I&#39;m not afraid to change any part of it at some point if something better comes up.</p>

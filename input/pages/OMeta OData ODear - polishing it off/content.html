@@ -22,13 +22,11 @@
 <pre><code>(
   se<span class="string">q("allpages")</span> -&gt; <span class="string">"allpages"</span>
 | se<span class="string">q("none")</span> -&gt; <span class="string">"none"</span>
-)
-</code></pre><p>This is quite wasteful and can be written much more simply as </p>
+)</code></pre><p>This is quite wasteful and can be written much more simply as </p>
 <pre><code>(
   se<span class="string">q("allpages")</span> 
 | se<span class="string">q("none")</span>
-)
-</code></pre><p>This is because by default the last expression will be returned anyway</p>
+)</code></pre><p>This is because by default the last expression will be returned anyway</p>
 <p>The same goes for this (ignoring that the Text primitive still needs some work)</p>
 <pre><code>Text =
   <span class="xml"><span class="tag">&lt;    (    ~'\''
@@ -37,63 +35,53 @@
       )
     )*
   &gt;</span>:text
-  -&gt; text</span>
-</code></pre><p>Is much tidier if we get rid of the un-need semantic action because text will be returned anyway, and we can drop that named &#39;text&#39; variable too.</p>
+  -&gt; text</span></code></pre><p>Is much tidier if we get rid of the un-need semantic action because text will be returned anyway, and we can drop that named &#39;text&#39; variable too.</p>
 <pre><code>Text =
   <span class="xml"><span class="tag">&lt;    (    ~'\''
       (    '\\' <span class="attribute">anything</span>
       |    <span class="attribute">letter</span>
       )
     )*
-  &gt;</span></span>
-</code></pre><p>And</p>
+  &gt;</span></span></code></pre><p>And</p>
 <pre><code>SelectOption =
   se<span class="string">q("<span class="variable">$select</span>=")</span>
   (
     <span class="string">"<span class="variable">*"</span>                                 -&gt; '<span class="variable">*'</span> 
   | listOf(`PropertyPath, ','):properties  -&gt; { properties: properties }
-  ):value -&gt; { name: "</span><span class="variable">$select</span><span class="string">", value: value }
-</code></pre><p>Is much better off without too</p>
+  ):value -&gt; { name: "</span><span class="variable">$select</span><span class="string">", value: value }</code></pre><p>Is much better off without too</p>
 <pre><code>SelectOption =
   se<span class="string">q("<span class="variable">$select</span>=")</span>
   (
     <span class="string">"<span class="variable">*"</span>
   | listOf(`PropertyPath, ','):properties  -&gt; { properties: properties }
-  ):value -&gt; { name: "</span><span class="variable">$select</span><span class="string">", value: value }
-</code></pre><p><strong>Stop repeating yourself!</strong></p>
+  ):value -&gt; { name: "</span><span class="variable">$select</span><span class="string">", value: value }</code></pre><p><strong>Stop repeating yourself!</strong></p>
 <p>OMeta uses memoisation so this isn&#39;t a big deal, but repeating yourself is annoying anyway and we can be far more expressive if we think about commonly matches constructs in our code.</p>
 <pre><code>(
   se<span class="string">q(" asc")</span> -&gt; <span class="string">"asc"</span>
 | se<span class="string">q(" desc")</span> -&gt; <span class="string">"desc"</span>
-)?:order
-</code></pre><p>Here I&#39;m looking for a sequence of characters with &#39;space&#39; &#39;asc&#39; &#39;space&#39; and this would be far better written as</p>
+)?:order</code></pre><p>Here I&#39;m looking for a sequence of characters with &#39;space&#39; &#39;asc&#39; &#39;space&#39; and this would be far better written as</p>
 <pre><code>spaces
 (
   se<span class="string">q("asc")</span>
 | se<span class="string">q("desc")</span>
 | -&gt; <span class="string">'desc'</span>
-):order
-</code></pre><p>And to boot I&#39;ve added in the default, which is &#39;desc&#39; so I don&#39;t need that optional &#39;?&#39; anymore.</p>
+):order</code></pre><p>And to boot I&#39;ve added in the default, which is &#39;desc&#39; so I don&#39;t need that optional &#39;?&#39; anymore.</p>
 <p>And how about this little one?</p>
-<pre><code><span class="function"><span class="title">listOf</span><span class="params">(`<span class="variable">PropertyPath</span>, ',')</span>
-</code></pre><p>I use that in quite a few places in the code, better split it off into its own rule</p>
+<pre><code><span class="function"><span class="title">listOf</span><span class="params">(`<span class="variable">PropertyPath</span>, ',')</span></code></pre><p>I use that in quite a few places in the code, better split it off into its own rule</p>
 <pre><code><span class="title">PropertyPathList</span> = 
-  listOf(`PropertyPath, <span class="string">','</span>)
-</code></pre><p>And use that around the place instead!</p>
+  listOf(`PropertyPath, <span class="string">','</span>)</code></pre><p>And use that around the place instead!</p>
 <p><strong>Un-needed brackets</strong></p>
 <pre><code>  <span class="constant">PathSegment</span><span class="symbol">:model</span> 
   (
     <span class="string">'?'</span>
     ( listOf(`<span class="constant">QueryOption</span>, <span class="string">'&amp;'</span>)<span class="symbol">:options</span>
     )
-  )?
-</code></pre><p>I do this in a few places, and while it causes no harm, OMeta is hard enough to read to the un-initiated without throwing brackets in all of the place</p>
+  )?</code></pre><p>I do this in a few places, and while it causes no harm, OMeta is hard enough to read to the un-initiated without throwing brackets in all of the place</p>
 <pre><code>  <span class="constant">PathSegment</span><span class="symbol">:model</span> 
   (
     <span class="string">'?'</span>
     listOf(`<span class="constant">QueryOption</span>, <span class="string">'&amp;'</span>)<span class="symbol">:options</span>
-  )?
-</code></pre><p>Not rocket science!</p>
+  )?</code></pre><p>Not rocket science!</p>
 <p><strong>Custom matching methods</strong></p>
 <p>Admittedly I hacked this together in a rum-bar at 10pm, but I have this floating around in the code for dealing with <a href="/entries/parsing-those-pesky-filtering-functions-in-odata.html">filter methods</a></p>
 <pre><code>SingleArgMethodCall :name =
@@ -133,18 +121,15 @@ ThreeArgMethodCall :name =
   FilterByExpression:three 
   spaces 
   <span class="string">')'</span> -&gt; { args: [ one, two, three ], method: name }
-, 
-</code></pre><p>This is still better than doing the above individually for <em>every single supported method</em>, but it would be nice if we could do</p>
-<pre><code>Method<span class="operator"><span class="keyword">Call</span>(name, arity)
-</code></pre><p>Instead of having three different expressions in a non-expandable manner</p>
+, </code></pre><p>This is still better than doing the above individually for <em>every single supported method</em>, but it would be nice if we could do</p>
+<pre><code>Method<span class="operator"><span class="keyword">Call</span>(name, arity)</code></pre><p>Instead of having three different expressions in a non-expandable manner</p>
 <p>Well, first off - the beginning of this will looke lik</p>
 <pre><code>MethodCall :name :arity =
   se<span class="string">q(name)</span>
   <span class="string">'('</span>
     numberOf(<span class="string">`FilterByExpression, arity):args
   ')' -&gt; { args: args, method: name }
-,
-</code></pre><p>Except there is no function called numberOf.</p>
+,</code></pre><p>Except there is no function called numberOf.</p>
 <p>Extending our OMeta parser with custom functions is really easy though.</p>
 <pre><code>ODataParser.numberOf = <span class="keyword">function</span>(rule, count, seperator) {
   <span class="keyword">var</span> ret = [];
@@ -156,8 +141,7 @@ ThreeArgMethodCall :name =
   }
   ret.push(<span class="keyword">this</span>._apply(rule));
   <span class="keyword">return</span> ret;
-}
-</code></pre><p>These &#39;_apply&#39; methods are simply what the rules are converted into when the OMeta is transpiled into JS, and we&#39;re skipping that bit and patching our parser with the raw JS. Simples!</p>
+}</code></pre><p>These &#39;_apply&#39; methods are simply what the rules are converted into when the OMeta is transpiled into JS, and we&#39;re skipping that bit and patching our parser with the raw JS. Simples!</p>
 <h2 id="odata-odear">OData, ODear</h2>
 <p>Well, I skipped a few steps here certainly - especially with regard to the following rules:</p>
 <pre><code>Number = <span class="xml"><span class="tag">&lt;<span class="title">digit+</span>&gt;</span>:d -&gt; parseInt(d, 10),
@@ -183,8 +167,7 @@ Text =
       )
     )*
   &gt;</span>:text
-,</span>
-</code></pre><p>and</p>
+,</span></code></pre><p>and</p>
 <pre><code>ResourcePart =
   &lt;    (    letter
     |    <span class="string">'_'</span>
@@ -198,26 +181,22 @@ ResourceName =
     (    <span class="string">'-'</span>
       ResourcePart
     )*
-  &gt;
-</code></pre><p>These are our primitives in the OData space, everything else is built up off of them and I&#39;ve been a bad person and not done them properly. (If anybody has bothered reading all the way up to here, you probably thought this at the time and maybe even commented about it)</p>
+  &gt;</code></pre><p>These are our primitives in the OData space, everything else is built up off of them and I&#39;ve been a bad person and not done them properly. (If anybody has bothered reading all the way up to here, you probably thought this at the time and maybe even commented about it)</p>
 <p><strong>Text and QuotedText</strong></p>
 <p>Just what <em>is</em> Text? </p>
 <p><em>As part of the query string</em></p>
 <pre><code>OperationParam = 
-  Text:name <span class="string">'='</span> Text:<span class="keyword">value</span> -&gt; { name: name, <span class="keyword">value</span>: <span class="keyword">value</span> }
-</code></pre><p><em>And inside quotes as a string literal</em></p>
+  Text:name <span class="string">'='</span> Text:<span class="keyword">value</span> -&gt; { name: name, <span class="keyword">value</span>: <span class="keyword">value</span> }</code></pre><p><em>And inside quotes as a string literal</em></p>
 <pre><code><span class="comment">QuotedText</span> <span class="comment">=</span>
   <span class="comment">'\''</span>
   <span class="comment">Text:t</span> 
   <span class="comment">'\''</span> <span class="literal">-</span>&gt; <span class="comment">t</span>
-<span class="string">,</span>
-</code></pre><p><em>What are the rules?</em></p>
+<span class="string">,</span></code></pre><p><em>What are the rules?</em></p>
 <p>Well, if it&#39;s part of the query string, let&#39;s say it&#39;s the name of a parameter, it can be anything at all (except reserved characters from the Uri - these should be encoded). To solve this we need to read the <a href="http://tools.ietf.org/html/rfc3986">RFC</a></p>
 <pre><code> reserved    = gen-delims / sub-delims
  gen-delims  = <span class="string">":"</span> / <span class="string">"/"</span> / <span class="string">"?"</span> / <span class="string">"#"</span> / <span class="string">"["</span> / <span class="string">"]"</span> / <span class="string">"<span class="variable">@"</span>
  sub-delims  = "</span>!<span class="string">" / "</span><span class="variable">$"</span> / <span class="string">"&amp;"</span> / <span class="string">"'"</span> / <span class="string">"("</span> / <span class="string">")"</span>
-                         / <span class="string">"<span class="variable">*"</span> / "</span>+<span class="string">" / "</span>,<span class="string">" / "</span>;<span class="string">" / "</span>=<span class="string">"
-</code></pre><p>We should recognise most of these, although some of these are explicitly allowed in some uri schemes and according to this RFC that&#39;s okay. </p>
+                         / <span class="string">"<span class="variable">*"</span> / "</span>+<span class="string">" / "</span>,<span class="string">" / "</span>;<span class="string">" / "</span>=<span class="string">"</code></pre><p>We should recognise most of these, although some of these are explicitly allowed in some uri schemes and according to this RFC that&#39;s okay. </p>
 <p>Still, an implementation of this can look something like:</p>
 <pre><code><span class="comment">ReservedUriComponent</span>  <span class="comment">=</span>
   <span class="comment">GenDelim</span>
@@ -237,45 +216,38 @@ ResourceName =
     <span class="comment">~ReservedUriComponent*</span>
     <span class="comment">anything</span>
   &gt;
-<span class="string">,</span>
-</code></pre><p>What I&#39;ll do, is explicitly deny all of these characters except in cases where I explicitly allow them (for example, the dollar symbol is allowed in built-in query params, brackets are allowed in expressions, quotes are allowed to denote string literals, etc)</p>
+<span class="string">,</span></code></pre><p>What I&#39;ll do, is explicitly deny all of these characters except in cases where I explicitly allow them (for example, the dollar symbol is allowed in built-in query params, brackets are allowed in expressions, quotes are allowed to denote string literals, etc)</p>
 <p>I can use this rule safely for quoted text as that rule explicitly allows quoted text:</p>
 <pre><code>QuotedText =
   '<span class="command">\'</span>'
   Text:t 
-  '<span class="command">\'</span>' -&gt; t
-</code></pre><p> <strong>Resource paths</strong></p>
+  '<span class="command">\'</span>' -&gt; t</code></pre><p> <strong>Resource paths</strong></p>
 <p> Same thing now goes here, and I can say that each part of a resource path is a UriComponent, explicitly disallowing spaces, separated by a &#39;/&#39;, so</p>
 <pre><code>ResourceName =
   <span class="xml"><span class="tag">&lt;<span class="title">(</span>    
     ~(<span class="attribute">ReservedUriComponent</span> | ' ')
     <span class="attribute">anything</span>
   )+
-  &gt;</span>:resourceName</span>
-</code></pre><p>Much happier about all of this.</p>
+  &gt;</span>:resourceName</span></code></pre><p>Much happier about all of this.</p>
 <p><strong>Decoding as we go</strong></p>
 <p>If somebody does give us some text that looks like this</p>
-<pre><code><span class="setting">foo=<span class="value">'hello%<span class="number">20</span>world'</span></span>
-</code></pre><p>It would be nice if it was decoded for output</p>
+<pre><code><span class="setting">foo=<span class="value">'hello%<span class="number">20</span>world'</span></span></code></pre><p>It would be nice if it was decoded for output</p>
 <pre><code>Text =
   <span class="xml"><span class="tag">&lt;<span class="title">
 </span>   (~<span class="attribute">ReservedUriComponent</span>
    <span class="attribute">anything</span>)*
   &gt;</span>:text -&gt; decodeURIComponent(text)
-,</span>
-</code></pre><p>We can indeed call arbitrary JS methods in our semantic output, good for us.</p>
+,</span></code></pre><p>We can indeed call arbitrary JS methods in our semantic output, good for us.</p>
 <p>We&#39;ll do the same for resource names too</p>
 <pre><code>ResourceName =
   <span class="xml"><span class="tag">&lt;<span class="title">(</span>    
     ~(<span class="attribute">ReservedUriComponent</span> | ' ')
     <span class="attribute">anything</span>
   )+
-  &gt;</span>:resourceName -&gt; decodeURIComponent(resourceName)</span>
-</code></pre><p>I think if I was to go and do some of this again, I&#39;d have been explicit about Uri conformance from the start, but it hasn&#39;t caused too much damage so we&#39;re okay.</p>
+  &gt;</span>:resourceName -&gt; decodeURIComponent(resourceName)</span></code></pre><p>I think if I was to go and do some of this again, I&#39;d have been explicit about Uri conformance from the start, but it hasn&#39;t caused too much damage so we&#39;re okay.</p>
 <p><strong>Supporting further primitives</strong></p>
 <p>At the moment we can parse integers with</p>
-<pre><code>Number = <span class="xml"><span class="tag">&lt;<span class="title">digit+</span>&gt;</span>:d -&gt; parseInt(d, 10)</span>
-</code></pre><p>But this is only half the story, we actually need to explicitly support decimals too</p>
+<pre><code>Number = <span class="xml"><span class="tag">&lt;<span class="title">digit+</span>&gt;</span>:d -&gt; parseInt(d, 10)</span></code></pre><p>But this is only half the story, we actually need to explicitly support decimals too</p>
 <pre><code>Number = Decimal | Integer
 ,
 
@@ -288,8 +260,7 @@ Decimal =
 , 
 
 Integer = <span class="tag">&lt;<span class="title">digit+</span>&gt;</span>:d -&gt; parseInt(d, 10)
-,</span>
-</code></pre><p><strong>Semantic output</strong></p>
+,</span></code></pre><p><strong>Semantic output</strong></p>
 <p>I&#39;m now much happier that we have our bases covered with the types that we support, and that I&#39;m not doing anything nefarious with OMeta, that leaves me with a final tidy-up task.</p>
 <p>In some cases, we&#39;re outputting to an array that states &#39;this is what you have, so now you know how to interpret it&#39;, this is quite a standard way of doing things in OMeta and particularly in the expression parsing space.</p>
 <p>By outputting to an array in this manner, it becomes very easy to write a further OMeta processing step to convert the output of the OMeta parsing step into another format (compilation).</p>
@@ -301,8 +272,7 @@ Integer = <span class="tag">&lt;<span class="title">digit+</span>&gt;</span>:d -
     <span class="string">"<span class="variable">*"</span>                                 -&gt; '<span class="variable">*'</span> 
   | PropertyPathList:properties  -&gt; { properties: properties }
   ):value -&gt; { name: "</span><span class="variable">$select</span><span class="string">", value: value }
-,
-</code></pre><p>In one case, our semantic action is to return a string containing a single character *, and other case I return an object literal with a list of properties in it.</p>
+,</code></pre><p>In one case, our semantic action is to return a string containing a single character *, and other case I return an object literal with a list of properties in it.</p>
 <p>I kinda want to go through and sort this out, but without using it in anger (say, for generating SQL), it&#39;s hard to say what a useful model will look like.</p>
 <p>I&#39;ve also made some mistakes in that I didn&#39;t refactor my tests as I went to eliminate duplication, so they&#39;re a bit coupled to the structure of the model.</p>
 <p>I&#39;ve decided that as I only have a day left at the client, that the best thing I can do at this point is raise my hands in the air and point out very publicly that:</p>
@@ -322,16 +292,15 @@ Integer = <span class="tag">&lt;<span class="title">digit+</span>&gt;</span>:d -
 <p>To do this, I just have to add a method to my parser like so:</p>
 <pre><code>ODataParser._enableTokens = <span class="keyword">function</span>() {
   OMeta._enableTokens.<span class="keyword">call</span>(this, [<span class="comment">'Text', 'ResourceName', 'Number', 'RecognisedOption', 'FilterAndOperand', 'FilterByOperand', 'FilterRecognisedMathOperand']);</span>
-};
-</code></pre><p>You&#39;ll notice if you&#39;re observant, that I&#39;ve added a few more named types here, that&#39;s because otherwise I had no way of matching key words and therefore colouring them separately.</p>
+};</code></pre><p>You&#39;ll notice if you&#39;re observant, that I&#39;ve added a few more named types here, that&#39;s because otherwise I had no way of matching key words and therefore colouring them separately.</p>
 <p>Instead of</p>
-<pre><code>se<span class="string">q("add")</span>
-</code></pre><p>I now have</p>
+<pre><code>se<span class="string">q("add")</span></code></pre><p>I now have</p>
 <pre><code>FilterRecognisedMathOperand(<span class="string">"add"</span>)
 ,
 
 FilterRecognisedMathOperand :name = 
-  se<span class="string">q(name)</span>
-</code></pre><p>That&#39;s about the only type of change I had to make to support the following glory:</p>
-<p><img src="/img/parse_output.png" alt="Highlighted output in a text area from OData input" title="Parse output"/></p>
+  se<span class="string">q(name)</span></code></pre><p>That&#39;s about the only type of change I had to make to support the following glory:</p>
+<img src="/img/parse_output.png" alt="Highlighted output in a text area from OData input" title="Parse output"/>
+
+
 <p>Mission accomplished, now onto my next client...</p>

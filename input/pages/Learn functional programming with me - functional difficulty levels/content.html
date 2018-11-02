@@ -17,11 +17,9 @@
 <p><strong>I did a tidy up</strong></p>
 <p>I got rid of my stupid nested structures, and put the data for bullets into the top-level map, instead of</p>
 <pre><code>[<span class="symbol">:bullets</span> <span class="symbol">:active</span>]
-[<span class="symbol">:bullets</span> <span class="symbol">:lastFiringTicks</span>]
-</code></pre><p>I now have</p>
+[<span class="symbol">:bullets</span> <span class="symbol">:lastFiringTicks</span>]</code></pre><p>I now have</p>
 <pre><code>[<span class="symbol">:bullets</span>]
-[<span class="symbol">:last-firing-ticks</span>]
-</code></pre><p>It makes things much simpler, the code at the start of this entry can be found <a href="https://github.com/robashton/clojure-spaceinvaders/blob/085c0249e54c19d189dfba6e006205c90914fc56/game.cljs">here</a>.</p>
+[<span class="symbol">:last-firing-ticks</span>]</code></pre><p>It makes things much simpler, the code at the start of this entry can be found <a href="https://github.com/robashton/clojure-spaceinvaders/blob/085c0249e54c19d189dfba6e006205c90914fc56/game.cljs">here</a>.</p>
 <p><strong>The space invaders need to invade some space</strong></p>
 <p>When the invaders reach the end of the row, their direction changes - they also need to drop down by a certain amount of space and thus attack the earth.</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> update-direction [state]
@@ -30,8 +28,7 @@
       <span class="list">(<span class="title">let</span><span class="body"> [right <span class="list">(<span class="title">apply</span><span class="body"> max <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:x</span> enemies)</span></span>)</span></span>]
         <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">&gt;</span><span class="body"> right <span class="number">600</span>)</span></span> <span class="list">(<span class="title">assoc</span><span class="body"> state <span class="keyword">:direction</span> <span class="number">-1</span>)</span></span> state)</span></span>)</span></span>
       <span class="list">(<span class="title">let</span><span class="body"> [left <span class="list">(<span class="title">apply</span><span class="body"> min <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:x</span> enemies)</span></span>)</span></span>]
-        <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">&lt;</span><span class="body"> left <span class="number">0</span>)</span></span> <span class="list">(<span class="title">assoc</span><span class="body"> state <span class="keyword">:direction</span> <span class="number">1</span>)</span></span> state)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>
-</code></pre><p>I guess what I&#39;ll do here is break this up a bit (which I&#39;m okay with anyway because the above is quite hard to read)</p>
+        <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">&lt;</span><span class="body"> left <span class="number">0</span>)</span></span> <span class="list">(<span class="title">assoc</span><span class="body"> state <span class="keyword">:direction</span> <span class="number">1</span>)</span></span> state)</span></span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre><p>I guess what I&#39;ll do here is break this up a bit (which I&#39;m okay with anyway because the above is quite hard to read)</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> rects-max-x [rects]
   <span class="list">(<span class="title">apply</span><span class="body"> max <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:x</span> rects)</span></span>)</span></span>)</span></span>
 
@@ -48,15 +45,13 @@
 
 <span class="list">(<span class="title">defn</span><span class="body"> update-direction [state]
   <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">enemies-reached-edge</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span> <span class="list">(<span class="body"><span class="keyword">:direction</span> state)</span></span>)</span></span>
-    <span class="list">(<span class="title">invert-enemies-direction</span><span class="body"> state)</span></span> state)</span></span>)</span></span>
-</code></pre><p>Now I&#39;ve done this, it should be fairly easy to update their y positions as part of that invert direction call.</p>
+    <span class="list">(<span class="title">invert-enemies-direction</span><span class="body"> state)</span></span> state)</span></span>)</span></span></code></pre><p>Now I&#39;ve done this, it should be fairly easy to update their y positions as part of that invert direction call.</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> invert-enemies-direction [state]
   <span class="list">(<span class="title">assoc</span><span class="body"> state 
          <span class="keyword">:direction</span> <span class="list">(<span class="title">*</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:direction</span> state)</span></span> <span class="number">-1</span>)</span></span>
          <span class="keyword">:enemies</span> <span class="list">(<span class="title">map</span><span class="body"> 
                     <span class="list">(<span class="title">fn</span><span class="body"> [enemy] <span class="list">(<span class="title">assoc</span><span class="body"> enemy <span class="keyword">:y</span> <span class="list">(<span class="title">+</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> enemy)</span></span> <span class="number">50</span>)</span></span>)</span></span>)</span></span>
-                      <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>)</span></span>)</span></span>)</span></span>
-</code></pre><p>Fairly sure there are some tricks I&#39;m missing here for making that sort of thing prettier, but it does the job pretty well and my invaders come to say hello. </p>
+                      <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>)</span></span>)</span></span>)</span></span></code></pre><p>Fairly sure there are some tricks I&#39;m missing here for making that sort of thing prettier, but it does the job pretty well and my invaders come to say hello. </p>
 <ul>
 <li>Associate this expression with the enemies field in the map</li>
 <li>The expression is a map of the current enemies field</li>
@@ -74,27 +69,22 @@
     <span class="list">(<span class="title">update-bullets</span><span class="body">
       <span class="list">(<span class="title">update-player</span><span class="body">
         <span class="list">(<span class="title">update-enemies</span><span class="body">
-          <span class="list">(<span class="title">update-direction</span><span class="body"> state)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>
-</code></pre><p>and</p>
+          <span class="list">(<span class="title">update-direction</span><span class="body"> state)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre><p>and</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> validate-end-conditions [state]
   <span class="list">(<span class="title">cond</span><span class="body"> <span class="list">(<span class="title">enemies-are-all-dead</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>)</span></span> <span class="list">(<span class="title">start-next-level</span><span class="body">)</span></span>
         <span class="list">(<span class="title">enemies-are-at-the-gate</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>)</span></span> <span class="list">(<span class="title">show-game-over</span><span class="body">)</span></span>
-        <span class="keyword">:else</span> state)</span></span>)</span></span>
-</code></pre><p>Now obviously <em>show-game-over</em> isn&#39;t going to actually return any state, but we&#39;ll be on a different page then so that&#39;s no big deal. <em>start-next-level</em> will have an opportunity to create completely new state for our next level so that works out nicely too.</p>
+        <span class="keyword">:else</span> state)</span></span>)</span></span></code></pre><p>Now obviously <em>show-game-over</em> isn&#39;t going to actually return any state, but we&#39;ll be on a different page then so that&#39;s no big deal. <em>start-next-level</em> will have an opportunity to create completely new state for our next level so that works out nicely too.</p>
 <p><strong>Game over dude</strong></p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> enemies-are-at-the-gate [enemies]
   <span class="list">(<span class="title">&gt;</span><span class="body"> <span class="list">(<span class="title">apply</span><span class="body"> max <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:y</span> enemies)</span></span>)</span></span> <span class="number">400</span>)</span></span>)</span></span>
 
 <span class="list">(<span class="title">defn</span><span class="body"> show-game-over []
-  <span class="list">(<span class="title">set</span><span class="body">! <span class="list">(<span class="body">. js/document -location)</span></span> <span class="string">"gameover.html"</span>)</span></span>)</span></span>
-</code></pre><p>This is another example of how delightfully terse Clojure can be at times :)</p>
+  <span class="list">(<span class="title">set</span><span class="body">! <span class="list">(<span class="body">. js/document -location)</span></span> <span class="string">"gameover.html"</span>)</span></span>)</span></span></code></pre><p>This is another example of how delightfully terse Clojure can be at times :)</p>
 <p><strong>The enemies are dead, long live the enemies</strong></p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> enemies-are-all-dead [enemies]
-  <span class="list">(<span class="title">not</span><span class="body"> <span class="list">(<span class="title">first</span><span class="body"> enemies)</span></span>)</span></span>)</span></span>
-</code></pre><p>Apparently nil and false in Clojure are our only falsy values, so the above will work (first returns nil if the sequence is empty).</p>
+  <span class="list">(<span class="title">not</span><span class="body"> <span class="list">(<span class="title">first</span><span class="body"> enemies)</span></span>)</span></span>)</span></span></code></pre><p>Apparently nil and false in Clojure are our only falsy values, so the above will work (first returns nil if the sequence is empty).</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> start-next-level []
-  <span class="list">(<span class="title">create-state</span><span class="body">)</span></span>)</span></span>
-</code></pre><p>For now, let&#39;s just go with a re-start of the whole thing when we&#39;ve killed all the enemies so everything starts from the beginning once more.</p>
+  <span class="list">(<span class="title">create-state</span><span class="body">)</span></span>)</span></span></code></pre><p>For now, let&#39;s just go with a re-start of the whole thing when we&#39;ve killed all the enemies so everything starts from the beginning once more.</p>
 <p><strong>Difficulty levels</strong></p>
 <p>Now we have game over and next level, let&#39;s look at next level and what it means.</p>
 <p>Currently I have a few hard-coded values lying around</p>
@@ -123,27 +113,21 @@
 <span class="list">(<span class="title">defn</span><span class="body"> ^<span class="keyword">:export</span> init []
   <span class="list">(<span class="title">hook-input-events</span><span class="body">)</span></span>
   <span class="list">(<span class="title">let</span><span class="body"> [ctx <span class="list">(<span class="title">context</span><span class="body"> <span class="number">640</span> <span class="number">480</span>)</span></span>] 
-    <span class="list">(<span class="title">tick</span><span class="body"> ctx <span class="list">(<span class="title">create-state</span><span class="body"> <span class="number">1</span>)</span></span>)</span></span>)</span></span>)</span></span>
-</code></pre><p>We&#39;ll start at level 1, and then when creating the new state for the new level, we&#39;ll pass in level+1.</p>
+    <span class="list">(<span class="title">tick</span><span class="body"> ctx <span class="list">(<span class="title">create-state</span><span class="body"> <span class="number">1</span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre><p>We&#39;ll start at level 1, and then when creating the new state for the new level, we&#39;ll pass in level+1.</p>
 <p>Now then, how to use this for firing rate?</p>
-<pre><code><span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> <span class="list">(<span class="title">rem</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:last-firing-ticks</span> state)</span></span> <span class="list">(<span class="title">firing-rate</span><span class="body"> state)</span></span>)</span></span> <span class="number">0</span>)</span></span>
-</code></pre><p>and enemy movement</p>
-<pre><code><span class="title">func</span> (if(= direction <span class="number">1</span>) <span class="comment">#(+ % (enemy-speed state)) #(- (enemy-speed state))</span>
-</code></pre><p>and bullet speed</p>
-<pre><code>(update-<span class="keyword">in</span> bullet [<span class="symbol">:y</span>] <span class="comment">#(- % (bullet-speed state))))))</span>
-</code></pre><p>and for the player movement?</p>
+<pre><code><span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> <span class="list">(<span class="title">rem</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:last-firing-ticks</span> state)</span></span> <span class="list">(<span class="title">firing-rate</span><span class="body"> state)</span></span>)</span></span> <span class="number">0</span>)</span></span></code></pre><p>and enemy movement</p>
+<pre><code><span class="title">func</span> (if(= direction <span class="number">1</span>) <span class="comment">#(+ % (enemy-speed state)) #(- (enemy-speed state))</span></code></pre><p>and bullet speed</p>
+<pre><code>(update-<span class="keyword">in</span> bullet [<span class="symbol">:y</span>] <span class="comment">#(- % (bullet-speed state))))))</span></code></pre><p>and for the player movement?</p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> update-player [state]
   <span class="list">(<span class="title">let</span><span class="body"> [left <span class="list">(<span class="body">@key-states <span class="number">37</span>)</span></span>
         right <span class="list">(<span class="body">@key-states <span class="number">39</span>)</span></span>]
     <span class="list">(<span class="title">cond</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> left true)</span></span> <span class="list">(<span class="title">update-in</span><span class="body"> state [<span class="keyword">:player</span> <span class="keyword">:x</span>] #<span class="list">(<span class="title">-</span><span class="body"> % <span class="list">(<span class="title">player-speed</span><span class="body"> state)</span></span>)</span></span>)</span></span>
           <span class="list">(<span class="title">=</span><span class="body"> right true)</span></span> <span class="list">(<span class="title">update-in</span><span class="body"> state [<span class="keyword">:player</span> <span class="keyword">:x</span>] #<span class="list">(<span class="title">+</span><span class="body"> % <span class="list">(<span class="title">player-speed</span><span class="body"> state)</span></span>)</span></span>)</span></span>
-          <span class="keyword">:else</span> state)</span></span>)</span></span>)</span></span>
-</code></pre><p>And the implementation (for now) </p>
+          <span class="keyword">:else</span> state)</span></span>)</span></span>)</span></span></code></pre><p>And the implementation (for now) </p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> firing-rate [state] <span class="list">(<span class="title">min</span><span class="body"> <span class="number">15</span> <span class="list">(<span class="title">-</span><span class="body"> <span class="number">30</span> <span class="list">(<span class="title">*</span><span class="body"> <span class="number">2</span> <span class="list">(<span class="body"><span class="keyword">:level</span> state)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>
 <span class="list">(<span class="title">defn</span><span class="body"> enemy-speed [state] <span class="list">(<span class="body"><span class="keyword">:level</span> state)</span></span>)</span></span>
 <span class="list">(<span class="title">defn</span><span class="body"> bullet-speed [state]<span class="list">(<span class="body"><span class="keyword">:level</span> state)</span></span>)</span></span>
 <span class="list">(<span class="title">defn</span><span class="body"> player-speed [state] <span class="list">(<span class="title">*</span><span class="body"> <span class="number">2</span> <span class="list">(<span class="body"><span class="keyword">:level</span> state)</span></span>)</span></span>)</span></span>
-<span class="list">(<span class="title">defn</span><span class="body"> enemy-descent-speed [state] <span class="number">25</span>)</span></span>
-</code></pre><p>This is quite tidy and gives me the ability to adjust these values easily when experimenting with the game. </p>
+<span class="list">(<span class="title">defn</span><span class="body"> enemy-descent-speed [state] <span class="number">25</span>)</span></span></code></pre><p>This is quite tidy and gives me the ability to adjust these values easily when experimenting with the game. </p>
 <p>I&#39;m not so happy with passing the complete &#39;state&#39; into each of these methods, but pulling out the level at the point of invocation seems a greater evil in this case.</p>
 <p>Next up, I&#39;ll look at scoring as a side effect of enemy destruction, and re-visit how I manage the logic and state around that.</p>

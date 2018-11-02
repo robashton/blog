@@ -12,7 +12,7 @@
 </ul>
 <p>We now have a <a href="/entries/evented-github-adventure---emitting-commits-as-their-own-events.html">stream for the commits</a> inside Github, and we have information about the repos associated with those commits, now how about asking a question about those commits.</p>
 <p>For reference, there are about 20 million commit messages in my event store, so I have more than enough data for this to be statistically relevant!</p>
-<p><em>&quot;Oh Github Github, in the cloud, who is the sweariest developer out loud?&quot;</em></p>
+<p>*&quot;Oh Github Github, in the cloud, who is the sweariest developer out loud?&quot;*</p>
 <p>Well, this is the kind of thing we might do outside the store (after re-partitioning per-language inside the store), but I haven&#39;t got a secondary store so I&#39;m just going to build up a view model for my charting library directly inside the event store (using the commit events I made)</p>
 <pre><code><span class="reserved">var</span> swearwords = [ <span class="string">"poop"</span>, <span class="string">"arse"</span>, <span class="string">"sugarlumps"</span> ] <span class="regexp">//</span> Changed to protect the innocent
 
@@ -37,8 +37,7 @@ fromStream(<span class="string">'github-commits'</span>)
       }
       <span class="keyword">return</span> state
     }
-  })
-</code></pre><p>And the results?</p>
+  })</code></pre><p>And the results?</p>
 <p>Well, I can go to </p>
 <p><em>/projection/curses/state</em></p>
 <p>And get a big pile of JSON, which looks a bit like this</p>
@@ -46,9 +45,8 @@ fromStream(<span class="string">'github-commits'</span>)
   <span class="comment">"ASP"</span>: { <span class="method">total:</span> <span class="number">1</span>, <span class="method">curses:</span> <span class="number">200</span> },
   <span class="comment">"OpenEdge ABL"</span>: { <span class="method">total:</span> <span class="number">2</span>, <span class="method">curses:</span> <span class="number">0</span> },
   <span class="comment">"Julia"</span>: { <span class="method">total:</span> <span class="number">11</span>, <span class="method">curses:</span> <span class="number">0</span> }
-}
-</code></pre><p>Plugging this into d3, and filtering out the items without enough entries (5000 events), we get </p>
-<p><div id="graph"></div></p>
+}</code></pre><p>Plugging this into d3, and filtering out the items without enough entries (5000 events), we get </p>
+<div id="graph"></div>
 <script type="text/javascript" src="/d3.v2.js"></script>
 
 <script type="text/javascript">
@@ -124,59 +122,49 @@ var data = {"Lua":{"count":365,"total":14410},"Java":{"count":24321,"total":4786
 
 <p>Actually, let&#39;s normalise this for the lols and see who is actually the sweariest, normalised from about 0% to 7% (the majority of developers are quite clean about things ;) )</p>
 <p><strong>% of commit messages containing curse words</strong></p>
-<p><div id="normalised"></div></p>
+<div id="normalised"></div>
 <script type="text/javascript">
 
-  var svg = d3.select("#normalised").append("svg")
-          .attr("width", 800)
-          .attr("height", 480)
-
-   var scale = d3.scale.linear()
+<p>  var svg = d3.select(&quot;#normalised&quot;).append(&quot;svg&quot;)
+          .attr(&quot;width&quot;, 800)
+          .attr(&quot;height&quot;, 480)</p>
+<p>   var scale = d3.scale.linear()
      .domain([0, d3.max(filteredData, function(d) { return d.percentage })])
-     .range([0, 1]);
-
-   var maxPercentage = d3.max(filteredData, function(d) { return d.percentage });
-
-   svg.append("text")
-      .attr("fill", '#000')
-      .attr("x", 710)
-      .attr("y", 60)
-      .text(maxPercentage + "%")
-
-   svg.append("text")
-      .attr("fill", '#000')
-      .attr("x", 710)
-      .attr("y", 350)
-      .text(0 + "%")
-
-   svg.selectAll(".label")
+     .range([0, 1]);</p>
+<p>   var maxPercentage = d3.max(filteredData, function(d) { return d.percentage });</p>
+<p>   svg.append(&quot;text&quot;)
+      .attr(&quot;fill&quot;, &#39;#000&#39;)
+      .attr(&quot;x&quot;, 710)
+      .attr(&quot;y&quot;, 60)
+      .text(maxPercentage + &quot;%&quot;)</p>
+<p>   svg.append(&quot;text&quot;)
+      .attr(&quot;fill&quot;, &#39;#000&#39;)
+      .attr(&quot;x&quot;, 710)
+      .attr(&quot;y&quot;, 350)
+      .text(0 + &quot;%&quot;)</p>
+<p>   svg.selectAll(&quot;.label&quot;)
       .data(filteredData)
       .enter()
-        .append("text")
-        .attr("class", "label")
-        .attr("transform", function(d, i) { 
-          var transform = "translate(" + i * (640 / filteredData.length) + "," + 380 + ") "
-          transform += "rotate(75) "
+        .append(&quot;text&quot;)
+        .attr(&quot;class&quot;, &quot;label&quot;)
+        .attr(&quot;transform&quot;, function(d, i) { 
+          var transform = &quot;translate(&quot; + i * (640 / filteredData.length) + &quot;,&quot; + 380 + &quot;) &quot;
+          transform += &quot;rotate(75) &quot;
           return transform
         })
-        .attr("x", 0)
-        .attr("y", 0)
-        .text(function(d) { return d.language })
-
-    svg.selectAll(".curse")
-     .data(filteredData)
-     .enter()
-       .append("rect")
-         .attr("class", "curse")
-         .attr("fill", '#AAF')
-         .attr("x", function(d, i) { return i * (640 / filteredData.length)})
-         .attr("y", function(d, i) { return 370 - (280 * scale(d.percentage)) })
-         .attr("width", 640 / (filteredData.length + 1))
-         .attr("height", function(d, i) { return 280 * scale(d.percentage) })
-
-</script>
-
-
+        .attr(&quot;x&quot;, 0)
+        .attr(&quot;y&quot;, 0)
+        .text(function(d) { return d.language })</p>
+<pre><code><span class="comment">svg</span>.<span class="comment">selectAll("</span>.<span class="comment">curse")</span>
+ <span class="string">.</span><span class="comment">data(filteredData)</span>
+ <span class="string">.</span><span class="comment">enter()</span>
+   <span class="string">.</span><span class="comment">append("rect")</span>
+     <span class="string">.</span><span class="comment">attr("class"</span>, <span class="comment">"curse")</span>
+     <span class="string">.</span><span class="comment">attr("fill"</span>, <span class="comment">'#AAF')</span>
+     <span class="string">.</span><span class="comment">attr("x"</span>, <span class="comment">function(d</span>, <span class="comment">i)</span> <span class="comment">{</span> <span class="comment">return</span> <span class="comment">i</span> <span class="comment">*</span> <span class="comment">(640</span> <span class="comment">/</span> <span class="comment">filteredData</span>.<span class="comment">length)})</span>
+     <span class="string">.</span><span class="comment">attr("y"</span>, <span class="comment">function(d</span>, <span class="comment">i)</span> <span class="comment">{</span> <span class="comment">return</span> <span class="comment">370</span> <span class="literal">-</span> <span class="comment">(280</span> <span class="comment">*</span> <span class="comment">scale(d</span>.<span class="comment">percentage))</span> <span class="comment">})</span>
+     <span class="string">.</span><span class="comment">attr("width"</span>, <span class="comment">640</span> <span class="comment">/</span> <span class="comment">(filteredData</span>.<span class="comment">length</span> <span class="literal">+</span> <span class="comment">1))</span>
+     <span class="string">.</span><span class="comment">attr("height"</span>, <span class="comment">function(d</span>, <span class="comment">i)</span> <span class="comment">{</span> <span class="comment">return</span> <span class="comment">280</span> <span class="comment">*</span> <span class="comment">scale(d</span>.<span class="comment">percentage)</span> <span class="comment">})</code></pre><p></script></p>
 <p>I&#39;ll leave you to draw your own conclusions about this chart, but I can&#39;t say that it comes as a huge surprise judging from the various developers on <em>my</em> Twitter feed ;-)</p>
 <p>Scala developers are ducking <em>filthy</em>, but the lisp programmers probably save their curse words for Emacs rather than the language they&#39;re using. <em>Seems legit.</em></p>
 <p>Projections are a great way to analyse streams to generate knowledge about what is going on, of course simply doing aggregations over data over time is something we can achieve in most systems, in the next entry we&#39;ll look at something more interesting.</p>

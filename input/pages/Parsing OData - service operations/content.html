@@ -1,9 +1,7 @@
 <p>As well as <a href="/entries/writing-an-odata-parser---starting-at-the-beginning.html">addressing resources</a> and <a href="/entries/parsing-odata---nested-resource-paths.html">resource paths</a>, in OData we apparently have the ability to invoke &quot;service operations&quot; as well.</p>
 <p>From what I see, these are addressed in a pretty much identical manner to actual resources like so</p>
-<pre><code>/<span class="constant">ProductsByColor</span><span class="number">?c</span>olor=<span class="string">'red'</span>
-</code></pre><p>Or</p>
-<pre><code>/<span class="constant">ProductsByColor</span>(<span class="number">3</span>)/<span class="constant">Category</span>/<span class="constant">Name</span><span class="number">?c</span>olor=<span class="string">'red'</span>
-</code></pre><p>The invocation on the server is the same in each of these cases, however in the second case we&#39;re addressing into the collection returned by the invocation.</p>
+<pre><code>/<span class="constant">ProductsByColor</span><span class="number">?c</span>olor=<span class="string">'red'</span></code></pre><p>Or</p>
+<pre><code>/<span class="constant">ProductsByColor</span>(<span class="number">3</span>)/<span class="constant">Category</span>/<span class="constant">Name</span><span class="number">?c</span>olor=<span class="string">'red'</span></code></pre><p>The invocation on the server is the same in each of these cases, however in the second case we&#39;re addressing into the collection returned by the invocation.</p>
 <p>Now, a simple solution to this will be to carry on using the existing parser, and supply these custom params as part of the overall model:</p>
 <p>So, with the following test:</p>
 <pre><code><span class="function"><span class="title">test</span><span class="params">(<span class="string">"/method(1)/child?foo=bar"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>(result) <span class="tuple">{
@@ -21,20 +19,17 @@
   <span class="function_name">it</span>(<span class="string">"should have the argument specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
      assert.<span class="function_name">equal</span>(result.args.foo, 'bar')
   }</span>)
-})
-</code></pre><p>I might then solve it by simply adding this to the end of my main expression</p>
+})</code></pre><p>I might then solve it by simply adding this to the end of my main expression</p>
 <pre><code><span class="constant">OData</span> = (
   (
     <span class="constant">PathSegment</span><span class="symbol">:model</span> 
     (
       <span class="string">'?'</span>
       <span class="constant">OperationParam</span><span class="symbol">:param</span>
-    )?
-</code></pre><p>Where</p>
+    )?</code></pre><p>Where</p>
 <pre><code>OperationParam = 
   Text:name <span class="string">'='</span> Text:<span class="keyword">value</span> -&gt; { name: name, <span class="keyword">value</span>: <span class="keyword">value</span> }
-,
-</code></pre><p>(Text is a hack so I&#39;m not putting that here until I&#39;ve defined what it actually is - similar to my kerfuffle over resource names earlier)</p>
+,</code></pre><p>(Text is a hack so I&#39;m not putting that here until I&#39;ve defined what it actually is - similar to my kerfuffle over resource names earlier)</p>
 <p>To build up the model we can do some inline code like so:</p>
 <pre><code>OData = (
   (
@@ -51,8 +46,7 @@
          <span class="keyword">return</span> model
        }
   | <span class="string">'/'</span>
-) 
-</code></pre><p>This will have the desired effect to an extent, of course it won&#39;t pass this test:</p>
+) </code></pre><p>This will have the desired effect to an extent, of course it won&#39;t pass this test:</p>
 <pre><code><span class="function"><span class="title">test</span><span class="params">(<span class="string">"/method(1)/child?foo=bar&amp;foz=baz"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>(result) <span class="tuple">{
   <span class="function_name">it</span>(<span class="string">"should have 'foo' specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
      assert.<span class="function_name">equal</span>(result.args.foo, 'bar')
@@ -60,16 +54,14 @@
   <span class="function_name">it</span>(<span class="string">"should have 'foz' specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
      assert.<span class="function_name">equal</span>(result.args.foz, 'baz')
   }</span>)
-})
-</code></pre><p>This is where the built-in &#39;listOf&#39; comes in useful:</p>
+})</code></pre><p>This is where the built-in &#39;listOf&#39; comes in useful:</p>
 <pre><code><span class="constant">OData</span> = (
   (
     <span class="constant">PathSegment</span><span class="symbol">:model</span> 
     (
       <span class="string">'?'</span>
       listOf(`<span class="constant">OperationParam</span>, <span class="string">'&amp;'</span>)<span class="symbol">:params</span>
-    )?
-</code></pre><p>With an appropriate loop to build up the list</p>
+    )?</code></pre><p>With an appropriate loop to build up the list</p>
 <pre><code>OData = (
   (
     PathSegment:model 
@@ -86,8 +78,7 @@
          <span class="keyword">return</span> model
        }
   | <span class="string">'/'</span>
-) 
-</code></pre><p>Now, a few things getting wrong with this whole implementation so far...</p>
+) </code></pre><p>Now, a few things getting wrong with this whole implementation so far...</p>
 <ul>
 <li>There is a semantic difference between a Service Operation and a Resource look-up, I&#39;m not expressing this in the model</li>
 <li>The code to build up the model is getting a bit mixed into my parsing expressions, I&#39;ll watch to see if this  gets un-manageable</li>

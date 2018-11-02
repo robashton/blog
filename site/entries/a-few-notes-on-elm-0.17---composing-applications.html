@@ -82,7 +82,7 @@
 </pre>
 
 <p>At the heart of it all is <a href="http://guide.elm-lang.org/architecture/index.html">The Elm Architecture</a> enouraging developers to write modules that look like this</p>
-<pre><code class="lang-haskell">    <span class="import"><span class="keyword">import</span> Html exposing <span class="container">(..)</span></span>
+<pre><code class="language-haskell">    <span class="import"><span class="keyword">import</span> Html exposing <span class="container">(..)</span></span>
 
     <span class="typedef"><span class="keyword">type</span> alias <span class="type">Model</span> = <span class="container">{ ... }</span></span>
     <span class="typedef"><span class="keyword">type</span> <span class="type">Msg</span> = <span class="type">Reset</span> | ...</span>
@@ -93,8 +93,7 @@
         <span class="type">Reset</span> -&gt; handleReset model
 
     view : <span class="type">Model</span> -&gt; <span class="type">Html</span> <span class="type">Msg</span>
-    view model = someHtml model
-</code></pre>
+    view model = someHtml model</code></pre>
 <p>This seems inherently sensible and you can nest components simply by storing their child models on the parent model, and calling into the child &#39;view&#39; and &#39;update&#39; functions with messages and that model that are entirely opaque to the parent.</p>
 <p>This is great, two things stand out here</p>
 <ul>
@@ -110,15 +109,14 @@
 </ul>
 <p>There are some exceptions to Children, but mostly events come from the DOM and we can just wire them up pretty much directly without any need for intermediate models. You don&#39;t tend to need much more nesting than this. I&#39;m a bit concerned that the Html module seems to load its source of truth from the dom instead of relying on the model passed in but <em>shrug</em>.</p>
 <p>What this effectively means is that each Page holds the &quot;Single Source of Truth&quot; and simply renders a tree based on that source of truth, wires up events from that tree into messages within the page, handles those messages, updates the single source of truth and the cycle goes on. </p>
-<pre><code class="lang-haskell">    update : <span class="type">Msg</span> -&gt; <span class="type">Model</span> -&gt; ( <span class="type">Model</span>, <span class="type">Cmd</span> <span class="type">Msg</span> )
+<pre><code class="language-haskell">    update : <span class="type">Msg</span> -&gt; <span class="type">Model</span> -&gt; ( <span class="type">Model</span>, <span class="type">Cmd</span> <span class="type">Msg</span> )
     update msg model = 
         <span class="keyword">case</span> msg <span class="keyword">of</span> 
           <span class="type">MyClickMessage</span> -&gt; ( model, loadSomethingCool )
 
     view : <span class="type">Model</span> -&gt; <span class="type">Html</span>.<span class="type">Msg</span>
     view model -&gt;
-       <span class="type">MyButton</span>.default [ onClick <span class="type">MyClickMessage</span> ] <span class="string">"Click me!"</span>
-</code></pre>
+       <span class="type">MyButton</span>.default [ onClick <span class="type">MyClickMessage</span> ] <span class="string">"Click me!"</span></code></pre>
 <p>There are some things that need to be handled globally however, changes to navigation, displaying generic error messages/feedback, dialog management (okay, not dialog management, don&#39;t use dialogs please), global data management (which user are we?) and sometimes we need to </p>
 <ul>
 <li>Tell a Page that something has changed while it wasn&#39;t looking</li>
@@ -131,7 +129,7 @@
 </ul>
 <p>Our current preferred method for getting messages to the Router is detailed in the first post and looks a bit like this</p>
 <p><em>Update method in Page</em></p>
-<pre><code class="lang-haskell">  update : <span class="type">Msg</span> -&gt; <span class="type">Model</span> -&gt; ( <span class="type">Model</span>, <span class="type">Cmd</span> <span class="type">Msg</span>, <span class="type">Cmd</span> <span class="type">Common</span>.<span class="type">Event</span> )
+<pre><code class="language-haskell">  update : <span class="type">Msg</span> -&gt; <span class="type">Model</span> -&gt; ( <span class="type">Model</span>, <span class="type">Cmd</span> <span class="type">Msg</span>, <span class="type">Cmd</span> <span class="type">Common</span>.<span class="type">Event</span> )
   update msg model =
       <span class="keyword">case</span> msg <span class="keyword">of</span>
           <span class="type">FetchFail</span> err -&gt;
@@ -150,14 +148,14 @@
               ( { model | <span class="type">SomeState</span> = <span class="type">Just</span> state }, <span class="type">Cmd</span>.none, <span class="type">Cmd</span>.none )
 </code></pre>
 <p>See the tuple? Pages return a triplet where the third item can be something from Common.Event. Common also exports ways of making those events to keep life easy for us in our Pages.</p>
-<pre><code class="lang-haskell">
+<pre><code class="language-haskell">
     changeRoute : <span class="type">Route</span> -&gt; model -&gt; ( model, <span class="type">Cmd</span> msg, <span class="type">Cmd</span> <span class="type">Event</span> )
     changeRoute route model =
         ( model, <span class="type">Cmd</span>.none, event (<span class="type">RouteChanged</span> route) )
 </code></pre>
 <p>I wouldn&#39;t try and force this any further down than the Page level, most Components below this can get away with just using [ onEvent SomeMsg ] and we don&#39;t want too much child-&gt;parent communication anyway, it&#39;s usually indicative that we&#39;re trying to keep state in the wrong place.</p>
 <p>Our current preferred method for getting messages from the Router to the Child (this is very rare) is simply to export a method from the child component which knows what sort of message to return.</p>
-<pre><code class="lang-haskell">    <span class="module"><span class="keyword">module</span> Child exposing <span class="container">(<span class="type">Msg</span>, <span class="type">Model</span>, <span class="title">doSomethingInteresting</span>)</span> 
+<pre><code class="language-haskell">    <span class="module"><span class="keyword">module</span> Child exposing <span class="container">(<span class="type">Msg</span>, <span class="type">Model</span>, <span class="title">doSomethingInteresting</span>)</span> 
 
     doSomethingInteresting : SomeArgumentType -&gt; Model -&gt; <span class="container">( <span class="type">Model</span>, <span class="type">Cmd</span> <span class="type">Msg</span> )</span>
     doSomethingInteresting arg model = <span class="container">( <span class="title">model</span>, <span class="title">kickTaskOffFor</span> <span class="title">arg</span> )</span>
@@ -165,7 +163,7 @@
 <p>This can just be called in the &#39;update&#39; method of the parent.</p>
 <h1 id="the-ugly-bit-of-routing">The ugly bit of routing</h1>
 <p>Dynamic dispatch in a typed language is a pain and currently we have a lot of boilerplate around child components, it looks a bit like this in our &#39;update&#39; function in our Router, you can easily imagine our init/subscriptions/view methods.</p>
-<pre><code class="lang-haskell">
+<pre><code class="language-haskell">
     bubble : (a -&gt; <span class="type">Msg</span>) -&gt; <span class="type">Cmd</span> a -&gt; <span class="type">Cmd</span> <span class="type">Common</span>.<span class="type">Event</span> -&gt; <span class="type">Cmd</span> <span class="type">Msg</span>
     bubble lifter cmd ev =
         <span class="type">Cmd</span>.batch
@@ -216,7 +214,7 @@
           <div class="container">
             <div class="row-fluid">
               <div class="span6">
-                <p class="terms">2015 © Rob Ashton. ALL Rights Reserved.</p>
+                <p class="terms">2018 © Rob Ashton. ALL Rights Reserved.</p>
               </div>
             </div><!--/row-fluid-->
           </div><!--/container-->

@@ -7,41 +7,32 @@
 <h2 id="some-basic-syntax">Some basic syntax</h2>
 <p>So, how do I begin? Well, I guess I&#39;d better get the rest of you caught up with me in understanding Clojure Syntax.</p>
 <p><em>this is a traditional function call</em></p>
-<pre><code><span class="function"><span class="title">foo</span><span class="params">(x, y)</span>
-</code></pre><p><em>this is a Clojure function call</em></p>
-<pre><code><span class="list">(<span class="title">foo</span><span class="body"> x y)</span></span>
-</code></pre><p><em>this is a traditional function definition</em></p>
+<pre><code><span class="function"><span class="title">foo</span><span class="params">(x, y)</span></code></pre><p><em>this is a Clojure function call</em></p>
+<pre><code><span class="list">(<span class="title">foo</span><span class="body"> x y)</span></span></code></pre><p><em>this is a traditional function definition</em></p>
 <pre><code><span class="function"><span class="keyword">function</span> <span class="title">foo</span><span class="params">(x, y)</span> {</span>
    <span class="transposed_variable">console.</span><span class="built_in">log</span>(x, y)
-}
-</code></pre><p><em>this is a Clojure function definition</em></p>
+}</code></pre><p><em>this is a Clojure function definition</em></p>
 <pre><code><span class="list">(<span class="title">defn</span><span class="body"> foo [x, y]
   <span class="list">(<span class="title">log</span><span class="body"> x y)</span></span>
-)</span></span>
-</code></pre><p>This should be enough to get us started at least. Apparently some of these things we put after the first paren are not only functions, but special forms or macros - but as I haven&#39;t learned anything about them yet, I&#39;m happy in my world of pretending they&#39;re all just functions.</p>
-<p>So, how am I going to start off in my happy world of Clojurescript? I need to create an HTML5 Canvas Context so I can do  things with it, and in order to do that I need to need to wait for the DOM ready event and oh oh oh - oh dear, <em>all of this looks like it might be hard because these are all external systems to my happy ClojureScript world and will involve some initial pain - oh well I wanted to learn how to do something practical and nearly all things practical are going to involve talking to external systems so I&#39;d better get the pain over with <strong>OH IT HURTS IT HURTS.</strong></em></p>
+)</span></span></code></pre><p>This should be enough to get us started at least. Apparently some of these things we put after the first paren are not only functions, but special forms or macros - but as I haven&#39;t learned anything about them yet, I&#39;m happy in my world of pretending they&#39;re all just functions.</p>
+<p>So, how am I going to start off in my happy world of Clojurescript? I need to create an HTML5 Canvas Context so I can do  things with it, and in order to do that I need to need to wait for the DOM ready event and oh oh oh - oh dear, <em>all of this looks like it might be hard because these are all external systems to my happy ClojureScript world and will involve some initial pain - oh well I wanted to learn how to do something practical and nearly all things practical are going to involve talking to external systems so I&#39;d better get the pain over with *</em>OH IT HURTS IT HURTS.***</p>
 <p>Ahem.</p>
 <h2 id="getting-a-function-called-on-start-up">Getting a function called on start-up</h2>
 <p>Ever the pragmatist, rather than re-implement the standard fuzz around this stuff in Clojure, or pull in jQuery or anything I&#39;d do in JS, we&#39;ll just go with the body onload event, and rely on it calling a global function that I export from my game.js.</p>
 <pre><code><span class="list">(<span class="title">ns</span><span class="body"> game)</span></span> 
 <span class="list">(<span class="title">defn</span><span class="body"> ^<span class="keyword">:export</span> init [] 
 
-)</span></span> 
-</code></pre><p>Given a body declaration of something like</p>
-<pre><code><span class="tag">&lt;<span class="title">body</span> <span class="attribute">onload</span>=<span class="value">"game.init();"</span>&gt;</span>
-</code></pre><p>That funky export thing just tells the Google Closure compiler not to mangle the name of the function (the ClojureScript compiler runs output through Closure - yes, that is confusing when you read it out loud).</p>
+)</span></span> </code></pre><p>Given a body declaration of something like</p>
+<pre><code><span class="tag">&lt;<span class="title">body</span> <span class="attribute">onload</span>=<span class="value">"game.init();"</span>&gt;</span></code></pre><p>That funky export thing just tells the Google Closure compiler not to mangle the name of the function (the ClojureScript compiler runs output through Closure - yes, that is confusing when you read it out loud).</p>
 <p>How do I test it works? Well inside my init function, let&#39;s access our first native object and see what the syntax is for that.</p>
-<pre><code><span class="list">(<span class="body">.log js/console <span class="string">"Hello World"</span>)</span></span>
-</code></pre><p>Actually not too bad, &quot;Please call .log - which exists on the object js/console, and pass in &quot;Hello World&quot; as parameters.</p>
+<pre><code><span class="list">(<span class="body">.log js/console <span class="string">"Hello World"</span>)</span></span></code></pre><p>Actually not too bad, &quot;Please call .log - which exists on the object js/console, and pass in &quot;Hello World&quot; as parameters.</p>
 <p>Great - so I&#39;m now printing hello world, how are we going to draw a square to our canvas? Well first we&#39;ll need a context object, and in order to get that context object, we&#39;ll have to get a canvas object and call a method on it - this will mean having a variable of some sort from which we can gain other functionality.</p>
 <h2 id="introducing-some-more-syntax-">Introducing some more syntax.</h2>
 <p><em>Traditional variable declaration</em></p>
-<pre><code><span class="title">var</span> x = <span class="number">0</span>;
-</code></pre><p><em>Clojurescript variable declaration</em></p>
+<pre><code><span class="title">var</span> x = <span class="number">0</span>;</code></pre><p><em>Clojurescript variable declaration</em></p>
 <pre><code><span class="list">(<span class="title">let</span><span class="body"> [x <span class="number">0</span>] 
   <span class="list">(<span class="title">doStuff</span><span class="body"> x)</span></span>
-)</span></span>
-</code></pre><p>So, two things here - we have this &#39;let&#39; thing, into which you pass in a vector of key-value pairs (x and 0 in this case, so x = 0), and then a body of code doing things with those values.</p>
+)</span></span></code></pre><p>So, two things here - we have this &#39;let&#39; thing, into which you pass in a vector of key-value pairs (x and 0 in this case, so x = 0), and then a body of code doing things with those values.</p>
 <p>Ah yes, Clojure has vectors, which are square brackets which contain a bunch of things. (parens are just lists of things, hence &#39;LISP&#39; apparently). The difference between the two? Well, for my purposes right now, one has square brackets and the other has parentheses - I&#39;m sure it will become clearer in the future.</p>
 <h2 id="drawing-my-square">Drawing my square</h2>
 <p>Anyway, expanding all of this we can get the following in order to do draw a square on our canvas</p>
@@ -57,8 +48,7 @@
 
   <span class="list">(<span class="title">defn</span><span class="body"> ^<span class="keyword">:export</span> init []
      <span class="list">(<span class="title">drawSquare</span><span class="body">)</span></span>
-  )</span></span>
-</code></pre><ul>
+  )</span></span></code></pre><ul>
 <li>Create a function called drawSquare, taking in no parameters</li>
 <li>Let target = the result of calling getElementById on the document with a parameter of &#39;target&#39;</li>
 <li>Let context = the result of calling getContext on target with a parameter of &#39;2d&#39;</li>

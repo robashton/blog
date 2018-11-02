@@ -9,17 +9,14 @@
     Date: <span class="string">"January 2013"</span>
   },
   EventType: <span class="string">"PonyBorn"</span>
-}
-</code></pre><p>And I want to get this into a stream, well first I want to package it up</p>
+}</code></pre><p>And I want to get this into a stream, well first I want to package it up</p>
 <pre><code>// A package <span class="keyword">with</span> <span class="keyword">the</span> event <span class="keyword">in</span> <span class="keyword">it</span>
 {
   CorrelationId: <span class="string">"something-i-know"</span>,
   ExpectedVersion: <span class="string">"last-version-i-knew-about"</span>,
   Events: [ ev ]
-}
-</code></pre><p>And serialise it</p>
-<pre><code><span class="keyword">var</span> body = JSON.stringify(<span class="keyword">package</span>)
-</code></pre><p>I can POST it to the event store with the following code</p>
+}</code></pre><p>And serialise it</p>
+<pre><code><span class="keyword">var</span> body = JSON.stringify(<span class="keyword">package</span>)</code></pre><p>I can POST it to the event store with the following code</p>
 <pre><code>var req = <span class="transposed_variable">http.</span>request(<span class="cell">{
   host: "<span class="number">127.0</span><span class="number">.0</span><span class="number">.1</span>",
   port: <span class="number">2113</span>,
@@ -35,8 +32,7 @@
 }</span>)
 
 <span class="transposed_variable">req.</span>write(body)
-<span class="transposed_variable">req.</span><span class="keyword">end</span>()
-</code></pre><p>What do we notice about the data?</p>
+<span class="transposed_variable">req.</span><span class="keyword">end</span>()</code></pre><p>What do we notice about the data?</p>
 <ul>
 <li>We can supply a correlation id for our own convenience</li>
 <li>We supply an expected version so our event can be rejected if things are not as they should be</li>
@@ -68,8 +64,7 @@
       <span class="rule"><span class="attribute">type</span>:<span class="value"> <span class="string">"application/atom+x.json"</span>
     }</span></span></span>
   ]
-},
-</code></pre><p>And that if we go to this ponies stream via the URI specified we&#39;ll see</p>
+},</code></pre><p>And that if we go to this ponies stream via the URI specified we&#39;ll see</p>
 <p><em>/streams/ponies</em></p>
 <pre><code>[
   {
@@ -130,8 +125,7 @@
       }
     ]
   }
-]
-</code></pre><p>We have two events, navigating to them we can see that one of them is for the creation of the stream</p>
+]</code></pre><p>We have two events, navigating to them we can see that one of them is for the creation of the stream</p>
 <p><em>/streams/ponies/event/0?format=json</em></p>
 <pre><code>{
   <span class="method">eventStreamId:</span> <span class="comment">"ponies"</span>,
@@ -139,8 +133,7 @@
   <span class="method">eventType:</span> <span class="comment">"$stream-created-implicit"</span>,
   <span class="method">data:</span> <span class="comment">""</span>,
   <span class="method">metadata:</span> <span class="comment">""</span>
-}
-</code></pre><p>And the other one is the event we pushed</p>
+}</code></pre><p>And the other one is the event we pushed</p>
 <p><em>/streams/ponies/event/1?format=json</em></p>
 <pre><code>{
   eventStreamId: <span class="string">"ponies"</span>,
@@ -152,16 +145,14 @@
     <span class="type">Date</span>: "<span class="type">January</span> 2013"
   }</span>,</span>
   metadata: <span class="string">""</span>
-}
-</code></pre><p>Neato, I guess we notice a few things here then</p>
+}</code></pre><p>Neato, I guess we notice a few things here then</p>
 <ul>
 <li>The stream doesn&#39;t contain the actual events, just links to the events</li>
 <li>The stream is pageable, and contains the links to the pages (well, it&#39;s AtomPub)</li>
 <li>Each event has its own unique uri, because events are immutable these can be cached by any intermdiate proxy</li>
 </ul>
 <p>And indeed, if we look at the header on a HTTP request for one of these events we&#39;ll see</p>
-<pre><code><span class="constant">Cache</span>-<span class="constant">Control</span><span class="symbol">:max-age=</span><span class="number">31556926</span>
-</code></pre><p>That&#39;s cool, we&#39;ve discovered that</p>
+<pre><code><span class="constant">Cache</span>-<span class="constant">Control</span><span class="symbol">:max-age=</span><span class="number">31556926</span></code></pre><p>That&#39;s cool, we&#39;ve discovered that</p>
 <ul>
 <li>We can throw events into the event store with a default partitioning (the stream name specified)</li>
 <li>We can get them back out again by paging through the links in that stream</li>

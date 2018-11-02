@@ -13,13 +13,12 @@
 <p>I&#39;m going to do things a bit differently in this blog series to the example on Github to make the point that it&#39;s entirely up to us to do things how feel like. In the example on Github the modules are exposed as an instantiable object in a presenter-ish pattern.</p>
 <p>Instead, this module is going to be exposed as a single function like so</p>
 <p><em>customerlist/index.js</em></p>
-<pre><code class="lang-javascript">module.exports = <span class="keyword">function</span>(element) {
+<pre><code class="language-javascript">module.exports = <span class="keyword">function</span>(element) {
 
-}
-</code></pre>
+}</code></pre>
 <p>In this, we need to render the customers, so our whole module will look something like this</p>
 <p><em>customerlist/index.js</em></p>
-<pre><code class="lang-javascript">
+<pre><code class="language-javascript">
 <span class="keyword">var</span> mustache = require(<span class="string">'mustache'</span>)
   , testdata = require(<span class="string">'../testdata'</span>)
   , fs = require(<span class="string">'fs'</span>)
@@ -32,19 +31,17 @@
 
 module.exports = <span class="keyword">function</span>(element) {
   render(element, testdata.customers)
-}
-</code></pre>
+}</code></pre>
 <p><em>customerlist/template.html</em></p>
 <pre><code>  <span class="tag">&lt;<span class="title">table</span>&gt;</span>
     <span class="variable">{{#customers}}</span>
       <span class="tag">&lt;<span class="title">tr</span>&gt;</span><span class="tag">&lt;<span class="title">td</span>&gt;</span><span class="variable">{{name}}</span><span class="tag">&lt;/<span class="title">td</span>&gt;</span><span class="tag">&lt;<span class="title">td</span>&gt;</span><span class="variable">{{bank}}</span><span class="tag">&lt;/<span class="title">td</span>&gt;</span><span class="tag">&lt;/<span class="title">tr</span>&gt;</span>
     <span class="variable">{{/customers}}</span>
-  <span class="tag">&lt;/<span class="title">table</span>&gt;</span>
-</code></pre><p>One thing that is immediately apparent is that I&#39;ve bundled both the presentation logic and the template together in a single folder and exposed only a single function to represent that.</p>
+  <span class="tag">&lt;/<span class="title">table</span>&gt;</span></code></pre><p>One thing that is immediately apparent is that I&#39;ve bundled both the presentation logic and the template together in a single folder and exposed only a single function to represent that.</p>
 <h3 id="creating-our-bank-dropdown-as-a-module">Creating our bank dropdown as a module</h3>
 <p>We can do the same for the bank dropdown and have that in its own little folder too.</p>
 <p><em>bankdropdown/index.js</em></p>
-<pre><code class="lang-javascript"><span class="keyword">var</span> ko = require(<span class="string">'knockout'</span>)
+<pre><code class="language-javascript"><span class="keyword">var</span> ko = require(<span class="string">'knockout'</span>)
   , mustache = require(<span class="string">'mustache'</span>)
   , testdata = require(<span class="string">'../testdata'</span>)
   , fs = require(<span class="string">'fs'</span>)
@@ -60,11 +57,9 @@ module.exports = <span class="keyword">function</span>(element) {
   model.selectedBank.subscribe(<span class="keyword">function</span>(bank) {
 
   })
-}
-</code></pre>
+}</code></pre>
 <p><em>bankdropdown/template.html</em></p>
-<pre><code><span class="tag">&lt;<span class="title">select</span> <span class="attribute">name</span>=<span class="value">"banks"</span> <span class="attribute">data-bind</span>=<span class="value">"options: banks, value: selectedBank"</span>&gt;</span><span class="tag">&lt;/<span class="title">select</span>&gt;</span>
-</code></pre><h3 id="using-these-modules">Using these modules</h3>
+<pre><code><span class="tag">&lt;<span class="title">select</span> <span class="attribute">name</span>=<span class="value">"banks"</span> <span class="attribute">data-bind</span>=<span class="value">"options: banks, value: selectedBank"</span>&gt;</span><span class="tag">&lt;/<span class="title">select</span>&gt;</span></code></pre><h3 id="using-these-modules">Using these modules</h3>
 <p>Ignoring that I&#39;m not handling the above events yet, our <em>app.js</em> now looks a bit like this</p>
 <pre><code>var customerlist = require(<span class="comment">'./customerlist')</span>
   , bankselection = require(./bankselection<span class="comment">')</span>
@@ -73,14 +68,13 @@ module.exports = <span class="keyword">function</span>(element) {
 domReady(<span class="keyword">function</span>() {
   customerlist(document.getElementById(<span class="comment">'customer-list'))</span>
   bankselection(document.getElementById(<span class="comment">'bank-selection'))</span>
-})
-</code></pre><p>Assuming in this case that those elements exist in our document somewhere on start-up. Of course, they could equally be rendered from a template, or I could be using a document fragment for this and doing it detached... well yes - options, we have options.</p>
+})</code></pre><p>Assuming in this case that those elements exist in our document somewhere on start-up. Of course, they could equally be rendered from a template, or I could be using a document fragment for this and doing it detached... well yes - options, we have options.</p>
 <h3 id="communication-between-modules">Communication between modules</h3>
 <p>One thing we&#39;ve not done yet is re-enabled that dropdown to re-render that customer list. One guideline I tend to follow (although not strictly) is that these little self contained widgets shouldn&#39;t  generally be nested too deeply or be too coupled to each other.</p>
 <p>For the customer list, there is no reason why it should know about the bank selection dropdown, as there are number of reasons why you might choose to filter the data being displayed there. </p>
 <p>For the bank selection, there is no reason why it should know about the customer list, as we might have a bank selection widget anywhere else in our app.</p>
 <p>So for now we&#39;ll write the code for this in our <em>app.js</em></p>
-<pre><code class="lang-javascript">
+<pre><code class="language-javascript">
 var customerlist = require(&#39;./customerlist&#39;)
   , bankselection = require(./bankselection&#39;)
   , domReady = require(&#39;domready&#39;)
@@ -92,11 +86,10 @@ domReady(function() {
   banks.on(&#39;bank-selected&#39;, function(bank) {
     customers.filterByBank(bank)
   })
-})
-</code></pre>
+})</code></pre>
 <p>I&#39;ve not written the code to support this yet, but this acts as a statement of intent, that my bank selection widget is going to raise domain specific events and I&#39;m going to issue commands to the customer list based on those events. This is pleasantly explicit and from app.js easy to navigate into the approprate widgets to see what they do and how they work.</p>
 <p>To support that, I need to issue events from the bank widget</p>
-<pre><code class="lang-javascript"><span class="keyword">var</span> EventEmitter = require(<span class="string">'events'</span>).EventEmitter
+<pre><code class="language-javascript"><span class="keyword">var</span> EventEmitter = require(<span class="string">'events'</span>).EventEmitter
 
 module.exports = <span class="keyword">function</span>(element) {
   <span class="comment">// Other stuff</span>
@@ -106,8 +99,7 @@ module.exports = <span class="keyword">function</span>(element) {
     events.emit(<span class="string">'bank-selected'</span>, bank)
   })
   <span class="keyword">return</span> events
-}
-</code></pre>
+}</code></pre>
 <p>EventEmitter is just a built-in node thing which I don&#39;t like all that much but it&#39;ll do in this example. I could have gone and found an alternative module in NPM for doing events but I don&#39;t have a strong opinion on how this is supposed to work.</p>
 <p>The filtering code in customerlist is pretty obvious and just re-renders the HTML inside the element</p>
 <h3 id="we-could-go-further">We could go further</h3>

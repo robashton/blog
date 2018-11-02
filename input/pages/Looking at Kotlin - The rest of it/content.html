@@ -13,8 +13,7 @@
     <span class="class"><span class="keyword">class</span> <span class="title">Nested</span><span class="params">()</span> {</span> 
       fun foo() = <span class="number">2</span> 
     } 
-  } 
-</code></pre><p>   val demo = Outer.Inner().foo() // == 2</p>
+  } </code></pre><p>   val demo = Outer.Inner().foo() // == 2</p>
 <p>No biggy here, except in Java there is a problem with nested class as explained in <a href="http://blog.jetbrains.com/kotlin/2013/02/kotlin-m5-is-out/">this blog entry</a> </p>
   <blockquote>
     An inner class is a non-static nested class, i.e. it holds a reference to an instance of its outer. In Java nested classes are inner by default, and if you don’t want a reference to the outer, you make your class static. Sometimes it leads to memory leaks, when someone is holding a reference to an instance of an inner class without knowing that it also holds an outer instance.
@@ -28,8 +27,7 @@
         println(bar)
       }
     } 
-  } 
-</code></pre><p>Instead you have to mark the inner class with &#39;inner&#39; to make this an explicit decision</p>
+  } </code></pre><p>Instead you have to mark the inner class with &#39;inner&#39; to make this an explicit decision</p>
 <pre><code><span class="class"><span class="keyword">class</span> <span class="title">Outer</span><span class="params">()</span> {</span> 
   <span class="keyword">private</span> <span class="keyword">val</span> bar : Int = <span class="number">1</span> 
     inner <span class="class"><span class="keyword">class</span> <span class="title">Nested</span><span class="params">()</span> {</span> 
@@ -37,35 +35,28 @@
         println(bar)
       }
     } 
-  } 
-</code></pre><p>I have a better solution, <em>get rid of inner classes</em>, they&#39;re crap anyway and don&#39;t just cause problems in software, but apparently cause problems with language design too. Problem solved.</p>
+  } </code></pre><p>I have a better solution, <em>get rid of inner classes</em>, they&#39;re crap anyway and don&#39;t just cause problems in software, but apparently cause problems with language design too. Problem solved.</p>
 <p><strong>null and elvis</strong></p>
 <p>Kotlin operates on the basis of things not being nullable by default, which is something I wholeheartedly support.</p>
-<pre><code><span class="keyword">var</span> derpy : Pony = <span class="keyword">null</span>
-</code></pre><p>This isn&#39;t allowed.</p>
+<pre><code><span class="keyword">var</span> derpy : Pony = <span class="keyword">null</span></code></pre><p>This isn&#39;t allowed.</p>
 <p>We&#39;re allowed to say we <em>want</em> a nullable object, by adding a question mark to things.</p>
-<pre><code><span class="keyword">var</span> derpy : Pony? = <span class="keyword">null</span>
-</code></pre><p>This is sensible, and can&#39;t be faulted.</p>
+<pre><code><span class="keyword">var</span> derpy : Pony? = <span class="keyword">null</span></code></pre><p>This is sensible, and can&#39;t be faulted.</p>
 <p>Most legacy java APIs will return things that <em>can</em> be nullable, and in fact a lot of Java APIs do this in places where they really shouldn&#39;t. The compiler will complain about this though, so where I do</p>
 <p><em>Compiler error</em></p>
 <pre><code> var fileList = <span class="transposed_variable">files.</span>listFiles()
  var <span class="built_in">size</span> = <span class="transposed_variable">fileList.</span><span class="built_in">size</span>
- println(<span class="built_in">size</span>)
-</code></pre><p><em>Compiler success</em></p>
+ println(<span class="built_in">size</span>)</code></pre><p><em>Compiler success</em></p>
 <pre><code> var fileList = <span class="transposed_variable">files.</span>listFiles()
  var <span class="built_in">size</span> = fileList?.<span class="built_in">size</span>
- println(<span class="built_in">size</span>)
-</code></pre><p>The elvis operator gets compiled down into</p>
+ println(<span class="built_in">size</span>)</code></pre><p>The elvis operator gets compiled down into</p>
 <pre><code> <span class="keyword">var</span> fileList = files.listFiles()
  <span class="keyword">if</span>(fileList != <span class="keyword">null</span>) {
    <span class="keyword">var</span> size = fileList.size
    println(size)
- }
-</code></pre><p>This is a case where Kotlin &quot;fixes&quot; Java well, so I&#39;m not complaining.</p>
+ }</code></pre><p>This is a case where Kotlin &quot;fixes&quot; Java well, so I&#39;m not complaining.</p>
 <p><strong>Ranges</strong></p>
 <p>Syntastical sugar, but always a fan of this sort of thing</p>
-<pre><code><span class="keyword">for</span> (i <span class="keyword">in</span> (<span class="number">1.</span><span class="number">.4</span>).reversed() <span class="built_in">step</span> <span class="number">2</span>) print(i) <span class="comment">// prints "42" </span>
-</code></pre><p>I like this sort of thing, although it gets out of hand in languages like Ruby so I&#39;d watch this stuff cautiously.</p>
+<pre><code><span class="keyword">for</span> (i <span class="keyword">in</span> (<span class="number">1.</span><span class="number">.4</span>).reversed() <span class="built_in">step</span> <span class="number">2</span>) print(i) <span class="comment">// prints "42" </span></code></pre><p>I like this sort of thing, although it gets out of hand in languages like Ruby so I&#39;d watch this stuff cautiously.</p>
 <p><strong>Pattern matching</strong></p>
 <pre><code><span class="keyword">when</span> (<span class="keyword">x</span>) { 
   <span class="number">1</span> -&gt; <span class="keyword">print</span>(<span class="string">"x == 1"</span>) 
@@ -73,15 +64,13 @@
   <span class="keyword">else</span> -&gt; { <span class="regexp">//</span> Note the block 
     <span class="keyword">print</span>(<span class="string">"x is neither 1 nor 2"</span>) 
   } 
-}
-</code></pre><p>or</p>
+}</code></pre><p>or</p>
 <pre><code>when (tuple) { 
   is <span class="comment">#(1, 2) -&gt; ... </span>
   is <span class="comment">#(val a, 3) -&gt; print(a) // binding a to the first element of the tuple </span>
   !is <span class="comment">#(*, 1100) -&gt; ... </span>
   <span class="keyword">else</span> -&gt; <span class="keyword">...</span> 
-}
-</code></pre><p>I&#39;m a sucker for pattern matching constructs and I like this implementation because of how easy it is to declare those function literals.</p>
+}</code></pre><p>I&#39;m a sucker for pattern matching constructs and I like this implementation because of how easy it is to declare those function literals.</p>
 <p>Also, it does intelligent casting for you as well, cutting own on some of the cruft you&#39;d usually get with this sort of thing</p>
 <pre><code><span class="function"><span class="keyword">function</span> <span class="title">strangeFunction</span><span class="params">(a : Any)</span> <span class="type">: Any</span> {</span>
   when(a) {
@@ -90,8 +79,7 @@
     <span class="keyword">is</span> String -&gt;
       <span class="keyword">return</span> a + <span class="string">"5"</span>
   }
-}
-</code></pre><p>Nice</p>
+}</code></pre><p>Nice</p>
 <p><strong>Round-up</strong></p>
 <p>The stated goals of Kotlin of &quot;fixing Java&quot; don&#39;t appear to have been met, there are holdovers from the language such as </p>
 <ul>
