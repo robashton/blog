@@ -1,0 +1,156 @@
+<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
+<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
+<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
+<!--[if !ie]><!-->
+<html lang="en"> <!--<![endif]-->
+<head>
+    <title id="title">Purescript on the BEAM - Writing functions that I can actually call from Erlang</title>
+    <meta charset="utf-8">
+    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <meta name="author" content="">
+    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
+    <link rel="stylesheet" href="/assets/css/style_responsive.css">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
+    <link rel="stylesheet" href="/assets/css/themes/default.css">
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
+    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="header">
+        <div class="container">
+            <div class="logo">
+             <h2><a href="/index.html">Rob Ashton</a></h2>
+            </div>
+            <div class="navbar">
+                <div class="navbar-inner">
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </a>
+                    <div class="nav-collapse collapse">
+                        <ul class="nav top-2">
+                          <li>
+                                <a href="/">Home</a>
+                            </li>
+                            <li>
+                                <a href="/blog.html">Blog</a>
+                            </li>
+                            <li>
+                                <a href="/testimonials.html">Testimonials</a>
+                            </li>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <body>
+    <div id="blog-entry">
+      <h1 id="post-title">Purescript on the BEAM - Writing functions that I can actually call from Erlang</h1>
+      <h6>Published on <span class="date">2018-11-13</span></h6>
+      <div id="post"><p>Previous entries..</p>
+<ul>
+<li><a href="/entries/functional-erlang---purescript-on-the-beam---intro.html">Intro</a></li>
+<li><a href="/entries/purescript-on-the-beam:-getting-started.html">Getting Started</a></li>
+<li><a href="/entries/purescript-on-the-beam---writing-some-basic-code.html">Writing some basic code</a></li>
+</ul>
+<p>I&#39;d like to be able to actually invoke functions that are written in Purescript, <em>from</em> Erlang - this will be necessary when say, providing the function to a supervisor for use in the following way.</p>
+<pre><code>init([]) -&gt;
+  {ok, { {one_for_all, <span class="number">10</span>, <span class="number">10</span>}, [
+                                 #{id =&gt; my_server, start =&gt; {myPurescriptModule@ps, startLink, <span class="string">[[]]</span>}}
+                                ]} }.</code></pre><p>At time of writing this post, there is no &quot;native&quot; Purescript OTP support, so you&#39;re not going to be writing supervision structures in Purescript (Give us some time and I think we probably will end up with all of this), so that means needing to support interop in this direction.</p>
+<p>The problem is that a function in Purescript that returns an effect is actually a function that returns a 0-arity function which returns the value that would in Purescript just be a value -  these functions are designed to be executed inside the Purescript environ, and what we need is a function that simply returns the thing that we want to our Erlang code.</p>
+<p>Going back to my previous example</p>
+<pre><code><span class="module"><span class="keyword">module</span> MyCode <span class="keyword">where</span></span>
+
+<span class="import"><span class="keyword">import</span> Effect.Console <span class="container">(<span class="title">log</span>)</span></span>
+<span class="import"><span class="keyword">import</span> Effect <span class="container">(<span class="type">Effect</span>)</span></span>
+<span class="import"><span class="keyword">import</span> Prelude</span>
+
+<span class="title">hi</span> :: <span class="type">Effect</span> <span class="type">Unit</span>
+<span class="title">hi</span> = <span class="keyword">do</span>
+  log <span class="string">"Hi everybody"</span>
+  pure $ unit</code></pre><p>It turns out there are a pile of types that represent <em>native</em> functions of various arities in a handy module called <em>Effect.Uncurried</em>, and by declaring that we have an EffectFnX (where X is our arg count), we can actually end uup with something usable from Erlang.</p>
+<pre><code><span class="module"><span class="keyword">module</span> MyCode <span class="keyword">where</span></span>
+
+<span class="import"><span class="keyword">import</span> Effect.Console <span class="container">(<span class="title">log</span>)</span></span>
+<span class="import"><span class="keyword">import</span> Effect.Uncurried <span class="container">(<span class="type">EffectFn1</span>, <span class="title">mkEffectFn1</span>)</span></span>
+<span class="import"><span class="keyword">import</span> Prelude</span>
+
+<span class="title">hi</span> :: forall a. <span class="type">EffectFn1</span> a <span class="type">Unit</span>
+<span class="title">hi</span> = mkEffectFn1 \_ -&gt; <span class="keyword">do</span>
+  log <span class="string">"Hi everybody"</span>
+  pure $ unit</code></pre><p>There is no EffectFN0, so our &quot;hi&quot; function now needs to take a argument in order to work - however this means we now have a function that is invokable from Erlang in the usual way. For those of us coming from Haskell, the forall. syntax is a bit weird, but effectively if you&#39;ve got a polymorphic function, you&#39;re expected to declare this explicitly (You can then add restrictions on what that type is) - the equivalent extension in Haskell can be found over here at <a href="https://www.schoolofhaskell.com/school/to-infinity-and-beyond/pick-of-the-week/guide-to-ghc-extensions/explicit-forall">ExplicitForAll</a></p>
+<pre><code><span class="prompt">1&gt; </span><span class="function_or_atom">myCode</span>@<span class="function_or_atom">ps:hi</span>(<span class="function_or_atom">this_is_ignored</span>).
+<span class="variable">Hi</span> <span class="function_or_atom">everybody</span>
+<span class="function_or_atom">unit</span>
+<span class="prompt">2&gt; </span></code></pre><p>For the extra curious, this is what happens if you try invoking it without the expected argument..</p>
+<pre><code><span class="prompt">2&gt; </span><span class="function_or_atom">myCode</span>@<span class="function_or_atom">ps:hi</span>().               
+#<span class="variable">Fun</span>&lt;<span class="function_or_atom">myCode</span>@<span class="function_or_atom">ps</span>.<span class="number">0.61314832</span>&gt;
+<span class="prompt">3&gt; </span></code></pre><p>Well indeed, this makes sense when you consider how currying works in languages like Purescript/Haskell. Don&#39;t forget the args I guess.</p>
+<p>I&#39;m nearly armed enough at this point to consider writing a gen server in purescript, oh hell.</p>
+</div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="mailto:robashton@codeofrob.com">Respond</a>
+      </div>
+
+        <!--=== Copyright ===-->
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span6">
+                <p class="terms">2018 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
+    });
+        </script>
+        <!--[if lt IE 9]>
+    <script src="assets/js/respond.js"></script>
+<![endif]-->
+        </body>
+        </html>
+

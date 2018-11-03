@@ -1,0 +1,35 @@
+<p>Previous entries..</p>
+<ul>
+<li><a href="/entries/functional-erlang---purescript-on-the-beam---intro.html">Intro</a></li>
+<li><a href="/entries/purescript-on-the-beam:-getting-started.html">Getting Started</a></li>
+</ul>
+<p>I&#39;ve got the tools for building Purescript, I&#39;ve got an empty repo - what now then?</p>
+<h3 id="writing-some-code">Writing some code</h3>
+<p>I don&#39;t want to leap off into writing a fully fledged gen server in Purescript, I&#39;d settle with being able to spawn an Erlang shell and invoking a function I&#39;ve written in - baby steps and all that. </p>
+<p>So, creating a file in ps_src called &quot;mycode.purs&quot;, let&#39;s get a hello world sorted and see what we can see.</p>
+<pre><code><span class="module"><span class="keyword">module</span> MyCode <span class="keyword">where</span></span>
+
+<span class="import"><span class="keyword">import</span> Effect.Console <span class="container">(<span class="title">log</span>)</span></span>
+<span class="import"><span class="keyword">import</span> Effect <span class="container">(<span class="type">Effect</span>)</span></span>
+<span class="import"><span class="keyword">import</span> Prelude</span>
+
+<span class="title">hi</span> :: <span class="type">Effect</span> <span class="type">Unit</span>
+<span class="title">hi</span> = <span class="keyword">do</span>
+  log <span class="string">"Hi everybody"</span>
+  pure $ unit</code></pre><p>I guess the first thing we notice here is that we have as many import statements as we do lines of code - this seems to be a thing with languages like this - indeed some of our Elm modules have nearly a whole page of imports at the top of them. Apparently the trick is to get something installed to help you with managing the damned things - I&#39;ve not done that yet, I need to do that - maybe I&#39;ll do that soon - but for now, manually importing stuff as the compiler bitches at me seems to be getting me just as far as I need.</p>
+<p>We have a function called &#39;hi&#39; that returns an *<a href="https://github.com/purescript/documentation/blob/master/guides/Eff.md">Effect</a>* which yields a value of type <em>Unit</em>, bleh - let&#39;s not worry about monads and stuff and just accept that you need to return Effects from functions if you want side effects like printing to screen or writing to a database, or spinning a new process up, that&#39;ll just be a theme from now on. When interacting with native Erlang code this is typically going to be the shape of things, as Erlang is very much not a pure functional environment.</p>
+<p>The code is as simple as, &quot;use do notation to perform some side effects, then return &quot;unit&quot; to whatever is going to call our function (either in another do block or so from Erlang itself).</p>
+<pre><code><span class="title">rebar3</span> compile</code></pre><p>A pile of stuff happens, and I end up with some beams in ebin, notably I end up with *&quot;<a href="mailto:myCode@ps.beam">myCode@ps.beam</a>&quot;*  - Purescript modules end up camelCase with a @ps suffix so core Purescript modules don&#39;t clash with the default Erlang modules, this may well change over the coming year but for now that&#39;s now it is.</p>
+<pre><code>erl -pa _build/<span class="keyword">default</span>/lib<span class="comment">/*/ebin</code></pre><p>And in the shell:</p>
+<pre><code><span class="variable">Erlang</span>/<span class="variable">OTP</span> <span class="number">21</span> [<span class="function_or_atom">erts</span>-<span class="number">10.0</span>.<span class="number">5</span>] [<span class="function_or_atom">source</span>] [<span class="number">64</span>-<span class="function_or_atom">bit</span>] [<span class="function_or_atom">smp</span>:<span class="number">8</span>:<span class="number">8</span>] [<span class="function_or_atom">ds</span>:<span class="number">8</span>:<span class="number">8</span>:<span class="number">10</span>] [<span class="function_or_atom">async</span>-<span class="function_or_atom">threads</span>:<span class="number">1</span>] [<span class="function_or_atom">hipe</span>]
+
+<span class="variable">Eshell</span> <span class="variable">V10</span>.<span class="number">0.5</span>  (<span class="function_or_atom">abort</span> <span class="function_or_atom">with</span> ^<span class="variable">G</span>)
+<span class="prompt">1&gt; </span><span class="function_or_atom">l</span>(<span class="function_or_atom">myCode</span>@<span class="function_or_atom">ps</span>).
+{<span class="function_or_atom">module</span>,<span class="function_or_atom">myCode</span>@<span class="function_or_atom">ps</span>}
+<span class="prompt">2&gt; </span><span class="function_or_atom">myCode</span>@<span class="function_or_atom">ps:hi</span>().
+#<span class="variable">Fun</span>&lt;<span class="function_or_atom">myCode</span>@<span class="function_or_atom">ps</span>.<span class="number">0.117199341</span>&gt;</code></pre><p>What? Well - we&#39;re returning an Effect, which it turns out under the covers is just a function that&#39;s waiting to be evaled at a higher level, I can actually do</p>
+<pre><code><span class="prompt">3&gt; </span><span class="variable">Fn</span> = <span class="function_or_atom">myCode</span>@<span class="function_or_atom">ps:hi</span>().
+#<span class="variable">Fun</span>&lt;<span class="function_or_atom">myCode</span>@<span class="function_or_atom">ps</span>.<span class="number">0.117199341</span>&gt;
+<span class="prompt">4&gt; </span><span class="variable">Fn</span>().
+<span class="variable">Hi</span> <span class="function_or_atom">everybody</span>
+<span class="function_or_atom">unit</span></code></pre><p>And I get my side effect and my return result from within the Purescript - this isn&#39;t terribly useful if I&#39;m to be calling Purescript code from Erlang code, and given that OTP kinda requires that we have the ability to do that, that&#39;ll be something I need to sort out in the next post.</p>

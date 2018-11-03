@@ -1,0 +1,170 @@
+<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
+<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
+<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
+<!--[if !ie]><!-->
+<html lang="en"> <!--<![endif]-->
+<head>
+    <title id="title">Purescript on the BEAM: Getting Started</title>
+    <meta charset="utf-8">
+    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <meta name="author" content="">
+    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
+    <link rel="stylesheet" href="/assets/css/style_responsive.css">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
+    <link rel="stylesheet" href="/assets/css/themes/default.css">
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
+    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="header">
+        <div class="container">
+            <div class="logo">
+             <h2><a href="/index.html">Rob Ashton</a></h2>
+            </div>
+            <div class="navbar">
+                <div class="navbar-inner">
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </a>
+                    <div class="nav-collapse collapse">
+                        <ul class="nav top-2">
+                          <li>
+                                <a href="/">Home</a>
+                            </li>
+                            <li>
+                                <a href="/blog.html">Blog</a>
+                            </li>
+                            <li>
+                                <a href="/testimonials.html">Testimonials</a>
+                            </li>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <body>
+    <div id="blog-entry">
+      <h1 id="post-title">Purescript on the BEAM: Getting Started</h1>
+      <h6>Published on <span class="date">2018-11-6</span></h6>
+      <div id="post"><p>Previous entries..</p>
+<ul>
+<li><a href="/entries/functional-erlang---purescript-on-the-beam---intro.html">Intro</a></li>
+</ul>
+<p>I guess the first thing we need to do is get some sort of environment up and running on my machine - seeing as this is a <a href="https://github.com/purerl/purescript">fork of Purescript</a> with an Erlang backend and it&#39;s reasonably likely at some point I&#39;m going to have to make a pull request or two, I settled with cloning the repo and running </p>
+<pre><code><span class="title">stack</span> build 
+<span class="title">stack</span> install</code></pre><p>Haven&#39;t got stack? Well this isn&#39;t a tutorial, so you can Google that if you need to.</p>
+<p>I then did the same for <a href="https://github.com/purescript/psc-package">psc-package</a> simply because I couldn&#39;t be bothered working out a different way, if it ain&#39;t broke then don&#39;t fix it - that&#39;s what I always say, my definition of broke is probably more lax than others though so YMMV.</p>
+<p>Armed with a purescript compiler and a package manager, the next step is to obviously get something building.</p>
+<p>I decided to base my meanderings off of <a href="https://github.com/purerl/purerl_otp_sandbox">pureerl_otp_sandbox</a> at least as far as basic structure goes, although I did modify the makefile a tad so it looks a bit like this (I&#39;m sure it&#39;s changed by the time anybody will read this, but close enough)</p>
+<pre><code>.PHONY: all clean
+
+PS_SRC = ps_src
+COMPILED_PS = src/compiled_ps
+OUTPUT = output
+
+all: <span class="variable">$(</span>COMPILED_PS)
+
+<span class="variable">$(</span>COMPILED_PS): output
+    <span class="keyword">mkdir</span> -p <span class="variable">$(</span>COMPILED_PS)
+    cp -pu <span class="variable">$(</span>OUTPUT)/<span class="variable">*/</span><span class="variable">*.</span>erl <span class="variable">$(</span>COMPILED_PS)/
+    touch <span class="variable">$(</span>COMPILED_PS)
+
+output: <span class="variable">$(</span>PS_SRC)/<span class="variable">**</span>/<span class="variable">*.</span>purs <span class="variable">$(</span>PS_SRC)/<span class="variable">*.</span>purs .psc-<span class="keyword">package</span>
+    psc-<span class="keyword">package</span> sources | xargs purs compile <span class="string">'$(PS_SRC)/**/*.purs'</span>
+    touch output
+
+.psc-<span class="keyword">package</span>: psc-<span class="keyword">package</span>.json
+    psc-<span class="keyword">package</span> install
+    touch .psc-<span class="keyword">package</span>
+
+clean:
+    rm -rf <span class="variable">$(</span>OUTPUT)/*
+    rm -f <span class="variable">$(</span>COMPILED_PS)/*</code></pre><p>This is added to a hook in the rebar.config so it happens automatically on rebar3 compile</p>
+<pre><code><span class="cell">{pre_hooks,
+  [
+   {"(linux|darwin|solaris|win32)", compile, "make"}</span>,
+   <span class="cell">{"(linux|darwin|solaris|win32)", clean, "clean"}</span>
+  ]}.</code></pre><p>Essentially, I can write an Erlang app as if ever ordinarily did, and as long as I have some .purs files in a folder called &quot;ps_src&quot; they&#39;ll get compiled into beam and everything will &quot;just work&quot;.</p>
+<p>My psc-package.json is about as stock as it gets at this point and just contains a pile of packages from the <a href="https://github.com/purerl/package-sets">pureerl package set</a>.</p>
+<pre><code>{
+  "<span class="attribute">name</span>": <span class="value"><span class="string">"untitled"</span></span>,
+  "<span class="attribute">set</span>": <span class="value"><span class="string">"erl-0.12.0-20180730"</span></span>,
+  "<span class="attribute">source</span>": <span class="value"><span class="string">"https://github.com/purerl/package-sets.git"</span></span>,
+  "<span class="attribute">depends</span>": <span class="value">[
+    <span class="string">"console"</span>,
+    <span class="string">"erl-atom"</span>,
+    <span class="string">"erl-binary"</span>,
+    <span class="string">"erl-lists"</span>,
+    <span class="string">"erl-tuples"</span>,
+    <span class="string">"erl-jsone"</span>,
+    <span class="string">"maybe"</span>,
+    <span class="string">"prelude"</span>
+  ]
+}</span></code></pre><p>This is probably already too long for most people to read when sat on the loo, so I&#39;ll leave the writing of any code at all to the next entry..</p>
+</div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="mailto:robashton@codeofrob.com">Respond</a>
+      </div>
+
+        <!--=== Copyright ===-->
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span6">
+                <p class="terms">2018 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
+    });
+        </script>
+        <!--[if lt IE 9]>
+    <script src="assets/js/respond.js"></script>
+<![endif]-->
+        </body>
+        </html>
+

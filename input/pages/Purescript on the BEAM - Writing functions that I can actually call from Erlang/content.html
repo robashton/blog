@@ -1,0 +1,41 @@
+<p>Previous entries..</p>
+<ul>
+<li><a href="/entries/functional-erlang---purescript-on-the-beam---intro.html">Intro</a></li>
+<li><a href="/entries/purescript-on-the-beam:-getting-started.html">Getting Started</a></li>
+<li><a href="/entries/purescript-on-the-beam---writing-some-basic-code.html">Writing some basic code</a></li>
+</ul>
+<p>I&#39;d like to be able to actually invoke functions that are written in Purescript, <em>from</em> Erlang - this will be necessary when say, providing the function to a supervisor for use in the following way.</p>
+<pre><code>init([]) -&gt;
+  {ok, { {one_for_all, <span class="number">10</span>, <span class="number">10</span>}, [
+                                 #{id =&gt; my_server, start =&gt; {myPurescriptModule@ps, startLink, <span class="string">[[]]</span>}}
+                                ]} }.</code></pre><p>At time of writing this post, there is no &quot;native&quot; Purescript OTP support, so you&#39;re not going to be writing supervision structures in Purescript (Give us some time and I think we probably will end up with all of this), so that means needing to support interop in this direction.</p>
+<p>The problem is that a function in Purescript that returns an effect is actually a function that returns a 0-arity function which returns the value that would in Purescript just be a value -  these functions are designed to be executed inside the Purescript environ, and what we need is a function that simply returns the thing that we want to our Erlang code.</p>
+<p>Going back to my previous example</p>
+<pre><code><span class="module"><span class="keyword">module</span> MyCode <span class="keyword">where</span></span>
+
+<span class="import"><span class="keyword">import</span> Effect.Console <span class="container">(<span class="title">log</span>)</span></span>
+<span class="import"><span class="keyword">import</span> Effect <span class="container">(<span class="type">Effect</span>)</span></span>
+<span class="import"><span class="keyword">import</span> Prelude</span>
+
+<span class="title">hi</span> :: <span class="type">Effect</span> <span class="type">Unit</span>
+<span class="title">hi</span> = <span class="keyword">do</span>
+  log <span class="string">"Hi everybody"</span>
+  pure $ unit</code></pre><p>It turns out there are a pile of types that represent <em>native</em> functions of various arities in a handy module called <em>Effect.Uncurried</em>, and by declaring that we have an EffectFnX (where X is our arg count), we can actually end uup with something usable from Erlang.</p>
+<pre><code><span class="module"><span class="keyword">module</span> MyCode <span class="keyword">where</span></span>
+
+<span class="import"><span class="keyword">import</span> Effect.Console <span class="container">(<span class="title">log</span>)</span></span>
+<span class="import"><span class="keyword">import</span> Effect.Uncurried <span class="container">(<span class="type">EffectFn1</span>, <span class="title">mkEffectFn1</span>)</span></span>
+<span class="import"><span class="keyword">import</span> Prelude</span>
+
+<span class="title">hi</span> :: forall a. <span class="type">EffectFn1</span> a <span class="type">Unit</span>
+<span class="title">hi</span> = mkEffectFn1 \_ -&gt; <span class="keyword">do</span>
+  log <span class="string">"Hi everybody"</span>
+  pure $ unit</code></pre><p>There is no EffectFN0, so our &quot;hi&quot; function now needs to take a argument in order to work - however this means we now have a function that is invokable from Erlang in the usual way. For those of us coming from Haskell, the forall. syntax is a bit weird, but effectively if you&#39;ve got a polymorphic function, you&#39;re expected to declare this explicitly (You can then add restrictions on what that type is) - the equivalent extension in Haskell can be found over here at <a href="https://www.schoolofhaskell.com/school/to-infinity-and-beyond/pick-of-the-week/guide-to-ghc-extensions/explicit-forall">ExplicitForAll</a></p>
+<pre><code><span class="prompt">1&gt; </span><span class="function_or_atom">myCode</span>@<span class="function_or_atom">ps:hi</span>(<span class="function_or_atom">this_is_ignored</span>).
+<span class="variable">Hi</span> <span class="function_or_atom">everybody</span>
+<span class="function_or_atom">unit</span>
+<span class="prompt">2&gt; </span></code></pre><p>For the extra curious, this is what happens if you try invoking it without the expected argument..</p>
+<pre><code><span class="prompt">2&gt; </span><span class="function_or_atom">myCode</span>@<span class="function_or_atom">ps:hi</span>().               
+#<span class="variable">Fun</span>&lt;<span class="function_or_atom">myCode</span>@<span class="function_or_atom">ps</span>.<span class="number">0.61314832</span>&gt;
+<span class="prompt">3&gt; </span></code></pre><p>Well indeed, this makes sense when you consider how currying works in languages like Purescript/Haskell. Don&#39;t forget the args I guess.</p>
+<p>I&#39;m nearly armed enough at this point to consider writing a gen server in purescript, oh hell.</p>
