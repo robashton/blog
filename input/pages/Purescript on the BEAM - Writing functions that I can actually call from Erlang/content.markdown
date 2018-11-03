@@ -29,7 +29,7 @@ Going back to my previous example
       log "Hi everybody"
       pure $ unit
 
-It turns out there are a pile of types that represent *native* functions of various arities in a handy module called *Effect.Uncurried*, and by declaring that we have an EffectFnX (where X is our arg count), we can actually end uup with something usable from Erlang.
+It turns out there are a pile of types that represent *native* functions of various arities in a handy module called *Effect.Uncurried*, and by declaring that we have an EffectFnX (where X is our arg count), we can actually end up with something usable from Erlang.
 
     module MyCode where
 
