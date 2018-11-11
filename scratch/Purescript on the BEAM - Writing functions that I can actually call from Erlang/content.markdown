@@ -14,7 +14,7 @@ I'd like to be able to actually invoke functions that are written in Purescript,
 
 At time of writing this post, there is no "native" Purescript OTP support, so you're not going to be writing supervision structures in Purescript (Give us some time and I think we probably will end up with all of this), so that means needing to support interop in this direction.
 
-The problem is that a function in Purescript that returns an effect is actually a function that returns a 0-arity function which returns the value that would in Purescript just be a value -  these functions are designed to be executed inside the Purescript environ, and what we need is a function that simply returns the thing that we want to our Erlang code.
+function in Purescript that returns an effect is actually a function that returns a 0-arity function which returns the value that would in Purescript just be a value -  these functions are designed to be executed inside the Purescript environ, and what we need is a function that simply returns the thing that we want to our Erlang code.
 
 Going back to my previous example
 

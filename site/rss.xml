@@ -1,4 +1,94 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Sat, 03 Nov 2018 00:45:48 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Functional Erlang - Purescript on the BEAM - Intro]]></title><description><![CDATA[<p>Not gonna make a big deal or fanfare about this, but I&#39;m going to jot down my thoughts as the company I work for starts moving into using Purescript for more of our day to day work instead of Erlang.</p>
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Sun, 11 Nov 2018 12:11:21 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Purescript on the BEAM - Writing some basic code]]></title><description><![CDATA[<p>Previous entries..</p>
+<ul>
+<li><a href="/entries/functional-erlang---purescript-on-the-beam---intro.html">Intro</a></li>
+<li><a href="/entries/purescript-on-the-beam:-getting-started.html">Getting Started</a></li>
+</ul>
+<p>I&#39;ve got the tools for building Purescript, I&#39;ve got an empty repo - what now then?</p>
+<h3 id="writing-some-code">Writing some code</h3>
+<p>I don&#39;t want to leap off into writing a fully fledged gen server in Purescript, I&#39;d settle with being able to spawn an Erlang shell and invoking a function I&#39;ve written in - baby steps and all that. </p>
+<p>So, creating a file in ps_src called &quot;mycode.purs&quot;, let&#39;s get a hello world sorted and see what we can see.</p>
+<pre><code><span class="module"><span class="keyword">module</span> MyCode <span class="keyword">where</span></span>
+
+<span class="import"><span class="keyword">import</span> Effect.Console <span class="container">(<span class="title">log</span>)</span></span>
+<span class="import"><span class="keyword">import</span> Effect <span class="container">(<span class="type">Effect</span>)</span></span>
+<span class="import"><span class="keyword">import</span> Prelude</span>
+
+<span class="title">hi</span> :: <span class="type">Effect</span> <span class="type">Unit</span>
+<span class="title">hi</span> = <span class="keyword">do</span>
+  log <span class="string">"Hi everybody"</span>
+  pure $ unit</code></pre><p>I guess the first thing we notice here is that we have as many import statements as we do lines of code - this seems to be a thing with languages like this - indeed some of our Elm modules have nearly a whole page of imports at the top of them. Apparently the trick is to get something installed to help you with managing the damned things - I&#39;ve not done that yet, I need to do that - maybe I&#39;ll do that soon - but for now, manually importing stuff as the compiler bitches at me seems to be getting me just as far as I need.</p>
+<p>We have a function called &#39;hi&#39; that returns an *<a href="https://github.com/purescript/documentation/blob/master/guides/Eff.md">Effect</a>* which yields a value of type <em>Unit</em>, bleh - let&#39;s not worry about monads and stuff and just accept that you need to return Effects from functions if you want side effects like printing to screen or writing to a database, or spinning a new process up, that&#39;ll just be a theme from now on. When interacting with native Erlang code this is typically going to be the shape of things, as Erlang is very much not a pure functional environment.</p>
+<p>The code is as simple as, &quot;use do notation to perform some side effects, then return &quot;unit&quot; to whatever is going to call our function (either in another do block or so from Erlang itself).</p>
+<pre><code><span class="title">rebar3</span> compile</code></pre><p>A pile of stuff happens, and I end up with some beams in ebin, notably I end up with *&quot;<a href="mailto:myCode@ps.beam">myCode@ps.beam</a>&quot;*  - Purescript modules end up camelCase with a @ps suffix so core Purescript modules don&#39;t clash with the default Erlang modules, this may well change over the coming year but for now that&#39;s now it is.</p>
+<pre><code>erl -pa _build/<span class="keyword">default</span>/lib<span class="comment">/*/ebin</code></pre><p>And in the shell:</p>
+<pre><code><span class="variable">Erlang</span>/<span class="variable">OTP</span> <span class="number">21</span> [<span class="function_or_atom">erts</span>-<span class="number">10.0</span>.<span class="number">5</span>] [<span class="function_or_atom">source</span>] [<span class="number">64</span>-<span class="function_or_atom">bit</span>] [<span class="function_or_atom">smp</span>:<span class="number">8</span>:<span class="number">8</span>] [<span class="function_or_atom">ds</span>:<span class="number">8</span>:<span class="number">8</span>:<span class="number">10</span>] [<span class="function_or_atom">async</span>-<span class="function_or_atom">threads</span>:<span class="number">1</span>] [<span class="function_or_atom">hipe</span>]
+
+<span class="variable">Eshell</span> <span class="variable">V10</span>.<span class="number">0.5</span>  (<span class="function_or_atom">abort</span> <span class="function_or_atom">with</span> ^<span class="variable">G</span>)
+<span class="prompt">1&gt; </span><span class="function_or_atom">l</span>(<span class="function_or_atom">myCode</span>@<span class="function_or_atom">ps</span>).
+{<span class="function_or_atom">module</span>,<span class="function_or_atom">myCode</span>@<span class="function_or_atom">ps</span>}
+<span class="prompt">2&gt; </span><span class="function_or_atom">myCode</span>@<span class="function_or_atom">ps:hi</span>().
+#<span class="variable">Fun</span>&lt;<span class="function_or_atom">myCode</span>@<span class="function_or_atom">ps</span>.<span class="number">0.117199341</span>&gt;</code></pre><p>What? Well - we&#39;re returning an Effect, which it turns out under the covers is just a function that&#39;s waiting to be evaled at a higher level, I can actually do</p>
+<pre><code><span class="prompt">3&gt; </span><span class="variable">Fn</span> = <span class="function_or_atom">myCode</span>@<span class="function_or_atom">ps:hi</span>().
+#<span class="variable">Fun</span>&lt;<span class="function_or_atom">myCode</span>@<span class="function_or_atom">ps</span>.<span class="number">0.117199341</span>&gt;
+<span class="prompt">4&gt; </span><span class="variable">Fn</span>().
+<span class="variable">Hi</span> <span class="function_or_atom">everybody</span>
+<span class="function_or_atom">unit</span></code></pre><p>And I get my side effect and my return result from within the Purescript - this isn&#39;t terribly useful if I&#39;m to be calling Purescript code from Erlang code, and given that OTP kinda requires that we have the ability to do that, that&#39;ll be something I need to sort out in the next post.</p>
+]]></description><link>http://codeofrob.com/entries/purescript-on-the-beam---writing-some-basic-code.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purescript-on-the-beam---writing-some-basic-code.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 08 Nov 2018 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purescript on the BEAM: Getting Started]]></title><description><![CDATA[<p>Previous entries..</p>
+<ul>
+<li><a href="/entries/functional-erlang---purescript-on-the-beam---intro.html">Intro</a></li>
+</ul>
+<p>I guess the first thing we need to do is get some sort of environment up and running on my machine - seeing as this is a <a href="https://github.com/purerl/purescript">fork of Purescript</a> with an Erlang backend and it&#39;s reasonably likely at some point I&#39;m going to have to make a pull request or two, I settled with cloning the repo and running </p>
+<pre><code><span class="title">stack</span> build 
+<span class="title">stack</span> install</code></pre><p>Haven&#39;t got stack? Well this isn&#39;t a tutorial, so you can Google that if you need to.</p>
+<p>I then did the same for <a href="https://github.com/purescript/psc-package">psc-package</a> simply because I couldn&#39;t be bothered working out a different way, if it ain&#39;t broke then don&#39;t fix it - that&#39;s what I always say, my definition of broke is probably more lax than others though so YMMV.</p>
+<p>Armed with a purescript compiler and a package manager, the next step is to obviously get something building.</p>
+<p>I decided to base my meanderings off of <a href="https://github.com/purerl/purerl_otp_sandbox">pureerl_otp_sandbox</a> at least as far as basic structure goes, although I did modify the makefile a tad so it looks a bit like this (I&#39;m sure it&#39;s changed by the time anybody will read this, but close enough)</p>
+<pre><code>.PHONY: all clean
+
+PS_SRC = ps_src
+COMPILED_PS = src/compiled_ps
+OUTPUT = output
+
+all: <span class="variable">$(</span>COMPILED_PS)
+
+<span class="variable">$(</span>COMPILED_PS): output
+    <span class="keyword">mkdir</span> -p <span class="variable">$(</span>COMPILED_PS)
+    cp -pu <span class="variable">$(</span>OUTPUT)/<span class="variable">*/</span><span class="variable">*.</span>erl <span class="variable">$(</span>COMPILED_PS)/
+    touch <span class="variable">$(</span>COMPILED_PS)
+
+output: <span class="variable">$(</span>PS_SRC)/<span class="variable">**</span>/<span class="variable">*.</span>purs <span class="variable">$(</span>PS_SRC)/<span class="variable">*.</span>purs .psc-<span class="keyword">package</span>
+    psc-<span class="keyword">package</span> sources | xargs purs compile <span class="string">'$(PS_SRC)/**/*.purs'</span>
+    touch output
+
+.psc-<span class="keyword">package</span>: psc-<span class="keyword">package</span>.json
+    psc-<span class="keyword">package</span> install
+    touch .psc-<span class="keyword">package</span>
+
+clean:
+    rm -rf <span class="variable">$(</span>OUTPUT)/*
+    rm -f <span class="variable">$(</span>COMPILED_PS)/*</code></pre><p>This is added to a hook in the rebar.config so it happens automatically on rebar3 compile</p>
+<pre><code><span class="cell">{pre_hooks,
+  [
+   {"(linux|darwin|solaris|win32)", compile, "make"}</span>,
+   <span class="cell">{"(linux|darwin|solaris|win32)", clean, "clean"}</span>
+  ]}.</code></pre><p>Essentially, I can write an Erlang app as if ever ordinarily did, and as long as I have some .purs files in a folder called &quot;ps_src&quot; they&#39;ll get compiled into beam and everything will &quot;just work&quot;.</p>
+<p>My psc-package.json is about as stock as it gets at this point and just contains a pile of packages from the <a href="https://github.com/purerl/package-sets">pureerl package set</a>.</p>
+<pre><code>{
+  "<span class="attribute">name</span>": <span class="value"><span class="string">"untitled"</span></span>,
+  "<span class="attribute">set</span>": <span class="value"><span class="string">"erl-0.12.0-20180730"</span></span>,
+  "<span class="attribute">source</span>": <span class="value"><span class="string">"https://github.com/purerl/package-sets.git"</span></span>,
+  "<span class="attribute">depends</span>": <span class="value">[
+    <span class="string">"console"</span>,
+    <span class="string">"erl-atom"</span>,
+    <span class="string">"erl-binary"</span>,
+    <span class="string">"erl-lists"</span>,
+    <span class="string">"erl-tuples"</span>,
+    <span class="string">"erl-jsone"</span>,
+    <span class="string">"maybe"</span>,
+    <span class="string">"prelude"</span>
+  ]
+}</span></code></pre><p>This is probably already too long for most people to read when sat on the loo, so I&#39;ll leave the writing of any code at all to the next entry..</p>
+]]></description><link>http://codeofrob.com/entries/purescript-on-the-beam:-getting-started.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purescript-on-the-beam:-getting-started.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 06 Nov 2018 09:30:00 GMT</pubDate></item><item><title><![CDATA[Functional Erlang - Purescript on the BEAM - Intro]]></title><description><![CDATA[<p>Not gonna make a big deal or fanfare about this, but I&#39;m going to jot down my thoughts as the company I work for starts moving into using Purescript for more of our day to day work instead of Erlang.</p>
 <h3 id="what-">WHAT?</h3>
 <p>Indeed, our codebases are starting to get pretty unwieldy with their sizes and as much as we keep a tight ship with Dialyzer and such, writing all of our code in a language like Erlang is just asking for easily avoidable bugs to enter the room.</p>
 <p>So, what is there to look at in this space?</p>
@@ -585,107 +675,4 @@ Eshell V6<span class="number">.1</span>  (abort <span class="keyword">with</span
 <span class="tag">&lt;/<span class="title">html</span>&gt;</span></code></pre><p>Yup.</p>
 <h1 id="next-up">Next up</h1>
 <p>I&#39;ll look at our Makefile and how we handle dependencies, and explain a bit more our decisions around that.</p>
-]]></description><link>http://codeofrob.com/entries/erlang---getting-started-with-vir.html</link><guid isPermaLink="true">http://codeofrob.com/entries/erlang---getting-started-with-vir.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 19 Mar 2015 09:30:00 GMT</pubDate></item><item><title><![CDATA[Erlang - How we do it]]></title><description><![CDATA[<p>Having <a href="/entries/the-ashton-disinterest-curve---c.html">established</a> that I <a href="/entries/the-ashton-disinterest-curve---javascript-and-node.html">apparently</a> <a href="/entries/the-ashton-disinterest-curve---clojure.html">hate</a> <a href="/entries/the-ashton-disinterest-curve---erlang.html">everything</a>, let&#39;s get a bit more constructive and go over how at the company I work at, we do Erlang and do Erlang effectively.</p>
-<p>Let&#39;s start off with a little history first though to build context for this series... I&#39;ll use &quot;we&quot; a lot, but what I really mean is &quot;me and my current understanding of our way&quot;.</p>
-<h1 id="where-we-are">Where we are</h1>
-<p>There were a couple of .NET developers, and they had need to build a distributed system and they looked at .NET and went &quot;hell no, let&#39;s do that little bit in Erlang&quot; and then a little bit later &quot;Oh sod it, let&#39;s do everyting in Erlang this is actually great&quot;. Lots of mistakes were made over the next few years and they were learned from as they were made. Eventually a developer called Rob (me) joined the team and most of the important mistakes had already been made and a lot of decisions had been made about how best to be effective at Erlang development.</p>
-<p>We&#39;ve been through our own custom build systems/runners, to using <a href="https://github.com/rebar/rebar">Rebar</a>, to using fairly <a href="https://github.com/ninenines/erlang.mk">poorly written</a> Makefiles to using <a href="https://github.com/fenollp/erl-mk">reasonably written</a> Makefiles to just forking the best one and making it <a href="https://github.com/id3as/erl-mk">our own</a>. We&#39;ve been through the &quot;let&#39;s make everything a gen server&quot; to &quot;why do we need gen servers anyway&quot; to &quot;okay, here is the happy medium&quot;. We&#39;ve had bash scripts lying around a bunch of projects for automation purposes that have diverged from each other, converged again and been merged into a &quot;<a href="https://github.com/robashton/vir">single tool to rule them all</a>&quot;. We have sensible ways to build up APIs between gen servers, between running applications and we have a common swiss army knife of a common library that every time I go to write Erlang without for personal stuff I wonder how on earth I ever got on without.</p>
-<p>It&#39;s a pretty mature stack and because we own most of it outside of our basic dependencies we&#39;re not subject to the whims of third parties changing their minds about how projects should be written and managed. Leaning on a large platform like Erlang is relaxing because it has been around for a few decades and generally doesn&#39;t undergo massive shifts every year just because some hipster somewhere decides they don&#39;t like <em>that sort</em> of paren or semi-colon.</p>
-<p>We&#39;re pretty much against package managers, binary dependencies or other opaque tooling that we can&#39;t understand and simply make our own. We&#39;ve learned the hard way that sometimes the best tools are the ones that we&#39;ve all been using since the dawn of time (Bash and Make) and slowly over time these ideas have converged and become crystalised as a standard set of tools we all understand and are happy with.</p>
-<h1 id="a-series-then">A series then</h1>
-<p>So we have these bash scripts and makefiles and our standard application structure and while we&#39;ve been using them for years in various forms we&#39;ve never really publicised that they&#39;re actually OSS on Github. We&#39;ve never talked about how to use them to build Erlang applications (new starters? Pair for half a year and you&#39;ll have it all down like second nature anyway).</p>
-<p>Now that most of this has stabilised (for now), it&#39;s quite a good time to write a blog series about our workflow, how to bootstrap a new application, how to do builds and releases and best practises around gen servers and processes and APIs and inter-process communication. We&#39;re also heavy Docker users (for now) so I&#39;ll cover our loose workflow around how we use that for development etc.</p>
-<p>On board? The next entry will be about bootstrapping an empty application.</p>
-]]></description><link>http://codeofrob.com/entries/erlang---how-we-do-it.html</link><guid isPermaLink="true">http://codeofrob.com/entries/erlang---how-we-do-it.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 17 Mar 2015 09:30:00 GMT</pubDate></item><item><title><![CDATA[The Ashton Disinterest Curve - Erlang]]></title><description><![CDATA[<p>I&#39;ve complained about <a href="/entries/the-ashton-disinterest-curve---c.html">.NET</a> (nothing has changed by the way) and <a href="/entries/the-ashton-disinterest-curve---javascript-and-node.html">JS</a> (or here) and I&#39;ve been pretty nice about <a href="/entries/the-ashton-disinterest-curve---clojure.html">Clojure</a> (or so I thought) and I&#39;ve managed to delay doing anything about Erlang at all because reasons.</p>
-<h1 id="erlang-mundane-brilliance">Erlang - mundane brilliance</h1>
-<p>I&#39;m not passionate about Erlang; I&#39;ve never been passionate about Erlang and I&#39;ve never hated it either. Perhaps this explains why I&#39;m over a year into working with it professionally and I still don&#39;t feel the need to talk loudly about it one way or another. (That and I have a great team of colleagues, work remotely and build pretty awesome products that are actually being used by people - okay then).</p>
-<p>Let&#39;s get something out of the way then, I&#39;m not an Erlang evangelist - I was even asked in a talk the other day what my three sentence elevator pitch for Erlang would be and I haven&#39;t got one. If you want to put in the effort to work in the Erlang ecosystem then the rewards will become apparent fast enough but trying to explain how exactly such an ugly language contributes positively in any way to our product quality/stability in a tidy soundbite just isn&#39;t something I&#39;m interested in doing.</p>
-<h1 id="erlang-is-ugly">Erlang is Ugly</h1>
-<p>Contrived bit of code I just wrote in the airport:</p>
-<pre><code class="language-erlang">
-    -module(greeter).
-
-    -export([hello/2]).
-
-    -record(state, {
-        targets :: list(target_config())
-      })
-
-    init() -&gt;
-      spawn_link(fun chat_loop/0).
-
-    hello(Pid, Str, Names)
-      case Names of
-        [] -&gt;  ok;
-        [ Head | Tail ] -&gt;
-          Pid ! { hello, Str, Head },
-          hello(Pid, Str, Names)
-      end.
-
-    chat_loop(State) -&gt;
-      NewState = receive
-        { hello, Str, Name } -&gt;
-          Target = lookup_name(Name),
-          Target:write(Str),
-          State,
-        { register, Name, Cfg } -&gt;
-          register_name(State, Name, Cfg)
-        after 1000
-          housekeeping(State)
-      end,
-      chat_loop(NewState).
-
-    register_name(State = #state { targets = Targets }, Name, Cfg) -&gt;
-      State#state { targets = [ { Name, Cfg } | Targets ] }.
-`</code></pre>
-<p>Or whatever. This is all fairly standard code and certainly there is nothing unusual in here that you&#39;d not expect to see in any old module from around the place. This is probably about 5% of the syntax of Erlang and you can start to see why a lot of people start to pick up Erlang via the medium of &quot;Learn Erlang for Great Good&quot; or something similar and after a week of syntax lessons throw their arms in frustration and exclaim &quot;What on earth is the point?&quot; and either switch to Elixir or something even worse (okay it&#39;s relative) like NodeJs.</p>
-<p>No <em>real</em> type system, no polymorphism, hilariously inconsistent APIs for processing lists, queues, dictionaries (even within the list API itself it&#39;s not consistent with the argument orders etc), no real way of doing function composition or guaranteeing purity in functions (which means guard clauses can only use built-ins) and what you really have is a way of writing locally &quot;pure&quot; code across imperative operations on networks and filesystems.</p>
-<h1 id="erlang-has-moving-parts">Erlang has moving parts</h1>
-<p>How do you do releases? How do you build your application? How do you test it? How do you run it? What do you need for all of this to work? A quick scan of an &quot;empty&quot; project built from scratch just now on my machine contains:</p>
-<ul>
-<li>Makefile (for building stuff)</li>
-<li>Relx (for releasing stuff)</li>
-<li>sys.config (for configuring stuff)</li>
-<li>relx.config (for configuring the release)</li>
-<li>foo_app.src (a manifest for the application)</li>
-<li>foo_app.erl (the application entry point)</li>
-<li>foo_web.erl (a gen server for spinning up the web process hierarchy)</li>
-<li>foo_sup.erl (a supervisor for managing the process hierarchy)</li>
-<li>foo_config.erl (a little wrapper for accessing sys.config)</li>
-<li>a &#39;deps&#39; folder containing &quot;gproc (process utils), lager (logging), cowboy (web)</li>
-</ul>
-<p>And a few other bits. This is astonishingly daunting and no amount of &quot;just use rebar&quot; will ever make that easy. I&#39;m generally against scaffolding because it allows awkward design to survive but you almost <em>need</em> to scaffold the basic Erlang application somehow because of all the bits you need to just spin it up. Contrast that to a simple node project with its app.js. node_modules and ... oh wait you can pretty much write something useful from this point and <em>discover as you go</em> while still building something tangible that somebody might want to use.</p>
-<p>Oh, and unlike Clojure there is no real REPL (stop saying erl is a REPL or like a REPL because it really is not a REPL and it offers none of the same experiences you&#39;d expect from a REPL and nobody does applications which can be bootstrapped easily via a REPL and there is very little tooling support for talking to this from your editor so really it&#39;s nothing like Clojure omg stop you guys)</p>
-<p>At this point the folk in the Erlang community reading this will be thinking &quot;but it&#39;s not quite like that - once you have a workflow it&#39;s all sensible enough&quot; or &quot;You don&#39;t need most of those things for an application really&quot; or &quot;why would you want to do things in a REPL anyway?&quot; or all sorts of self-deluding statements because they&#39;ve been blinded by some of the better things in Erlang and things like working and profitable products for years and that&#39;s sort of okay but in a way also really frustrating because it seems that after a few years of Erlang development Erlangers seem to forget just how awful some of the tools they&#39;re working with actually are.</p>
-<h1 id="erlang-s-oss-is-moving-sands">Erlang&#39;s OSS is moving sands</h1>
-<p>Every few months we decide we need to make http calls from our applications and we have to do the dance of working out which library is still being maintained or compiles in the current version of Erlang, ibrowse caused us issues until we switched to lhttpc but unicode and R17 really pissed us off and then lhttpc was deprecated so we looked at gun (which uses maps) but actually shotgun is a better wrapper but there is also fusco except that&#39;s not ready yet yes it&#39;s 2015 and we don&#39;t have a consensus on a http client. (Actually Gun is pretty neat and there are reasons to be re-writing http clients with the advent of http2 etc but okay this is a little frustrating and a small example of the ecosystem).</p>
-<p>The language itself is still evolving and some libraries just stop working between releases, there aren&#39;t too many active users of most Erlang libs once you get out of the basic world of http and databases and you will find bugs and you&#39;ll have to fix those bugs and you&#39;ll have to invest time in doing that if you want to be effective in this world - so you&#39;ll need to be a competent Erlang developer to build an Erlang application but is that such a bad thing given that 90% of developers working in their chosen language are incompetent and at least we have this as a safeguard to keep that sort of person out? I really don&#39;t know I&#39;m just thinking out loud).</p>
-<p>Oh - and every month I find another Erlang library that hasn&#39;t written their manifest properly so doesn&#39;t work in the releases that we build using relx and we&#39;re relying on dangling forks or commits of quite a few projects because nobody seems to be around to take our call for fixing them or merging our fixes.</p>
-<p>It&#39;s not brilliant but...</p>
-<h1 id="erlang-does-seem-to-work">Erlang does seem to work</h1>
-<p>It doesn&#39;t just work, it excels. Once you&#39;ve fought and made peace with all of the above (and more) and you&#39;re using the bash scripts and makefiles that the rest of your company is using for automating the build/test/release process and you&#39;ve spent the time learning how all of it fits together then you can spend some time looking at supervision trees and process ownership and you realise that it&#39;s pretty hard to crash an Erlang application and leave anything open or dangling or in a weird state if you reasoned about your supervision structure at all.</p>
-<p>OTP is pure wonder (gen_server, supervisors, applications etc) and the libraries that ship wth Erlang using the process model and underlying abstractions are battle-tested, stable and well thought out.</p>
-<p>Consider that I can write the following code anywhere in any old gen server and if it fails (IE, write doesn&#39;t return &#39;ok&#39;, the entire process tree crashes and subject to the rules in the supervisor either will be restarted, kill siblings or parents or pass the error up automatically to the next supervision level and we&#39;ll have a log about all of this including the current state of the offending process and there won&#39;t be a dangling open handle to the file and a whole bunch of other useful &quot;none-artifacts&quot; that you&#39;d easily overlook if you hadn&#39;t put in the time to avoid them.</p>
-<pre><code><span class="setting">ok = <span class="value">file:write(Handle, Bytes).</span></span></code></pre><p>Not having to dance around exceptional error cases in most file or networking scenarios and writing your code on top of these built-ins means you can spend more time writing the code you need to write for the feature itself (Okay admittedly if you&#39;ve gotten around the syntax issues). This philosophy and things like it hold true across the various libraries we use from across the ecosystem and mean we don&#39;t tend to get too many support calls at 2am because web servers have disappeared because something is locked, crashed, down permanently, corrupt or whatever.</p>
-<p>Easy inter process communication means it is easy to build self-contained little workers around little balls of state and not worry about concurrency (most of the time) because everything is safe if you&#39;re following the happy path. Generally it also means that shifting cpu heavy stuff around our stack is easy because we can always take one of these processes and spin it up somewhere else. I mentioned that in Clojure we ended up with Actors in core.async but without error handling or safe handle management and here is the answer neatly packaged for us in a platform that has been around and battle-tested for 10x as long. Neat.</p>
-<h1 id="but-what-about-elixir">But what about Elixir</h1>
-<p>If I mention Erlang, this is always the first thing that comes up and it sorta annoys me. I have a few issues with Elixir and they&#39;re not really to do with the language itself because y&#39;know, I couldn&#39;t care less about syntax in general but I do care about philosophy/focus. It&#39;s irrational but here goes:</p>
-<p>1) I&#39;ve worked in Ruby, the Ruby community might be friendly but they&#39;re mostly godawful developers and their tendency to overload operators with magic, or monkey patch internals or generally do any sort of meta-programming because ahahaaha lols made me almost quit programming altogether in frustration when I stared into that abyss for the duration of that job</p>
-<p>2) Elixir comes from that background, with that sort of developer and now with ADDED MACROS (oh man no don&#39;t give these kids more metaprogramming tools)</p>
-<p>You see - Clojure is allowed to have Macros because the rules of Macro club are clearly written down and stated as thus:</p>
-<ul>
-<li>Don&#39;t use Macros</li>
-<li>Don&#39;t use Macros</li>
-<li>Don&#39;t use Macros</li>
-<li>Okay, re-write those rules - we&#39;re going to use Macros because our name is Rich Hickey</li>
-</ul>
-<p>This general sensibility means that you don&#39;t generally bring in libraries in Clojure and then have to wonder why everything in your application no longer works because somebody decided to re-define basic mathematical operators (for those not doing Ruby <em>yes this is actually a thing I don&#39;t know what even</em>).</p>
-<p>Erlang doesn&#39;t cost us any money because we can&#39;t pretend records/maps are objects, we don&#39;t need that functionality. Erlang doesn&#39;t cost us money because we can&#39;t do meta-programming (actually we sorta can but sssh don&#39;t tell the Ruby devs) - and while the syntax might be ugly it isn&#39;t something that is a fundamental issue beyond the initial learning curve because you should be learning OTP, not the language. Putting the focus on that shiny language takes a lot of focus away from the things in Erlang that are actually <em>useful</em> as in the ode above. This is further chronicled by the sheer number of blog entries of &quot;Ruby vs Elixir&quot;, &quot;Node vs Elixir&quot; etc as if somehow the language is at all anything you should be interested in. I find it incredibly hard to trust Elixir, anything written <em>in</em> Elixir or anything written by the Elixir devs (see Ruby metaprogramming above).</p>
-<p>The new and shiny detracts from the old and gnarly without really adding that much in tangible benefits and bringing in the hipster brigade who all totally missed the point when it came to the bit in the chapter &quot;What do you mean you can&#39;t re-assign variables&quot;.</p>
-<p>If you&#39;re a great dev then you can probably be more effective in Elixir (probably), but bear in mind they&#39;re re-building all the shitty infrastructure around packaging management, build tools, scaffolding etc that it has been quite a relief to stay away from in this last year of doing Erlang (I&#39;ll cover this in the upcoming series). So thanks but no thanks - you are all incorrect in your thinking and I&#39;ll see you in a couple of years when you work that out for yourself.</p>
-<h1 id="lfe">LFE</h1>
-<p>An interesting idea, and we&#39;re looking at trialling it in our low value webby bits side by side with the Erlang (because it&#39;s not trying to do anything magic beyond offering a fairly simple syntax change - you know I love a good LISP). At the moment there are a pile of things that we&#39;d want in it (I found some issues the first six hours I jumped in and while Robert Virding is very fast at fixing them we&#39;d need to keep it in low value code while we helped grow the project).</p>
-<p>Bonus: It&#39;s not being ran by Ruby script kiddies, so that&#39;s a Good Thing (tm).</p>
-<h1 id="state-on-the-disinterest-curve">State on the disinterest curve</h1>
-<p>Still not really that interested in Erlang, simply building things in it and enjoying it - this process is pretty mundane and perhaps that&#39;s what I&#39;ve been looking for all this time. I&#39;m going to throw in some more blog entries after this one covering how <em>we</em> build things in Erlang because we do things <em>our</em> way and I&#39;ve been asked about this a few times now. This should be fun.</p>
-]]></description><link>http://codeofrob.com/entries/the-ashton-disinterest-curve---erlang.html</link><guid isPermaLink="true">http://codeofrob.com/entries/the-ashton-disinterest-curve---erlang.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 09 Mar 2015 10:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/erlang---getting-started-with-vir.html</link><guid isPermaLink="true">http://codeofrob.com/entries/erlang---getting-started-with-vir.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 19 Mar 2015 09:30:00 GMT</pubDate></item></channel></rss>
