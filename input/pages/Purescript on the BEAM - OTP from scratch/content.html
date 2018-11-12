@@ -1,2 +1,81 @@
-<p><a href="url">title</a>
-<img src="img" alt="alt"></p>
+<p>Previous entries..</p>
+<ul>
+<li><a href="/entries/functional-erlang---purescript-on-the-beam---intro.html">Intro</a></li>
+<li><a href="/entries/purescript-on-the-beam:-getting-started.html">Getting Started</a></li>
+<li><a href="/entries/purescript-on-the-beam---writing-some-basic-code.html">Writing some basic code</a></li>
+<li><a href="/entries/purescript-on-the-beam---basic-interop-with-erlang.html">Basic interop with Erlang</a></li>
+<li><a href="/entries/purescript-on-the-beam---otp-from-scratch.html">Calling Purecript from Erlang</a></li>
+</ul>
+<p>Armed with the tools from the last explorations, it should be relatively trivial to start interacting with OTP in Purescript, and we&#39;ll give that a bash directly in this entry to see how well <em>that</em> goes..</p>
+<h1 id="writing-a-gen-server-in-purescript">Writing a Gen Server in Purescript</h1>
+<p>Ignoring applications and supervisors for a moment, we can probably write a genserver fairly trivially in Purescript directly using an FFI to call into OTP and shuffle some data types</p>
+<p>The low level FFI could look a little like this, where the call is just an effect that results in a genserver starting.</p>
+<pre><code class="language-erlang">
+    -module(gen<span class="variable">Server</span>@foreign).
+
+    -export([start<span class="variable">LinkImpl</span>/<span class="number">3</span>]).
+
+    start<span class="variable">LinkImpl</span>(<span class="variable">ServerName</span>, <span class="variable">Module</span>, <span class="variable">Args</span>) -&gt;
+      <span class="keyword">fun</span>() -&gt;
+        gen_server:start_link(<span class="variable">ServerName</span>, <span class="variable">Module</span>, <span class="variable">Args</span>, [])
+    <span class="keyword">end</span>.
+</code></pre>
+<pre><code class="language-haskell">
+    <span class="module"><span class="keyword">module</span> GenServer <span class="keyword">where</span></span>
+
+    <span class="import"><span class="keyword">import</span> Prelude</span>
+    <span class="import"><span class="keyword">import</span> Erl.Atom</span>
+    <span class="import"><span class="keyword">import</span> Erl.Data.List</span>
+    <span class="import"><span class="keyword">import</span> Erl.Data.Tuple</span>
+    <span class="import"><span class="keyword">import</span> Effect.Uncurried <span class="container">(<span class="title">mkEffectFn1</span>, <span class="type">EffectFn1</span>)</span></span>
+    <span class="import"><span class="keyword">import</span> Effect</span>
+
+    <span class="keyword">foreign</span> <span class="import"><span class="keyword">import</span> data StartLinkResult :: Type</span>
+
+    <span class="keyword">foreign</span> <span class="import"><span class="keyword">import</span> startLinkImpl :: forall args. <span class="container">(<span class="type">Tuple2</span> <span class="type">Atom</span> <span class="type">Atom</span>)</span> -&gt; Atom -&gt; args -&gt; Effect StartLinkResult</span>
+
+    startLink :: forall args. (<span class="type">Tuple2</span> <span class="type">Atom</span> <span class="type">Atom</span>) -&gt; <span class="type">Atom</span> -&gt; <span class="type">EffectFn1</span> args <span class="type">StartLinkResult</span>
+    startLink serverName mod =
+      mkEffectFn1 \args -&gt; startLinkImpl serverName mod args
+</code></pre>
+<p>Note the mkEffectFn1 allowing us to pass this effectful function into Erlang code, and the parameterised argument type allowing us to have custom arguments for the gen server we&#39;re writing.</p>
+<p>Allowing us to write a gen server that looks like this:</p>
+<pre><code class="language-haskell">
+    <span class="module"><span class="keyword">module</span> TestServer <span class="keyword">where</span></span>
+
+    <span class="import"><span class="keyword">import</span> Prelude</span>
+    <span class="import"><span class="keyword">import</span> Erl.Atom</span>
+    <span class="import"><span class="keyword">import</span> Erl.Data.List</span>
+    <span class="import"><span class="keyword">import</span> Erl.Data.Tuple</span>
+    <span class="import"><span class="keyword">import</span> GenServer <span class="keyword">as</span> GenServer</span>
+    <span class="import"><span class="keyword">import</span> Effect.Uncurried <span class="container">(<span class="title">mkEffectFn1</span>, <span class="type">EffectFn1</span>)</span></span>
+    <span class="import"><span class="keyword">import</span> Effect.Console <span class="container">(<span class="title">log</span>)</span></span>
+
+    <span class="typedef"><span class="keyword">newtype</span> <span class="type">State</span> = <span class="type">State</span> <span class="container">{}</span></span>
+
+    startLink :: <span class="type">EffectFn1</span> <span class="type">String</span> <span class="type">GenServer</span>.<span class="type">StartLinkResult</span>  
+    startLink = <span class="type">GenServer</span>.startLink (tuple2 (atom <span class="string">"local"</span>) (atom <span class="string">"testServer"</span>)) (atom <span class="string">"testServer@ps"</span>)
+
+    init :: <span class="type">EffectFn1</span> <span class="type">String</span> (<span class="type">Tuple2</span> <span class="type">Atom</span> <span class="type">State</span>)
+    init = mkEffectFn1 \args -&gt;  <span class="keyword">do</span>
+      _ &lt;- log $ <span class="string">"Gen server started with args: "</span> &lt;&gt; args
+      pure $ tuple2 (atom <span class="string">"ok"</span>) (<span class="type">State</span> {})
+</code></pre>
+<p>In this case, we&#39;ve decided our start args are a string and we&#39;ll just log that out on startup, and we return a newtype with a record containing our gen server state from the init function, and of course we can just plug this into a standard Erlang supervision tree and we&#39;ll end up with a gen server running which if sent any messages will simply crash :).</p>
+<pre><code class="language-erlang">
+    init([]) -&gt;
+        {ok, { {one_for_all, 0, 1}, [ #{ start =&gt; { testServer@ps, startLink, [&lt;&lt;"Your args"&gt;&gt;] },
+                                         type =&gt; worker,
+                                         id =&gt; test_server
+                                       }
+                                    ]} }.
+</code></pre>
+<p>Already we can see that we&#39;ve not gained an awful lot by writing this thin wrapper allowing us to write gen servers in this way</p>
+<ul>
+<li>There are no guarantees that the arguments passed in from the supervisor are the right type</li>
+<li>Erlang probably can&#39;t even construct the arguments properly if it&#39;s anything more complicated than a string (say, a record or ADT)</li>
+<li>There is no requirement for init/startLink to align their types, the args are going to be coerced back and forth and we&#39;ll get runtime crashes if we make a mistake there</li>
+<li>Low level wrappers are cumbersome, and gen servers are a very common tool in our arsenal, this could get old fast.</li>
+<li>We haven&#39;t even started to cover passing of arbitrary messages into the gen server (handle call, info, etc)</li>
+</ul>
+<p>We can see that manually writing and using 1:1 mappings between Purescript and Erlang code for use across an application is not going to be a sustainable ideal - and yet we will press on and look at a few of the attempts made to do this in the following blog entries before finally trying to do something a little more idiomatic.</p>
