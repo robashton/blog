@@ -116,7 +116,7 @@ You can also export types from these modules, and they'll be opaque as far as th
 
 ```
 
-We *could* model that record as a *Tuple2 Atom String*
+We *could* model that record as a *Tuple2 Atom String*, but this is going to be brittle, as changes to the record's structure aren't going to show up at compilation.
 
 *CoolNativeModule.purs*
 
@@ -127,8 +127,6 @@ We *could* model that record as a *Tuple2 Atom String*
     foreign import callMeAnAmbulance :: String -> Tuple2 Atom String
 
 ```
-
-But this is going to be brittle, as changes to the record's structure aren't going to show up at compilation.
 
 We could equally pass in a constructor function to the Erlang that given all the arguments creates a record that's usable in Purescript but we could equally just accept that it's an opaque object that's only usable from the Erlang that owns it (this is 90% of most Erlang anyway). Functions can then be provided via the FFI to operate over that opaque structure.
 
