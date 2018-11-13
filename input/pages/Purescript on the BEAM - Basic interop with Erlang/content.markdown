@@ -6,7 +6,7 @@ Previous entries..
 
 Super, now it's all very well and good being able to write code Purescript that runs on the BEAM but unless we want to do absolutely everything from scratch and ignore everything that OTP has to give us (more on that later) we'll need to be able to invoke Purescript from Erlang and we'll need to be able to invoke Erlang from Purescript.
 
-We'll cover both of these in this short post as it's not complicated but there are some nuances that we need to be aware of.
+We'll cover both of these over the next two posts as it's not complicated but there are some nuances that we need to be aware of.
 
 # Calling Erlang from Purescript
 

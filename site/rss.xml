@@ -1,4 +1,102 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Mon, 12 Nov 2018 16:22:55 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Purescript on the BEAM - Writing some basic code]]></title><description><![CDATA[<p>Previous entries..</p>
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Tue, 13 Nov 2018 10:56:02 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Purescript on the BEAM - Basic interop with Erlang]]></title><description><![CDATA[<p>Previous entries..</p>
+<ul>
+<li><a href="/entries/functional-erlang---purescript-on-the-beam---intro.html">Intro</a></li>
+<li><a href="/entries/purescript-on-the-beam:-getting-started.html">Getting Started</a></li>
+<li><a href="/entries/purescript-on-the-beam---writing-some-basic-code.html">Writing some basic code</a></li>
+</ul>
+<p>Super, now it&#39;s all very well and good being able to write code Purescript that runs on the BEAM but unless we want to do absolutely everything from scratch and ignore everything that OTP has to give us (more on that later) we&#39;ll need to be able to invoke Purescript from Erlang and we&#39;ll need to be able to invoke Erlang from Purescript.</p>
+<p>We&#39;ll cover both of these over the next two posts as it&#39;s not complicated but there are some nuances that we need to be aware of.</p>
+<h1 id="calling-erlang-from-purescript">Calling Erlang from Purescript</h1>
+<p>This is probably the easiest direction to go in, we know the shape of Erlang and it&#39;s relatively simple as everything is an MFA (Module, Function, Arguments). </p>
+<p><em>cool_native_module.erl</em></p>
+<pre><code class="language-erlang">
+    -module(cool_native_module).
+
+    -export([ call_me_an_ambulance/<span class="number">1</span> ]).
+
+    call_me_an_ambulance(<span class="variable">Name</span>) -&gt;
+      &lt;&lt; <span class="string">"Hey "</span>, <span class="variable">Name</span>/binary, <span class="string">" - you're an ambulance"</span> &gt;&gt;.
+</code></pre>
+<p>Assuming we have a native module in a library somewhere we want to call (like the above), we&#39;ll need to take some steps to get this callable from anywhere in our Purescript code.</p>
+<p><em>CoolNativeModule.purs</em></p>
+<pre><code class="language-haskell">
+    <span class="module"><span class="keyword">module</span> CoolNativeModule <span class="keyword">where</span></span>
+
+    <span class="keyword">foreign</span> <span class="import"><span class="keyword">import</span> callMeAnAmbulance :: String -&gt; String</span>
+</code></pre>
+<p><em>CoolNativeModule.erl</em></p>
+<pre><code class="language-erlang">
+    -module(cool<span class="variable">NativeModule</span>@foreign).
+
+    -export([ call<span class="variable">MeAnAmbulance</span>/<span class="number">1</span> ]).
+
+    call<span class="variable">MeAnAmbulance</span>(<span class="variable">Name</span>) -&gt; cool_native_module:call_me_an_ambulance(<span class="variable">Name</span>).
+</code></pre>
+<p>Essentially, you end up creating wrappers around existing modules in this manner with both a Purescript module for use from Purescript and a backing &quot;FFI&quot; which then talks to the original Erlang module and in theory can ship them as Purescript modules for download in parallel with their Erlang modules.</p>
+<p>It&#39;s not that simple though, as very often our external functions are going to have side effects and in Purescript, these are supposed to be modelled <em>as</em> an Effect, consider the following.</p>
+<p><em>cool_native_module.erl</em></p>
+<pre><code class="language-erlang">
+    -module(cool_native_module).
+
+    -export([ call_me_an_ambulance/<span class="number">1</span> ]).
+
+    call_me_an_ambulance(<span class="variable">Name</span>) -&gt;
+      io:format(<span class="string">"You're definitely an ambulance"</span>),
+      &lt;&lt; <span class="string">"Hey "</span>, <span class="variable">Name</span>/binary, <span class="string">" - you're an ambulance"</span> &gt;&gt;.
+
+</code></pre>
+<p>In this case, we&#39;re just echoing something to stdout, but it could equally be something over the network/disk etc. Modelling this a <em>String -&gt; String</em> is dishonest because in reality it&#39;s now a <em>String -&gt; Effect String</em></p>
+<p><em>CoolNativeModule.purs</em></p>
+<pre><code class="language-haskell">
+    <span class="module"><span class="keyword">module</span> CoolNativeModule <span class="keyword">where</span></span>
+
+    <span class="keyword">foreign</span> <span class="import"><span class="keyword">import</span> callMeAnAmbulance :: String -&gt; Effect String</span>
+</code></pre>
+<p>How is this modelled in the FFI? </p>
+<pre><code class="language-erlang">
+    -module(cool<span class="variable">NativeModule</span>@foreign).
+
+    -export([ call<span class="variable">MeAnAmbulance</span>/<span class="number">1</span> ]).
+
+    call<span class="variable">MeAnAmbulance</span>(<span class="variable">Name</span>) -&gt; 
+       <span class="keyword">fun</span>() -&gt; 
+         cool_native_module:call_me_an_ambulance(<span class="variable">Name</span>)
+       <span class="keyword">end</span>.
+</code></pre>
+<p>It&#39;s just monads innit (DW, an Effect is just a function that has a side effect, and until that happens you&#39;re effectively just passing around functions.</p>
+<p>Now - there are no guarantees when you call (most) Erlang that there are no side effects though, you can in (pretty much any) function open a file and write whatever you want to it and in theory every single function call to Erlang would probably be of type <em>Effect a</em> - this would be cumbersome though and so far in the modules I&#39;ve read there seems to be a pragmatic approach to this. Is there a side effect? It&#39;s an Effect, is there not? No Effect - there is nothing stopping you ignoring the types entirely and doing all sorts of nastiness in your FFI but on your head be it.</p>
+<p>You can also export types from these modules, and they&#39;ll be opaque as far as the Purescript is concerned but at least type safe while you&#39;re still <em>in</em> Purescript, consider</p>
+<pre><code class="language-erlang">
+    -module(coolNativeModule@foreign).
+
+    -export([ callMeAnAmbulance/1 ]).
+
+    -record(some_record, {
+        foo :: string()
+      }).
+
+    callMeAnAmbulance(Name) -&gt; 
+      #some_record { foo = Name }.
+</code></pre>
+<p>We <em>could</em> model that record as a <em>Tuple2 Atom String</em></p>
+<p><em>CoolNativeModule.purs</em></p>
+<pre><code class="language-haskell">
+    <span class="module"><span class="keyword">module</span> CoolNativeModule <span class="keyword">where</span></span>
+
+    <span class="keyword">foreign</span> <span class="import"><span class="keyword">import</span> callMeAnAmbulance :: String -&gt; Tuple2 Atom String</span>
+</code></pre>
+<p>But this is going to be brittle, as changes to the record&#39;s structure aren&#39;t going to show up at compilation.</p>
+<p>We could equally pass in a constructor function to the Erlang that given all the arguments creates a record that&#39;s usable in Purescript but we could equally just accept that it&#39;s an opaque object that&#39;s only usable from the Erlang that owns it (this is 90% of most Erlang anyway). Functions can then be provided via the FFI to operate over that opaque structure.</p>
+<p><em>CoolNativeModule.purs</em></p>
+<pre><code class="language-haskell">
+    <span class="module"><span class="keyword">module</span> CoolNativeModule <span class="keyword">where</span></span>
+
+    <span class="keyword">foreign</span> <span class="import"><span class="keyword">import</span> data SomeRecord :: Type</span>
+
+    <span class="keyword">foreign</span> <span class="import"><span class="keyword">import</span> callMeAnAmbulance :: String -&gt; SomeRecord</span>
+</code></pre>
+<p>That pretty much covers much of what we need when importing libraries that are already written in Erlang, so next we&#39;ll look at how we can call Purescript <em>from</em> Erlang (Which is something that we need more than you&#39;d think at first glance).</p>
+]]></description><link>http://codeofrob.com/entries/purescript-on-the-beam---basic-interop-with-erlang.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purescript-on-the-beam---basic-interop-with-erlang.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 13 Nov 2018 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purescript on the BEAM - Writing some basic code]]></title><description><![CDATA[<p>Previous entries..</p>
 <ul>
 <li><a href="/entries/functional-erlang---purescript-on-the-beam---intro.html">Intro</a></li>
 <li><a href="/entries/purescript-on-the-beam:-getting-started.html">Getting Started</a></li>
@@ -588,91 +686,4 @@ priv/mibs/<span class="variable">%.</span>bin -&gt;    mins/<span class="variabl
 <p>Seeing as most of these steps and most of the erl/beams are independent of each other a build is much faster if you run it in parallel.</p>
 <h1 id="on-package-managers">On package managers</h1>
 <p>I often get a few eyebrows raised when I say we don&#39;t need one of these - so the next entry will write about why they&#39;re unnecessary (in any of the incarnations so far) and why we should do without.</p>
-]]></description><link>http://codeofrob.com/entries/erlang-and-make---okay-together.html</link><guid isPermaLink="true">http://codeofrob.com/entries/erlang-and-make---okay-together.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 24 Mar 2015 08:30:00 GMT</pubDate></item><item><title><![CDATA[Erlang - Getting started with vir]]></title><description><![CDATA[<p><a href="http://github.com/robashton/vir">Vir</a> is a bunching together of various scripts we had lying around our projects written in a combination of Bash and Erlang to manage the execution/release/etc process for our applications. It does what we need to do and stops about there - I suspect the best way of using Vir is to either use it as it is or fork it for your own organisation rather than trying to make it help everybody.</p>
-<p>The easiest way to get started with vir is to clone it to ~/.vir and add this folder to the path, but it&#39;ll work if you just add it to a GH repo and run it locally to so... whatever - do what you want it&#39;s just a bash script.</p>
-<p>Anyway, running vir should give us a list of possible commands, for now we&#39;ll just create an empty web application in a folder, so do something like the below..</p>
-<pre><code>mkdir awesomeapp
-cd awesomeapp
-git init
-vir init -t web awesome
-git commit <span class="keyword">...</span></code></pre><p>This creates an application called &quot;<em>awesome</em>&quot; (and builds it) based off the <em>web</em> and gives us a folder structure that looks similar to below:</p>
-<p>As mentioned in a previous blog entry, this is at immediate glance a lot to digest, but we can go through it a little at a time and see just what has been created for us.</p>
-<p><strong>Config</strong></p>
-<pre><code><span class="title">apps</span>/awesome/release-files/sys.config
-<span class="title">apps</span>/awesome/src/awesome_config.erl</code></pre><p>sys.config is a standalone file containing various key-value pairs of config and awesome_config is a wrapper that provides an API to read that file. Not much to see here.</p>
-<p><strong>Application startup</strong></p>
-<pre><code><span class="title">apps</span>/awesome/src/awesome_app.erl
-<span class="title">apps</span>/awesome/src/awesome_sup.erl</code></pre><p>An application requires something that implements the OTP Behaviour &quot;Application&quot; (<em>awesome_app.erl</em>), and if I want child processes within the structure I&#39;ll need a supervisor to manager them, that&#39;s (<em>awesome_sup.erl</em>).</p>
-<p><strong>A web application</strong></p>
-<pre><code>apps/awesome/src/<span class="filename">awesome_cowboy.erl</code></pre><p>This is just a OTP genserver that uses Cowboy (one of our dependencies) to create a simple http listener.</p>
-<p><strong>Release artifacts</strong></p>
-<pre><code><span class="title">deployment</span>/build_no
-<span class="title">deployment</span>/major_ver
-<span class="title">deployment</span>/minor_ver</code></pre><p>This is a cheap way of bumping version for the application during a release cycle.</p>
-<p><strong>Dependencies</strong></p>
-<pre><code><span class="title">deps</span>/cowboy/
-<span class="title">deps</span>/cowlib/
-<span class="title">deps</span>/edown/
-<span class="title">deps</span>/gen_leader/
-<span class="title">deps</span>/goldrush/
-<span class="title">deps</span>/gproc/
-<span class="title">deps</span>/jsx/
-<span class="title">deps</span>/lager/
-<span class="title">deps</span>/ranch/</code></pre><p>Lots of folders containing lots more of the above. They were cloned and brought in because the Makefile contains a list of dependencies.</p>
-<p>In reality we&#39;re only explicitly bringing in <em>cowboy</em>, <em>gproc</em>, <em>jsx</em> and <em>lager</em> and the others are further dependencies of these. Because Erlang operates in a single global namespace you can&#39;t do explicit imports ala NodeJS and have multiple versions of things in the application.</p>
-<p>It doesn&#39;t matter too much anyway because dependency applications often spin up a fleet of processes on start-up rather than simply operating as library code, so you wouldn&#39;t want more than one version of an application running within a project.</p>
-<p><strong>Various Manifests</strong></p>
-<pre><code>apps/awesome/relx<span class="variable">.config</span>
-apps/awesome/src/awesome<span class="variable">.app</span><span class="variable">.src</span></code></pre><p><em>relx.config</em> is a manifest specifying how to do a release with all the appropriate files, and <em>awesome.app.src</em> tells the boot system what state our application needs to be in before it can be started.</p>
-<p><strong>A Makefile</strong></p>
-<pre><code><span class="attribute">Makefile</code></pre><p>Yup, we use make.</p>
-<h1 id="using-it">Using it</h1>
-<p>So how do we use this? Well the bash script we just ran probably did all this already but loosely our general dev cycle will be</p>
-<pre><code><span class="title">make</span> -j apps         <span class="comment">#  "make in parallel, the apps only, ignore the deps"</span>
-vir run awesome      <span class="comment">#  "vir, run the app please"</span></code></pre><p>If we add new dependencies, then we&#39;ll need to run the following command after a build before running</p>
-<pre><code>vir boot             # <span class="keyword">Generate</span> bootscripts <span class="keyword">for</span> each application based <span class="keyword">on</span> the manifests</code></pre><p>So what do we have when it starts up? Well, let&#39;s look at the logs first</p>
-<pre><code>Erlang/OTP <span class="number">17</span> [erts-<span class="number">6.1</span>] [source] [<span class="number">64</span>-bit] [smp:<span class="number">4</span>:<span class="number">4</span>] [async-threads:<span class="number">10</span>] [kernel-poll:<span class="constant">false</span>]
-
-<span class="number">13</span>:<span class="number">08</span>:<span class="number">49.978</span> [info] Application lager started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
-<span class="number">13</span>:<span class="number">08</span>:<span class="number">49.979</span> [info] Application ranch started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
-<span class="number">13</span>:<span class="number">08</span>:<span class="number">49.979</span> [info] Application crypto started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
-<span class="number">13</span>:<span class="number">08</span>:<span class="number">49.980</span> [info] Application cowlib started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
-<span class="number">13</span>:<span class="number">08</span>:<span class="number">49.988</span> [info] Application cowboy started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
-<span class="number">13</span>:<span class="number">08</span>:<span class="number">49.998</span> [info] Application gproc started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
-<span class="number">13</span>:<span class="number">08</span>:<span class="number">49.998</span> [info] Application shared started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
-Mode dev <span class="keyword">not</span> found
-<span class="number">13</span>:<span class="number">08</span>:<span class="number">50.024</span> [info] Application awesome started <span class="function_start"><span class="keyword">on</span> <span class="title">node</span></span> nonode@nohost
-Eshell V6<span class="number">.1</span>  (abort <span class="keyword">with</span> ^G)</code></pre><p>Neato, we see all the applications specified in <em>awesome.app.src</em> started up. (Mode dev isn&#39;t found because we haven&#39;t got one and that&#39;s the default mode)</p>
-<p>This is awesome.app.src for reference.</p>
-<pre><code><span class="cell">{application, awesome,
- [
-  {description, ""}</span>,
-  <span class="cell">{vsn, "<span class="number">1.0</span><span class="number">.0</span>"}</span>,
-  <span class="cell">{registered, []}</span>,
-  <span class="cell">{modules, []}</span>,
-  <span class="cell">{included_applications, []}</span>,
-  <span class="cell">{applications,
-   [
-    kernel,
-    jsx,
-    stdlib,
-    lager,
-    cowboy,
-    gproc,
-    shared
-   ]}</span>,
-  <span class="cell">{mod, { awesome_app, []}</span>},
-  <span class="cell">{env, []}</span>
-  ]}.</code></pre><p>See what I mean about dependencies not simply being a pile of code, that list of folders we have in deps contain actual applications that are started up before awesome_app itself.</p>
-<p>Is it working?</p>
-<pre><code>curl http://localhost:3000/index.html
-<span class="tag">&lt;<span class="title">html</span>&gt;</span>
-  <span class="tag">&lt;<span class="title">head</span>&gt;</span>
-  <span class="tag">&lt;/<span class="title">head</span>&gt;</span>
-  <span class="tag">&lt;<span class="title">body</span>&gt;</span>
-    <span class="tag">&lt;<span class="title">h1</span>&gt;</span>Hello world<span class="tag">&lt;/<span class="title">h1</span>&gt;</span>
-  <span class="tag">&lt;/<span class="title">body</span>&gt;</span>
-<span class="tag">&lt;/<span class="title">html</span>&gt;</span></code></pre><p>Yup.</p>
-<h1 id="next-up">Next up</h1>
-<p>I&#39;ll look at our Makefile and how we handle dependencies, and explain a bit more our decisions around that.</p>
-]]></description><link>http://codeofrob.com/entries/erlang---getting-started-with-vir.html</link><guid isPermaLink="true">http://codeofrob.com/entries/erlang---getting-started-with-vir.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 19 Mar 2015 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/erlang-and-make---okay-together.html</link><guid isPermaLink="true">http://codeofrob.com/entries/erlang-and-make---okay-together.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 24 Mar 2015 08:30:00 GMT</pubDate></item></channel></rss>

@@ -98,6 +98,6 @@ Already we can see that we've not gained an awful lot by writing this thin wrapp
 - There is no requirement for init/startLink to align their types, the args are going to be coerced back and forth and we'll get runtime crashes if we make a mistake there
 - Low level wrappers are cumbersome, and gen servers are a very common tool in our arsenal, this could get old fast.
 - We haven't even started to cover passing of arbitrary messages into the gen server (handle call, info, etc) (Spoiler alert: They're cumbersome too)
-
+- There is no guarantee that certain methods (handle_info/etc) are actually present, although most of these behaviours are optional these days thankfully!
 
 We can see that manually writing and using 1:1 mappings between Purescript and Erlang code for use across an application is not going to be a sustainable ideal - and yet we will press on and look at a few of the attempts made to do this in the following blog entries before finally trying to do something a little more idiomatic.
