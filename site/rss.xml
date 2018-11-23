@@ -1,4 +1,172 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Tue, 13 Nov 2018 10:57:01 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Purescript on the BEAM - Basic interop with Erlang]]></title><description><![CDATA[<p>Previous entries..</p>
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Fri, 23 Nov 2018 12:40:07 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Purescript on the BEAM - OTP from scratch]]></title><description><![CDATA[<p>Previous entries..</p>
+<ul>
+<li><a href="/entries/functional-erlang---purescript-on-the-beam---intro.html">Intro</a></li>
+<li><a href="/entries/purescript-on-the-beam:-getting-started.html">Getting Started</a></li>
+<li><a href="/entries/purescript-on-the-beam---writing-some-basic-code.html">Writing some basic code</a></li>
+<li><a href="/entries/purescript-on-the-beam---basic-interop-with-erlang.html">Basic interop with Erlang</a></li>
+<li><a href="/entries/purescript-on-the-beam---otp-from-scratch.html">Calling Purecript from Erlang</a></li>
+</ul>
+<p>Armed with the tools from the last explorations, it should be relatively trivial to start interacting with OTP in Purescript, and we&#39;ll give that a bash directly in this entry to see how well <em>that</em> goes..</p>
+<h1 id="writing-a-gen-server-in-purescript">Writing a Gen Server in Purescript</h1>
+<p>Ignoring applications and supervisors for a moment, we can probably write a genserver fairly trivially in Purescript directly using an FFI to call into OTP and shuffle some data types</p>
+<p>The low level FFI could look a little like this, where the call is just an effect that results in a genserver starting.</p>
+<pre><code class="language-erlang">
+    -module(gen<span class="variable">Server</span>@foreign).
+
+    -export([start<span class="variable">LinkImpl</span>/<span class="number">3</span>]).
+
+    start<span class="variable">LinkImpl</span>(<span class="variable">ServerName</span>, <span class="variable">Module</span>, <span class="variable">Args</span>) -&gt;
+      <span class="keyword">fun</span>() -&gt;
+        gen_server:start_link(<span class="variable">ServerName</span>, <span class="variable">Module</span>, <span class="variable">Args</span>, [])
+    <span class="keyword">end</span>.
+</code></pre>
+<pre><code class="language-haskell">
+    <span class="module"><span class="keyword">module</span> GenServer <span class="keyword">where</span></span>
+
+    <span class="import"><span class="keyword">import</span> Prelude</span>
+    <span class="import"><span class="keyword">import</span> Erl.Atom</span>
+    <span class="import"><span class="keyword">import</span> Erl.Data.List</span>
+    <span class="import"><span class="keyword">import</span> Erl.Data.Tuple</span>
+    <span class="import"><span class="keyword">import</span> Effect.Uncurried <span class="container">(<span class="title">mkEffectFn1</span>, <span class="type">EffectFn1</span>)</span></span>
+    <span class="import"><span class="keyword">import</span> Effect</span>
+
+    <span class="keyword">foreign</span> <span class="import"><span class="keyword">import</span> data StartLinkResult :: Type</span>
+
+    <span class="keyword">foreign</span> <span class="import"><span class="keyword">import</span> startLinkImpl :: forall args. <span class="container">(<span class="type">Tuple2</span> <span class="type">Atom</span> <span class="type">Atom</span>)</span> -&gt; Atom -&gt; args -&gt; Effect StartLinkResult</span>
+
+    startLink :: forall args. (<span class="type">Tuple2</span> <span class="type">Atom</span> <span class="type">Atom</span>) -&gt; <span class="type">Atom</span> -&gt; <span class="type">EffectFn1</span> args <span class="type">StartLinkResult</span>
+    startLink serverName mod =
+      mkEffectFn1 \args -&gt; startLinkImpl serverName mod args
+</code></pre>
+<p>Note the mkEffectFn1 allowing us to pass this effectful function into Erlang code, and the parameterised argument type allowing us to have custom arguments for the gen server we&#39;re writing.</p>
+<p>Allowing us to write a gen server that looks like this:</p>
+<pre><code class="language-haskell">
+    <span class="module"><span class="keyword">module</span> TestServer <span class="keyword">where</span></span>
+
+    <span class="import"><span class="keyword">import</span> Prelude</span>
+    <span class="import"><span class="keyword">import</span> Erl.Atom</span>
+    <span class="import"><span class="keyword">import</span> Erl.Data.List</span>
+    <span class="import"><span class="keyword">import</span> Erl.Data.Tuple</span>
+    <span class="import"><span class="keyword">import</span> GenServer <span class="keyword">as</span> GenServer</span>
+    <span class="import"><span class="keyword">import</span> Effect.Uncurried <span class="container">(<span class="title">mkEffectFn1</span>, <span class="type">EffectFn1</span>)</span></span>
+    <span class="import"><span class="keyword">import</span> Effect.Console <span class="container">(<span class="title">log</span>)</span></span>
+
+    <span class="typedef"><span class="keyword">newtype</span> <span class="type">State</span> = <span class="type">State</span> <span class="container">{}</span></span>
+
+    startLink :: <span class="type">EffectFn1</span> <span class="type">String</span> <span class="type">GenServer</span>.<span class="type">StartLinkResult</span>  
+    startLink = <span class="type">GenServer</span>.startLink (tuple2 (atom <span class="string">"local"</span>) (atom <span class="string">"testServer"</span>)) (atom <span class="string">"testServer@ps"</span>)
+
+    init :: <span class="type">EffectFn1</span> <span class="type">String</span> (<span class="type">Tuple2</span> <span class="type">Atom</span> <span class="type">State</span>)
+    init = mkEffectFn1 \args -&gt;  <span class="keyword">do</span>
+      _ &lt;- log $ <span class="string">"Gen server started with args: "</span> &lt;&gt; args
+      pure $ tuple2 (atom <span class="string">"ok"</span>) (<span class="type">State</span> {})
+</code></pre>
+<p>In this case, we&#39;ve decided our start args are a string and we&#39;ll just log that out on startup, and we return a newtype with a record containing our gen server state from the init function, and of course we can just plug this into a standard Erlang supervision tree and we&#39;ll end up with a gen server running which if sent any messages will simply crash :).</p>
+<pre><code class="language-erlang">
+    init([]) -&gt;
+        {ok, { {one_for_all, 0, 1}, [ #{ start =&gt; { testServer@ps, startLink, [&lt;&lt;"Your args"&gt;&gt;] },
+                                         type =&gt; worker,
+                                         id =&gt; test_server
+                                       }
+                                    ]} }.
+</code></pre>
+<p>Already we can see that we&#39;ve not gained an awful lot by writing this thin wrapper allowing us to write gen servers in this way</p>
+<ul>
+<li>There are no guarantees that the arguments passed in from the supervisor are the right type</li>
+<li>Erlang probably can&#39;t even construct the arguments properly if it&#39;s anything more complicated than a string (say, a record or ADT)</li>
+<li>There is no requirement for init/startLink to align their types, the args are going to be coerced back and forth and we&#39;ll get runtime crashes if we make a mistake there</li>
+<li>Low level wrappers are cumbersome, and gen servers are a very common tool in our arsenal, this could get old fast.</li>
+<li>We haven&#39;t even started to cover passing of arbitrary messages into the gen server (handle call, info, etc) (Spoiler alert: They&#39;re cumbersome too)</li>
+<li>There is no guarantee that certain methods (handle_info/etc) are actually present, although most of these behaviours are optional these days thankfully!</li>
+</ul>
+<p>We can see that manually writing and using 1:1 mappings between Purescript and Erlang code for use across an application is not going to be a sustainable ideal - and yet we will press on and look at a few of the attempts made to do this in the following blog entries before finally trying to do something a little more idiomatic.</p>
+]]></description><link>http://codeofrob.com/entries/purescript-on-the-beam---otp-from-scratch.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purescript-on-the-beam---otp-from-scratch.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 20 Nov 2018 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purescript on the BEAM - Calling Purescript from Erlang]]></title><description><![CDATA[<p>Previous entries..</p>
+<ul>
+<li><a href="/entries/functional-erlang---purescript-on-the-beam---intro.html">Intro</a></li>
+<li><a href="/entries/purescript-on-the-beam:-getting-started.html">Getting Started</a></li>
+<li><a href="/entries/purescript-on-the-beam---writing-some-basic-code.html">Writing some basic code</a></li>
+<li><a href="/entries/purescript-on-the-beam---basic-interop-with-erlang.html">Basic interop with Erlang</a></li>
+</ul>
+<p>Why would we want to call Purescript <em>from</em> Erlang? Given that moving <em>from</em> Erlang <em>to</em> Purescript as our day to day language is one of our stated goals? Well the answer is in the whole &quot;Module Function Arguments&quot; thing, a lot of APIs in Erlang make you provide an MFA for callback with your state/the library state for performing operations. This is true for all of the web frameworks certainly, and most of OTP (Again, more on that later..)</p>
+<h1 id="calling-purescript-from-erlang">Calling Purescript from Erlang</h1>
+<p>Consider the following contrived example first.. </p>
+<p><em>my_erlang.erl</em></p>
+<pre><code class="language-erlang">
+    -module(my_erlang).
+
+    -export([ init/<span class="number">0</span>, callback/<span class="number">1</span> ]).
+
+    init() -&gt;
+      ok = some_library:configure(my_erlang, callback).
+
+    callback(<span class="variable">SomeLibraryState</span>) -&gt;
+      <span class="variable">NewLibraryState</span> = some_library:do_something(<span class="variable">SomeLibraryState</span>),
+      <span class="tuple">{ ok, <span class="variable">NewLibraryState</span> }</span>.
+</code></pre>
+<p>This is a very familiar pattern for anybody used to writing Erlang, and it isn&#39;t immediately obvious how we&#39;re going to give that library anything from Purescript - most APIs in a functional language if they want a callback, will just ask for a function to callback. This isn&#39;t typically the case in Erlang because this would get in the way of the (somewhat important) code hotloading which is used during development for a rapid experience, and in production to upgrade live systems without incurring downtime.</p>
+<p>Ignoring further steps that we might take to then prettify the interaction with Erlang/Purescript here, it turns out that Purescript (currently) compiles modules/functions to fairly predictable names which we can use in our FFI.</p>
+<p>So first up, we&#39;d need to write the code to talk from Purescript to Erlang as covered in the previous post (Assuming that both configure/do_something are impure and require effects).</p>
+<p><em>SomeLibrary.erl</em></p>
+<pre><code class="language-erlang">
+    -module(some<span class="variable">Library</span>@foreign).
+
+    -export([configure/<span class="number">2</span>, do<span class="variable">Something</span>/<span class="number">1</span>]).
+
+    configure(<span class="variable">Module</span>, <span class="variable">Function</span>) -&gt;
+      <span class="keyword">fun</span>() -&gt; some_library(<span class="variable">Module</span>, <span class="variable">Function</span>) <span class="keyword">end</span>.
+
+    do<span class="variable">Something</span>(<span class="variable">OpaqueState</span>) -&gt;
+      <span class="keyword">fun</span>() -&gt; some_library:do_something(<span class="variable">OpaqueState</span>) <span class="keyword">end</span>.
+</code></pre>
+<p><em>SomeLibrary.purs</em></p>
+<pre><code class="language-haskell">
+    <span class="module"><span class="keyword">module</span> SomeLibrary <span class="keyword">where</span></span>
+
+    <span class="keyword">foreign</span> <span class="import"><span class="keyword">import</span> data LibraryState :: Type</span>
+
+    <span class="keyword">foreign</span> <span class="import"><span class="keyword">import</span> configure :: Atom -&gt; Atom -&gt; Effect Atom</span>
+    <span class="keyword">foreign</span> <span class="import"><span class="keyword">import</span> doSomething :: OpaqueState -&gt; Effect OpaqueState</span>
+</code></pre>
+<p>Using this FFI we can now re-write our original Erlang in Purescript, or at least have a go at it</p>
+<pre><code class="language-haskell">
+    <span class="module"><span class="keyword">module</span> MyCode <span class="keyword">where</span></span>
+
+    init :: <span class="type">Effect</span> <span class="type">Atom</span>
+    init = <span class="type">SomeLibrary</span>.configure (atom <span class="string">"myCode@ps"</span>) (atom <span class="string">"callback"</span>)
+
+    callback :: <span class="type">OpaqueState</span> -&gt; <span class="type">Tuple2</span> <span class="type">Atom</span> <span class="type">OpaqueState</span>
+    callback state = tuple2 $ (atom <span class="string">"ok"</span>) state <span class="comment">-- don't actually do anything yet</span>
+</code></pre>
+<p>A problem immediately presents itself, we can&#39;t use the doSomething function from our callback because it&#39;s an Effectful function and our callback function is not, this means callback is pure and can&#39;t actually have any side effects.</p>
+<p>We can try to re-write callback so it is Effectful</p>
+<pre><code class="language-haskell">
+    <span class="module"><span class="keyword">module</span> MyCode <span class="keyword">where</span></span>
+
+    init :: <span class="type">Effect</span> <span class="type">Atom</span>
+    init = <span class="type">SomeLibrary</span>.configure (atom <span class="string">"myCode@ps"</span>) (atom <span class="string">"callback"</span>)
+
+    callback :: <span class="type">OpaqueState</span> -&gt; <span class="type">Effect</span> (<span class="type">Tuple2</span> <span class="type">Atom</span> <span class="type">OpaqueState</span>)
+    callback state = <span class="keyword">do</span>
+      newState &lt;- <span class="type">SomeLibrary</span>.state
+      pure $ tuple2 $ (atom <span class="string">"ok"</span>) newState 
+</code></pre>
+<p>But now we&#39;ll just get a runtime error because the native Erlang code expects a function of <em>(LibraryState -&gt; { ok, Library State })</em>, and we&#39;ve now giving it a function that is <em>LibraryState -&gt; (() -&gt; { ok, LibraryState})</em> - essentially passing a function reference back to Erlang instead of the result of that function (ew).</p>
+<p>We can dance around this in a number of ways, the simplest being to lie about the effect and use unsafePerformEffect in our &quot;pure&quot; function (No thanks).</p>
+<p>We can also use the namespace Effect.Uncurried to return an effectively negative arity effect back to Erlang (IE, the direct result) without writing any code that lies about what it actually is.</p>
+<pre><code class="language-haskell">
+    <span class="module"><span class="keyword">module</span> MyCode <span class="keyword">where</span></span>
+
+    init :: <span class="type">Effect</span> <span class="type">Atom</span>
+    init = <span class="type">SomeLibrary</span>.configure (atom <span class="string">"myCode@ps"</span>) (atom <span class="string">"callback"</span>)
+
+    callback :: <span class="type">EffectFn1</span> <span class="type">OpaqueState</span> (<span class="type">Tuple2</span> <span class="type">Atom</span> <span class="type">OpaqueState</span>)
+    callback = mkEffectFn1 \state -&gt; <span class="keyword">do</span>
+        newState &lt;- <span class="type">SomeLibrary</span>.state
+        pure $ tuple2 $ (atom <span class="string">"ok"</span>) newState 
+</code></pre>
+<p>(IE, the direct result) without writing any code that lies about what it actually is.</p>
+<p>This is typically how we will interact directly with Erlang libraries and will get us pretty far when creating low level bindings with those libraries, but we will see as we progress into creating our wrappers around OTP we&#39;ll uncover some better patterns for making this less brittle (Passing atoms all over the show is pretty dull). For one-off cases the above is perfectly fine, but in reality we&#39;ll only be using this mechanism when writing the wrappers themselves and presenting higher level APIs to the application itself.</p>
+]]></description><link>http://codeofrob.com/entries/purescript-on-the-beam---calling-purescript-from-erlang.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purescript-on-the-beam---calling-purescript-from-erlang.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 15 Nov 2018 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purescript on the BEAM - Basic interop with Erlang]]></title><description><![CDATA[<p>Previous entries..</p>
 <ul>
 <li><a href="/entries/functional-erlang---purescript-on-the-beam---intro.html">Intro</a></li>
 <li><a href="/entries/purescript-on-the-beam:-getting-started.html">Getting Started</a></li>
@@ -602,87 +770,4 @@ clean:
 <h1 id="summary">Summary</h1>
 <p>Sod England, it&#39;s all down hill from here; come and make Scotland great again, it&#39;s a cheaper place to do business, full of really great people and amazing ways to relax the brain (whisky!). It&#39;s going to take a lot less effort to make this the kind of open and liberal place we want to live in because we&#39;re already 90% of the way there; let&#39;s do this together.</p>
 <p>I&#39;ll make you some coffee at Cafe Ashton once you&#39;re in town. It&#39;s a promise.</p>
-]]></description><link>http://codeofrob.com/entries/a-londoners-guide-to-emigrating-to-glasgow.html</link><guid isPermaLink="true">http://codeofrob.com/entries/a-londoners-guide-to-emigrating-to-glasgow.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 27 Jun 2016 09:30:00 GMT</pubDate></item><item><title><![CDATA[Why you can't be a good .NET developer]]></title><description><![CDATA[<p>I was on Twitter today and I saw this tweet by <a href="https://twitter.com/ICooper/">Ian Cooper</a></p>
-<blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr"><a href="https://twitter.com/jbogard">@jbogard</a> Agreed, it&#39;s crazy. The self-loathing mystifies me. All web C# use multiple languages (SQL and JS?) <a href="https://twitter.com/Adron">@Adron</a> <a href="https://twitter.com/aliostad">@aliostad</a> <a href="https://twitter.com/randompunter">@randompunter</a></p>&mdash; Ian Cooper (@ICooper) <a href="https://twitter.com/ICooper/status/742758275133890560">June 14, 2016</a></blockquote>
-<script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
-
-<p>My first reaction was simply to laugh, because the idea of self-loathing .NET developers is a funny one, my second reaction was to say something pithy on Twitter and then I remembered I had a blog which <em>somehow</em> despite my best efforts is still running for some reason &quot;in the cloud&quot; and thought I&#39;d disagree here instead.</p>
-<h1 id="it-s-not-self-loathing">It&#39;s not self loathing</h1>
-<blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr"><a href="https://twitter.com/jbogard">@jbogard</a> The worst part of this is the old belief that I have to classify as an X developer and join or leave <a href="https://twitter.com/Adron">@Adron</a> <a href="https://twitter.com/aliostad">@aliostad</a> <a href="https://twitter.com/randompunter">@randompunter</a></p>&mdash; Ian Cooper (@ICooper) <a href="https://twitter.com/ICooper/status/742756504642674688">June 14, 2016</a></blockquote>
-<script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
-
-<p>There is a reason this mentality exists and it isn&#39;t one of self loathing. The reason why people &quot;leave&quot; .NET is because <em>it is impossible to be a good .NET developer</em>. To work in a development shop with a team is to continually cater for the lowest common denominator of that team and the vast majority of software shops using .NET have a whole lot of lowest common denominator to choose their bad development decisions for.</p>
-<p>Tangible examples? I remember well the insistence of one boss that we use TFS because some developers would find it hard to use git. I remember the steadfast committal to ASP.NET web forms because the &quot;new concepts&quot; in ASP.NET MVC were going to take too long for the team to become productive in. There is now this furore over .NET core and the new thing in the tiny 0.001% of people that care are whether they persist in using Windows or switch to more productive environments. Of course <a href="https://twitter.com/aliostad">@aliostad</a> gets it right here and points out that the primary &quot;<em>Important Thing</em>&quot; should be a focus on <a href="http://byterot.blogspot.co.uk/2016/06/after-all-it-might-not-matter-commentary-status-of-dotnet-dotnetcore-csharp-oss-fsharp-dnx.html">functional programming in languages like F#</a> and of course the reason it doesn&#39;t happen is because &quot;it&#39;s too hard for most people in our team&quot;.</p>
-<p>It&#39;ll not happen because as long as you&#39;re working on a platform that is primarily used by derpy enterprise shops, you will continually be held back because those derpy enteprise shops are continually be held back by the derpy enterprise developers that work in the derpy enterprise shops.</p>
-<p>It isn&#39;t self loathing, it&#39;s self preservation and an eventual realisation that you can&#39;t actually progress so long as you&#39;re being held back by bad decisions made to cater for the slow and the stupid. Self loathing is just an intermediate stage that people go through while they still believe they can make an impact on the environment around them by caring and shouting into the void to enact tiny changes that help nobody.</p>
-<p>The easiest way to progress is always to jump ship and leave, that&#39;s why people do it; moving to a community of people who have seen how to be more effective and productive and leaving the old one behind. In my own case it has been to move to a community that barely exists because the team has to be pretty much self reliant and there is no room for lowest common denominators and long meetings over whether you should use semi-colons or not.</p>
-<p><em>This</em> is why you can&#39;t be a good .NET developer, sooner or later the frustration sets in and you go and do something better. The average ability and desire for something better just keeps on plummetting whilst Microsoft try to chase the brain drain by casting little nuggets of mediocrity at the people left behind scrabbling in the mud. </p>
-]]></description><link>http://codeofrob.com/entries/why-you-cant-be-a-good-.net-developer.html</link><guid isPermaLink="true">http://codeofrob.com/entries/why-you-cant-be-a-good-.net-developer.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 14 Jun 2016 09:30:00 GMT</pubDate></item><item><title><![CDATA[Erlang and Make - Okay together]]></title><description><![CDATA[<p>We don&#39;t tread the same path as most Erlangers, as <a href="/entries/the-ashton-disinterest-curve---erlang.html">mentioned</a> having been through more than a few of the standard build systems in that ecosystem we&#39;ve settled on our own (the original hard work done by somebody else). All on top of a <a href="/entries/erlang---getting-started-with-vir.html">pile of bash</a> that organically came from real world production use of Erlang.</p>
-<h1 id="so-why-make-">So why Make?</h1>
-<p>Well firstly we already know it; our other language other than Erlang at work is C (okay and (<em>spit</em>) JavaScript, oky three languages - and Bash... etc). Secondly if you look at an Erlang project and compilation of that Erlang project you&#39;ll see that we have a bunch of files that need compiling into another format (mostly independent to each other), let&#39;s have a wee look at that.</p>
-<pre><code>src/<span class="variable">%.</span>erl       -&gt;    ebin/<span class="variable">%.</span>beam
-src/<span class="variable">%.</span>app.src   -&gt;    ebin/<span class="variable">%.</span>app
-src/<span class="variable">%.</span>xrl       -&gt;    ebin/<span class="variable">%.</span>beam
-src/<span class="variable">%.</span>yrl       -&gt;    ebin/<span class="variable">%.</span>beam
-priv/mibs/<span class="variable">%.</span>bin -&gt;    mins/<span class="variable">%.</span>mib</code></pre><p>Etc.</p>
-<p>If only there was a tool which allowed you to declaratively wildcard a bunch of inputs to a bunch of outputs and use timestamps to determine whether individual files needed re-compiling again. Hmmmmm.</p>
-<p>So yeah, this is our fork of <a href="http://github.com/id3as/erl-mk.git">erl-mk</a>, although in a few days this will be renamed to <a href="http://github.com/id3as/id3as.mk">id3as.mk</a> so check which link doesn&#39;t 404 and this will see you right.</p>
-<h1 id="conventions">Conventions</h1>
-<p>There is a standard structure to an Erlang project, and it looks like this</p>
-<pre><code class="language-bash">    relx.config
-    src/%.erl
-    src/%.app.src
-    release-files/sys.config
-    release-files/*.anything.<span class="keyword">else</span>
-    include/%.hrl</code></pre>
-<p>We can only get away with using a standard one-size-fits-all Makefile if you conform to some convention and given that there is already a convention to Erlang projects this is the one that we are using. Additionally you can also have</p>
-<pre><code class="language-bash">    apps/&lt;app-name&gt;/&lt;the same as above&gt;</code></pre>
-<p>To have multiple apps in the same project, and</p>
-<pre><code class="language-bash">    deps/&lt;dep-name&gt;/&lt;the same as above&gt;</code></pre>
-<p>To rely on other Erlang projects and their source code - more on that in a little bit.</p>
-<h1 id="using-id3as-mk">Using id3as.mk</h1>
-<p>To configure and use id3as.mk, we use an entry point Makefile to set up some variables and download id3as.mk - this would usually be called &quot;Makefile&quot; or &quot;makefile&quot; and sit in the top level of the project (vir will generate this if you&#39;re using it).</p>
-<pre><code class="language-cmake">    DEPS_DIR = $(addsuffix /deps, $(realpath .))
-    ERL_LIBS = $(DEPS_DIR):$(realpath apps)
-
-    <span class="keyword">export</span> DEPS_DIR
-    <span class="keyword">export</span> ERL_LIBS
-
-    <span class="keyword">export</span> ERLCFLAGS = +debug_info +warn_export_vars +warn_shadow_vars +warn_obsolete_guard +'{lager_truncation_size, <span class="number">10240</span>}'
-    <span class="keyword">export</span> ERLMIBFLAGS =
-
-    DEPS = lager cowboy gproc jsx
-
-    dep_lager = git://github.com/basho/lager.git <span class="number">2.0</span>.<span class="number">1</span>
-    dep_cowboy = git@github.com:extend/cowboy.git master
-    dep_gproc = git://github.com/esl/gproc.git <span class="number">0.2</span>.<span class="number">12</span>
-    dep_jsx = git://github.com/talentdeficit/jsx.git master
-
-    id3as.mk:
-      @wget --no-cache -nv -O $@ 'https://raw.github.com/id3as/id3as.mk/master/id3as.mk' || rm -f $@
-
-    -<span class="keyword">include</span> id3as.mk</code></pre>
-<p>I&#39;m not a huge fan of using this for dependency downloads (I&#39;d prefer a bash script) but it&#39;s just a single operation at the start to download all dependencies to the DEPS_DIR and then build is just standard Make. You&#39;d still need to specify which dependencies you had because the Makefile uses this to build up a dependency tree and only build each dependency once (in the right order).</p>
-<p>Anyway, it&#39;s self explanatory - you&#39;ll see that in Erlang we haven&#39;t got a package manager (although some misguided but well meaning folk are trying to change that), and we just download source into a deps folder and build that ourselves. (No, they&#39;re not submodules, <em>ew</em>)</p>
-<p>For each dep, id3as.mk checks if there is a Makefile present (in which case it&#39;ll run that), checks if there is a rebar.config present (in which case it&#39;ll run rebar) and falls back to re-executing itself in the dep dir. For all the id3as.mk based dependencies it&#39;ll honour timestamps all the way down. Rebar is a little more dumb and once you&#39;re in the world of rebar it can be a little slow as it insists on recursing over deps multiple times during a single build (boo, hiss).</p>
-<p>I&#39;m a big fan of having dep source available - it means if you build up a tags file for your editor you can jump into the source code of even the third party dependencies you&#39;re using and see how they work (what better documentation than the actual code okay just joking devs we should all be writing better documentation).</p>
-<h1 id="make-commands">Make commands</h1>
-<ul>
-<li>&quot;make get-deps&quot; - initial download of deps</li>
-<li>&quot;make&quot; - build <em>everything</em></li>
-<li>&quot;make apps&quot; - just build the apps</li>
-<li>&quot;make clean&quot; - clean up our app</li>
-<li>&quot;make clean-all&quot; - ruthlessly gut everything</li>
-<li>&quot;make apps/[foo]&quot; - just build the foo app</li>
-<li>&quot;make deps&quot; - just build the deps</li>
-<li>&quot;make deps/[foo]&quot; - just build that dep (useful if you&#39;re debugging a third party dep)</li>
-<li>&quot;make rel&quot; - make a release</li>
-</ul>
-<p>Neato. Everything is just timestamp checking and then for bonus points</p>
-<ul>
-<li>make -j <anything from above>   - DO IT IN PARALLEL</li>
-</ul>
-<p>Seeing as most of these steps and most of the erl/beams are independent of each other a build is much faster if you run it in parallel.</p>
-<h1 id="on-package-managers">On package managers</h1>
-<p>I often get a few eyebrows raised when I say we don&#39;t need one of these - so the next entry will write about why they&#39;re unnecessary (in any of the incarnations so far) and why we should do without.</p>
-]]></description><link>http://codeofrob.com/entries/erlang-and-make---okay-together.html</link><guid isPermaLink="true">http://codeofrob.com/entries/erlang-and-make---okay-together.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 24 Mar 2015 08:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/a-londoners-guide-to-emigrating-to-glasgow.html</link><guid isPermaLink="true">http://codeofrob.com/entries/a-londoners-guide-to-emigrating-to-glasgow.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 27 Jun 2016 09:30:00 GMT</pubDate></item></channel></rss>
