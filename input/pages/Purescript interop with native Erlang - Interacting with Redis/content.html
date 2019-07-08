@@ -1,0 +1,97 @@
+<p>All the posts so far..</p>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
+<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
+<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
+<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
+</ul>
+<p>Useful links</p>
+<ul>
+<li><a href="https://github.com/id3as/demo-ps">demo-ps</a> The demo codebase we&#39;re talking about here</li>
+<li><a href="https://github.com/id3as/purescript-erl-pinto">erl-pinto</a> (the opinionated bindings to OTP we&#39;re using)</li>
+<li><a href="https://github.com/id3as/purescript-erl-stetson">erl-stetson</a> (the opinionated bindings to Cowboy we&#39;re using)</li>
+</ul>
+<p>We&#39;ve handwaved over the contents of the <a href="https://github.com/id3as/demo-ps/blob/master/server/src/Native/Redis.purs">Redis</a> module so far in the demo app, showing only that we can use it from our <a href="https://github.com/id3as/demo-ps/blob/master/server/src/BookLibrary.purs">BookLibrary.purs</a> like any other module as follows.</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">update</span> :: <span class="hljs-type">Book</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Either</span> <span class="hljs-type">String</span> <span class="hljs-type">Book</span>)
+<span class="hljs-title">update</span> book =
+  <span class="hljs-type">Gen</span>.doCall serverName \state@{ connection } -&gt; <span class="hljs-keyword">do</span>
+    <span class="hljs-type">Redis</span>.put (dbId book.isbn) book connection
+    pure $ <span class="hljs-type">CallReply</span> (<span class="hljs-type">Right</span> book) state
+</code></pre>
+<p>That&#39;s pretty tidy, so let&#39;s look at the type of that function so we understand the Purescript side of things first and foremost</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">put</span> :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">WriteForeign</span> a =&gt; <span class="hljs-type">DbId</span> -&gt; a -&gt; <span class="hljs-type">RedisConnection</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+</code></pre>
+<p>For any type &#39;a&#39; that implements WriteForeign, we&#39;re a function that takes a DbId, an A and a RedisConnection to produce an Effect of type Unit - this pretty much makes sense on the surface, DbId is just a newtype around String, and given a Key and a Value (which we can get from calling writeJSON on our type &#39;a&#39;), we can dump stuff in Redis - but how?</p>
+<p>Let&#39;s take a step back a moment and approach this from the <em>other</em> end.</p>
+<p>There is an application for accessing Redis in Erlang, called <a href="https://github.com/wooga/eredis">eredis</a> imaginatively enough, the usage of which looks a little like this.</p>
+<pre><code class="language-erlang">
+   { ok, C } = eredis:start_link(ConnectionString),
+
+   eredis:q(C, [ &lt;&lt;<span class="hljs-string">"SET"</span>&gt;&gt;, &lt;&lt;<span class="hljs-string">"key"</span>&gt;&gt;, &lt;&lt;<span class="hljs-string">"value"</span>&gt;&gt; ]).
+</code></pre>
+<p>So what we want to do is surface this meaningfully to Purescript is define some foreign imports in our <em>Redis.purs</em>, which map onto their native counterparts in our <em>Redis.erl.</em></p>
+<pre><code class="language-haskell">
+<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> data <span class="hljs-type">ConnectionString</span> :: <span class="hljs-type">Type</span>
+<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> data <span class="hljs-type">RedisConnection</span> :: <span class="hljs-type">Type</span>
+<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> open :: <span class="hljs-type">ConnectionString</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">RedisConnection</span>
+</code></pre>
+<p>By importing a foreign type, we&#39;re saying to Purescript &quot;Hey, this thing exists in Erlang but we don&#39;t know what is inside it, but we want to model it as something we can pass around thanks&quot;, the ConnectionString comes from sys.config and the RedisConnection is actually a Pid but we don&#39;t need to know that.</p>
+<p>By importing a foreign function, we&#39;re saying that there is a function in Erlang with this name and signature and we&#39;d like to call it from Purescript. The &quot;open&quot; function we&#39;re importing from Erlang takes one of those ConnectionStrings and produces an Effect of type RedisConnection.</p>
+<pre><code class="language-erlang">
+<span class="hljs-function"><span class="hljs-title">open</span><span class="hljs-params">(ConnectionString)</span> -&gt;</span>
+  <span class="hljs-keyword">fun</span>() -&gt;
+      { ok, C } = eredis:start_link(ConnectionString),
+      C
+  <span class="hljs-keyword">end</span>.
+</code></pre>
+<p>We wrap our actual functionality in a function, because that&#39;s how an Effect is modelled in Purerl, and we can return our &#39;Connection&#39; as an opaque type to Purescript when this Effect is processed. I&#39;ve made the decision here to match directly on <em>{ ok, C }</em> which means we&#39;ll crash at runtime if we can&#39;t open a connection - an alternative API could look like this.</p>
+<pre><code class="language-erlang">
+<span class="hljs-function"><span class="hljs-title">open_</span><span class="hljs-params">(ConnectionString, Just, Nothing)</span> -&gt;</span>
+  <span class="hljs-keyword">fun</span>() -&gt;
+      { ok, C } = <span class="hljs-keyword">case</span> eredis:start_link(ConnectionString) <span class="hljs-keyword">of</span>
+                    { ok, C } -&gt; Just(C);
+                    _ -&gt; Nothing
+                    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>.
+</code></pre>
+<p>where</p>
+<pre><code class="language-haskell">
+<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> open_ :: <span class="hljs-type">ConnectionString</span> -&gt; (<span class="hljs-type">RedisConnection</span> -&gt; <span class="hljs-type">Maybe</span> <span class="hljs-type">RedisConnection</span>) -&gt; <span class="hljs-type">Maybe</span> <span class="hljs-type">RedisConnection</span>  -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Maybe</span> <span class="hljs-type">RedisConnection</span>)
+
+<span class="hljs-title">open</span> :: <span class="hljs-type">ConnectionString</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">RedisConnection</span>
+<span class="hljs-title">open</span> connectionString = open_ connectionString <span class="hljs-type">Just</span> <span class="hljs-type">Nothing</span>
+</code></pre>
+<p>I&#39;ve chosen to &quot;let it crash&quot;, as that fits with how I&#39;d build the supervsion tree in Erlang around this (Restart periodically every 30s until the connection works please), but either approach is valid and not one I have strong opinions on at this time. (an Either with the failure reason would also be an option).</p>
+<p>Anyway, going back to that <em>put</em> function with all of this in mind, we want to keep the Erlang pretty minimal, so some transformation on the Purescript side will be required. </p>
+<pre><code class="language-haskell">
+<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> put_ :: <span class="hljs-type">DbId</span> -&gt; <span class="hljs-type">String</span> -&gt; <span class="hljs-type">RedisConnection</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+
+<span class="hljs-title">put</span> :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">WriteForeign</span> a =&gt; <span class="hljs-type">DbId</span> -&gt; a -&gt; <span class="hljs-type">RedisConnection</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">put</span> id obj conn =
+  put_ id (writeJSON obj) conn
+</code></pre>
+<p>Purescript knows how to turn our obj into JSON so we&#39;ll do that there, and then use a foreign function that takes just the primitive objects for use within Erlang with eredis.</p>
+<pre><code class="language-erlang">
+<span class="hljs-keyword">-define</span><span class="hljs-params">(SET(Key, Value)</span>, [ &lt;&lt;"SET"&gt;&gt;, Key, Value ]).
+
+<span class="hljs-function"><span class="hljs-title">put_</span><span class="hljs-params">(Id, Data, Pid)</span> -&gt;</span>
+  <span class="hljs-keyword">fun</span>() -&gt;
+      { ok, &lt;&lt;<span class="hljs-string">"OK"</span>&gt;&gt;} = eredis:q(Pid, ?SET(Id, Data)),
+      ok
+  <span class="hljs-keyword">end</span>.
+</code></pre>
+<p>Now, this is not necessarily how we should approach building an FFI for a native library, as we&#39;re making some decisions in Erlang that could be made in Purescript, a more traditional FFI would look like this.</p>
+<pre><code class="language-erlang">
+<span class="hljs-function"><span class="hljs-title">q</span><span class="hljs-params">(Pid, Operation)</span> -&gt;</span>
+  eredis:q(Pid, Operation).
+</code></pre>
+<pre><code class="language-haskell">
+<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> q :: <span class="hljs-type">RedisConnection</span> -&gt; <span class="hljs-type">List</span> <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Tuple2</span> <span class="hljs-type">Atom</span> <span class="hljs-type">Binary</span>)
+</code></pre>
+<p>And then we could build the API we <em>actually</em> want on top of <em>that</em> instead - I&#39;ve rather skipped that step in my demo for clarity, but if I was producing a library wrapper for publication that&#39;s probably the approach I&#39;d take, as unwieldy as it is to actually use it means we end up writing more Purescript and less Erlang.</p>
+<p>This is the approach that erl-cowboy and Stetson took, whereas erl-pinto takes the direct approach to &quot;desired API&quot;, making the concession that it&#39;ll be easier to build without 1-1 FFI in existence. Either way, it&#39;s pretty easy to call into existing code in Erlang.</p>
+<h1 id="next-up">Next up</h1>
+<p>We&#39;ve pretty much covered the surface area of the demo project, so I&#39;ll be going off on a little journey talking about some of the common things that we like to do in Erlang and how to get that behaviour into Purerl, if I get any questions about these posts I&#39;ll follow up with answers in blog format also.</p>

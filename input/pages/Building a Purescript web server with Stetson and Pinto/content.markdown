@@ -8,7 +8,7 @@ Useful links
 
 - [demo-ps](https://github.com/id3as/demo-ps) The demo codebase we're talking about here
 - [erl-pinto](https://github.com/id3as/purescript-erl-pinto) (the opinionated bindings to OTP we're using)
-- [erl-stetson](https://github.com/id3as/purescript-erl-stetson) (the opinionated bindings to Cowbou we're using)
+- [erl-stetson](https://github.com/id3as/purescript-erl-stetson) (the opinionated bindings to Cowboy we're using)
 
 Having now gotten a basic OTP application up and running, it'd be nice to get some data out to the world.
 

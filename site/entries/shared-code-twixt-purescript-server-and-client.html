@@ -1,0 +1,162 @@
+<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
+<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
+<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
+<!--[if !ie]><!-->
+<html lang="en"> <!--<![endif]-->
+<head>
+    <title id="title">Shared code twixt Purescript server and client</title>
+    <meta charset="utf-8">
+    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <meta name="author" content="">
+    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
+    <link rel="stylesheet" href="/assets/css/style_responsive.css">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
+    <link rel="stylesheet" href="/assets/css/themes/default.css">
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
+    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="header">
+        <div class="container">
+            <div class="logo">
+             <h2><a href="/index.html">Rob Ashton</a></h2>
+            </div>
+            <div class="navbar">
+                <div class="navbar-inner">
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </a>
+                    <div class="nav-collapse collapse">
+                        <ul class="nav top-2">
+                          <li>
+                                <a href="/">Home</a>
+                            </li>
+                            <li>
+                                <a href="/blog.html">Blog</a>
+                            </li>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <body>
+    <div id="blog-entry">
+      <h1 id="post-title">Shared code twixt Purescript server and client</h1>
+      <h6>Published on <span class="date">2019-8-27</span></h6>
+      <div id="post"><p>All the posts so far..</p>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
+<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
+<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
+</ul>
+<p>Useful links</p>
+<ul>
+<li><a href="https://github.com/id3as/demo-ps">demo-ps</a> The demo codebase we&#39;re talking about here</li>
+<li><a href="https://github.com/id3as/purescript-erl-pinto">erl-pinto</a> (the opinionated bindings to OTP we&#39;re using)</li>
+<li><a href="https://github.com/id3as/purescript-erl-stetson">erl-stetson</a> (the opinionated bindings to Cowboy we&#39;re using)</li>
+</ul>
+<p>We&#39;ve got a basic model representing our &#39;book&#39;</p>
+<pre><code class="language-haskell">
+<span class="hljs-keyword">module</span> Books <span class="hljs-keyword">where</span>
+
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Book</span> = { <span class="hljs-title">isbn</span> :: <span class="hljs-type">String</span>
+            , <span class="hljs-title">title</span> :: <span class="hljs-type">String</span>
+            , <span class="hljs-title">author</span> :: <span class="hljs-type">String</span>
+            }</span>
+</code></pre>
+<p>Which is pretty terribly exciting - the key thing to note here is that this is a plain ol&#39; record containing primitive types - this makes it pretty shareable as far as view models go (Let&#39;s ignore that we&#39;re using it for persistence here, demo code gonna demo code).</p>
+<p>We&#39;ve shoved Books.purs into a folder called &#39;shared&#39; which has been softlinked from both the client and server directories, which means it will be separately compiled into JS And Purescript respectively.</p>
+<p>There is a great library over in Purescript world called <a href="https://github.com/justinwoo/purescript-simple-json">simple-json</a> which defines a <em>ReadForeign</em> and <em>WriteForeign</em> for these basic types, which means that the functions readJSON and writeJSON will do the back and forth between JSON and the Purescript types.</p>
+<p>There is also (thanks to the efforts of <a href="https://github.com/purerl/purescript-simple-json">@nwolverson</a>, a port of this library exists on the Purerl side of things which works in exactly the same way, using <a href="https://github.com/talentdeficit/jsx">JSX</a> under the hood. This is a fairly common pattern across the Purerl world, and you&#39;ll see when browsing the org repos that a lot of the code from the JS Purescript world has been ported across with minimal changes so that the two worlds look as alike as possible.</p>
+<p>So, in the previous post we loaded a list of Books out of our genserver in Cowboy and simply called writeJSON on it.</p>
+<pre><code class="language-haskell">
+<span class="hljs-meta"># Rest.contentTypesProvided (\req state -&gt; Rest.result (jsonWriter : nil) req state)</span>
+
+<span class="hljs-title">jsonWriter</span> :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">WriteForeign</span> a =&gt; <span class="hljs-type">Tuple2</span> <span class="hljs-type">String</span> (<span class="hljs-type">Req</span> -&gt; a -&gt; (<span class="hljs-type">Effect</span> (<span class="hljs-type">RestResult</span> <span class="hljs-type">String</span> a)))
+<span class="hljs-title">jsonWriter</span> = tuple2 <span class="hljs-string">"application/json"</span> (\req state -&gt; <span class="hljs-type">Rest</span>.result (writeJSON state) req state)
+</code></pre>
+<p>If we open up the client code, we can see</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">maybeBook</span> &lt;- <span class="hljs-type">H</span>.liftAff $ loadItem $ <span class="hljs-string">"/api/books/"</span> &lt;&gt; isbn
+
+<span class="hljs-comment">-- where</span>
+
+<span class="hljs-title">loadItem</span> :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">ReadForeign</span> a =&gt; <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Aff</span> (<span class="hljs-type">Either</span> <span class="hljs-type">String</span> a)
+<span class="hljs-title">loadItem</span> uri = <span class="hljs-keyword">do</span>
+  response &lt;- <span class="hljs-type">AX</span>.get <span class="hljs-type">AXResponse</span>.string uri
+  <span class="hljs-keyword">case</span> response.body <span class="hljs-keyword">of</span>
+     <span class="hljs-type">Left</span> err -&gt; pure $ <span class="hljs-type">Left</span> <span class="hljs-string">"No"</span>
+     <span class="hljs-type">Right</span> json -&gt; pure $ bimap show identity $ readJSON json
+</code></pre>
+<p>That is all that is required to shift data between the server Purescript and the client Purescript which is pretty tidy indeed! Because we&#39;re using the same library, any custom implementations of <em>ReadForeign</em> and <em>WriteForeign</em> we might choose to write can then also be shared between the two.</p>
+<p>Obviously sharing code between both client and server is something that should be entered into with caution, typically sharing a lot of business logic is the sign of a problem - but I can easily see us ending up in a world where we can start using Halogen on the server-side to pre-render HTML for serving to the client much in the same way that the ReactJS community have started doing similar with NodeJS.</p>
+<h1 id="next-up">Next up</h1>
+<p>We&#39;ll look at our bindings to Redis, to get a feel for what interop with &quot;native&quot; Erlang with FFI looks like.</p>
+</div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="mailto:robashton@codeofrob.com">Respond</a>
+      </div>
+
+        <!--=== Copyright ===-->
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span6">
+                <p class="terms">2018 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
+    });
+        </script>
+        <!--[if lt IE 9]>
+    <script src="assets/js/respond.js"></script>
+<![endif]-->
+        </body>
+        </html>
+
