@@ -29,6 +29,8 @@ Our [demo-ps](https://github.com/id3as/demo-ps) can be viewed as two separate ch
 
 In an ideal world, we'd just have a single Purescript entry point and forego our interaction with the Erlang world, but this would involve building out a lot more tooling - the result of this, is that sometimes you will be bringing Purescript dependencies down that require Erlang dependencies and then adding these to rebar.config and the entry point will be your responsibility.
 
+The purescript dependencies can be found in in *psc-package.json* inside the server and client directories, and the Erlang dependencies can be found in rebar.config at the top level.
+
 As a team already familiar with the Erlang ecosystem, this doesn't represent a hardship for us; but this definitely represents an area which could be improved by an enterprising developer or two, probably a plugin to the Purescript stack that stashes the rebar assets/etc in another build folder and allows us to just write PS/Erlang in the right place. (But this would then also involve modifying our editor plugins to know about this new structure, and as you can already see, it's a lot of work when we have something that is already functional..)
 
 # That entry point then
