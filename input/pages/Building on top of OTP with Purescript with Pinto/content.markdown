@@ -3,6 +3,12 @@ All the posts so far..
 - [Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy](/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html)
 - [The structure of an end-to-end purescript OTP project](/entries/the-structure-of-an-end-to-end-purescript-otp-project.html)
 
+Useful links
+
+- [demo-ps](https://github.com/id3as/demo-ps) The demo codebase we're talking about here
+- [erl-pinto](https://github.com/id3as/purescript-erl-pinto) (the opinionated bindings to OTP we're using)
+- [erl-stetson](https://github.com/id3as/purescript-erl-stetson) (the opinionated bindings to Cowbou we're using)
+
 We left the last post demonstrating that an end-to-end Purescript project was essentially a pile of Purescript written in the right place, in order that the usual Erlang application/rebar3/etc can just work with it.
 
 # That entry point again then
