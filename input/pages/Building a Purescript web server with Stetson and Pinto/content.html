@@ -1,2 +1,99 @@
-<p><a href="url">title</a>
-<img src="img" alt="alt"></p>
+<p>All the posts so far..</p>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
+<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
+</ul>
+<p>Useful links</p>
+<ul>
+<li><a href="https://github.com/id3as/demo-ps">demo-ps</a> The demo codebase we&#39;re talking about here</li>
+<li><a href="https://github.com/id3as/purescript-erl-pinto">erl-pinto</a> (the opinionated bindings to OTP we&#39;re using)</li>
+<li><a href="https://github.com/id3as/purescript-erl-stetson">erl-stetson</a> (the opinionated bindings to Cowbou we&#39;re using)</li>
+</ul>
+<p>Having now gotten a basic OTP application up and running, it&#39;d be nice to get some data out to the world.</p>
+<h1 id="cowboy">Cowboy</h1>
+<p>Cowboy is the defacto web server in the Erlang world, each route loosely maps to a module which has callbacks defined in it to handle various stages of the decisioning process.</p>
+<pre><code class="language-erlang">
+<span class="hljs-keyword">-module</span><span class="hljs-params">(my_handler)</span>.
+
+<span class="hljs-keyword">-export</span><span class="hljs-params">([init/<span class="hljs-number">2</span>,
+         get_text/<span class="hljs-number">2</span>,
+         content_types_provided/<span class="hljs-number">2</span>
+        ])</span>.
+
+<span class="hljs-function"><span class="hljs-title">init</span><span class="hljs-params">(Req, _Opts)</span> -&gt;</span>
+  { cowboy_rest, Req, #state{} }.
+
+<span class="hljs-function"><span class="hljs-title">content_types_provided</span><span class="hljs-params">(Req, State)</span> -&gt;</span>
+  {[{ &lt;&lt;<span class="hljs-string">"text/plain"</span>&gt;&gt;, get_text}], Req, State}.
+
+<span class="hljs-function"><span class="hljs-title">get_json</span><span class="hljs-params">(Req, State)</span> -&gt;</span>
+  { &lt;&lt;<span class="hljs-string">"Hello World"</span>&gt;&gt;, Req, State }.
+</code></pre>
+<p>This is directly representable in Purescript, using <a href="https://github.com/purerl/purescript-erl-cowboy">erl-cowboy</a>.</p>
+<pre><code class="language-haskell"><span class="hljs-keyword">module</span> MyHandler <span class="hljs-keyword">where</span>
+
+<span class="hljs-title">init</span> :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">InitHandler</span> a a
+<span class="hljs-title">init</span> = mkEffectFn2 \req c -&gt; pure (initResult c req)
+
+<span class="hljs-title">content_types_provided</span> :: <span class="hljs-keyword">forall</span> s. <span class="hljs-type">ContentTypesProvidedHandler</span> s
+<span class="hljs-title">content_types_provided</span> =  mkEffectFn2 \req s -&gt; pure $
+  restResult
+    (contentTypesProvidedResult $ fromFoldable
+      [ tuple2 (<span class="hljs-type">ContentType</span> <span class="hljs-string">"text"</span> <span class="hljs-string">"plain"</span> <span class="hljs-type">AnyParams</span>) (<span class="hljs-type">ProvideCallback</span> $ atom <span class="hljs-string">"asText"</span>) ]
+    )
+    s req
+
+
+<span class="hljs-title">asText</span> :: <span class="hljs-keyword">forall</span> s. <span class="hljs-type">EffectFn2</span> <span class="hljs-type">Req</span> s (<span class="hljs-type">Tuple3</span> <span class="hljs-type">String</span> <span class="hljs-type">Req</span> s)
+<span class="hljs-title">asText</span> = mkEffectFn2 \req s -&gt; pure $ tuple3 <span class="hljs-string">"Hello World"</span> req s
+</code></pre>
+<p>However, this doesn&#39;t make the best use of Purescript itself - and writing out a few dozen handlers like this would soon get a bit tedious, which is why I went away and wrote <a href="https://github.com/id3as/purescript-erl-stetson">Stetson</a>. Purescript is a functional programming language and it makes sense that rather than provide a bunch of loosely typed callbacks referred to by name using strings, that we built an API that took functions to do all the heavy lifting.</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">helloWorld</span> :: <span class="hljs-type">StetsonHandler</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">helloWorld</span> =
+  <span class="hljs-type">Rest</span>.handler (\req -&gt; <span class="hljs-type">Rest</span>.initResult req unit)
+    # <span class="hljs-type">Rest</span>.contentTypesProvided (\req state -&gt; <span class="hljs-type">Rest</span>.result (tuple2 <span class="hljs-string">"text/html"</span> asText) req state)
+    # <span class="hljs-type">Rest</span>.yeeha
+    <span class="hljs-keyword">where</span> 
+      asText req state = <span class="hljs-keyword">do</span>
+        <span class="hljs-type">Rest</span>.result <span class="hljs-string">"Hello World"</span> req state)
+</code></pre>
+<p>The idea of course being that we can configure Stetson/Cowboy at the top level by providing a pile of functions and abstract over the common bits like &quot;This is an accept handler that turns state into JSON because State has the typeclass &quot;WriteForeign&quot;, and start to get rid of a lot of duplication across our routes.</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">init</span> :: <span class="hljs-type">BookWebStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">State</span>
+<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
+  <span class="hljs-type">Stetson</span>.configure
+    # <span class="hljs-type">Stetson</span>.route <span class="hljs-string">"/api/books"</span> books
+    # <span class="hljs-type">Stetson</span>.route <span class="hljs-string">"/api/books/:isbn"</span> book
+    # <span class="hljs-type">Stetson</span>.static <span class="hljs-string">"/assets/[...]"</span> (<span class="hljs-type">PrivDir</span> <span class="hljs-string">"demo_ps"</span> <span class="hljs-string">"www/assets"</span>)
+    # <span class="hljs-type">Stetson</span>.static <span class="hljs-string">"/[...]"</span> (<span class="hljs-type">PrivFile</span> <span class="hljs-string">"demo_ps"</span> <span class="hljs-string">"www/index.html"</span>)
+    # <span class="hljs-type">Stetson</span>.port args.webPort
+    # <span class="hljs-type">Stetson</span>.bindTo <span class="hljs-number">0</span> <span class="hljs-number">0</span> <span class="hljs-number">0</span> <span class="hljs-number">0</span>
+    # <span class="hljs-type">Stetson</span>.startClear <span class="hljs-string">"http_listener"</span>
+  pure $ <span class="hljs-type">State</span> {}
+</code></pre>
+<p>where books and book are handlers as described above. In our own applications, we have ended up with pretty much the entire web server and all routes in a single file - which is in stark contrast to our usual Erlang apps where we have a folder containing dozens of separate erlang modules.</p>
+<pre><code class="language-haskell"><span class="hljs-title">books</span> :: <span class="hljs-type">StetsonHandler</span> (<span class="hljs-type">List</span> <span class="hljs-type">Book</span>)
+<span class="hljs-title">books</span> =
+  <span class="hljs-type">Rest</span>.handler (\req -&gt; <span class="hljs-keyword">do</span>
+                        state &lt;- <span class="hljs-type">BookLibrary</span>.findAll
+                        <span class="hljs-type">Rest</span>.initResult req state)
+    # <span class="hljs-type">Rest</span>.allowedMethods (\req state -&gt; <span class="hljs-type">Rest</span>.result (<span class="hljs-type">Stetson</span>.<span class="hljs-type">POST</span> :  <span class="hljs-type">Stetson</span>.<span class="hljs-type">HEAD</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">GET</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">OPTIONS</span> : nil) req state)
+    # <span class="hljs-type">Rest</span>.contentTypesProvided (\req state -&gt; <span class="hljs-type">Rest</span>.result (jsonWriter : nil) req state)
+    # <span class="hljs-type">Rest</span>.contentTypesAccepted (\req state -&gt; <span class="hljs-type">Rest</span>.result ((tuple2 <span class="hljs-string">"application/json"</span> acceptJson) : nil)
+                                req state)
+    # <span class="hljs-type">Rest</span>.yeeha
+    <span class="hljs-keyword">where</span> 
+          acceptJson req state = <span class="hljs-keyword">do</span>
+            body &lt;- allBody req mempty
+            result &lt;- either (pure &lt;&lt;&lt; <span class="hljs-type">Left</span> &lt;&lt;&lt; show) <span class="hljs-type">BookLibrary</span>.create $ readJSON $ unsafeCoerce body
+            <span class="hljs-keyword">case</span> result <span class="hljs-keyword">of</span>
+                 <span class="hljs-type">Left</span> err -&gt; <span class="hljs-type">Rest</span>.result false (setBody err req) state
+                 <span class="hljs-type">Right</span> c -&gt; <span class="hljs-type">Rest</span>.result true req state
+
+<span class="hljs-title">jsonWriter</span> :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">WriteForeign</span> a =&gt; <span class="hljs-type">Tuple2</span> <span class="hljs-type">String</span> (<span class="hljs-type">Req</span> -&gt; a -&gt; (<span class="hljs-type">Effect</span> (<span class="hljs-type">RestResult</span> <span class="hljs-type">String</span> a)))
+<span class="hljs-title">jsonWriter</span> = tuple2 <span class="hljs-string">"application/json"</span> (\req state -&gt; <span class="hljs-type">Rest</span>.result (writeJSON state) req state)
+</code></pre>
+<p>So that&#39;s a handler that has a state of type <em>&#39;List Book&#39;</em>, which it gets from our <em>BookLibrary</em> via a call (as in the previous blog entry), jsonWriter being a function as decscribed above - simply taking that model and spitting it out as JSON, leveraging our model which happens to implement that type class.</p>
+<p>We&#39;ll look more into that in the next entry, where we talk about that model and how we&#39;re using it on both client and server.</p>
