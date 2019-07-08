@@ -4,12 +4,12 @@
 <p>What I really like is that the header files for LevelDB are the best means of documentation, I forgot I liked this about C++, I now remember - all the learnings done ended up being done by just reading the source code, pretty neat.</p>
 <p>So, what do we have?</p>
 <p><em>Opening a database</em></p>
-<pre><code><span class="label">leveldb:</span>:DB* db<span class="comment">;</span>
-<span class="label">leveldb:</span>:DB::Open(options, <span class="string">"play/testdb"</span>, &amp;db)<span class="comment">;</span></code></pre><p><em>Putting something in</em></p>
-<pre><code><span class="setting">status = <span class="value">db-&gt;Put(leveldb::WriteOptions(), <span class="string">"Key"</span>, <span class="string">"Hello World"</span>);</span></span></code></pre><p><em>Getting something out</em></p>
-<pre><code><span class="label">std:</span>:string document<span class="comment">;</span>
-store-&gt;Get(leveldb::ReadOptions(), <span class="string">"key"</span>, &amp;document)<span class="comment">;</span></code></pre><p><em>Deleting something</em></p>
-<pre><code>store-&gt;<span class="operator"><span class="keyword">Delete</span>(leveldb::WriteOptions(), <span class="string">"key"</span>);</span></code></pre><p><em>Squeeeeeeee</em></p>
+<pre><code>leveldb::<span class="hljs-keyword">DB</span>* <span class="hljs-keyword">db</span>;
+leveldb::<span class="hljs-keyword">DB</span>::<span class="hljs-keyword">Open</span>(options, <span class="hljs-string">"play/testdb"</span>, &amp;<span class="hljs-keyword">db</span>);</code></pre><p><em>Putting something in</em></p>
+<pre><code>status = db-&gt;Put(<span class="hljs-name">leveldb</span>:<span class="hljs-symbol">:WriteOptions</span>(), <span class="hljs-string">"Key"</span>, <span class="hljs-string">"Hello World"</span>)<span class="hljs-comment">;</span></code></pre><p><em>Getting something out</em></p>
+<pre><code><span class="hljs-built_in">std</span>::<span class="hljs-built_in">string</span> document;
+store-&gt;Get(leveldb::ReadOptions(), <span class="hljs-string">"key"</span>, &amp;document);</code></pre><p><em>Deleting something</em></p>
+<pre><code>store-&gt;Delete(<span class="hljs-name">leveldb</span>:<span class="hljs-symbol">:WriteOptions</span>(), <span class="hljs-string">"key"</span>)<span class="hljs-comment">;</span></code></pre><p><em>Squeeeeeeee</em></p>
 <p>I love how simple that is, and that each of these is a safe operation, important to note the following at this point:</p>
 <ul>
 <li>I&#39;m passing in strings to those put/get operations</li>
@@ -19,8 +19,8 @@ store-&gt;Get(leveldb::ReadOptions(), <span class="string">"key"</span>, &amp;do
 <p>This is elegant, Put actually takes a &quot;Slice&quot; type too, but that&#39;s implicitly convertable from a string and therefore this works nicely. </p>
 <p>I&#39;ll cover Slice on its own as it&#39;s an interesting notion if I understand it correctly.</p>
 <p>Importantly for RavenDB, we need to be able to write multiple operations in an atomic fashion, LevelDB appears to accommodate for this neatly.</p>
-<pre><code> leveldb::WriteBatch batch<span class="comment">;</span>
- batch<span class="preprocessor">.Delete</span>(<span class="string">"key"</span>)<span class="comment">;</span>
- batch<span class="preprocessor">.Put</span>(<span class="string">"key2"</span>, value)<span class="comment">;</span>
- db-&gt;Write(leveldb::WriteOptions(), &amp;batch)<span class="comment">;</span></code></pre><p>LevelDB can actually operate in async or synchronous mode, but because Raven makes gaurantees about writes having happened I can&#39;t think we&#39;d be able to use async mode (because there isn&#39;t any way to know when these writes are finished to my knowledge).</p>
+<pre><code> <span class="hljs-attribute">leveldb</span>::WriteBatch batch;
+ <span class="hljs-selector-tag">batch</span><span class="hljs-selector-class">.Delete</span>(<span class="hljs-string">"key"</span>);
+ <span class="hljs-selector-tag">batch</span><span class="hljs-selector-class">.Put</span>(<span class="hljs-string">"key2"</span>, value);
+ <span class="hljs-selector-tag">db-</span>&gt;<span class="hljs-selector-tag">Write</span>(<span class="hljs-attribute">leveldb</span>::WriteOptions(), &amp;batch);</code></pre><p>LevelDB can actually operate in async or synchronous mode, but because Raven makes gaurantees about writes having happened I can&#39;t think we&#39;d be able to use async mode (because there isn&#39;t any way to know when these writes are finished to my knowledge).</p>
 <p>These guarantees aren&#39;t actually enough for RavenDB, and I&#39;ll cover the reasons for that in the next entry.</p>

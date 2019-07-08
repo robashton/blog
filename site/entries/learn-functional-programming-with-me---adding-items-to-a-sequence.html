@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
     <link rel="stylesheet" href="/assets/css/themes/default.css">
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
     <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
     <script type="text/javascript">
       var _gaq = _gaq || [];
@@ -57,9 +57,6 @@
                             <li>
                                 <a href="/blog.html">Blog</a>
                             </li>
-                            <li>
-                                <a href="/testimonials.html">Testimonials</a>
-                            </li>
                     </div>
                 </div>
             </div>
@@ -83,90 +80,90 @@
 <li><a href="/entries/learn-functional-programming-with-me---keyboard-input-for-our-red-square.html">Moving our red square with keyboard input</a></li>
 </ul>
 <p>So far I have a fixed number of entities in my scene, which means the pattern</p>
-<pre><code><span class="function"><span class="title">logic</span><span class="params">(state)</span> =&gt; <span class="title">newState</span></code></pre><p>Has been working great for me, but how might I manage a variable number of these entities? How might I hook up the creation of these entities to keyboard input?</p>
+<pre><code>logic(<span class="hljs-keyword">state</span>) =&gt; newState</code></pre><p>Has been working great for me, but how might I manage a variable number of these entities? How might I hook up the creation of these entities to keyboard input?</p>
 <p>Well, actually I don&#39;t think it is going to be that hard - but we&#39;ll see as I give it a go...</p>
 <p><strong>The basics once again</strong></p>
 <p>The same deal as everything else so far (okay, my next entry might be on re-factoring all this to avoid duplication)</p>
 <p><em>This is how we create a bullet</em></p>
-<pre><code><span class="list">(<span class="title"><span class="built_in">defn</span></span> initBullet <span class="collection">[x y w h]</span>
- <span class="collection">{
-  <span class="attribute">:x</span> x
-  <span class="attribute">:y</span> y
-  <span class="attribute">:w</span> w
-  <span class="attribute">:h</span> h
- }</span>
-)</span></code></pre><p><em>Bullets logic is taking the current sequence of bullets and moving them on the vertical axis</em></p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> bulletsLogic [state]
-  <span class="list">(<span class="title">for</span><span class="body"> [bullet <span class="list">(<span class="body"><span class="keyword">:bullets</span> state)</span></span>]
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> initBullet [x y w h]
+ {
+  <span class="hljs-symbol">:x</span> x
+  <span class="hljs-symbol">:y</span> y
+  <span class="hljs-symbol">:w</span> w
+  <span class="hljs-symbol">:h</span> h
+ }
+)</code></pre><p><em>Bullets logic is taking the current sequence of bullets and moving them on the vertical axis</em></p>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> bulletsLogic [state]
+  (<span class="hljs-name"><span class="hljs-builtin-name">for</span></span> [bullet (<span class="hljs-symbol">:bullets</span> state)]
     {
-      <span class="keyword">:x</span> <span class="list">(<span class="body"><span class="keyword">:x</span> bullet)</span></span>
-      <span class="keyword">:y</span> <span class="list">(<span class="title">dec</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> bullet)</span></span>)</span></span>
-      <span class="keyword">:w</span> <span class="list">(<span class="body"><span class="keyword">:w</span> bullet)</span></span>
-      <span class="keyword">:h</span> <span class="list">(<span class="body"><span class="keyword">:h</span> bullet)</span></span>
+      <span class="hljs-symbol">:x</span> (<span class="hljs-symbol">:x</span> bullet)
+      <span class="hljs-symbol">:y</span> (<span class="hljs-name"><span class="hljs-builtin-name">dec</span></span> (<span class="hljs-symbol">:y</span> bullet))
+      <span class="hljs-symbol">:w</span> (<span class="hljs-symbol">:w</span> bullet)
+      <span class="hljs-symbol">:h</span> (<span class="hljs-symbol">:h</span> bullet)
     }
-  )</span></span>
-)</span></span></code></pre><p><em>And I&#39;m going to draw a black square for each bullet</em></p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> bulletsRender [ctx state]
-  <span class="list">(<span class="title">doseq</span><span class="body"> [bullet <span class="list">(<span class="body"><span class="keyword">:bullets</span> state)</span></span>] 
-    <span class="list">(<span class="title">let</span><span class="body"> [{<span class="keyword">:keys</span> [x y w h]} bullet]
-      <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx x y w h <span class="string">"#000"</span>)</span></span>
-    )</span></span>
-  )</span></span>
-)</span></span></code></pre><p>There is nothing special or new about the above, although I&#39;ve dropped the &#39;let&#39; (as compared to the enemies render function) and pulled the bullets out of the state as part of the doseq call.</p>
+  )
+)</code></pre><p><em>And I&#39;m going to draw a black square for each bullet</em></p>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> bulletsRender [ctx state]
+  (<span class="hljs-name"><span class="hljs-builtin-name">doseq</span></span> [bullet (<span class="hljs-symbol">:bullets</span> state)] 
+    (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [{<span class="hljs-symbol">:keys</span> [x y w h]} bullet]
+      (<span class="hljs-name">drawSquare</span> ctx x y w h <span class="hljs-string">"#000"</span>)
+    )
+  )
+)</code></pre><p>There is nothing special or new about the above, although I&#39;ve dropped the &#39;let&#39; (as compared to the enemies render function) and pulled the bullets out of the state as part of the doseq call.</p>
 <p>My bullets to begin with?</p>
 <p><em>Create an empty list</em></p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> initState []
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> initState []
  { 
-   <span class="keyword">:direction</span> <span class="number">1</span>
-   <span class="keyword">:enemies</span> <span class="list">(<span class="title">for</span><span class="body"> [x <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">16</span> <span class="number">2</span>)</span></span>
-                  y <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">8</span> <span class="number">2</span>)</span></span>]
-              <span class="list">(<span class="title">initEnemy</span><span class="body"> x y <span class="number">20</span> <span class="number">20</span>)</span></span>
-   )</span></span>
-   <span class="keyword">:player</span> <span class="list">(<span class="title">initPlayer</span><span class="body"> <span class="number">200</span> <span class="number">430</span> <span class="number">20</span> <span class="number">20</span>)</span></span>
-   <span class="keyword">:bullets</span> <span class="list">(<span class="body">)</span></span>
+   <span class="hljs-symbol">:direction</span> <span class="hljs-number">1</span>
+   <span class="hljs-symbol">:enemies</span> (<span class="hljs-name"><span class="hljs-builtin-name">for</span></span> [x (<span class="hljs-name"><span class="hljs-builtin-name">range</span></span> <span class="hljs-number">0</span> <span class="hljs-number">16</span> <span class="hljs-number">2</span>)
+                  y (<span class="hljs-name"><span class="hljs-builtin-name">range</span></span> <span class="hljs-number">0</span> <span class="hljs-number">8</span> <span class="hljs-number">2</span>)]
+              (<span class="hljs-name">initEnemy</span> x y <span class="hljs-number">20</span> <span class="hljs-number">20</span>)
+   )
+   <span class="hljs-symbol">:player</span> (<span class="hljs-name">initPlayer</span> <span class="hljs-number">200</span> <span class="hljs-number">430</span> <span class="hljs-number">20</span> <span class="hljs-number">20</span>)
+   <span class="hljs-symbol">:bullets</span> ()
  } 
-)</span></span></code></pre><p>I found out how to do that on Google so I think it&#39;s right.</p>
+)</code></pre><p>I found out how to do that on Google so I think it&#39;s right.</p>
 <p>I also found out that apparently an empty list is not a sequence, although it is sequenceable which means I can safely do the above (I think)</p>
 <p><em>Calling the appropriate methods</em></p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> doLogic [state]
+<pre><code>(defn doLogic [<span class="hljs-keyword">state</span>]
   {
-    <span class="keyword">:direction</span> <span class="list">(<span class="title">directionLogic</span><span class="body"> state)</span></span>
-    <span class="keyword">:enemies</span> <span class="list">(<span class="title">enemiesLogic</span><span class="body"> state)</span></span>
-    <span class="keyword">:player</span> <span class="list">(<span class="title">playerLogic</span><span class="body"> state)</span></span>
-    <span class="keyword">:bullets</span> <span class="list">(<span class="title">bulletsLogic</span><span class="body"> state)</span></span>
+    :direction (directionLogic <span class="hljs-keyword">state</span>)
+    :enemies (enemiesLogic <span class="hljs-keyword">state</span>)
+    :player (playerLogic <span class="hljs-keyword">state</span>)
+    :bullets (bulletsLogic <span class="hljs-keyword">state</span>)
   }
-)</span></span>
+)
 
-<span class="list">(<span class="title">defn</span><span class="body"> renderScene [ctx state]
-  <span class="list">(<span class="title">enemiesRender</span><span class="body"> ctx state)</span></span>
-  <span class="list">(<span class="title">playerRender</span><span class="body"> ctx state)</span></span>
-  <span class="list">(<span class="title">bulletsRender</span><span class="body"> ctx state)</span></span>
-)</span></span></code></pre><p>Now, all of this achieves the square root of diddly squat, although if I run the program it doesn&#39;t fall over in a heap pile of flames so that&#39;s pretty good going for all of this code.</p>
+(defn renderScene [ctx <span class="hljs-keyword">state</span>]
+  (enemiesRender ctx <span class="hljs-keyword">state</span>)
+  (playerRender ctx <span class="hljs-keyword">state</span>)
+  (bulletsRender ctx <span class="hljs-keyword">state</span>)
+)</code></pre><p>Now, all of this achieves the square root of diddly squat, although if I run the program it doesn&#39;t fall over in a heap pile of flames so that&#39;s pretty good going for all of this code.</p>
 <p><strong>Hooking up some input events</strong></p>
 <p>Well okay, for now what I&#39;ll do is say is &quot;if the spacebar is pressed we&#39;ll fire a bullet&quot;, so we can do this in a similar manner to everything else thus far...</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> bulletsLogic [state]</code></pre><p><em>Get the player out, and update the bullets into a seq called &#39;existingBullets&#39;</em></p>
-<pre><code>  <span class="list">(<span class="title">let</span><span class="body"> [player <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>
+<pre><code>(defn bulletsLogic [<span class="hljs-keyword">state</span>]</code></pre><p><em>Get the player out, and update the bullets into a seq called &#39;existingBullets&#39;</em></p>
+<pre><code>  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [player (<span class="hljs-symbol">:player</span> state)
         existingBullets 
-        <span class="list">(<span class="title">for</span><span class="body"> [bullet <span class="list">(<span class="body"><span class="keyword">:bullets</span> state)</span></span>]
+        (<span class="hljs-name"><span class="hljs-builtin-name">for</span></span> [bullet (<span class="hljs-symbol">:bullets</span> state)]
           {
-            <span class="keyword">:x</span> <span class="list">(<span class="body"><span class="keyword">:x</span> bullet)</span></span>
-            <span class="keyword">:y</span> <span class="list">(<span class="title">dec</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:y</span> bullet)</span></span>)</span></span>
-            <span class="keyword">:w</span> <span class="list">(<span class="body"><span class="keyword">:w</span> bullet)</span></span>
-            <span class="keyword">:h</span> <span class="list">(<span class="body"><span class="keyword">:h</span> bullet)</span></span>
+            <span class="hljs-symbol">:x</span> (<span class="hljs-symbol">:x</span> bullet)
+            <span class="hljs-symbol">:y</span> (<span class="hljs-name"><span class="hljs-builtin-name">dec</span></span> (<span class="hljs-symbol">:y</span> bullet))
+            <span class="hljs-symbol">:w</span> (<span class="hljs-symbol">:w</span> bullet)
+            <span class="hljs-symbol">:h</span> (<span class="hljs-symbol">:h</span> bullet)
           }
-        )</span></span>
+        )
       ]</code></pre><p><em>If the space bar is down, then create a new sequence with a new bullet and the existing bullets</em></p>
-<pre><code>    <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="body">@keyStates <span class="number">32</span>)</span></span>
-      <span class="list">(<span class="title">cons</span><span class="body"> 
+<pre><code>    (<span class="hljs-name"><span class="hljs-builtin-name">if</span></span> (@keyStates <span class="hljs-number">32</span>)
+      (<span class="hljs-name"><span class="hljs-builtin-name">cons</span></span> 
         {
-         <span class="keyword">:x</span> <span class="list">(<span class="body"><span class="keyword">:x</span> <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>)</span></span>
-         <span class="keyword">:y</span> <span class="list">(<span class="body"><span class="keyword">:y</span> <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>)</span></span>
-         <span class="keyword">:w</span> <span class="number">5</span>
-         <span class="keyword">:h</span> <span class="number">5</span>
+         <span class="hljs-symbol">:x</span> (<span class="hljs-symbol">:x</span> (<span class="hljs-symbol">:player</span> state))
+         <span class="hljs-symbol">:y</span> (<span class="hljs-symbol">:y</span> (<span class="hljs-symbol">:player</span> state))
+         <span class="hljs-symbol">:w</span> <span class="hljs-number">5</span>
+         <span class="hljs-symbol">:h</span> <span class="hljs-number">5</span>
         }
         existingBullets
-      )</span></span></code></pre><p><em>Else just return the existing bullets</em></p>
-<pre><code>      <span class="title">existingBullets</span>
+      )</code></pre><p><em>Else just return the existing bullets</em></p>
+<pre><code>      <span class="hljs-attribute">existingBullets</span>
     )
   )
 )</code></pre><p>This is pretty messy, although it&#39;s my first iteration at this so that&#39;s okay, I suspect I can be a bit cleverer about this and probably will end up being so!</p>

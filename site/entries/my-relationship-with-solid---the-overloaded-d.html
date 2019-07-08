@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
     <link rel="stylesheet" href="/assets/css/themes/default.css">
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
     <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
     <script type="text/javascript">
       var _gaq = _gaq || [];
@@ -57,9 +57,6 @@
                             <li>
                                 <a href="/blog.html">Blog</a>
                             </li>
-                            <li>
-                                <a href="/testimonials.html">Testimonials</a>
-                            </li>
                     </div>
                 </div>
             </div>
@@ -89,26 +86,26 @@ B. Abstractions should not depend upon details. Details should depend upon abstr
 
 <p>We&#39;ve been using that Stream example for the last couple of blog entries and we&#39;ll pull that out one last time as an example:</p>
 <p>Stream is an example of a <em>low level module</em>, and we can consider IStream to be an abstraction of that, which <em>high level modules</em> can consume</p>
-<pre><code>public interface IStream {
-  void Read();
-  void Write();
-  void Seek();
+<pre><code><span class="hljs-keyword">public</span> <span class="hljs-keyword">interface</span> <span class="hljs-symbol">IStream</span> {
+  <span class="hljs-built_in">void</span> Read();
+  <span class="hljs-built_in">void</span> Write();
+  <span class="hljs-built_in">void</span> Seek();
 }
 
-public <span class="class"><span class="keyword">class</span> <span class="title">Stream</span> :</span> IStream { etc }</code></pre><p>However, this is still not really an abstraction, the abstraction is a lie because it is an exact mirroring of the actual Stream object. (this is okay sometimes as we&#39;ll see below)</p>
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-symbol">Stream</span> : <span class="hljs-symbol">IStream</span> { etc }</code></pre><p>However, this is still not really an abstraction, the abstraction is a lie because it is an exact mirroring of the actual Stream object. (this is okay sometimes as we&#39;ll see below)</p>
 <p><strong>How I like to code sometimes</strong></p>
 <p>I&#39;m writing a high level module, let&#39;s say it&#39;s a Controller, and it needs to construct a view model for return to the outside world for rendering in a View of some sort. </p>
 <p>Let&#39;s mix it up a little bit and do it in NodeJS like I&#39;m pretty much doing everywhere at the moment.</p>
-<pre><code><span class="transposed_variable">app.</span>get(<span class="string">'/ponies'</span>, <span class="keyword">function</span>(req, res) <span class="cell">{
+<pre><code>app.get(<span class="hljs-string">'/ponies'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(req, res)</span> </span>{
 
-}</span>)</code></pre><p>I don&#39;t like to typically make decisions in a long-term project about persistence until I know more about my use cases, and indeed in this case I don&#39;t even want to care that persistence is even happening - instead, what I&#39;ll usually do is say to the outside world, <em>I need something that houses ponies</em></p>
-<pre><code><span class="module"><span class="keyword">module</span>.exports = function<span class="container">(<span class="title">app</span>, <span class="title">stable</span>)</span> {
-    app.get<span class="container">('/<span class="title">ponies'</span>, <span class="title">function</span>(<span class="title">req</span>, <span class="title">res</span>)</span> {
-      var ponies = stable.availablePonies<span class="container">(<span class="title">req</span>.<span class="title">params</span>.<span class="title">count</span>, <span class="title">req</span>.<span class="title">params</span>.<span class="title">pagesize</span>, <span class="title">req</span>.<span class="title">params</span>.<span class="title">page</span>)</span>
-      res.send<span class="container">(<span class="title">ponies</span>)</span>
+})</code></pre><p>I don&#39;t like to typically make decisions in a long-term project about persistence until I know more about my use cases, and indeed in this case I don&#39;t even want to care that persistence is even happening - instead, what I&#39;ll usually do is say to the outside world, <em>I need something that houses ponies</em></p>
+<pre><code>module<span class="hljs-selector-class">.exports</span> = function(app, stable) {
+    app.get(<span class="hljs-string">'/ponies'</span>, function(req, res) {
+      <span class="hljs-selector-tag">var</span> ponies = stable.availablePonies(req<span class="hljs-selector-class">.params</span><span class="hljs-selector-class">.count</span>, req<span class="hljs-selector-class">.params</span><span class="hljs-selector-class">.pagesize</span>, req<span class="hljs-selector-class">.params</span><span class="hljs-selector-class">.page</span>)
+      res.send(ponies)
     })
 }</code></pre><p>What is stable? Well, stable was instantiated by the Application Root and I don&#39;t care what stable is, a basic implementation (and indeed the one I start off with is)</p>
-<pre><code><span class="setting">stable = <span class="value">new InMemoryStable()</span></span></code></pre><p>This allows me to write features quickly, allows me to write functional tests that are relatively fast and allows me to iterate on these things quickly and defer the decision about persistence until it becomes necessary to deal with it (if it does at all)</p>
+<pre><code>stable = <span class="hljs-keyword">new</span> <span class="hljs-type">InMemoryStable</span>()</code></pre><p>This allows me to write features quickly, allows me to write functional tests that are relatively fast and allows me to iterate on these things quickly and defer the decision about persistence until it becomes necessary to deal with it (if it does at all)</p>
 <p>The important point here is that implicit interface being defined here (I&#39;m in JS, we haven&#39;t got a real interface), let&#39;s call it &quot;IHousePonies&quot; has been dictated by the high level module and it doesn&#39;t care what the low level code behind that interface does.</p>
 <p>That&#39;s an inversion of responsibility and it&#39;s a good one too because it means I&#39;m unlikely to run into violations of <a href="/entries/my-relationship-with-solid---seeing-i-to-i.html">ISP</a> because the high level module <em>requires</em> that the functionality on that interface be present on all implementations of that interface.</p>
 <p>This is close-ish to what some people would describe as using <a href="http://martinfowler.com/bliki/RoleInterface.html">role interfaces</a> which are worth reading up on. Certainly when I&#39;m putting my software-engineering hat on and I&#39;m working on a project where things are likely to be complex, there are likely to be quite a few moving parts and code quality is important I&#39;ll lean in this direction.</p>
@@ -129,8 +126,8 @@ public <span class="class"><span class="keyword">class</span> <span class="title
 <p>Coupling this design principal with techniques such as <a href="http://en.wikipedia.org/wiki/Dependency_injection">Dependency Injection</a> means that we can make it very clear to the outside world from our module what abstractions we rely on, and allow the outside world to make decisions about what it is we are going to actually get.</p>
 <p><strong>How it can all go wrong - attack of the killer interfaces</strong></p>
 <p>What happens in a lot of projects is that we decide that the reason for DI is for testing, and isolation is really important so we need to have abstractions for everything, and almost everywhere we end up with</p>
-<pre><code><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="id">Something</span></span>
-<span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="id">ISomething</span></span></code></pre><p>Because every class needs an interface in order to be mockable - we forget to apply the inversion part of dependency inversion and instead we just focus on dependencies for our tests.</p>
+<pre><code>public class Something
+public<span class="hljs-built_in"> interface </span>ISomething</code></pre><p>Because every class needs an interface in order to be mockable - we forget to apply the inversion part of dependency inversion and instead we just focus on dependencies for our tests.</p>
 <p>This isn&#39;t helped by most popular IOC frameworks and their default convention that it&#39;ll automatically bind instances like the above for us.</p>
 <p>This is awful, when we think about inverting the relationship between our high level modules and low level modules, we should be thinking about it in terms of pay-off and not dancing around for the sake of writing pointless low level tests for code with little real behaviour.</p>
 <p>We should be limiting our abstractions to the tune of rather than thinking about everything at the class level, thinking about things at the module level (which could be a collection of classes that talk to each other and require some external data/input)</p>

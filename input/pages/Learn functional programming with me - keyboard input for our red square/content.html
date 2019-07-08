@@ -10,55 +10,55 @@
 <li><a href="/entries/learn-functional-programming-with-me---improving-our-data-structure-with-maps.html">Improving our data structure with maps</a></li>
 </ul>
 <p>Well, first off let&#39;s create the player</p>
-<pre><code> <span class="symbol">:player</span> (initPlayer <span class="number">0</span> <span class="number">430</span> <span class="number">20</span> <span class="number">20</span>)</code></pre><p>Where</p>
-<pre><code><span class="list">(<span class="title"><span class="built_in">defn</span></span> initPlayer <span class="collection">[x y w h]</span>
- <span class="collection">{
-  <span class="attribute">:x</span> x
-  <span class="attribute">:y</span> y
-  <span class="attribute">:w</span> w
-  <span class="attribute">:h</span> h
- }</span>
-)</span></code></pre><p>There are some similarities here between the player and the enemy, and perhaps I&#39;ll address that when I&#39;m a position to tell how.</p>
+<pre><code> :player (initPlayer <span class="hljs-number">0</span> <span class="hljs-number">430</span> <span class="hljs-number">20</span> <span class="hljs-number">20</span>)</code></pre><p>Where</p>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> initPlayer [x y w h]
+ {
+  <span class="hljs-symbol">:x</span> x
+  <span class="hljs-symbol">:y</span> y
+  <span class="hljs-symbol">:w</span> w
+  <span class="hljs-symbol">:h</span> h
+ }
+)</code></pre><p>There are some similarities here between the player and the enemy, and perhaps I&#39;ll address that when I&#39;m a position to tell how.</p>
 <p>Now, I&#39;ll want to render that player, and I&#39;m actually going to take the bold step of pulling out a render function so my main loop now looks like this:</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> tick [ctx state]
-  <span class="list">(<span class="title">clearScreen</span><span class="body"> ctx)</span></span> 
-  <span class="list">(<span class="title">renderScene</span><span class="body"> ctx state)</span></span>
-  <span class="list">(<span class="title">js/setTimeout</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> []
-    <span class="list">(<span class="title">tick</span><span class="body"> ctx <span class="list">(<span class="title">doLogic</span><span class="body"> state)</span></span>)</span></span>
-  )</span></span> <span class="number">33</span>  )</span></span>
-)</span></span></code></pre><p>Just keeping things tidy!</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> renderScene [ctx state]
-  <span class="list">(<span class="title">enemiesRender</span><span class="body"> ctx state)</span></span>
-)</span></span>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> tick [ctx state]
+  (<span class="hljs-name">clearScreen</span> ctx) 
+  (<span class="hljs-name">renderScene</span> ctx state)
+  (<span class="hljs-name">js/setTimeout</span> (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> []
+    (<span class="hljs-name">tick</span> ctx (<span class="hljs-name">doLogic</span> state))
+  ) <span class="hljs-number">33</span>  )
+)</code></pre><p>Just keeping things tidy!</p>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> renderScene [ctx state]
+  (<span class="hljs-name">enemiesRender</span> ctx state)
+)
 
-<span class="list">(<span class="title">defn</span><span class="body"> enemiesRender [ctx state]
-  <span class="list">(<span class="title">let</span><span class="body"> [enemies <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>]
-    <span class="list">(<span class="title">doseq</span><span class="body"> [enemy enemies] 
-      <span class="list">(<span class="title">let</span><span class="body"> [{<span class="keyword">:keys</span> [x y w h]} enemy]
-        <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx x y w h)</span></span>
-      )</span></span>
-    )</span></span>
-  )</span></span>
-)</span></span></code></pre><p>Right, so now I have a player, I may as well render it</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> renderScene [ctx state]
-  <span class="list">(<span class="title">enemiesRender</span><span class="body"> ctx state)</span></span>
-  <span class="list">(<span class="title">playerRender</span><span class="body"> ctx state)</span></span>
-)</span></span>
+(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> enemiesRender [ctx state]
+  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [enemies (<span class="hljs-symbol">:enemies</span> state)]
+    (<span class="hljs-name"><span class="hljs-builtin-name">doseq</span></span> [enemy enemies] 
+      (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [{<span class="hljs-symbol">:keys</span> [x y w h]} enemy]
+        (<span class="hljs-name">drawSquare</span> ctx x y w h)
+      )
+    )
+  )
+)</code></pre><p>Right, so now I have a player, I may as well render it</p>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> renderScene [ctx state]
+  (<span class="hljs-name">enemiesRender</span> ctx state)
+  (<span class="hljs-name">playerRender</span> ctx state)
+)
 
-<span class="list">(<span class="title">defn</span><span class="body"> playerRender [ctx state]
-  <span class="list">(<span class="title">let</span><span class="body"> [player <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>]
-    <span class="list">(<span class="title">let</span><span class="body"> [{<span class="keyword">:keys</span> [x y w h]} player]
-      <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx x y w h)</span></span>
-    )</span></span>
-  )</span></span>
-)</span></span></code></pre><p>And I&#39;ll need to copy it across to the new state each iteration</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> doLogic [state]
+(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> playerRender [ctx state]
+  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [player (<span class="hljs-symbol">:player</span> state)]
+    (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [{<span class="hljs-symbol">:keys</span> [x y w h]} player]
+      (<span class="hljs-name">drawSquare</span> ctx x y w h)
+    )
+  )
+)</code></pre><p>And I&#39;ll need to copy it across to the new state each iteration</p>
+<pre><code>(defn doLogic [<span class="hljs-keyword">state</span>]
   {
-    <span class="keyword">:direction</span> <span class="list">(<span class="title">directionLogic</span><span class="body"> state)</span></span>
-    <span class="keyword">:enemies</span> <span class="list">(<span class="title">enemiesLogic</span><span class="body"> state)</span></span>
-    <span class="keyword">:player</span> <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>
+    :direction (directionLogic <span class="hljs-keyword">state</span>)
+    :enemies (enemiesLogic <span class="hljs-keyword">state</span>)
+    :player (:player <span class="hljs-keyword">state</span>)
   }
-)</span></span></code></pre><p>Nothing new here, this&#39;ll just give me an additional yellow square on my canvas...</p>
+)</code></pre><p>Nothing new here, this&#39;ll just give me an additional yellow square on my canvas...</p>
 <img src="/img/player_added.png" alt="An additional yellow square on a canvas" title="The player has been added">
 
 
@@ -70,63 +70,63 @@
 </ul>
 <p>I think I&#39;m going to opt for the second one and see how that plays out. It kinda makes sense to me in ignorant-land that isolating areas of mutable state from my (currently quite) clean program will be helpful.</p>
 <p>This is pretty much what the structure will look like:</p>
-<pre><code><span class="function"><span class="title">tick</span> <span class="params">(state)</span> =&gt;
-  <span class="title">inputs</span> = <span class="title">getCurrentInputs</span><span class="params">()</span>
-  <span class="title">tick</span> <span class="title">applyLogic</span><span class="params">(state, inputs)</span></code></pre><p>I don&#39;t have to care that behind that getCurrentInputs is some horrible interop with the browser and piles of mutability, and if I work out how to do it better later it should limit the area of change needing to be applied.</p>
+<pre><code>tick (<span class="hljs-keyword">state</span>) =&gt;
+  inputs = getCurrentInputs()
+  tick applyLogic(<span class="hljs-keyword">state</span>, inputs)</code></pre><p>I don&#39;t have to care that behind that getCurrentInputs is some horrible interop with the browser and piles of mutability, and if I work out how to do it better later it should limit the area of change needing to be applied.</p>
 <p>I can hook the events using the standard js interop, which looks like this</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> hookInputEvents []
-  <span class="list">(<span class="body">.addEventListener js/document <span class="string">"keydown"</span> 
-   <span class="list">(<span class="title">fn</span><span class="body"> [e]
-    <span class="list">(<span class="title">setKeyState</span><span class="body"> e.KeyCode true)</span></span>
-   )</span></span>
-  )</span></span>
-  <span class="list">(<span class="body">.addEventListener js/document <span class="string">"keyup"</span> 
-   <span class="list">(<span class="title">fn</span><span class="body"> [e]
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> hookInputEvents []
+  (<span class="hljs-name">.addEventListener</span> js/document <span class="hljs-string">"keydown"</span> 
+   (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [e]
+    (<span class="hljs-name">setKeyState</span> e.KeyCode <span class="hljs-literal">true</span>)
+   )
+  )
+  (<span class="hljs-name">.addEventListener</span> js/document <span class="hljs-string">"keyup"</span> 
+   (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [e]
 
-   )</span></span>
-  )</span></span>
-)</span></span></code></pre><p>Okay, so what now? I need to get this information to the game somehow, and actually - the information I want is &quot;Is the key currently down&quot;, which is state I need to build up off those events.</p>
+   )
+  )
+)</code></pre><p>Okay, so what now? I need to get this information to the game somehow, and actually - the information I want is &quot;Is the key currently down&quot;, which is state I need to build up off those events.</p>
 <p><strong>Up and Atom</strong></p>
 <p>So I had to a bit of trawling to get this right, there is a notion of an &quot;atom&quot;, in Clojure which is effectively a mutable object with some synchronisation over the top of it.</p>
 <p>I&#39;ve tried to avoid having any of this trickery yet, but this is somewhere I think going to need it.</p>
 <p>So, an atom - I&#39;m putting this into my &#39;global&#39; scope (actually, it&#39;s namespaced into (ns game))</p>
 <p><em>Define some state called keyStates, assign to it an atom (initial value is an empty map)</em></p>
-<pre><code>(<span class="function"><span class="keyword">def</span> <span class="title">keyStates</span> <span class="params">(atom {})</span>)</code></pre><p>Now, if I want to access the value of keyStates, I can de-rererence it thusly</p>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">def</span></span> keyStates (<span class="hljs-name"><span class="hljs-builtin-name">atom</span></span> {}))</code></pre><p>Now, if I want to access the value of keyStates, I can de-rererence it thusly</p>
 <p><em>De-reference an atom</em></p>
-<pre><code><span class="variable">@keystates</span></code></pre><p>I also wanted to know how to &quot;modify a single value of a map&quot;, for reasons that are about to become clear, the way to do this is</p>
+<pre><code><span class="hljs-meta">@keystates</span></code></pre><p>I also wanted to know how to &quot;modify a single value of a map&quot;, for reasons that are about to become clear, the way to do this is</p>
 <p><em>Create a new map, with a single property changed</em></p>
-<pre><code><span class="list">(<span class="title">assoc</span><span class="body"> myMap <span class="keyword">:name</span> newValue)</span></span></code></pre><p> This function returns a new map which is the same as the old one, but with that value changed (Hey, this is quite useful!)</p>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">assoc</span></span> myMap <span class="hljs-symbol">:name</span> newValue)</code></pre><p> This function returns a new map which is the same as the old one, but with that value changed (Hey, this is quite useful!)</p>
 <p>The final piece of my jigsaw is the ability to change the value of this mutable atom, to do this I can use &#39;swap&#39;</p>
-<pre><code><span class="list">(<span class="title">swap</span><span class="body">! myAtom <span class="list">(<span class="title">fn</span><span class="body"> [oldValue] newValue)</span></span>)</span></span></code></pre><p> So how about that setKeyState function?</p>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">swap!</span></span> myAtom (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [oldValue] newValue))</code></pre><p> So how about that setKeyState function?</p>
 <p><em>Set the new keyStates to be the same as the old keyStates, but with a new value for the current keycode</em></p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> setKeyState [code, value]
-  <span class="list">(<span class="title">swap</span><span class="body">! keyStates assoc code value)</span></span>
-)</span></span></code></pre><p>Swap will call assoc, passing in the old state and the other args specified (hey, this is quite functional!)</p>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> setKeyState [code, value]
+  (<span class="hljs-name"><span class="hljs-builtin-name">swap!</span></span> keyStates assoc code value)
+)</code></pre><p>Swap will call assoc, passing in the old state and the other args specified (hey, this is quite functional!)</p>
 <p>Now I have a global state for my current input, which means I can ask questions of it and apply those answers to my state.</p>
 <p><strong>Applying input to my square</strong></p>
 <p>Well, I&#39;ll make a function whose job it is to take in the old state and return the new state and that seems to be working well for me so far.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> playerLogic [state]
+<pre><code>(defn playerLogic [<span class="hljs-keyword">state</span>]
 
-)</span></span>
+)
 
-<span class="list">(<span class="title">defn</span><span class="body"> doLogic [state]
+(defn doLogic [<span class="hljs-keyword">state</span>]
   {
-    <span class="keyword">:direction</span> <span class="list">(<span class="title">directionLogic</span><span class="body"> state)</span></span>
-    <span class="keyword">:enemies</span> <span class="list">(<span class="title">enemiesLogic</span><span class="body"> state)</span></span>
-    <span class="keyword">:player</span> <span class="list">(<span class="title">playerLogic</span><span class="body"> state)</span></span>
+    :direction (directionLogic <span class="hljs-keyword">state</span>)
+    :enemies (enemiesLogic <span class="hljs-keyword">state</span>)
+    :player (playerLogic <span class="hljs-keyword">state</span>)
   }
-)</span></span></code></pre><p>And in this, I&#39;ll work out from the input what to do to my state</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> playerLogic [state]
-  <span class="list">(<span class="title">let</span><span class="body"> [player <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>  
-        left <span class="list">(<span class="body">@keyStates <span class="number">37</span>)</span></span>
-        right <span class="list">(<span class="body">@keyStates <span class="number">39</span>)</span></span>
+)</code></pre><p>And in this, I&#39;ll work out from the input what to do to my state</p>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> playerLogic [state]
+  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [player (<span class="hljs-symbol">:player</span> state)  
+        left (@keyStates <span class="hljs-number">37</span>)
+        right (@keyStates <span class="hljs-number">39</span>)
        ]
-    <span class="list">(<span class="title">cond</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> left true)</span></span> <span class="list">(<span class="title">assoc</span><span class="body"> player <span class="keyword">:x</span> <span class="list">(<span class="title">dec</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> player)</span></span>)</span></span>)</span></span>
-          <span class="list">(<span class="title">=</span><span class="body"> right true)</span></span> <span class="list">(<span class="title">assoc</span><span class="body"> player <span class="keyword">:x</span> <span class="list">(<span class="title">inc</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> player)</span></span>)</span></span>)</span></span>
-          <span class="keyword">:else</span> player
-    )</span></span>
-  )</span></span>
-)</span></span></code></pre><p> There is a whole lot to take where, but it boils down to</p>
+    (<span class="hljs-name"><span class="hljs-builtin-name">cond</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> left <span class="hljs-literal">true</span>) (<span class="hljs-name"><span class="hljs-builtin-name">assoc</span></span> player <span class="hljs-symbol">:x</span> (<span class="hljs-name"><span class="hljs-builtin-name">dec</span></span> (<span class="hljs-symbol">:x</span> player)))
+          (<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> right <span class="hljs-literal">true</span>) (<span class="hljs-name"><span class="hljs-builtin-name">assoc</span></span> player <span class="hljs-symbol">:x</span> (<span class="hljs-name"><span class="hljs-builtin-name">inc</span></span> (<span class="hljs-symbol">:x</span> player)))
+          <span class="hljs-symbol">:else</span> player
+    )
+  )
+)</code></pre><p> There is a whole lot to take where, but it boils down to</p>
 <ul>
 <li>Extract player from the state</li>
 <li>Extract &#39;left&#39; from the de-referenced keyStates (37)</li>
@@ -134,44 +134,44 @@
 <li>Decide what new state to return based on this value</li>
 </ul>
 <p>Let&#39;s look at that last bit closer:</p>
-<pre><code><span class="list">(<span class="title">cond</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> left true)</span></span> <span class="list">(<span class="title">assoc</span><span class="body"> player <span class="keyword">:x</span> <span class="list">(<span class="title">dec</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> player)</span></span>)</span></span>)</span></span>
-      <span class="list">(<span class="title">=</span><span class="body"> right true)</span></span> <span class="list">(<span class="title">assoc</span><span class="body"> player <span class="keyword">:x</span> <span class="list">(<span class="title">inc</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> player)</span></span>)</span></span>)</span></span>
-      <span class="keyword">:else</span> player</code></pre><p> This is kinda equivalent to</p>
-<pre><code><span class="function"><span class="title">if</span><span class="params">(left)</span> { }
-<span class="title">else</span> <span class="title">if</span><span class="params">(right)</span> {}
-<span class="title">else</span> {}</code></pre><p>The expressions on the RHS will be evaluated and returned if the LHS is true.</p>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">cond</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> left <span class="hljs-literal">true</span>) (<span class="hljs-name"><span class="hljs-builtin-name">assoc</span></span> player <span class="hljs-symbol">:x</span> (<span class="hljs-name"><span class="hljs-builtin-name">dec</span></span> (<span class="hljs-symbol">:x</span> player)))
+      (<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> right <span class="hljs-literal">true</span>) (<span class="hljs-name"><span class="hljs-builtin-name">assoc</span></span> player <span class="hljs-symbol">:x</span> (<span class="hljs-name"><span class="hljs-builtin-name">inc</span></span> (<span class="hljs-symbol">:x</span> player)))
+      <span class="hljs-symbol">:else</span> player</code></pre><p> This is kinda equivalent to</p>
+<pre><code><span class="hljs-function"><span class="hljs-title">if</span><span class="hljs-params">(left)</span></span> { }
+<span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span>(<span class="hljs-attribute">right</span>) {}
+<span class="hljs-keyword">else</span> {}</code></pre><p>The expressions on the RHS will be evaluated and returned if the LHS is true.</p>
 <p>We&#39;ve already looked at assoc, we recognise dec/inc and basically all I&#39;m doing is saying, &#39;return a new player with x changed, here is the new value of x, it&#39;s a modification of the current x&#39;</p>
 <p>I bet there is a tidier way of doing this actually, maybe a built-in but I came up with</p>
 <p><em>Please apply the specified function to the specified key in this map and return the result</em></p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> applyMod [m k func]
-  <span class="list">(<span class="title">assoc</span><span class="body"> m k <span class="list">(<span class="title">func</span><span class="body"> <span class="list">(<span class="title">m</span><span class="body"> k)</span></span>)</span></span>)</span></span>
-)</span></span></code></pre><p><em>And in usage:</em></p>
-<pre><code><span class="list">(<span class="title">cond</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> left true)</span></span> <span class="list">(<span class="title">applyMod</span><span class="body"> player <span class="keyword">:x</span> dec)</span></span>
-      <span class="list">(<span class="title">=</span><span class="body"> right true)</span></span> <span class="list">(<span class="title">applyMod</span><span class="body"> player <span class="keyword">:x</span> inc)</span></span>
-      <span class="keyword">:else</span> player</code></pre><p><strong>Paint our player Red</strong></p>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> applyMod [m k func]
+  (<span class="hljs-name"><span class="hljs-builtin-name">assoc</span></span> m k (<span class="hljs-name">func</span> (<span class="hljs-name">m</span> k)))
+)</code></pre><p><em>And in usage:</em></p>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">cond</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> left <span class="hljs-literal">true</span>) (<span class="hljs-name">applyMod</span> player <span class="hljs-symbol">:x</span> dec)
+      (<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> right <span class="hljs-literal">true</span>) (<span class="hljs-name">applyMod</span> player <span class="hljs-symbol">:x</span> inc)
+      <span class="hljs-symbol">:else</span> player</code></pre><p><strong>Paint our player Red</strong></p>
 <p>I said red square, and so far it&#39;s yellow, let&#39;s fix this problem.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> drawSquare [[ctx width height] x y w h c]
-  <span class="list">(<span class="title">set</span><span class="body">! <span class="list">(<span class="body">. ctx -fillStyle)</span></span> c)</span></span>
-  <span class="list">(<span class="body">.fillRect ctx x y w h)</span></span> 
-)</span></span>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> drawSquare [[ctx width height] x y w h c]
+  (<span class="hljs-name"><span class="hljs-builtin-name">set!</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">.</span></span> ctx -fillStyle) c)
+  (<span class="hljs-name">.fillRect</span> ctx x y w h) 
+)
 
-<span class="list">(<span class="title">defn</span><span class="body"> enemiesRender [ctx state]
-  <span class="list">(<span class="title">let</span><span class="body"> [enemies <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>]
-    <span class="list">(<span class="title">doseq</span><span class="body"> [enemy enemies] 
-      <span class="list">(<span class="title">let</span><span class="body"> [{<span class="keyword">:keys</span> [x y w h]} enemy]
-        <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx x y w h <span class="string">"#FF0"</span>)</span></span>
-      )</span></span>
-    )</span></span>
-  )</span></span>
-)</span></span>
+(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> enemiesRender [ctx state]
+  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [enemies (<span class="hljs-symbol">:enemies</span> state)]
+    (<span class="hljs-name"><span class="hljs-builtin-name">doseq</span></span> [enemy enemies] 
+      (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [{<span class="hljs-symbol">:keys</span> [x y w h]} enemy]
+        (<span class="hljs-name">drawSquare</span> ctx x y w h <span class="hljs-string">"#FF0"</span>)
+      )
+    )
+  )
+)
 
-<span class="list">(<span class="title">defn</span><span class="body"> playerRender [ctx state]
-  <span class="list">(<span class="title">let</span><span class="body"> [player <span class="list">(<span class="body"><span class="keyword">:player</span> state)</span></span>]
-    <span class="list">(<span class="title">let</span><span class="body"> [{<span class="keyword">:keys</span> [x y w h]} player]
-      <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx x y w h <span class="string">"#F00"</span>)</span></span>
-    )</span></span>
-  )</span></span>
-)</span></span></code></pre><p>The drawing square function and repetition across my two types of entity still bugs me, but I figure I&#39;ll yet manage to tidy this up.</p>
+(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> playerRender [ctx state]
+  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [player (<span class="hljs-symbol">:player</span> state)]
+    (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [{<span class="hljs-symbol">:keys</span> [x y w h]} player]
+      (<span class="hljs-name">drawSquare</span> ctx x y w h <span class="hljs-string">"#F00"</span>)
+    )
+  )
+)</code></pre><p>The drawing square function and repetition across my two types of entity still bugs me, but I figure I&#39;ll yet manage to tidy this up.</p>
 <p><strong>The result</strong></p>
 <p>See, it&#39;s <em>almost</em> Space Invaders already.</p>
 <img src="/img/red_player.png" alt="Yellow invaders, red player" title="Red player">

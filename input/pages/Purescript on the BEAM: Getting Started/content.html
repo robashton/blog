@@ -3,53 +3,53 @@
 <li><a href="/entries/functional-erlang---purescript-on-the-beam---intro.html">Intro</a></li>
 </ul>
 <p>I guess the first thing we need to do is get some sort of environment up and running on my machine - seeing as this is a <a href="https://github.com/purerl/purescript">fork of Purescript</a> with an Erlang backend and it&#39;s reasonably likely at some point I&#39;m going to have to make a pull request or two, I settled with cloning the repo and running </p>
-<pre><code><span class="title">stack</span> build 
-<span class="title">stack</span> install</code></pre><p>Haven&#39;t got stack? Well this isn&#39;t a tutorial, so you can Google that if you need to.</p>
+<pre><code><span class="hljs-built_in">stack</span> build 
+<span class="hljs-built_in">stack</span> install</code></pre><p>Haven&#39;t got stack? Well this isn&#39;t a tutorial, so you can Google that if you need to.</p>
 <p>I then did the same for <a href="https://github.com/purescript/psc-package">psc-package</a> simply because I couldn&#39;t be bothered working out a different way, if it ain&#39;t broke then don&#39;t fix it - that&#39;s what I always say, my definition of broke is probably more lax than others though so YMMV.</p>
 <p>Armed with a purescript compiler and a package manager, the next step is to obviously get something building.</p>
 <p>I decided to base my meanderings off of <a href="https://github.com/purerl/purerl_otp_sandbox">pureerl_otp_sandbox</a> at least as far as basic structure goes, although I did modify the makefile a tad so it looks a bit like this (I&#39;m sure it&#39;s changed by the time anybody will read this, but close enough)</p>
-<pre><code>.PHONY: all clean
+<pre><code><span class="hljs-meta"><span class="hljs-meta-keyword">.PHONY</span>: all clean</span>
 
 PS_SRC = ps_src
 COMPILED_PS = src/compiled_ps
 OUTPUT = output
 
-all: <span class="variable">$(</span>COMPILED_PS)
+<span class="hljs-section">all: <span class="hljs-variable">$(COMPILED_PS)</span></span>
 
-<span class="variable">$(</span>COMPILED_PS): output
-    <span class="keyword">mkdir</span> -p <span class="variable">$(</span>COMPILED_PS)
-    cp -pu <span class="variable">$(</span>OUTPUT)/<span class="variable">*/</span><span class="variable">*.</span>erl <span class="variable">$(</span>COMPILED_PS)/
-    touch <span class="variable">$(</span>COMPILED_PS)
+<span class="hljs-variable">$(COMPILED_PS)</span>: output
+    mkdir -p <span class="hljs-variable">$(COMPILED_PS)</span>
+    cp -pu <span class="hljs-variable">$(OUTPUT)</span>/*/*.erl <span class="hljs-variable">$(COMPILED_PS)</span>/
+    touch <span class="hljs-variable">$(COMPILED_PS)</span>
 
-output: <span class="variable">$(</span>PS_SRC)/<span class="variable">**</span>/<span class="variable">*.</span>purs <span class="variable">$(</span>PS_SRC)/<span class="variable">*.</span>purs .psc-<span class="keyword">package</span>
-    psc-<span class="keyword">package</span> sources | xargs purs compile <span class="string">'$(PS_SRC)/**/*.purs'</span>
+<span class="hljs-section">output: <span class="hljs-variable">$(PS_SRC)</span>/**/*.purs <span class="hljs-variable">$(PS_SRC)</span>/*.purs .psc-package</span>
+    psc-package sources | xargs purs compile '<span class="hljs-variable">$(PS_SRC)</span>/**/*.purs'
     touch output
 
-.psc-<span class="keyword">package</span>: psc-<span class="keyword">package</span>.json
-    psc-<span class="keyword">package</span> install
-    touch .psc-<span class="keyword">package</span>
+<span class="hljs-section">.psc-package: psc-package.json</span>
+    psc-package install
+    touch .psc-package
 
-clean:
-    rm -rf <span class="variable">$(</span>OUTPUT)/*
-    rm -f <span class="variable">$(</span>COMPILED_PS)/*</code></pre><p>This is added to a hook in the rebar.config so it happens automatically on rebar3 compile</p>
-<pre><code><span class="cell">{pre_hooks,
+<span class="hljs-section">clean:</span>
+    rm -rf <span class="hljs-variable">$(OUTPUT)</span>/*
+    rm -f <span class="hljs-variable">$(COMPILED_PS)</span>/*</code></pre><p>This is added to a hook in the rebar.config so it happens automatically on rebar3 compile</p>
+<pre><code>{pre_hooks,
   [
-   {"(linux|darwin|solaris|win32)", compile, "make"}</span>,
-   <span class="cell">{"(linux|darwin|solaris|win32)", clean, "clean"}</span>
+   {<span class="hljs-string">"(linux|darwin|solaris|win32)"</span>, compile, <span class="hljs-string">"make"</span>},
+   {<span class="hljs-string">"(linux|darwin|solaris|win32)"</span>, clean, <span class="hljs-string">"clean"</span>}
   ]}.</code></pre><p>Essentially, I can write an Erlang app as if ever ordinarily did, and as long as I have some .purs files in a folder called &quot;ps_src&quot; they&#39;ll get compiled into beam and everything will &quot;just work&quot;.</p>
 <p>My psc-package.json is about as stock as it gets at this point and just contains a pile of packages from the <a href="https://github.com/purerl/package-sets">pureerl package set</a>.</p>
 <pre><code>{
-  "<span class="attribute">name</span>": <span class="value"><span class="string">"untitled"</span></span>,
-  "<span class="attribute">set</span>": <span class="value"><span class="string">"erl-0.12.0-20180730"</span></span>,
-  "<span class="attribute">source</span>": <span class="value"><span class="string">"https://github.com/purerl/package-sets.git"</span></span>,
-  "<span class="attribute">depends</span>": <span class="value">[
-    <span class="string">"console"</span>,
-    <span class="string">"erl-atom"</span>,
-    <span class="string">"erl-binary"</span>,
-    <span class="string">"erl-lists"</span>,
-    <span class="string">"erl-tuples"</span>,
-    <span class="string">"erl-jsone"</span>,
-    <span class="string">"maybe"</span>,
-    <span class="string">"prelude"</span>
+  <span class="hljs-attr">"name"</span>: <span class="hljs-string">"untitled"</span>,
+  <span class="hljs-attr">"set"</span>: <span class="hljs-string">"erl-0.12.0-20180730"</span>,
+  <span class="hljs-attr">"source"</span>: <span class="hljs-string">"https://github.com/purerl/package-sets.git"</span>,
+  <span class="hljs-attr">"depends"</span>: [
+    <span class="hljs-string">"console"</span>,
+    <span class="hljs-string">"erl-atom"</span>,
+    <span class="hljs-string">"erl-binary"</span>,
+    <span class="hljs-string">"erl-lists"</span>,
+    <span class="hljs-string">"erl-tuples"</span>,
+    <span class="hljs-string">"erl-jsone"</span>,
+    <span class="hljs-string">"maybe"</span>,
+    <span class="hljs-string">"prelude"</span>
   ]
-}</span></code></pre><p>This is probably already too long for most people to read when sat on the loo, so I&#39;ll leave the writing of any code at all to the next entry..</p>
+}</code></pre><p>This is probably already too long for most people to read when sat on the loo, so I&#39;ll leave the writing of any code at all to the next entry..</p>

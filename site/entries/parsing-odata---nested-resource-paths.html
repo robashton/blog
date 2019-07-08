@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
     <link rel="stylesheet" href="/assets/css/themes/default.css">
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
     <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
     <script type="text/javascript">
       var _gaq = _gaq || [];
@@ -57,9 +57,6 @@
                             <li>
                                 <a href="/blog.html">Blog</a>
                             </li>
-                            <li>
-                                <a href="/testimonials.html">Testimonials</a>
-                            </li>
                     </div>
                 </div>
             </div>
@@ -76,7 +73,7 @@
 <p>I&#39;ll see if this has been covered in Rulemotion&#39;s codebase when I get back into the office on Tuesday as I&#39;d prefer to do this properly.</p>
 <p><strong>Recursing through resource paths</strong></p>
 <p>Back to the matter at hand, I want to deal with arbitrary paths like so</p>
-<pre><code><span class="regexp">/model(1)/children(1)/otherchildren(1)/</span>field</code></pre><p>This shouldn&#39;t be <em>too hard</em>, although I am practising Mojito-driven-development this weekend so it does tax the brain cells that are still functioning.</p>
+<pre><code><span class="hljs-string">/model</span><span class="hljs-params">(1)</span><span class="hljs-string">/children</span><span class="hljs-params">(1)</span><span class="hljs-string">/otherchildren</span><span class="hljs-params">(1)</span><span class="hljs-string">/field</span></code></pre><p>This shouldn&#39;t be <em>too hard</em>, although I am practising Mojito-driven-development this weekend so it does tax the brain cells that are still functioning.</p>
 <p>What I want to achieve:</p>
 <ul>
 <li>I want to be able to parse multiple resource paths separated by a &#39;/&#39;</li>
@@ -84,21 +81,21 @@
 <li>I want to once this is done, carry on parsing the rest of the path</li>
 </ul>
 <p>Hmm, well simplest thing for this is to say that this is recursive and not change a thing at all about the initial expression</p>
-<pre><code><span class="constant">OData</span> = (
+<pre><code>OData = (
   (
-    <span class="constant">PathSegment</span><span class="symbol">:model</span> -&gt; model
+<span class="hljs-symbol">    PathSegment:</span>model -&gt; model
   )
-  | <span class="string">'/'</span>
+  | <span class="hljs-string">'/'</span>
 ) 
 
 
-<span class="constant">PathSegment</span> = 
-      <span class="string">'/'</span>
-      <span class="constant">ResourceName</span><span class="symbol">:resource</span>
+PathSegment = 
+      <span class="hljs-string">'/'</span>
+<span class="hljs-symbol">      ResourceName:</span>resource
       (
-        (<span class="string">"("</span> <span class="constant">Number</span><span class="symbol">:key</span> <span class="string">")"</span>)?
-        (<span class="constant">PathSegment</span><span class="symbol">:</span> <span class="keyword">next</span>)?
-      ) -&gt; { <span class="symbol">resource:</span> resource, <span class="symbol">key:</span> key, <span class="symbol">next:</span> <span class="keyword">next</span> }
+        (<span class="hljs-string">"("</span> <span class="hljs-string">Number:</span>key <span class="hljs-string">")"</span>)?
+        (PathSegment: next)?
+      ) -&gt; { resource: resource, <span class="hljs-string">key:</span> key, <span class="hljs-string">next:</span> next }
     ,</code></pre><p>All we do here is say </p>
 <ul>
 <li>We expect a forward-slash, followed by the name of the addressed resource</li>
@@ -108,17 +105,17 @@
 <p>In this way, we&#39;ll recursively build up the path to the addressed resource in the model and end up being able to follow this down when working out what to do with our OData request.</p>
 <p><strong>Links</strong></p>
 <p>There is another part to this, which is that rather than addressing paths, we can address links, which are expressed similarly:</p>
-<pre><code>/model(1)/<span class="variable">$links</span>/children</code></pre><p>This can actually be dealt with in very much the same way:</p>
+<pre><code><span class="hljs-regexp">/model(1)/</span><span class="hljs-variable">$links</span><span class="hljs-regexp">/children</span></code></pre><p>This can actually be dealt with in very much the same way:</p>
 <pre><code>PathSegment = 
-      <span class="string">'/'</span>
+      <span class="hljs-string">'/'</span>
       ResourceName:resource
       (
-        (<span class="string">"("</span> Number:key <span class="string">")"</span>)?
+        (<span class="hljs-string">"("</span> Number:key <span class="hljs-string">")"</span>)?
         (
-          (se<span class="string">q("/<span class="variable">$links</span>")</span> PathSegment:<span class="keyword">link</span>)
-        | PathSegment: <span class="keyword">next</span>
+          (se<span class="hljs-string">q("/$links")</span> PathSegment:<span class="hljs-keyword">link</span>)
+        | PathSegment: <span class="hljs-keyword">next</span>
         )?
-      ) -&gt; { resource: resource, key: key, <span class="keyword">link</span>: <span class="keyword">link</span>, property: <span class="keyword">next</span> }
+      ) -&gt; { resource: resource, key: key, <span class="hljs-keyword">link</span>: <span class="hljs-keyword">link</span>, property: <span class="hljs-keyword">next</span> }
     ,</code></pre><ul>
 <li>We expect a forward-slash, followed by the name of the addressed resource</li>
 <li>We then optionally expect a specified Id for that resource</li>

@@ -1,0 +1,263 @@
+<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
+<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
+<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
+<!--[if !ie]><!-->
+<html lang="en"> <!--<![endif]-->
+<head>
+    <title id="title">Building on top of OTP with Purescript with Pinto</title>
+    <meta charset="utf-8">
+    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <meta name="author" content="">
+    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
+    <link rel="stylesheet" href="/assets/css/style_responsive.css">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
+    <link rel="stylesheet" href="/assets/css/themes/default.css">
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
+    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="header">
+        <div class="container">
+            <div class="logo">
+             <h2><a href="/index.html">Rob Ashton</a></h2>
+            </div>
+            <div class="navbar">
+                <div class="navbar-inner">
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </a>
+                    <div class="nav-collapse collapse">
+                        <ul class="nav top-2">
+                          <li>
+                                <a href="/">Home</a>
+                            </li>
+                            <li>
+                                <a href="/blog.html">Blog</a>
+                            </li>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <body>
+    <div id="blog-entry">
+      <h1 id="post-title">Building on top of OTP with Purescript with Pinto</h1>
+      <h6>Published on <span class="date">2019-8-20</span></h6>
+      <div id="post"><p>All the posts so far..</p>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
+</ul>
+<p>We left the last post demonstrating that an end-to-end Purescript project was essentially a pile of Purescript written in the right place, in order that the usual Erlang application/rebar3/etc can just work with it.</p>
+<h1 id="that-entry-point-again-then">That entry point again then</h1>
+<p>We looked at <em>BookApp.purs</em>, which compiled into an Erlang module called <em>bookApp@ps</em>. which ends up in <em>src/compiled_ps</em> and gets picked up with the usual Erlang structure. Let&#39;s look at that file and see what we see:</p>
+<pre><code class="language-haskell"><span class="hljs-keyword">module</span> BookApp <span class="hljs-keyword">where</span>
+
+<span class="hljs-keyword">import</span> Prelude
+<span class="hljs-keyword">import</span> BookSup <span class="hljs-keyword">as</span> BookSup
+
+<span class="hljs-keyword">import</span> Pinto.App <span class="hljs-keyword">as</span> App
+
+<span class="hljs-title">start</span> = <span class="hljs-type">App</span>.simpleStart <span class="hljs-type">BookSup</span>.startLink</code></pre>
+<p>That <em>simpleStart</em> function is just a Pinto helper that describes an entry point that doesn&#39;t worry about inputs, and provided a Supervisor will start that Supervisor when the application is started.</p>
+<p>This gets compiled into the following Erlang</p>
+<pre><code class="language-erlang"><span class="hljs-comment">% Generated by purs version 0.12.3</span>
+<span class="hljs-keyword">-module</span><span class="hljs-params">(bookApp@ps)</span>.
+<span class="hljs-keyword">-export</span><span class="hljs-params">([start/<span class="hljs-number">0</span>, start/<span class="hljs-number">2</span>])</span>.
+<span class="hljs-keyword">-compile</span><span class="hljs-params">(nowarn_shadow_vars)</span>.
+<span class="hljs-keyword">-compile</span><span class="hljs-params">(nowarn_unused_vars)</span>.
+<span class="hljs-keyword">-compile</span><span class="hljs-params">(no_auto_import)</span>.
+<span class="hljs-keyword">-file</span><span class="hljs-params">(<span class="hljs-string">"src/BookApp.purs"</span>, <span class="hljs-number">8</span>)</span>.
+<span class="hljs-function"><span class="hljs-title">start</span><span class="hljs-params">()</span> -&gt;</span> (pinto_app@ps:simpleStart((bookSup@ps:startLink()))).
+<span class="hljs-keyword">-file</span><span class="hljs-params">(<span class="hljs-string">"src/BookApp.purs"</span>, <span class="hljs-number">8</span>)</span>.
+<span class="hljs-function"><span class="hljs-title">start</span><span class="hljs-params">(_@<span class="hljs-number">0</span>,_@<span class="hljs-number">1</span>)</span> -&gt;</span> ((pinto_app@ps:simpleStart((bookSup@ps:startLink())))(_@<span class="hljs-number">0</span>, _@<span class="hljs-number">1</span>)).</code></pre>
+<p>If get rid of the cruft, that&#39;s essentially just</p>
+<pre><code class="language-erlang"><span class="hljs-keyword">-module</span><span class="hljs-params">(bookApp@ps)</span>.
+<span class="hljs-keyword">-export</span><span class="hljs-params">([start/<span class="hljs-number">0</span>, start/<span class="hljs-number">2</span>])</span>.
+<span class="hljs-function"><span class="hljs-title">start</span><span class="hljs-params">()</span> -&gt;</span> (pinto_app@ps:simpleStart((bookSup@ps:startLink()))).
+<span class="hljs-function"><span class="hljs-title">start</span><span class="hljs-params">(_@<span class="hljs-number">0</span>,_@<span class="hljs-number">1</span>)</span> -&gt;</span> ((pinto_app@ps:simpleStart((bookSup@ps:startLink())))(_@<span class="hljs-number">0</span>, _@<span class="hljs-number">1</span>)).</code></pre>
+<p>This is just a standard application module that you&#39;d find in an Erlang application, exporting the usual start function that calls into a supervisor to start it. This is the only time I&#39;ll be loading up the compiled Purescript as it&#39;s the simplest example - but nearly all of the Pinto helpers are about making sure we can end up exposing a module that looks like the equivalent OTP erlang module.</p>
+<p>The supervisor? More of the same</p>
+<pre><code class="language-haskell"><span class="hljs-keyword">module</span> BookSup <span class="hljs-keyword">where</span>
+
+<span class="hljs-comment">-- [[ imports redacted ]]</span>
+
+<span class="hljs-title">startLink</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Pinto</span>.<span class="hljs-type">StartLinkResult</span>
+<span class="hljs-title">startLink</span> = <span class="hljs-type">Sup</span>.startLink <span class="hljs-string">"book_sup"</span> init
+
+<span class="hljs-title">init</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">SupervisorSpec</span>
+<span class="hljs-title">init</span> = <span class="hljs-keyword">do</span>
+  connectionString &lt;- <span class="hljs-type">BookConfig</span>.connectionString
+  webPort &lt;- <span class="hljs-type">BookConfig</span>.webPort
+  pure $ buildSupervisor
+                # supervisorStrategy <span class="hljs-type">OneForOne</span>
+                # supervisorChildren ( ( buildChild
+                                       # childType <span class="hljs-type">Worker</span>
+                                       # childId <span class="hljs-string">"book_web"</span>
+                                       # childStart <span class="hljs-type">BookWeb</span>.startLink  { webPort } )
+                                       : 
+                                       ( buildChild
+                                       # childType <span class="hljs-type">Worker</span>
+                                       # childId <span class="hljs-string">"book_library"</span>
+                                       # childStart <span class="hljs-type">BookLibrary</span>.startLink { connectionString } )
+                                        : nil)</code></pre>
+<p><em>Sup.startLink</em> is a Pinto helper that&#39;ll end up calling our usual <em>supervisor:start_link</em> under the hood, with our <em>init</em> function being invoked within the context of that created supervisor and returning a supervisor spec when invoked. </p>
+<p>The supervisor spec structure is quite a complicated tangle of maps in Erlang, and while possible to directly represent these in Purescript with records, there are convenience builders/etc provided by Pinto to describe these specs in a more Purescripty and type safe manner - all of these values are pretty much relatable right back to the OTP documentation which is handy and intentional.</p>
+<p>Now, let&#39;s break down one of these gen servers to see what we can see - we&#39;ll have to do this piece-meal as there is a lot to uncover. We&#39;ll be looking at <em>BookLibrary.purs</em>, invoked above in the second child of the supervision tree with BookLibrary.startLink and the code for which is shown below..</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">serverName</span> :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span>
+<span class="hljs-title">serverName</span> = <span class="hljs-type">ServerName</span> <span class="hljs-string">"book_library"</span>
+
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">BookLibraryStartArgs</span> = {
+  <span class="hljs-title">connectionString</span> :: <span class="hljs-type">ConnectionString</span>
+}</span>
+
+<span class="hljs-title">startLink</span> :: <span class="hljs-type">BookLibraryStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
+<span class="hljs-title">startLink</span> args =
+  <span class="hljs-type">Gen</span>.startLink serverName $ init args
+</code></pre>
+<p>So there is nothing too special about this, we&#39;re exporting a function called startLink that takes some configuration from the supervisor, and that calls into the Pinto function <em>Gen.startLink</em> with the serverName, and an init function to invoke within the context of the started GenServer along with those args. This isn&#39;t disimilar to how this looks in the Erlang world so far. </p>
+<p>That serverName construct represents both the unique identifier for this started process, and also encapsulates the type of the &#39;state&#39; that is held by the GenServer, and will be used in all interactions with the <em>Gen</em> module.</p>
+<p>That init function?</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">init</span> :: <span class="hljs-type">BookLibraryStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">State</span>
+<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
+  connection &lt;- <span class="hljs-type">Redis</span>.open args.connectionString
+  pure $ { connection }
+</code></pre>
+<p>Takes place inside the context of the newly started GenServer, and is responsible for effectfully creating the initial state of the GenServer, which is just a Redis connection (We&#39;ll talk about that later). This is actually all we need to create a running GenServer as everything else is entirely optonal.</p>
+<p>Obviously that&#39;s useless, so let&#39;s look at how we can externally call into this GenServer to do something useful</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">findAll</span> :: <span class="hljs-type">Effect</span> (<span class="hljs-type">List</span> <span class="hljs-type">Book</span>)
+<span class="hljs-title">findAll</span> = 
+  <span class="hljs-type">Gen</span>.doCall serverName \state@{ connection } -&gt; <span class="hljs-keyword">do</span>
+    books &lt;- <span class="hljs-type">Redis</span>.findAll dbPrefix connection
+    pure $ <span class="hljs-type">CallReply</span> books state
+</code></pre>
+<p>We can export a plain ol&#39; Purescript function called findAll that returns a plain ol&#39; Effect producing a List of Book, and we can do the rest of the work by invoking a &#39;call&#39; with the <em>Gen</em> module, by giving <em>Gen.doCall</em> our <em>serverName</em> construct, we are able to then provide a typed callback that  will be invoked within the context of the gen-server as part of a <em>handle_call</em>, and therefore gain access to the state and return some books by calling into the Redis connection.</p>
+<p>The original Erlang would of course look a little like this.</p>
+<pre><code class="language-erlang">
+<span class="hljs-keyword">-export</span><span class="hljs-params">([start_link/<span class="hljs-number">1</span>, 
+         init/<span class="hljs-number">1</span>,
+         find_all/<span class="hljs-number">0</span>])</span>.
+
+<span class="hljs-keyword">-record</span><span class="hljs-params">(args, {
+    connection_string :: connection_string()
+    })</span>.
+
+<span class="hljs-keyword">-record</span><span class="hljs-params">(state, {
+    connection :: redis:connection()
+  })</span>.
+
+<span class="hljs-function"><span class="hljs-title">find_all</span><span class="hljs-params">()</span> -&gt;</span>
+  gen_server:call({via, gproc, {n, l, ?MODULE}}, find_all).
+
+<span class="hljs-function"><span class="hljs-title">start_link</span><span class="hljs-params">(Args)</span> -&gt;</span>
+  gen_server:start_link({via, gproc, {n, l, ?MODULE}}, ?MODULE, [Args], []).
+
+<span class="hljs-function"><span class="hljs-title">init</span><span class="hljs-params">([#args { connection_string = ConnectionString }])</span> -&gt;</span>
+  { ok, Connection } = redis:open(ConnectionString),
+  {ok, #state { connection = Connection }}.
+
+<span class="hljs-function"><span class="hljs-title">handle_call</span><span class="hljs-params">(find_all, _Sender, State = #state { connection = Connection })</span> -&gt;</span>
+  { ok, Result } = redis:find_prefix(dbPrefix, Connection),
+  { reply, Result, State }.
+
+</code></pre>
+<p>This is a bit unwieldy, lacks any notion of type safety across the calls being made, but is still pleasantly relatable to the Purescript variant.</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">serverName</span> :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span>
+<span class="hljs-title">serverName</span> = <span class="hljs-type">ServerName</span> <span class="hljs-string">"book_library"</span>
+
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">BookLibraryStartArgs</span> = {
+  <span class="hljs-title">connectionString</span> :: <span class="hljs-type">ConnectionString</span>
+}</span>
+
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">State</span> = {
+  <span class="hljs-title">connection</span> :: <span class="hljs-type">RedisConnection</span>
+}</span>
+
+<span class="hljs-title">startLink</span> :: <span class="hljs-type">BookLibraryStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
+<span class="hljs-title">startLink</span> args =
+  <span class="hljs-type">Gen</span>.startLink serverName $ init args
+
+<span class="hljs-title">init</span> :: <span class="hljs-type">BookLibraryStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">State</span>
+<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
+  connection &lt;- <span class="hljs-type">Redis</span>.open args.connectionString
+  pure $ { connection }
+
+<span class="hljs-title">findAll</span> :: <span class="hljs-type">Effect</span> (<span class="hljs-type">List</span> <span class="hljs-type">Book</span>)
+<span class="hljs-title">findAll</span> = 
+  <span class="hljs-type">Gen</span>.doCall serverName \state@{ connection } -&gt; <span class="hljs-keyword">do</span>
+    books &lt;- <span class="hljs-type">Redis</span>.findAll dbPrefix connection
+    pure $ <span class="hljs-type">CallReply</span> books state
+</code></pre>
+<p>Note: Wrapping up a connection behind a genserver is nearly always not the thing you want to do (effectively it introduces a read/write lock), but sample code gonna sample code.</p>
+<p>Next up, we&#39;ll look at how we could use this GenServer from Stetson to provide a restful JSON API to our client.</p>
+</div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="mailto:robashton@codeofrob.com">Respond</a>
+      </div>
+
+        <!--=== Copyright ===-->
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span6">
+                <p class="terms">2018 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
+    });
+        </script>
+        <!--[if lt IE 9]>
+    <script src="assets/js/respond.js"></script>
+<![endif]-->
+        </body>
+        </html>
+

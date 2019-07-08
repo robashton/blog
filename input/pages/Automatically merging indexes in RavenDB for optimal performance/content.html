@@ -1,29 +1,29 @@
 <p>So, we can mark indexes as idle, we can automatically do this to auto indexes, and we delete auto indexes that aren&#39;t being used enough - that paves the way for a pretty useful feature - merging automatic indexes for fun and for profit.</p>
 <p>What is that you ask? Well - when we do the following series of queries</p>
-<pre><code>session<span class="variable">.Query</span>&lt;Pony&gt;()
-    <span class="variable">.Where</span>(pony =&gt; pony<span class="variable">.Name</span> == <span class="string">"Rainbow Dash"</span>)
-    <span class="variable">.FirstOrDefault</span>()</code></pre><p>and</p>
-<pre><code>session<span class="variable">.Query</span>&lt;Pony&gt;()
-        <span class="variable">.Where</span>(pony =&gt; pony<span class="variable">.Colour</span> == <span class="string">"Pink"</span>)
-        <span class="variable">.ToList</span>()</code></pre><p>We will end up with the following indexes in RavenDB</p>
+<pre><code>session.Query&lt;Pony&gt;<span class="hljs-literal">()</span>
+    .<span class="hljs-constructor">Where(<span class="hljs-params">pony</span> =&gt; <span class="hljs-params">pony</span>.Name <span class="hljs-operator">==</span> <span class="hljs-string">"Rainbow Dash"</span>)</span>
+    .<span class="hljs-constructor">FirstOrDefault()</span></code></pre><p>and</p>
+<pre><code>session.Query&lt;Pony&gt;<span class="hljs-literal">()</span>
+        .<span class="hljs-constructor">Where(<span class="hljs-params">pony</span> =&gt; <span class="hljs-params">pony</span>.Colour <span class="hljs-operator">==</span> <span class="hljs-string">"Pink"</span>)</span>
+        .<span class="hljs-constructor">ToList()</span></code></pre><p>We will end up with the following indexes in RavenDB</p>
 <p><em>Pony/Name</em></p>
-<pre><code>    <span class="keyword">from</span> pony <span class="keyword">in</span> ponies
-      <span class="keyword">select</span> <span class="keyword">new</span> {
+<pre><code>    <span class="hljs-keyword">from</span> pony <span class="hljs-keyword">in</span> ponies
+      <span class="hljs-keyword">select</span> <span class="hljs-built_in">new</span> {
           pony.Name
       }</code></pre><p><em>Pony/Colour</em></p>
-<pre><code>    <span class="keyword">from</span> pony <span class="keyword">in</span> ponies
-      <span class="keyword">select</span> <span class="keyword">new</span> {
+<pre><code>    <span class="hljs-keyword">from</span> pony <span class="hljs-keyword">in</span> ponies
+      <span class="hljs-keyword">select</span> <span class="hljs-keyword">new</span> {
           pony.Colour
       }</code></pre><p>Well, in reality there is no real reason why we&#39;d have two indexes and incur the cost of iterating over documents every time they&#39;re added more often than we need.</p>
 <p>One of the things that the query optimiser already does, is look for the &#39;widest&#39; index - that is the index that touches the most fields.</p>
 <p>It makes sense therefore, that rather than simply look for the widest index that matches the query, we should look for the most compatible index and create a new one based off of that if it doesn&#39;t match completely.</p>
 <p>Consider the above, we should end up with two indexes</p>
-<pre><code>    <span class="keyword">from</span> pony <span class="keyword">in</span> ponies
-      <span class="keyword">select</span> <span class="keyword">new</span> {
+<pre><code>    <span class="hljs-keyword">from</span> pony <span class="hljs-keyword">in</span> ponies
+      <span class="hljs-keyword">select</span> <span class="hljs-built_in">new</span> {
           pony.Name
       }</code></pre><p>and</p>
-<pre><code>    <span class="keyword">from</span> pony <span class="keyword">in</span> ponies
-      <span class="keyword">select</span> <span class="keyword">new</span> {
+<pre><code>    <span class="hljs-keyword">from</span> pony <span class="hljs-keyword">in</span> ponies
+      <span class="hljs-keyword">select</span> <span class="hljs-built_in">new</span> {
           pony.Name,
           pony.Colour
       }</code></pre><p>Over time, the first index won&#39;t be used (as it&#39;s not as wide as the second index), and it will wither and die because of idling and auto-removal.</p>

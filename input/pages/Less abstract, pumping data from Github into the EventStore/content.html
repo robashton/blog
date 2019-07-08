@@ -3,49 +3,49 @@
 <p>What does this look like?</p>
 <p>Well, I&#39;m interested in the public events stream, which can be polled up to 5000 times an hour (at current rates, it needs polling about every 10 seconds in order to keep up, so I&#39;ll not be able to get them all)</p>
 <p>What this looks like</p>
-<pre><code> var request = https.get(
- { host:<span class="string"> 'api.github.com'</span>, path:<span class="string"> '/events'</span> + auth }, 
- function(res) {
-    var <span class="typedef"><span class="keyword">data</span> = ''</span>
-    res.on('<span class="typedef"><span class="keyword">data</span>', function <span class="container">(<span class="title">chunk</span>)</span> <span class="container">{
-      <span class="title">data</span> += <span class="title">chunk</span>
-    }</span>);</span>
-    res.on('end', function() {
-      processData(<span class="typedef"><span class="keyword">data</span>)</span>
+<pre><code> <span class="hljs-keyword">var</span> request = https.get(
+ { <span class="hljs-attr">host</span>: <span class="hljs-string">'api.github.com'</span>, <span class="hljs-attr">path</span>: <span class="hljs-string">'/events'</span> + auth }, 
+ <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">res</span>) </span>{
+    <span class="hljs-keyword">var</span> data = <span class="hljs-string">''</span>
+    res.on(<span class="hljs-string">'data'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">chunk</span>) </span>{
+      data += chunk
+    });
+    res.on(<span class="hljs-string">'end'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+      processData(data)
     })
   })
-  .on('error', function(e) {
-    console.error(e)
+  .on(<span class="hljs-string">'error'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">e</span>) </span>{
+    <span class="hljs-built_in">console</span>.error(e)
   }).end()
 
-  var processData = function(<span class="typedef"><span class="keyword">data</span>) <span class="container">{
-    <span class="title">var</span> <span class="title">eventArray</span> = <span class="type">JSON</span>.<span class="title">parse</span>(<span class="title">data</span>)
-    <span class="title">for</span>(<span class="title">var</span> <span class="title">i</span> = <span class="title">eventArray</span>.<span class="title">length</span>-1 ; <span class="title">i</span> &gt;= 0; <span class="title">i</span>--) {
-      <span class="title">processEvent</span>(<span class="title">eventArray</span>[<span class="title">i</span>])
-    }</span></span>
+  <span class="hljs-keyword">var</span> processData = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">data</span>) </span>{
+    <span class="hljs-keyword">var</span> eventArray = <span class="hljs-built_in">JSON</span>.parse(data)
+    <span class="hljs-keyword">for</span>(<span class="hljs-keyword">var</span> i = eventArray.length<span class="hljs-number">-1</span> ; i &gt;= <span class="hljs-number">0</span>; i--) {
+      processEvent(eventArray[i])
+    }
   }</code></pre><p>An event looks like this</p>
 <pre><code>{
-  <span class="property">id</span>: <span class="string">"somelongid"</span>,
-  type: <span class="string">"PushEvent"</span>,
-  actor: { // info <span class="keyword">about</span> <span class="keyword">the</span> user },
-  repo: { // info <span class="keyword">about</span> <span class="keyword">the</span> repo }
-  payload: { // <span class="keyword">the</span> event itself }
+<span class="hljs-symbol">  id:</span> <span class="hljs-string">"somelongid"</span>,
+<span class="hljs-symbol">  type:</span> <span class="hljs-string">"PushEvent"</span>,
+<span class="hljs-symbol">  actor:</span> { <span class="hljs-comment">// info about the user },</span>
+<span class="hljs-symbol">  repo:</span> { <span class="hljs-comment">// info about the repo }</span>
+<span class="hljs-symbol">  payload:</span> { <span class="hljs-comment">// the event itself }</span>
 }</code></pre><p>I&#39;m going to be shoving these events &#39;as is&#39; into the EventStore, and using their ids &#39;as is&#39; too, this means I don&#39;t need to do any de-duping or anything like that.</p>
 <p>Now, because of the kind of question I want to ask, it isn&#39;t enough for me to have the scant info about a repo that the event stream gives me (it looks like this)</p>
 <pre><code>{
- "<span class="attribute">id</span>": <span class="value"><span class="number">3</span></span>,
- "<span class="attribute">name</span>": <span class="value"><span class="string">"octocat/Hello-World"</span></span>,
- "<span class="attribute">url</span>": <span class="value"><span class="string">"https://api.github.com/repos/octocat/Hello-World"</span>
-}</span></code></pre><p>So I&#39;m going to augment each event with repo information (this is quite common in the eventing world, augmenting events with useful information for query purposes), and therefore my processEvent method looks something like this:</p>
-<pre><code><span class="function"><span class="keyword">function</span> <span class="title">processEvent</span><span class="params">(ev)</span> {</span>
-  <span class="keyword">if</span>(<span class="transposed_variable">ev.</span>repo) <span class="cell">{
-    fetchRepoInfo(ev.repo.name, function(repo) {
+ <span class="hljs-attr">"id"</span>: <span class="hljs-number">3</span>,
+ <span class="hljs-attr">"name"</span>: <span class="hljs-string">"octocat/Hello-World"</span>,
+ <span class="hljs-attr">"url"</span>: <span class="hljs-string">"https://api.github.com/repos/octocat/Hello-World"</span>
+}</code></pre><p>So I&#39;m going to augment each event with repo information (this is quite common in the eventing world, augmenting events with useful information for query purposes), and therefore my processEvent method looks something like this:</p>
+<pre><code><span class="hljs-keyword">function</span> process<span class="hljs-constructor">Event(<span class="hljs-params">ev</span>)</span> {
+  <span class="hljs-keyword">if</span>(ev.repo) {
+    fetch<span class="hljs-constructor">RepoInfo(<span class="hljs-params">ev</span>.<span class="hljs-params">repo</span>.<span class="hljs-params">name</span>, <span class="hljs-params">function</span>(<span class="hljs-params">repo</span>)</span> {
       ev.repo = repo
-      pushEventIntoEventStore(ev)
-    }</span>)
-  } <span class="keyword">else</span> <span class="cell">{
-    pushEventIntoEventStore(ev)
-  }</span>
+      push<span class="hljs-constructor">EventIntoEventStore(<span class="hljs-params">ev</span>)</span>
+    })
+  } <span class="hljs-keyword">else</span> {
+    push<span class="hljs-constructor">EventIntoEventStore(<span class="hljs-params">ev</span>)</span>
+  }
 }</code></pre><p>So, I&#39;m not altering any of the events in any way, except by adding repo information to them, therefore if you&#39;re interested in the structure of any of the events I&#39;m using you can easily look them up in the API.</p>
 <p>By the time the code is readable there&#39;ll be some rate management code in there because I can&#39;t go looking up repo information for every single event and not go over the rate limit, but it&#39;s safe to say we&#39;ll be getting ~50% of the events from Github and that&#39;s a reasonable amount.</p>
 <p>My script simply sits there running in the background and throws events into the event store and this little experiment is going to be about creating projections and asking questions of those events as we go along. Capiche? :)</p>

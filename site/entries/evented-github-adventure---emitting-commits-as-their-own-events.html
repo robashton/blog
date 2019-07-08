@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
     <link rel="stylesheet" href="/assets/css/themes/default.css">
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
     <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
     <script type="text/javascript">
       var _gaq = _gaq || [];
@@ -57,9 +57,6 @@
                             <li>
                                 <a href="/blog.html">Blog</a>
                             </li>
-                            <li>
-                                <a href="/testimonials.html">Testimonials</a>
-                            </li>
                     </div>
                 </div>
             </div>
@@ -74,65 +71,65 @@
 <p>Lets say I want to write a few projections analysing the commits made across Github and performing some correlations off the back of that.</p>
 <p>Well, currently there is no such thing as a CommitEvent - what we actually have is a PushEvent which contains a list of Commits in the payload like so</p>
 <pre><code>{
-   <span class="method">type:</span> <span class="comment">"PushEvent"</span>,
-   <span class="method">repo:</span> { // repo info },
-   <span class="method">payload:</span> {
-     <span class="method">commits:</span> [
+<span class="hljs-symbol">   type:</span> <span class="hljs-string">"PushEvent"</span>,
+<span class="hljs-symbol">   repo:</span> { <span class="hljs-comment">// repo info },</span>
+<span class="hljs-symbol">   payload:</span> {
+<span class="hljs-symbol">     commits:</span> [
       {
-        <span class="method">sha:</span> <span class="comment">"etc"</span>,
-        <span class="method">author:</span> { //etc },
-        <span class="method">message:</span> <span class="comment">"I am a banana"</span>
+<span class="hljs-symbol">        sha:</span> <span class="hljs-string">"etc"</span>,
+<span class="hljs-symbol">        author:</span> { <span class="hljs-comment">//etc },</span>
+<span class="hljs-symbol">        message:</span> <span class="hljs-string">"I am a banana"</span>
       },
       {
-        <span class="method">sha:</span> <span class="comment">"etc"</span>,
-        <span class="method">author:</span> { //etc },
-        <span class="method">message:</span> <span class="comment">"My spoon is too big"</span>
+<span class="hljs-symbol">        sha:</span> <span class="hljs-string">"etc"</span>,
+<span class="hljs-symbol">        author:</span> { <span class="hljs-comment">//etc },</span>
+<span class="hljs-symbol">        message:</span> <span class="hljs-string">"My spoon is too big"</span>
       },
       {
-        <span class="method">sha:</span> <span class="comment">"etc"</span>,
-        <span class="method">author:</span> { //etc },
-        <span class="method">message:</span> <span class="comment">"Tuesday's coming, did you bring your coat?"</span>
+<span class="hljs-symbol">        sha:</span> <span class="hljs-string">"etc"</span>,
+<span class="hljs-symbol">        author:</span> { <span class="hljs-comment">//etc },</span>
+<span class="hljs-symbol">        message:</span> <span class="hljs-string">"Tuesday's coming, did you bring your coat?"</span>
       }
      ]
    }
 }</code></pre><p>Let&#39;s say I want to build up projections off the the stream of commits, in each of my projections I&#39;d have to write the following code</p>
-<pre><code>fromStream(<span class="string">"github"</span>)
-  <span class="variable">.when</span>({
-    <span class="string">"$init"</span>: function(state, ev) {
-      <span class="keyword">return</span> {}
+<pre><code>fromStream(<span class="hljs-string">"github"</span>)
+  .when({
+    <span class="hljs-string">"$init"</span>: <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(state, ev)</span> </span>{
+      <span class="hljs-keyword">return</span> {}
     },
-    <span class="string">"PushEvent"</span>: function(state, ev) {
-      <span class="keyword">for</span>(var i = <span class="number">0</span> ; i &lt; ev<span class="variable">.body</span><span class="variable">.payload</span><span class="variable">.commits</span><span class="variable">.length</span>; i++) {
-        var commit = ev<span class="variable">.body</span><span class="variable">.payload</span><span class="variable">.commits</span>[i]
-        var repo = ev<span class="variable">.body</span><span class="variable">.repo</span>
+    <span class="hljs-string">"PushEvent"</span>: <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(state, ev)</span> </span>{
+      <span class="hljs-keyword">for</span>(<span class="hljs-keyword">var</span> i = <span class="hljs-number">0</span> ; i &lt; ev.body.payload.commits.length; i++) {
+        <span class="hljs-keyword">var</span> commit = ev.body.payload.commits[i]
+        <span class="hljs-keyword">var</span> repo = ev.body.repo
 
-        <span class="comment">// do stuff</span>
+        <span class="hljs-comment">// do stuff</span>
       }
     }
   })</code></pre><p>This doesn&#39;t cause a huge problem, but it is irritating having to do this for every projection and if I particularly cared about CPU it&#39;s also unnecessary work to be doing.</p>
 <p>It would be much better if I could just have a stream of commits to read from when creating these projections.</p>
-<pre><code><span class="function"><span class="title">fromStream</span><span class="params">(<span class="string">"github-commits"</span>)</span>
-  .<span class="title">when</span><span class="params">(<span class="tuple">{
-    <span class="string">"$init"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
+<pre><code><span class="hljs-function"><span class="hljs-title">fromStream</span><span class="hljs-params">(<span class="hljs-string">"github-commits"</span>)</span></span>
+  .when({
+    <span class="hljs-string">"$init"</span>: function(state, ev) {
 
-    }</span>,
-    <span class="string">"Commit"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
-      var commit = ev.body.commit
-      var repo = ev.body.repo
-
-      // <span class="variable">Do</span> stuff
-    }</span>
-  })</code></pre><p>Well in fact we can, and that&#39;s a good place to use the &#39;emit&#39; function. Let&#39;s say we have our original projection which loops over those commits:</p>
-<pre><code>fromStream(<span class="string">"github"</span>)
-  <span class="variable">.when</span>({
-    <span class="string">"$init"</span>: function(state, ev) {
-      <span class="keyword">return</span> {}
     },
-    <span class="string">"PushEvent"</span>: function(state, ev) {
-      <span class="keyword">for</span>(var i = <span class="number">0</span> ; i &lt; ev<span class="variable">.body</span><span class="variable">.payload</span><span class="variable">.commits</span><span class="variable">.length</span>; i++) {
-        var commit = ev<span class="variable">.body</span><span class="variable">.payload</span><span class="variable">.commits</span>[i]
-        var repo = ev<span class="variable">.body</span><span class="variable">.repo</span>
-        emit(<span class="string">"github-commits"</span>, <span class="string">"Commit"</span>, {
+    <span class="hljs-string">"Commit"</span>: function(state, ev) {
+      <span class="hljs-selector-tag">var</span> commit = ev<span class="hljs-selector-class">.body</span><span class="hljs-selector-class">.commit</span>
+      <span class="hljs-selector-tag">var</span> repo = ev<span class="hljs-selector-class">.body</span><span class="hljs-selector-class">.repo</span>
+
+      <span class="hljs-comment">// Do stuff</span>
+    }
+  })</code></pre><p>Well in fact we can, and that&#39;s a good place to use the &#39;emit&#39; function. Let&#39;s say we have our original projection which loops over those commits:</p>
+<pre><code>fromStream(<span class="hljs-string">"github"</span>)
+  .when({
+    <span class="hljs-string">"$init"</span>: <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(state, ev)</span> {</span>
+      <span class="hljs-keyword">return</span> {}
+    },
+    <span class="hljs-string">"PushEvent"</span>: <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(state, ev)</span> {</span>
+      <span class="hljs-keyword">for</span>(var <span class="hljs-built_in">i</span> = <span class="hljs-number">0</span> ; <span class="hljs-built_in">i</span> &lt; ev.body.payload.commits.<span class="hljs-built_in">length</span>; <span class="hljs-built_in">i</span>++) {
+        var commit = ev.body.payload.commits[<span class="hljs-built_in">i</span>]
+        var repo = ev.body.repo
+        emit(<span class="hljs-string">"github-commits"</span>, <span class="hljs-string">"Commit"</span>, {
           commit: commit,
           repo: repo
         })
@@ -141,31 +138,31 @@
   })</code></pre><p>And lo, we now have a new stream caled &quot;github-commits&quot;, with a pile of &quot;Commit&quot; events with the commit and the repo information for that commit.</p>
 <p><em>/streams/github-commits</em></p>
 <pre><code>{
-  <span class="method">title:</span> <span class="comment">"github-commits #2266"</span>,
-  <span class="method">id:</span> <span class="comment">"http://127.0.0.1:2113/streams/github-commits/2266"</span>,
-  <span class="method">updated:</span> <span class="comment">"2013-03-02T15:20:04.207363Z"</span>,
-  <span class="method">author:</span> {
-    <span class="method">name:</span> <span class="comment">"EventStore"</span>
+<span class="hljs-symbol">  title:</span> <span class="hljs-string">"github-commits #2266"</span>,
+<span class="hljs-symbol">  id:</span> <span class="hljs-string">"http://127.0.0.1:2113/streams/github-commits/2266"</span>,
+<span class="hljs-symbol">  updated:</span> <span class="hljs-string">"2013-03-02T15:20:04.207363Z"</span>,
+<span class="hljs-symbol">  author:</span> {
+<span class="hljs-symbol">    name:</span> <span class="hljs-string">"EventStore"</span>
   },
-  <span class="method">summary:</span> <span class="comment">"Entry #2266"</span>,
-  <span class="method">links:</span> [
+<span class="hljs-symbol">  summary:</span> <span class="hljs-string">"Entry #2266"</span>,
+<span class="hljs-symbol">  links:</span> [
   {
-    <span class="method">uri:</span> <span class="comment">"http://127.0.0.1:2113/streams/github-commits/2266"</span>,
-    <span class="method">relation:</span> <span class="comment">"edit"</span>
-  },
-  {
-    <span class="method">uri:</span> <span class="comment">"http://127.0.0.1:2113/streams/github-commits/event/2266?format=text"</span>,
-    <span class="method">type:</span> <span class="comment">"text/plain"</span>
+<span class="hljs-symbol">    uri:</span> <span class="hljs-string">"http://127.0.0.1:2113/streams/github-commits/2266"</span>,
+<span class="hljs-symbol">    relation:</span> <span class="hljs-string">"edit"</span>
   },
   {
-    <span class="method">uri:</span> <span class="comment">"http://127.0.0.1:2113/streams/github-commits/event/2266?format=json"</span>,
-    <span class="method">relation:</span> <span class="comment">"alternate"</span>,
-    <span class="method">type:</span> <span class="comment">"application/json"</span>
+<span class="hljs-symbol">    uri:</span> <span class="hljs-string">"http://127.0.0.1:2113/streams/github-commits/event/2266?format=text"</span>,
+<span class="hljs-symbol">    type:</span> <span class="hljs-string">"text/plain"</span>
   },
   {
-    <span class="method">uri:</span> <span class="comment">"http://127.0.0.1:2113/streams/github-commits/event/2266?format=xml"</span>,
-    <span class="method">relation:</span> <span class="comment">"alternate"</span>,
-    <span class="method">type:</span> <span class="comment">"text/xml"</span>
+<span class="hljs-symbol">    uri:</span> <span class="hljs-string">"http://127.0.0.1:2113/streams/github-commits/event/2266?format=json"</span>,
+<span class="hljs-symbol">    relation:</span> <span class="hljs-string">"alternate"</span>,
+<span class="hljs-symbol">    type:</span> <span class="hljs-string">"application/json"</span>
+  },
+  {
+<span class="hljs-symbol">    uri:</span> <span class="hljs-string">"http://127.0.0.1:2113/streams/github-commits/event/2266?format=xml"</span>,
+<span class="hljs-symbol">    relation:</span> <span class="hljs-string">"alternate"</span>,
+<span class="hljs-symbol">    type:</span> <span class="hljs-string">"text/xml"</span>
   }
   ]
 },</code></pre><p>Now, unlike &quot;linkTo&quot;, this actually creates new events - as can be seen by the URIs in the above sample, and this decision comes with its own considerations but this is what I&#39;ll roll with for now and see where it gets me.</p>

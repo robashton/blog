@@ -2,20 +2,20 @@
 <p>To do this, we have the notion of projections, which are chunks of code that can be executed over a stream (with persisted state) as events are added to it. Now, in reality this isn&#39;t actually too different to what we&#39;d be doing outside the event store when building up view models, and I foresee lots of bad things being done by people are the line between these different ways of reading streams are blurred and fought over.</p>
 <p>I&#39;m actually quite interested in these projections as a way of building up state for reports/charts, or re-partitioning into streams for different consumers - let&#39;s have a look how the most basic of these could work. </p>
 <p>Let&#39;s say I&#39;ve got a few events in the general structure of</p>
-<pre><code><span class="rules">{
-  <span class="rule"><span class="attribute">EventType</span>:<span class="value"> <span class="string">"PonyJumped"</span>,
-  Data: {
-    Pony: <span class="string">"Derpy Hooves"</span>,
-    Height: <span class="number">10</span>,
-    Distance: <span class="number">13</span>
-  }</span></span></span>
+<pre><code>{
+<span class="hljs-symbol">  EventType:</span> <span class="hljs-string">"PonyJumped"</span>,
+<span class="hljs-symbol">  Data:</span> {
+<span class="hljs-symbol">    Pony:</span> <span class="hljs-string">"Derpy Hooves"</span>,
+<span class="hljs-symbol">    Height:</span> <span class="hljs-number">10</span>,
+<span class="hljs-symbol">    Distance:</span> <span class="hljs-number">13</span>
+  }
 }</code></pre><p>and</p>
-<pre><code><span class="rules">{
-  <span class="rule"><span class="attribute">EventType</span>:<span class="value"> <span class="string">"PonySpoke"</span>,
+<pre><code>{
+  <span class="hljs-attribute">EventType</span>: <span class="hljs-string">"PonySpoke"</span>,
   Data: {
-    Sentence: <span class="string">"This is the best day ever"</span>,
-    Pony: <span class="string">"Pinkie Pie"</span>
-  }</span></span></span>
+    Sentence: <span class="hljs-string">"This is the best day ever"</span>,
+    Pony: <span class="hljs-string">"Pinkie Pie"</span>
+  }
 }</code></pre><p>And I&#39;m putting all of these events into a single stream <em>ponies</em></p>
 <p>Let&#39;s say that I&#39;ve thrown a few hundred thousand of these events through the event store and I want to know something really basic, like how many times the ponies in my world have jumped since time began.</p>
 <p>There is a Web UI available for managing projections in the event store (by default available at 127.0.0.1:2113). This is still subject to change though so I&#39;ll just be describing the ideas behind this concept.</p>
@@ -34,41 +34,41 @@
 <li>Enabled: Yes please!</li>
 </ul>
 <p>Now for the source, we&#39;ll start with the most basic projection which looks like this:</p>
-<pre><code><span class="function"><span class="title">fromAll</span><span class="params">()</span>
-  .<span class="title">whenAny</span><span class="params">(<span class="keyword">fun</span><span class="function_name">ction</span>(state,event) <span class="tuple">{ 
+<pre><code><span class="hljs-keyword">from</span>All()
+  .whenAny(function(<span class="hljs-keyword">state</span>,event) { 
      return null; 
-  }</span>);</code></pre><p>Basically, we have to select which streams we&#39;re going to be reading our events from, that &quot;fromAll&quot; bit means we&#39;re going to be reading from all of the streams, I&#39;m going to go ahead and change that to &quot;fromStream&quot; and select our &quot;ponies&quot; stream.</p>
-<pre><code><span class="function"><span class="title">fromStream</span><span class="params">(<span class="string">"ponies"</span>)</span>
-  .<span class="title">whenAny</span><span class="params">(<span class="keyword">fun</span><span class="function_name">ction</span>(state,event) <span class="tuple">{ 
+  });</code></pre><p>Basically, we have to select which streams we&#39;re going to be reading our events from, that &quot;fromAll&quot; bit means we&#39;re going to be reading from all of the streams, I&#39;m going to go ahead and change that to &quot;fromStream&quot; and select our &quot;ponies&quot; stream.</p>
+<pre><code><span class="hljs-keyword">from</span>Stream(<span class="hljs-string">"ponies"</span>)
+  .whenAny(function(<span class="hljs-keyword">state</span>,event) { 
      return null; 
-  }</span>);</code></pre><p>How about that next bit &quot;whenAny&quot;, well we&#39;ve already matched which stream we want events from, well this is the bit we get to use to select which events from that stream we&#39;re interested in - &quot;whenAny&quot; just means &quot;all the events in the stream&quot;.</p>
+  });</code></pre><p>How about that next bit &quot;whenAny&quot;, well we&#39;ve already matched which stream we want events from, well this is the bit we get to use to select which events from that stream we&#39;re interested in - &quot;whenAny&quot; just means &quot;all the events in the stream&quot;.</p>
 <p>I&#39;m going to go ahead and change that to a when, which takes in a map of the events we&#39;re interested in and the callback to process the event with (pattern-matching on the EventType)</p>
-<pre><code><span class="function"><span class="title">fromStream</span><span class="params">(<span class="string">"ponies"</span>)</span>
-  .<span class="title">when</span><span class="params">(<span class="tuple">{
-    <span class="string">"PonyJumped"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, event) <span class="tuple">{
+<pre><code><span class="hljs-keyword">from</span>Stream(<span class="hljs-string">"ponies"</span>)
+  .when({
+    <span class="hljs-string">"PonyJumped"</span>: function(<span class="hljs-keyword">state</span>, event) {
       return null;
-    }</span>)</code></pre><p>Now for that callback - we have &quot;state&quot; and &quot;event&quot;, the former being the state we&#39;re building up for this projection, and the latter being the event we&#39;re going to be adding to that state.</p>
+    })</code></pre><p>Now for that callback - we have &quot;state&quot; and &quot;event&quot;, the former being the state we&#39;re building up for this projection, and the latter being the event we&#39;re going to be adding to that state.</p>
 <p>To begin with, we haven&#39;t actually got any state, but we can rectify that by chucking in an &quot;$init&quot; handler (anything starting with a dollar is something built in to the event store)</p>
-<pre><code><span class="function"><span class="title">fromStream</span><span class="params">(<span class="string">"ponies"</span>)</span>
-  .<span class="title">when</span><span class="params">(<span class="tuple">{
-    $init: <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
-      return <span class="tuple">{ count: <span class="number">0</span> }</span>
-    }</span>,
-    <span class="string">"PonyJumped"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, event) <span class="tuple">{
-      return state
-    }</span>
+<pre><code><span class="hljs-keyword">from</span>Stream(<span class="hljs-string">"ponies"</span>)
+  .when({
+    <span class="hljs-variable">$init</span>: function() {
+      return { count: <span class="hljs-number">0</span> }
+    },
+    <span class="hljs-string">"PonyJumped"</span>: function(<span class="hljs-keyword">state</span>, event) {
+      return <span class="hljs-keyword">state</span>
+    }
   })</code></pre><p>And now, the actual bit of code for building up our projection</p>
-<pre><code><span class="function"><span class="title">fromStream</span><span class="params">(<span class="string">"ponies"</span>)</span>
-   .<span class="title">when</span><span class="params">(<span class="tuple">{
-        $init: <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
-           return <span class="tuple">{ count: <span class="number">0</span> }</span>
-        }</span>,
-        <span class="string">"PonyJumped"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, event) <span class="tuple">{
-          state.count += <span class="number">1</span>
-        }</span>
+<pre><code><span class="hljs-keyword">from</span>Stream(<span class="hljs-string">"ponies"</span>)
+   .when({
+        <span class="hljs-variable">$init</span>: function() {
+           return { count: <span class="hljs-number">0</span> }
+        },
+        <span class="hljs-string">"PonyJumped"</span>: function(<span class="hljs-keyword">state</span>, event) {
+          <span class="hljs-keyword">state</span>.count += <span class="hljs-number">1</span>
+        }
   })</code></pre><p>If I hit save and navigate to</p>
 <p><em><a href="http://127.0.0.1:2113/projection/PonyJumpCount/state">http://127.0.0.1:2113/projection/PonyJumpCount/state</a></em></p>
-<pre><code><span class="rules">{
-  <span class="rule"><span class="attribute">count</span>:<span class="value"> <span class="number">1337</span>
-}</span></span></span></code></pre><p>I get some wonderful state.</p>
+<pre><code>{
+  <span class="hljs-attribute">count</span>: <span class="hljs-number">1337</span>
+}</code></pre><p>I get some wonderful state.</p>
 <p>Well, that was very basic, next time we&#39;ll look at how we could generate one of these projections for each pony we have in our world.</p>

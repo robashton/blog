@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
     <link rel="stylesheet" href="/assets/css/themes/default.css">
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
     <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
     <script type="text/javascript">
       var _gaq = _gaq || [];
@@ -57,9 +57,6 @@
                             <li>
                                 <a href="/blog.html">Blog</a>
                             </li>
-                            <li>
-                                <a href="/testimonials.html">Testimonials</a>
-                            </li>
                     </div>
                 </div>
             </div>
@@ -72,84 +69,84 @@
       <h6>Published on <span class="date">2013-4-9</span></h6>
       <div id="post"><p>As well as <a href="/entries/writing-an-odata-parser---starting-at-the-beginning.html">addressing resources</a> and <a href="/entries/parsing-odata---nested-resource-paths.html">resource paths</a>, in OData we apparently have the ability to invoke &quot;service operations&quot; as well.</p>
 <p>From what I see, these are addressed in a pretty much identical manner to actual resources like so</p>
-<pre><code>/<span class="constant">ProductsByColor</span><span class="number">?c</span>olor=<span class="string">'red'</span></code></pre><p>Or</p>
-<pre><code>/<span class="constant">ProductsByColor</span>(<span class="number">3</span>)/<span class="constant">Category</span>/<span class="constant">Name</span><span class="number">?c</span>olor=<span class="string">'red'</span></code></pre><p>The invocation on the server is the same in each of these cases, however in the second case we&#39;re addressing into the collection returned by the invocation.</p>
+<pre><code>/ProductsByColor?<span class="hljs-keyword">color</span>=<span class="hljs-string">'red'</span></code></pre><p>Or</p>
+<pre><code>/ProductsByColor(<span class="hljs-number">3</span>)/Category/<span class="hljs-keyword">Name</span>?color=<span class="hljs-string">'red'</span></code></pre><p>The invocation on the server is the same in each of these cases, however in the second case we&#39;re addressing into the collection returned by the invocation.</p>
 <p>Now, a simple solution to this will be to carry on using the existing parser, and supply these custom params as part of the overall model:</p>
 <p>So, with the following test:</p>
-<pre><code><span class="function"><span class="title">test</span><span class="params">(<span class="string">"/method(1)/child?foo=bar"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>(result) <span class="tuple">{
-  <span class="function_name">it</span>(<span class="string">"should have the resource specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
-     assert.<span class="function_name">equal</span>(result.resource, 'method')
-  }</span>)
-  <span class="function_name">it</span>(<span class="string">"The result should be addressed"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
-     assert.<span class="function_name">equal</span>(result.key, '<span class="number">1</span>')
-  }</span>)
+<pre><code>test(<span class="hljs-string">"/method(1)/child?foo=bar"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(result)</span></span> {
+  it(<span class="hljs-string">"should have the resource specified"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span></span> {
+     <span class="hljs-built_in">assert</span>.equal(result.resource, <span class="hljs-string">'method'</span>)
+  })
+  it(<span class="hljs-string">"The result should be addressed"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span></span> {
+     <span class="hljs-built_in">assert</span>.equal(result.key, <span class="hljs-string">'1'</span>)
+  })
 
-  <span class="function_name">it</span>(<span class="string">"should have the path specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
-     assert.<span class="function_name">equal</span>(result.next.resource, '<span class="variable">Child</span>')
-  }</span>)
+  it(<span class="hljs-string">"should have the path specified"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span></span> {
+     <span class="hljs-built_in">assert</span>.equal(result.<span class="hljs-built_in">next</span>.resource, <span class="hljs-string">'Child'</span>)
+  })
 
-  <span class="function_name">it</span>(<span class="string">"should have the argument specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
-     assert.<span class="function_name">equal</span>(result.args.foo, 'bar')
-  }</span>)
+  it(<span class="hljs-string">"should have the argument specified"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span></span> {
+     <span class="hljs-built_in">assert</span>.equal(result.args.foo, <span class="hljs-string">'bar'</span>)
+  })
 })</code></pre><p>I might then solve it by simply adding this to the end of my main expression</p>
-<pre><code><span class="constant">OData</span> = (
+<pre><code>OData = (
   (
-    <span class="constant">PathSegment</span><span class="symbol">:model</span> 
+    <span class="hljs-name">PathSegment</span><span class="hljs-symbol">:model</span> 
     (
-      <span class="string">'?'</span>
-      <span class="constant">OperationParam</span><span class="symbol">:param</span>
+      '?'
+      OperationParam<span class="hljs-symbol">:param</span>
     )?</code></pre><p>Where</p>
 <pre><code>OperationParam = 
-  Text:name <span class="string">'='</span> Text:<span class="keyword">value</span> -&gt; { name: name, <span class="keyword">value</span>: <span class="keyword">value</span> }
+  <span class="hljs-type">Text</span>:<span class="hljs-type">name</span> <span class="hljs-string">'='</span> <span class="hljs-type">Text</span>:<span class="hljs-keyword">value</span> -&gt; { <span class="hljs-type">name</span>: <span class="hljs-type">name</span>, <span class="hljs-keyword">value</span>: <span class="hljs-keyword">value</span> }
 ,</code></pre><p>(Text is a hack so I&#39;m not putting that here until I&#39;ve defined what it actually is - similar to my kerfuffle over resource names earlier)</p>
 <p>To build up the model we can do some inline code like so:</p>
 <pre><code>OData = (
   (
-    PathSegment:model 
+    <span class="hljs-name">PathSegment</span><span class="hljs-symbol">:model</span> 
     (
-      <span class="string">'?'</span>
-      OperationParam:param
+      '?'
+      OperationParam<span class="hljs-symbol">:param</span>
     )?
   ) -&gt; { 
-          <span class="keyword">if</span>(param) {
-           model<span class="variable">.args</span> = {}
-           model<span class="variable">.args</span>[param<span class="variable">.name</span>] = param<span class="variable">.value</span>;
+          if(<span class="hljs-name">param</span>) {
+           model.args = {}
+           model.args[param.name] = param.value<span class="hljs-comment">;</span>
           }
-         <span class="keyword">return</span> model
+         return model
        }
-  | <span class="string">'/'</span>
+  | '/'
 ) </code></pre><p>This will have the desired effect to an extent, of course it won&#39;t pass this test:</p>
-<pre><code><span class="function"><span class="title">test</span><span class="params">(<span class="string">"/method(1)/child?foo=bar&amp;foz=baz"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>(result) <span class="tuple">{
-  <span class="function_name">it</span>(<span class="string">"should have 'foo' specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
-     assert.<span class="function_name">equal</span>(result.args.foo, 'bar')
-  }</span>)
-  <span class="function_name">it</span>(<span class="string">"should have 'foz' specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
-     assert.<span class="function_name">equal</span>(result.args.foz, 'baz')
-  }</span>)
+<pre><code>test(<span class="hljs-string">"/method(1)/child?foo=bar&amp;foz=baz"</span>, function(<span class="hljs-name">result</span>) {
+  it(<span class="hljs-string">"should have 'foo' specified"</span>, function() {
+     assert.equal(<span class="hljs-name">result</span>.args.foo, 'bar')
+  })
+  it(<span class="hljs-string">"should have 'foz' specified"</span>, function() {
+     assert.equal(<span class="hljs-name">result</span>.args.foz, 'baz')
+  })
 })</code></pre><p>This is where the built-in &#39;listOf&#39; comes in useful:</p>
-<pre><code><span class="constant">OData</span> = (
+<pre><code>OData = (
   (
-    <span class="constant">PathSegment</span><span class="symbol">:model</span> 
+    <span class="hljs-name">PathSegment</span><span class="hljs-symbol">:model</span> 
     (
-      <span class="string">'?'</span>
-      listOf(`<span class="constant">OperationParam</span>, <span class="string">'&amp;'</span>)<span class="symbol">:params</span>
+      '?'
+      listOf(`OperationParam, '&amp;')<span class="hljs-symbol">:params</span>
     )?</code></pre><p>With an appropriate loop to build up the list</p>
 <pre><code>OData = (
   (
     PathSegment:model 
     (
-      <span class="string">'?'</span>
-      listOf(`OperationParam, <span class="string">'&amp;'</span>):<span class="keyword">params</span>
+      <span class="hljs-string">'?'</span>
+      listOf(`OperationParam, <span class="hljs-string">'&amp;'</span>):<span class="hljs-keyword">params</span>
     )?
   ) -&gt; { 
-          <span class="keyword">if</span>(<span class="keyword">params</span>) {
+          <span class="hljs-keyword">if</span>(<span class="hljs-keyword">params</span>) {
            model.args = {}
-           <span class="keyword">for</span>(<span class="keyword">var</span> i <span class="keyword">in</span> <span class="keyword">params</span>)
-             model.args[<span class="keyword">params</span>[i].name] = <span class="keyword">params</span>[i].<span class="keyword">value</span>;
+           <span class="hljs-keyword">for</span>(<span class="hljs-keyword">var</span> i <span class="hljs-keyword">in</span> <span class="hljs-keyword">params</span>)
+             model.args[<span class="hljs-keyword">params</span>[i].name] = <span class="hljs-keyword">params</span>[i].<span class="hljs-keyword">value</span>;
           }
-         <span class="keyword">return</span> model
+         <span class="hljs-keyword">return</span> model
        }
-  | <span class="string">'/'</span>
+  | <span class="hljs-string">'/'</span>
 ) </code></pre><p>Now, a few things getting wrong with this whole implementation so far...</p>
 <ul>
 <li>There is a semantic difference between a Service Operation and a Resource look-up, I&#39;m not expressing this in the model</li>

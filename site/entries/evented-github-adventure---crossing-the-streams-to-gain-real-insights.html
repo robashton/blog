@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
     <link rel="stylesheet" href="/assets/css/themes/default.css">
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
     <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
     <script type="text/javascript">
       var _gaq = _gaq || [];
@@ -57,9 +57,6 @@
                             <li>
                                 <a href="/blog.html">Blog</a>
                             </li>
-                            <li>
-                                <a href="/testimonials.html">Testimonials</a>
-                            </li>
                     </div>
                 </div>
             </div>
@@ -87,56 +84,56 @@
 <p>Like, given that we have this information about paranoid pushes, how do they stack up as a percentage to pushes overall when broken down by language?</p>
 <p><em>Problem</em>: This information is in completely different streams.</p>
 <p>Not to worry, this is where the Event Store&#39;s ability to re-partition and consume streams in a variety of ways comes to the rescue once more, want to consume the events from two different streams? Not a problem</p>
-<pre><code><span class="function"><span class="title">fromStreams</span><span class="params">([ <span class="string">"github"</span>, <span class="string">"paranoidpushes"</span> ])</span>
-   .<span class="title">when</span><span class="params">(<span class="tuple">{
+<pre><code><span class="hljs-selector-tag">fromStreams</span>([ <span class="hljs-string">"github"</span>, <span class="hljs-string">"paranoidpushes"</span> ])
+   <span class="hljs-selector-class">.when</span>({
 
-   }</span>)</span></code></pre><p>First off, let&#39;s keep it simple and just find out as a percentage what the paranoid pushes are out of the overal Github stream.</p>
-<pre><code><span class="function"><span class="title">fromStreams</span><span class="params">([ <span class="string">"github"</span>, <span class="string">"paranoidpushes"</span> ])</span>
-   .<span class="title">when</span><span class="params">(<span class="tuple">{
-     <span class="string">"$init"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
-       return <span class="tuple">{ paranoid: <span class="number">0</span>, total: <span class="number">0</span> }</span>
-     }</span>,
-     <span class="string">"ParanoidPush"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
-       state.paranoid++
-     }</span>,
-     <span class="string">"PushEvent"</span>: <span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
-       state.total++
-     }</span>
+   })</code></pre><p>First off, let&#39;s keep it simple and just find out as a percentage what the paranoid pushes are out of the overal Github stream.</p>
+<pre><code><span class="hljs-keyword">from</span>Streams([ <span class="hljs-string">"github"</span>, <span class="hljs-string">"paranoidpushes"</span> ])
+   .when({
+     <span class="hljs-string">"$init"</span>: function() {
+       return { paranoid: <span class="hljs-number">0</span>, total: <span class="hljs-number">0</span> }
+     },
+     <span class="hljs-string">"ParanoidPush"</span>: function(<span class="hljs-keyword">state</span>, ev) {
+       <span class="hljs-keyword">state</span>.paranoid++
+     },
+     <span class="hljs-string">"PushEvent"</span>: function(<span class="hljs-keyword">state</span>, ev) {
+       <span class="hljs-keyword">state</span>.total++
+     }
    })</code></pre><p>So yeah, er - that was stupidly easy, I didn&#39;t even have to think about that one, we just get all the events from those streams as a unified collection and were able to generate stats from these.</p>
 <p>What does the result look like?</p>
-<pre><code>{"<span class="attribute">paranoid</span>":<span class="value"><span class="number">181423</span></span>,"<span class="attribute">total</span>": <span class="value"><span class="number">2272796</span>}</span></code></pre><p>So, in fact around 8% of all pushes to Github happen within 2 minutes of the previous one - that&#39;s actually quite high - and my guess is that these are either people rectifying mistakes in previous commits (actually, there&#39;s an idea for another projection) or people who are new to git.</p>
+<pre><code>{<span class="hljs-attr">"paranoid"</span>:<span class="hljs-number">181423</span>,<span class="hljs-attr">"total"</span>: <span class="hljs-number">2272796</span>}</code></pre><p>So, in fact around 8% of all pushes to Github happen within 2 minutes of the previous one - that&#39;s actually quite high - and my guess is that these are either people rectifying mistakes in previous commits (actually, there&#39;s an idea for another projection) or people who are new to git.</p>
 <p>Let&#39;s generate a result object by language and see what we get</p>
-<pre><code><span class="function"><span class="keyword">function</span> <span class="title">getPerLanguageState</span><span class="params">(state, ev)</span> {</span>
-  <span class="keyword">var</span> language = getLanguageFromEvent(ev)
-  <span class="keyword">var</span> langState = state[language]
-  <span class="keyword">if</span>(!langState) {
-    langState = { paranoid: <span class="number">0</span>, total: <span class="number">0</span> }
-    state[language] = langState
+<pre><code>function getPerLanguageState(<span class="hljs-keyword">state</span>, ev) {
+  var language = getLanguageFromEvent(ev)
+  var langState = <span class="hljs-keyword">state</span>[language]
+  if(!langState) {
+    langState = { paranoid: <span class="hljs-number">0</span>, total: <span class="hljs-number">0</span> }
+    <span class="hljs-keyword">state</span>[language] = langState
   }
-  <span class="keyword">return</span> langState
+  return langState
 }
 
-<span class="function"><span class="keyword">function</span> <span class="title">getLanguageFromEvent</span><span class="params">(ev)</span> {</span>
-  <span class="keyword">if</span>(ev.body.repo)
-    <span class="keyword">return</span> ev.body.repo.language
-  <span class="keyword">if</span>(ev.body.first)
-    <span class="keyword">return</span> ev.body.first.body.repo.language
+function getLanguageFromEvent(ev) {
+  if(ev.body.repo)
+    return ev.body.repo.language
+  if(ev.body.first)
+    return ev.body.first.body.repo.language
 }
 
-fromStreams([ <span class="string">"github"</span>, <span class="string">"paranoidpushes"</span> ])
+<span class="hljs-keyword">from</span>Streams([ <span class="hljs-string">"github"</span>, <span class="hljs-string">"paranoidpushes"</span> ])
   .when({
-   <span class="string">"$init"</span>: <span class="keyword">function</span>() {
-     <span class="keyword">return</span> {}
+   <span class="hljs-string">"$init"</span>: function() {
+     return {}
    },
-   <span class="string">"ParanoidPush"</span>: <span class="keyword">function</span>(state, ev) {
-     <span class="keyword">var</span> langState = getPerLanguageState(state, ev)
+   <span class="hljs-string">"ParanoidPush"</span>: function(<span class="hljs-keyword">state</span>, ev) {
+     var langState = getPerLanguageState(<span class="hljs-keyword">state</span>, ev)
      langState.paranoid++
-     <span class="keyword">return</span> state
+     return <span class="hljs-keyword">state</span>
    },
-   <span class="string">"PushEvent"</span>: <span class="keyword">function</span>(state, ev) {
-     <span class="keyword">var</span> langState = getPerLanguageState(state, ev)
+   <span class="hljs-string">"PushEvent"</span>: function(<span class="hljs-keyword">state</span>, ev) {
+     var langState = getPerLanguageState(<span class="hljs-keyword">state</span>, ev)
      langState.total++
-     <span class="keyword">return</span> state
+     return <span class="hljs-keyword">state</span>
    }
   })</code></pre><p>There is a lot to take in here, but we can see</p>
 <ul>

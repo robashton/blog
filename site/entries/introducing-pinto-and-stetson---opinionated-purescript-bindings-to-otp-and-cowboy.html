@@ -1,0 +1,134 @@
+<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
+<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
+<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
+<!--[if !ie]><!-->
+<html lang="en"> <!--<![endif]-->
+<head>
+    <title id="title">Introducing Pinto and Stetson - Opinionated Purescript bindings to OTP and Cowboy</title>
+    <meta charset="utf-8">
+    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <meta name="author" content="">
+    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
+    <link rel="stylesheet" href="/assets/css/style_responsive.css">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
+    <link rel="stylesheet" href="/assets/css/themes/default.css">
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
+    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="header">
+        <div class="container">
+            <div class="logo">
+             <h2><a href="/index.html">Rob Ashton</a></h2>
+            </div>
+            <div class="navbar">
+                <div class="navbar-inner">
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </a>
+                    <div class="nav-collapse collapse">
+                        <ul class="nav top-2">
+                          <li>
+                                <a href="/">Home</a>
+                            </li>
+                            <li>
+                                <a href="/blog.html">Blog</a>
+                            </li>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <body>
+    <div id="blog-entry">
+      <h1 id="post-title">Introducing Pinto and Stetson - Opinionated Purescript bindings to OTP and Cowboy</h1>
+      <h6>Published on <span class="date">2019-8-13</span></h6>
+      <div id="post"><p>If you&#39;re reading this, you&#39;ve either been given the link to the posts ahead of time cos you&#39;ve asked to see what is going on, or I&#39;ve hit the publish button in which case hooray. Either way, this is a little series of posts going through some of the Purescript/Purerl code that we&#39;ve quietly open sourced on Github under the Apache 2.0 license. Hopefully betwen these posts, the published markdown docs and the sample application there will be enough to get started with.</p>
+<p>Over the last year or so, we&#39;ve been gradually building out our capacity to create applications end-to-end in Purescript, compiled to JS on the front-end and compiled to Erlang on the back, building on top of both OTP and our existing libraries from nearly a decade of company history doing business on top of the Erlang stack.</p>
+<p>The repositories we&#39;re looking at are:</p>
+<ul>
+<li><a href="https://github.com/purerl/">Purerl</a> itself</li>
+<li>The <a href="https://github.com/purerl/package-sets">purerl-package-sets</a></li>
+<li><a href="https://github.com/id3as/purescript-erl-stetson">Stetson</a> (Opinionated Cowboy bindings)</li>
+<li><a href="git@github.com:id3as/purescript-erl-pinto.git">Pinto</a> (Opinionated OTP bindings)</li>
+<li><a href="https://github.com/id3as/demo-ps">demo-ps</a> (end-to-end sample code)</li>
+</ul>
+<p>The best place to start if you want to dive right in, is probably the demo-ps project as it demonstrates the usage of most of the above, and that is indeed where we&#39;ll be starting in this series.</p>
+<h1 id="purerl">Purerl</h1>
+<p>The Purerl organisation contains the core sets of bindings to much of Erlang&#39;s base libraries, as well as the fork of the Purescript compiler that can generate Erlang as a backend. </p>
+<h1 id="purerl-package-sets">Purerl-package-sets</h1>
+<p>Essentially a pile of Dhall that generates a package.json containing a list of versions of the various Purerl libraries that work together, you&#39;ll not need to touch this directly unless you end up using Purerl internally in an organisation and you want to fork it and add your own internal/private Purerl dependencies.</p>
+<h1 id="stetson">Stetson</h1>
+<p><a href="https://github.com/ninenines/cowboy">Cowboy</a> is the de-facto webserver in the Erlang world, and <a href="https://github.com/purerl/purescript-erl-cowboy">direct bindings</a> exist for the project already, however when it came time to start building applications on top of this, it was clear that there was little gain to be had by directly using them over simply writing Erlang in the first place. Stetson was my attempt to mirror the experience I&#39;ve had in other functional languages using libraries such as <a href="https://github.com/weavejester/compojure">Compojure</a> and <a href="https://github.com/scotty-web/scotty">Scotty</a>. It isn&#39;t by any means complete, and merely serves as a statement of intent around the kind of interaction I&#39;d personally like to have around routing/etc in a Purerl world. I fully hope/expect that somebody will write a native http server in time rather than simply wrapping Cowboy as I have done here.</p>
+<h1 id="pinto">Pinto</h1>
+<p>There have been a <a href="https://github.com/purerl/purerl_otp_sandbox">few examples</a> written demonstrating how to interact with OTP from Purerl, but again at the point of building a real application, direct bindings don&#39;t offer a good user experience once you start building out functionality and repeating yourself a whole ton. I cheated a lot when putting together Pinto and skipped the direct bindings step, going straight to the &quot;desired usage&quot; step and doing a pile of cheats around types and such. It seeks to largely mirror the existing OTP interactions, but in a more functional manner. Much like with Stetson, I fully expect/hope that in time somebody (maybe even us) will want a more idiomatic Purescript experience and choose to build something even more opinionated outside the familiar comfort of the OTP vocabulary. For now, we have Pinto.. :)</p>
+<h1 id="demo-ps">Demo-ps</h1>
+<p>This is a completely pointless web app that uses <a href="https://github.com/id3as/purescript-erl-stetson">purescript-erl-stetson</a>, <a href="https://github.com/id3as/purescript-erl-pinto">purescript-erl-pinto</a>, <a href="https://github.com/purerl/purescript-simple-json">purescript-simple-json</a> and <a href="https://github.com/slamdata/purescript-halogen">purescript-halogen</a> to store data in Redis using some FFI and display it in a single page application, sharing the view models between the server and client components. It seeks to demonstrate rough usages of all of these without cluttering up the interactions with &quot;real code&quot; (read: business logic).</p>
+<p>Next post, we&#39;ll look at the structure of the demo-ps project, as understanding this is essential if you wish to build your own.</p>
+</div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="mailto:robashton@codeofrob.com">Respond</a>
+      </div>
+
+        <!--=== Copyright ===-->
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span6">
+                <p class="terms">2018 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
+    });
+        </script>
+        <!--[if lt IE 9]>
+    <script src="assets/js/respond.js"></script>
+<![endif]-->
+        </body>
+        </html>
+

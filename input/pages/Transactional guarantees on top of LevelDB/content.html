@@ -2,21 +2,21 @@
 <p>This isn&#39;t actually all we need in RavenDB, as we need to be able to support multiple reads and writes - potentially over a period of time.</p>
 <p>We can&#39;t just be reading from a database that might be changing under our feet all of the time, and it turns out that LevelDB gives us the ability to read from a particular version of the database.</p>
 <p>When beginning a long running operation that needs a consistent read-state, we can create a snapshot and use this in all of our reads to ensure we have a consistent view of the database.</p>
-<pre><code>// Create a snapshot at the beginning of a sequence of operations
-<span class="label">leveldb:</span>:Snapshot* snapshot = db-&gt;GetSnapshot()<span class="comment">;</span>
+<pre><code>// <span class="hljs-keyword">Create</span> a <span class="hljs-keyword">snapshot</span> at the beginning <span class="hljs-keyword">of</span> a <span class="hljs-keyword">sequence</span> <span class="hljs-keyword">of</span> operations
+leveldb::<span class="hljs-keyword">Snapshot</span>* <span class="hljs-keyword">snapshot</span> = db-&gt;GetSnapshot();
 
 
-// For each read operation we can use this snapshot
-<span class="label">leveldb:</span>:ReadOptions options<span class="comment">;</span>
-options<span class="preprocessor">.snapshot</span> = snapshot<span class="comment">;</span>
+// <span class="hljs-keyword">For</span> <span class="hljs-keyword">each</span> <span class="hljs-keyword">read</span> operation we can use this <span class="hljs-keyword">snapshot</span>
+leveldb::ReadOptions <span class="hljs-keyword">options</span>;
+<span class="hljs-keyword">options</span>.<span class="hljs-keyword">snapshot</span> = <span class="hljs-keyword">snapshot</span>;
 
-db-&gt;Get(options, <span class="string">"key"</span>, &amp;document)<span class="comment">;</span></code></pre><p>That solves that problem then, although it leaves another question in the air - which is how LevelDB handles multiple writers modifying the same key.</p>
+db-&gt;<span class="hljs-keyword">Get</span>(<span class="hljs-keyword">options</span>, "key", &amp;document);</code></pre><p>That solves that problem then, although it leaves another question in the air - which is how LevelDB handles multiple writers modifying the same key.</p>
 <p>Consider a thread coming along and beginning an operation</p>
-<pre><code><span class="setting">tx1 = <span class="value">store-&gt;BeginOperation();</span></span></code></pre><p>And another thread beginning an operation</p>
-<pre><code><span class="setting">tx2 = <span class="value">store-&gt;BeginOperation();</span></span></code></pre><p>And then</p>
-<pre><code><span class="comment">// Thread one deletes a key</span>
-store-&gt;Delete(<span class="string">"key1"</span>, tx1);
+<pre><code><span class="hljs-attr">tx1</span> = store-&gt;BeginOperation()<span class="hljs-comment">;</span></code></pre><p>And another thread beginning an operation</p>
+<pre><code><span class="hljs-attr">tx2</span> = store-&gt;BeginOperation()<span class="hljs-comment">;</span></code></pre><p>And then</p>
+<pre><code><span class="hljs-comment">// Thread one deletes a key</span>
+store-&gt;<span class="hljs-constructor">Delete(<span class="hljs-string">"key1"</span>, <span class="hljs-params">tx1</span>)</span>;
 
-<span class="comment">// Thread two Writes to that key</span>
-store-&gt;Put(<span class="string">"key1"</span>, tx2);</code></pre><p>By default (at least as I understand) LevelDB will happily accept these operations as it doesn&#39;t have any concurrency control.</p>
+<span class="hljs-comment">// Thread two Writes to that key</span>
+store-&gt;<span class="hljs-constructor">Put(<span class="hljs-string">"key1"</span>, <span class="hljs-params">tx2</span>)</span>;</code></pre><p>By default (at least as I understand) LevelDB will happily accept these operations as it doesn&#39;t have any concurrency control.</p>
 <p>Happily, this is easy enough to work through as we&#39;ll see in the next entry.</p>

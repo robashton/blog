@@ -11,134 +11,134 @@
 <p>I mentioned in the <a href="/entries/learn-functional-programming-with-me---mutating-lots-of-state.html">last entry</a> that I was uncomfortable passing vectors around the place, because it means all of the functions that take in these vectors dependent on the <em>order</em> of information in these vectors and it&#39;s not at all clear what we&#39;re passing around.</p>
 <p>I&#39;ve been pointed in the direction of Maps and Records, and for now I&#39;ll start with Maps as they seem the most lightweight way of improving this situation.</p>
 <p>Let&#39;s look at where we create our initial state first, as we&#39;ll refactor our way up from there.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> initState []
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> initState []
  [
-   <span class="number">1</span>
-   <span class="list">(<span class="title">for</span><span class="body"> [x <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">16</span> <span class="number">2</span>)</span></span>
-         y <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">8</span> <span class="number">2</span>)</span></span>]
-     [<span class="list">(<span class="title">*</span><span class="body"> x <span class="number">30</span>)</span></span> <span class="list">(<span class="title">*</span><span class="body"> y <span class="number">30</span>)</span></span> <span class="number">20</span> <span class="number">20</span>]
-   )</span></span>
+   <span class="hljs-number">1</span>
+   (<span class="hljs-name"><span class="hljs-builtin-name">for</span></span> [x (<span class="hljs-name"><span class="hljs-builtin-name">range</span></span> <span class="hljs-number">0</span> <span class="hljs-number">16</span> <span class="hljs-number">2</span>)
+         y (<span class="hljs-name"><span class="hljs-builtin-name">range</span></span> <span class="hljs-number">0</span> <span class="hljs-number">8</span> <span class="hljs-number">2</span>)]
+     [(<span class="hljs-name"><span class="hljs-builtin-name">*</span></span> x <span class="hljs-number">30</span>) (<span class="hljs-name"><span class="hljs-builtin-name">*</span></span> y <span class="hljs-number">30</span>) <span class="hljs-number">20</span> <span class="hljs-number">20</span>]
+   )
  ]
-)</span></span></code></pre><p>What I&#39;m doing here is creating a vector that looks like this</p>
-<pre><code>[ <span class="number">1</span> [<span class="number">0</span> <span class="number">0</span>] ]</code></pre><p>What is 1? What is the second vector? What is this nonsense?</p>
+)</code></pre><p>What I&#39;m doing here is creating a vector that looks like this</p>
+<pre><code>[ <span class="hljs-number">1</span> [<span class="hljs-number">0</span> <span class="hljs-number">0</span>] ]</code></pre><p>What is 1? What is the second vector? What is this nonsense?</p>
 <p>How about returning a map instead of a vector from initState?</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> initState []
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> initState []
  { 
-   <span class="keyword">:direction</span> <span class="number">1</span>
-   <span class="keyword">:enemies</span> <span class="list">(<span class="title">for</span><span class="body"> [x <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">16</span> <span class="number">2</span>)</span></span>
-                  y <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">8</span> <span class="number">2</span>)</span></span>]
-               [<span class="list">(<span class="title">*</span><span class="body"> x <span class="number">30</span>)</span></span> <span class="list">(<span class="title">*</span><span class="body"> y <span class="number">30</span>)</span></span> <span class="number">20</span> <span class="number">20</span>]
-   )</span></span>
+   <span class="hljs-symbol">:direction</span> <span class="hljs-number">1</span>
+   <span class="hljs-symbol">:enemies</span> (<span class="hljs-name"><span class="hljs-builtin-name">for</span></span> [x (<span class="hljs-name"><span class="hljs-builtin-name">range</span></span> <span class="hljs-number">0</span> <span class="hljs-number">16</span> <span class="hljs-number">2</span>)
+                  y (<span class="hljs-name"><span class="hljs-builtin-name">range</span></span> <span class="hljs-number">0</span> <span class="hljs-number">8</span> <span class="hljs-number">2</span>)]
+               [(<span class="hljs-name"><span class="hljs-builtin-name">*</span></span> x <span class="hljs-number">30</span>) (<span class="hljs-name"><span class="hljs-builtin-name">*</span></span> y <span class="hljs-number">30</span>) <span class="hljs-number">20</span> <span class="hljs-number">20</span>]
+   )
  } 
-)</span></span></code></pre><p>So the difference is we&#39;re now using curly braces, and specifying key-value pairs for our values. (Bear in mind that this returned map is for all intents and purposes going to be immutable, so we haven&#39;t got to worry too much about exposing this state (I think)</p>
+)</code></pre><p>So the difference is we&#39;re now using curly braces, and specifying key-value pairs for our values. (Bear in mind that this returned map is for all intents and purposes going to be immutable, so we haven&#39;t got to worry too much about exposing this state (I think)</p>
 <p>Well actually, the rest of this is bit opaque as well, why not split out the enemy constructor into its own function?</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> initEnemy [x y w h]
- [<span class="list">(<span class="title">*</span><span class="body"> x <span class="number">30</span>)</span></span> <span class="list">(<span class="title">*</span><span class="body"> y <span class="number">30</span>)</span></span> <span class="number">20</span> <span class="number">20</span>]
-)</span></span>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> initEnemy [x y w h]
+ [(<span class="hljs-name"><span class="hljs-builtin-name">*</span></span> x <span class="hljs-number">30</span>) (<span class="hljs-name"><span class="hljs-builtin-name">*</span></span> y <span class="hljs-number">30</span>) <span class="hljs-number">20</span> <span class="hljs-number">20</span>]
+)
 
-<span class="list">(<span class="title">defn</span><span class="body"> initState []
+(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> initState []
  { 
-   <span class="keyword">:direction</span> <span class="number">1</span>
-   <span class="keyword">:enemies</span> <span class="list">(<span class="title">for</span><span class="body"> [x <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">16</span> <span class="number">2</span>)</span></span>
-                  y <span class="list">(<span class="title">range</span><span class="body"> <span class="number">0</span> <span class="number">8</span> <span class="number">2</span>)</span></span>]
-              <span class="list">(<span class="title">initEnemy</span><span class="body"> x y <span class="number">20</span> <span class="number">20</span>)</span></span>
-   )</span></span>
+   <span class="hljs-symbol">:direction</span> <span class="hljs-number">1</span>
+   <span class="hljs-symbol">:enemies</span> (<span class="hljs-name"><span class="hljs-builtin-name">for</span></span> [x (<span class="hljs-name"><span class="hljs-builtin-name">range</span></span> <span class="hljs-number">0</span> <span class="hljs-number">16</span> <span class="hljs-number">2</span>)
+                  y (<span class="hljs-name"><span class="hljs-builtin-name">range</span></span> <span class="hljs-number">0</span> <span class="hljs-number">8</span> <span class="hljs-number">2</span>)]
+              (<span class="hljs-name">initEnemy</span> x y <span class="hljs-number">20</span> <span class="hljs-number">20</span>)
+   )
  } 
-)</span></span></code></pre><p>And if we&#39;ve gone that far, why not go further and make that a map as well?</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> initEnemy [x y w h]
+)</code></pre><p>And if we&#39;ve gone that far, why not go further and make that a map as well?</p>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> initEnemy [x y w h]
  {
-  <span class="keyword">:x</span> <span class="list">(<span class="title">*</span><span class="body"> x <span class="number">30</span>)</span></span>
-  <span class="keyword">:y</span> <span class="list">(<span class="title">*</span><span class="body"> y <span class="number">30</span>)</span></span>
-  <span class="keyword">:w</span> w
-  <span class="keyword">:h</span> h
+  <span class="hljs-symbol">:x</span> (<span class="hljs-name"><span class="hljs-builtin-name">*</span></span> x <span class="hljs-number">30</span>)
+  <span class="hljs-symbol">:y</span> (<span class="hljs-name"><span class="hljs-builtin-name">*</span></span> y <span class="hljs-number">30</span>)
+  <span class="hljs-symbol">:w</span> w
+  <span class="hljs-symbol">:h</span> h
  }
-)</span></span></code></pre><p>Now my data structure looks like this</p>
+)</code></pre><p>Now my data structure looks like this</p>
 <pre><code>{
-  <span class="method">direction:</span> <span class="number">1</span>
-  <span class="method">enemies:</span> [
-    { <span class="method">x:</span> <span class="number">0</span>, <span class="method">y:</span> <span class="number">0</span>, <span class="method">w:</span> <span class="number">0</span>, <span class="method">h:</span> <span class="number">0</span> },
-    { <span class="method">x:</span> <span class="number">0</span>, <span class="method">y:</span> <span class="number">0</span>, <span class="method">w:</span> <span class="number">0</span>, <span class="method">h:</span> <span class="number">0</span> },
-    { <span class="method">x:</span> <span class="number">0</span>, <span class="method">y:</span> <span class="number">0</span>, <span class="method">w:</span> <span class="number">0</span>, <span class="method">h:</span> <span class="number">0</span> },
-    { <span class="method">x:</span> <span class="number">0</span>, <span class="method">y:</span> <span class="number">0</span>, <span class="method">w:</span> <span class="number">0</span>, <span class="method">h:</span> <span class="number">0</span> },
-    // etc
+  <span class="hljs-attribute">direction</span>: <span class="hljs-number">1</span>
+  <span class="hljs-attribute">enemies</span>: [
+    { <span class="hljs-attribute">x</span>: <span class="hljs-number">0</span>, <span class="hljs-attribute">y</span>: <span class="hljs-number">0</span>, <span class="hljs-attribute">w</span>: <span class="hljs-number">0</span>, <span class="hljs-attribute">h</span>: <span class="hljs-number">0</span> },
+    { <span class="hljs-attribute">x</span>: <span class="hljs-number">0</span>, <span class="hljs-attribute">y</span>: <span class="hljs-number">0</span>, <span class="hljs-attribute">w</span>: <span class="hljs-number">0</span>, <span class="hljs-attribute">h</span>: <span class="hljs-number">0</span> },
+    { <span class="hljs-attribute">x</span>: <span class="hljs-number">0</span>, <span class="hljs-attribute">y</span>: <span class="hljs-number">0</span>, <span class="hljs-attribute">w</span>: <span class="hljs-number">0</span>, <span class="hljs-attribute">h</span>: <span class="hljs-number">0</span> },
+    { <span class="hljs-attribute">x</span>: <span class="hljs-number">0</span>, <span class="hljs-attribute">y</span>: <span class="hljs-number">0</span>, <span class="hljs-attribute">w</span>: <span class="hljs-number">0</span>, <span class="hljs-attribute">h</span>: <span class="hljs-number">0</span> },
+    <span class="hljs-comment">// etc</span>
 
   ]
 }</code></pre><p>Bloomin&#39; marvellous. Now, this all still builds - although if I run it it&#39;ll fall over in disaster. This is because of mis-matched function calls, as I&#39;m passing these maps around and the functions are expecting vectors.</p>
 <p>Type safety was mentioned in relation to Maps and Records and perhaps Records give me some of that, I&#39;ll look at those later if it becomes a burden.</p>
 <p>I need to update functions where I&#39;m using these data structures (which is everywhere), so let&#39;s have a look how I&#39;ll do that:</p>
-<pre><code>(defn tick [ctx state]
-  (let <span class="string">[[dir enemies] state]</code></pre><p>Well, here is my first change, I&#39;m passing in &#39;state&#39; to &#39;tick&#39;, but the de-structuring assignment assumes that state is a vector and un-packs it accordingly, this is a valid operation against a map but is junk to my code so nothing happens.</p>
+<pre><code>(defn tick [ctx <span class="hljs-keyword">state</span>]
+  (let [[dir enemies] <span class="hljs-keyword">state</span>]</code></pre><p>Well, here is my first change, I&#39;m passing in &#39;state&#39; to &#39;tick&#39;, but the de-structuring assignment assumes that state is a vector and un-packs it accordingly, this is a valid operation against a map but is junk to my code so nothing happens.</p>
 <p>Instead what I want to do is unpack the state I need from the map so I can use it.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> tick [ctx state]
-  <span class="list">(<span class="title">let</span><span class="body"> [enemies <span class="list">(<span class="body"><span class="keyword">:enemies</span> state)</span></span>]</code></pre><p>Now, this is going to say, let &#39;enemies&#39; equal the result of the value found at the key :enemies, so this is how we access maps.</p>
+<pre><code>(defn tick [ctx <span class="hljs-keyword">state</span>]
+  (let [enemies (:enemies <span class="hljs-keyword">state</span>)]</code></pre><p>Now, this is going to say, let &#39;enemies&#39; equal the result of the value found at the key :enemies, so this is how we access maps.</p>
 <p>&#39;<em>enemies</em>&#39; is now a sequence of maps, and in order to render I&#39;ll have to un-pack that too if we&#39;re taking a direct approach to getting this code working again.</p>
-<pre><code><span class="list">(<span class="title">doseq</span><span class="body"> [enemy enemies] 
-  <span class="list">(<span class="title">let</span><span class="body"> [{<span class="keyword">:keys</span> [x y w h]} enemy]
-    <span class="list">(<span class="title">drawSquare</span><span class="body"> ctx x y w h)</span></span>
-  )</span></span>
-)</span></span></code></pre><p>In this case, I&#39;m unpacking several keys from enemy at the same time using the special form &quot;:keys&quot;, that&#39;s kinda cool.</p>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">doseq</span></span> [enemy enemies] 
+  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [{<span class="hljs-symbol">:keys</span> [x y w h]} enemy]
+    (<span class="hljs-name">drawSquare</span> ctx x y w h)
+  )
+)</code></pre><p>In this case, I&#39;m unpacking several keys from enemy at the same time using the special form &quot;:keys&quot;, that&#39;s kinda cool.</p>
 <p>Our call to doLogic remains unchanged, as we merely pass in the state and expect the new state back in the same form.</p>
-<pre><code><span class="list">(<span class="title">js/setTimeout</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> []
-  <span class="list">(<span class="title">tick</span><span class="body"> ctx <span class="list">(<span class="title">doLogic</span><span class="body"> state)</span></span>)</span></span>
-)</span></span> <span class="number">33</span>  )</span></span></code></pre><p>However, the doLogic function expects a vector and does things with more vectors, so it&#39;ll need changing as well.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> doLogic [[direction enemies]]
+<pre><code>(<span class="hljs-name">js/setTimeout</span> (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> []
+  (<span class="hljs-name">tick</span> ctx (<span class="hljs-name">doLogic</span> state))
+) <span class="hljs-number">33</span>  )</code></pre><p>However, the doLogic function expects a vector and does things with more vectors, so it&#39;ll need changing as well.</p>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> doLogic [[direction enemies]]
   [
-    <span class="list">(<span class="title">getNextDirection</span><span class="body"> direction enemies)</span></span>
-    <span class="list">(<span class="title">for</span><span class="body"> [[x y w h] enemies]
-      <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">=</span><span class="body"> direction <span class="number">1</span>)</span></span>
-        [<span class="list">(<span class="title">inc</span><span class="body"> x)</span></span> y w h]
-        [<span class="list">(<span class="title">dec</span><span class="body"> x)</span></span> y w h]
-      )</span></span>
-    )</span></span>
+    (<span class="hljs-name">getNextDirection</span> direction enemies)
+    (<span class="hljs-name"><span class="hljs-builtin-name">for</span></span> [[x y w h] enemies]
+      (<span class="hljs-name"><span class="hljs-builtin-name">if</span></span>(<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> direction <span class="hljs-number">1</span>)
+        [(<span class="hljs-name"><span class="hljs-builtin-name">inc</span></span> x) y w h]
+        [(<span class="hljs-name"><span class="hljs-builtin-name">dec</span></span> x) y w h]
+      )
+    )
   ]
-)</span></span></code></pre><p>I&#39;ll not bother un-packing here, at the moment everything needs all of the state, but I will split out the enemy logic into its own function for easier comprehension.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> doLogic [state]
+)</code></pre><p>I&#39;ll not bother un-packing here, at the moment everything needs all of the state, but I will split out the enemy logic into its own function for easier comprehension.</p>
+<pre><code>(defn doLogic [<span class="hljs-keyword">state</span>]
   {
-    <span class="keyword">:direction</span> <span class="list">(<span class="title">directionLogic</span><span class="body"> state)</span></span>
-    <span class="keyword">:enemies</span> <span class="list">(<span class="title">enemiesLogic</span><span class="body"> state)</span></span>
+    :direction (directionLogic <span class="hljs-keyword">state</span>)
+    :enemies (enemiesLogic <span class="hljs-keyword">state</span>)
   }
-)</span></span></code></pre><p><em>Now this is the old directionLogic</em>, we&#39;ll need to pull our enemies and direction out of our map.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> directionLogic [direction enemies]
-  <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> direction <span class="number">1</span>)</span></span>
-    <span class="list">(<span class="title">let</span><span class="body"> [right <span class="list">(<span class="title">apply</span><span class="body"> max <span class="list">(<span class="title">map</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> [[x y w h] e] x)</span></span> enemies)</span></span>)</span></span>]
-      <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">&gt;</span><span class="body"> right <span class="number">600</span>)</span></span> <span class="number">-1</span> <span class="number">1</span>)</span></span>
-    )</span></span>
-    <span class="list">(<span class="title">let</span><span class="body"> [left <span class="list">(<span class="title">apply</span><span class="body"> min <span class="list">(<span class="title">map</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> [[x y w h] e] x)</span></span> enemies)</span></span>)</span></span>]
-      <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">&lt;</span><span class="body"> left <span class="number">0</span>)</span></span> <span class="number">1</span> <span class="number">-1</span>)</span></span>
-    )</span></span>
-  )</span></span>
-)</span></span></code></pre><p>So step by step</p>
+)</code></pre><p><em>Now this is the old directionLogic</em>, we&#39;ll need to pull our enemies and direction out of our map.</p>
+<pre><code>(<span class="hljs-name">defn</span> directionLogic [<span class="hljs-name">direction</span> enemies]
+  (<span class="hljs-name"><span class="hljs-builtin-name">if</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> direction <span class="hljs-number">1</span>)
+    (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [<span class="hljs-name">right</span> (<span class="hljs-name"><span class="hljs-builtin-name">apply</span></span> max (<span class="hljs-name"><span class="hljs-builtin-name">map</span></span> (<span class="hljs-name">fn</span> [[<span class="hljs-name">x</span> y w h] e] x) enemies))]
+      (<span class="hljs-name"><span class="hljs-builtin-name">if</span></span>(<span class="hljs-name"><span class="hljs-builtin-name">&gt;</span></span> right <span class="hljs-number">600</span>) <span class="hljs-number">-1</span> <span class="hljs-number">1</span>)
+    )
+    (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [<span class="hljs-name">left</span> (<span class="hljs-name"><span class="hljs-builtin-name">apply</span></span> min (<span class="hljs-name"><span class="hljs-builtin-name">map</span></span> (<span class="hljs-name">fn</span> [[<span class="hljs-name">x</span> y w h] e] x) enemies))]
+      (<span class="hljs-name"><span class="hljs-builtin-name">if</span></span>(<span class="hljs-name"><span class="hljs-builtin-name">&lt;</span></span> left <span class="hljs-number">0</span>) <span class="hljs-number">1</span> <span class="hljs-number">-1</span>)
+    )
+  )
+)</code></pre><p>So step by step</p>
 <p><em>Our new signature and un-packing statement</em></p>
-<pre><code><span class="list">(<span class="title"><span class="built_in">defn</span></span> directionLogic <span class="collection">[state]</span>
-  <span class="list">(<span class="title"><span class="built_in">let</span></span> <span class="collection">[<span class="collection">{<span class="attribute">:keys</span> <span class="collection">[direction enemies]</span>}</span> state]</span></code></pre><p><em>We can pass in :x as the function to invoke (in this case the &#39;map&#39; operation will take :x out of each enemy)</em></p>
-<pre><code><span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> direction <span class="number">1</span>)</span></span>
-  <span class="list">(<span class="title">let</span><span class="body"> [right <span class="list">(<span class="title">apply</span><span class="body"> max <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:x</span> enemies)</span></span>)</span></span>]
-    <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">&gt;</span><span class="body"> right <span class="number">600</span>)</span></span> <span class="number">-1</span> <span class="number">1</span>)</span></span>
-  )</span></span></code></pre><p><em>And the same for the other direction</em></p>
-<pre><code>  <span class="list">(<span class="title">let</span><span class="body"> [left <span class="list">(<span class="title">apply</span><span class="body"> min <span class="list">(<span class="title">map</span><span class="body"> <span class="keyword">:x</span> enemies)</span></span>)</span></span>]
-    <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">&lt;</span><span class="body"> left <span class="number">0</span>)</span></span> <span class="number">1</span> <span class="number">-1</span>)</span></span>
-  )</span></span></code></pre><p>I&#39;ll look at tidying this up in a moment, but first I want to sort out my enemiesLogic function and check that my code still works
+<pre><code>(defn directionLogic [<span class="hljs-keyword">state</span>]
+  (let [{:keys [direction enemies]} <span class="hljs-keyword">state</span>]</code></pre><p><em>We can pass in :x as the function to invoke (in this case the &#39;map&#39; operation will take :x out of each enemy)</em></p>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">if</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> direction <span class="hljs-number">1</span>)
+  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [right (<span class="hljs-name"><span class="hljs-builtin-name">apply</span></span> max (<span class="hljs-name"><span class="hljs-builtin-name">map</span></span> <span class="hljs-symbol">:x</span> enemies))]
+    (<span class="hljs-name"><span class="hljs-builtin-name">if</span></span>(<span class="hljs-name"><span class="hljs-builtin-name">&gt;</span></span> right <span class="hljs-number">600</span>) <span class="hljs-number">-1</span> <span class="hljs-number">1</span>)
+  )</code></pre><p><em>And the same for the other direction</em></p>
+<pre><code>  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [left (<span class="hljs-name"><span class="hljs-builtin-name">apply</span></span> min (<span class="hljs-name"><span class="hljs-builtin-name">map</span></span> <span class="hljs-symbol">:x</span> enemies))]
+    (<span class="hljs-name"><span class="hljs-builtin-name">if</span></span>(<span class="hljs-name"><span class="hljs-builtin-name">&lt;</span></span> left <span class="hljs-number">0</span>) <span class="hljs-number">1</span> <span class="hljs-number">-1</span>)
+  )</code></pre><p>I&#39;ll look at tidying this up in a moment, but first I want to sort out my enemiesLogic function and check that my code still works
 and I still have moving yellow squares in my browser.</p>
 <p><em>Our old enemies logic</em></p>
-<pre><code><span class="list">(<span class="title">for</span><span class="body"> [[x y w h] enemies]
-  <span class="list">(<span class="title">if</span><span class="body"><span class="list">(<span class="title">=</span><span class="body"> direction <span class="number">1</span>)</span></span>
-    [<span class="list">(<span class="title">inc</span><span class="body"> x)</span></span> y w h]
-    [<span class="list">(<span class="title">dec</span><span class="body"> x)</span></span> y w h]
-  )</span></span>
-)</span></span></code></pre><p><em>Well first off, we now have a function for this, so that looks like this</em></p>
-<pre><code><span class="list">(<span class="title"><span class="built_in">defn</span></span> enemiesLogic <span class="collection">[state]</span>
-  <span class="list">(<span class="title"><span class="built_in">let</span></span> <span class="collection">[<span class="collection">{<span class="attribute">:keys</span> <span class="collection">[direction enemies]</span>}</span> state</code></pre><p><em>But I&#39;m going to do something different here</em></p>
-<pre><code>    func (if(= direction <span class="number">1</span>) <span class="keyword">inc</span> <span class="keyword">dec</span>)
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">for</span></span> [[x y w h] enemies]
+  (<span class="hljs-name"><span class="hljs-builtin-name">if</span></span>(<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> direction <span class="hljs-number">1</span>)
+    [(<span class="hljs-name"><span class="hljs-builtin-name">inc</span></span> x) y w h]
+    [(<span class="hljs-name"><span class="hljs-builtin-name">dec</span></span> x) y w h]
+  )
+)</code></pre><p><em>Well first off, we now have a function for this, so that looks like this</em></p>
+<pre><code>(defn enemiesLogic [<span class="hljs-keyword">state</span>]
+  (let [{:keys [direction enemies]} <span class="hljs-keyword">state</span></code></pre><p><em>But I&#39;m going to do something different here</em></p>
+<pre><code>    <span class="hljs-function"><span class="hljs-keyword">func</span> <span class="hljs-params">(<span class="hljs-keyword">if</span><span class="hljs-params">(= direction <span class="hljs-number">1</span>)</span></span></span> inc dec)
    ]</code></pre><p>Rather than the old if statement, I&#39;m going to choose a function (called &#39;func&#39;) based on direction to create the new x with.</p>
 <p><em>Creating the new list of enemies</em></p>
-<pre><code><span class="list">(<span class="title">for</span><span class="body"> [enemy enemies]
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">for</span></span> [enemy enemies]
   {
-    <span class="keyword">:x</span> <span class="list">(<span class="title">func</span><span class="body"> <span class="list">(<span class="body"><span class="keyword">:x</span> enemy)</span></span>)</span></span>
-    <span class="keyword">:y</span> <span class="list">(<span class="body"><span class="keyword">:y</span> enemy)</span></span>
-    <span class="keyword">:w</span> <span class="list">(<span class="body"><span class="keyword">:w</span> enemy)</span></span>
-    <span class="keyword">:h</span> <span class="list">(<span class="body"><span class="keyword">:h</span> enemy)</span></span>
+    <span class="hljs-symbol">:x</span> (<span class="hljs-name">func</span> (<span class="hljs-symbol">:x</span> enemy))
+    <span class="hljs-symbol">:y</span> (<span class="hljs-symbol">:y</span> enemy)
+    <span class="hljs-symbol">:w</span> (<span class="hljs-symbol">:w</span> enemy)
+    <span class="hljs-symbol">:h</span> (<span class="hljs-symbol">:h</span> enemy)
   }
-)</span></span></code></pre><p>So here I copy the old state out of the old enemy, and make the new state with a modified x.</p>
+)</code></pre><p>So here I copy the old state out of the old enemy, and make the new state with a modified x.</p>
 <p>Hitting F5 in my browser</p>
 <img src="/img/yellow_squares.png" alt="A load of yellow squares" title="Space invaders">
 

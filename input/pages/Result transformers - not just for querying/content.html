@@ -2,33 +2,33 @@
 <p>Well, the primary use case (in my mind) for this, is the creation of view models for web clients without having to de-normalise data or perform multiple remote calls.</p>
 <p>Well, actually - if we&#39;re viewing say, a single item by id, it doesn&#39;t make a lot of sense to have to do a query to get that single item by id. It doesn&#39;t make a lot of sense to have to create an index for this.</p>
 <p>In the past, that&#39;s the best we could hope for, unless perhaps you used the &#39;include&#39; functionality to load related documents and then created the view model in the client out of those related documents. This looks something like this:</p>
-<pre><code>var order = session.Include("CustomerId")
-                        .<span class="operator"><span class="keyword">Load</span>&lt;<span class="keyword">Order</span>&gt;(<span class="string">"orders/1"</span>)
+<pre><code>var <span class="hljs-keyword">order</span> = <span class="hljs-keyword">session</span>.<span class="hljs-keyword">Include</span>("CustomerId")
+                        .<span class="hljs-keyword">Load</span>&lt;<span class="hljs-keyword">Order</span>&gt;("orders/1")
 
-var customer = <span class="keyword">session</span>.<span class="keyword">Load</span>&lt;Customer&gt;(<span class="keyword">order</span>.CustomerId)
+var customer = <span class="hljs-keyword">session</span>.<span class="hljs-keyword">Load</span>&lt;Customer&gt;(<span class="hljs-keyword">order</span>.CustomerId)
 
-// Build <span class="keyword">view</span> model here</code></pre><p>This is okay and everything, but requires a bit of mental leg-work on the part of the client.</p>
+// Build <span class="hljs-keyword">view</span> model here</code></pre><p>This is okay and everything, but requires a bit of mental leg-work on the part of the client.</p>
 <p>What you really want to do is just ask for the view model, sort of like making a single query in SQL to get all the information you want with one go.</p>
 <p>Well, how about this?</p>
-<pre><code>  var orderViewModel = session.Load<span class="tag">&lt;<span class="title">OrderWithCustomerTransform,</span> <span class="attribute">OrderWithCustomer</span>&gt;</span>("orders/1")</code></pre><p>That&#39;s a lot nicer, the code for this is as thus</p>
-<pre><code><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">OrderWithCustomer</span> 
-{</span>
-   <span class="keyword">public</span> <span class="keyword">string</span> OrderId { <span class="keyword">get</span>; <span class="keyword">set</span>; }
-   <span class="keyword">public</span> <span class="keyword">string</span> OrderDate { <span class="keyword">get</span>; <span class="keyword">set</span>; }
-   <span class="keyword">public</span> <span class="keyword">string</span> CustomerId { <span class="keyword">get</span>; <span class="keyword">set</span>; }
-   <span class="keyword">public</span> stirng CustomerName { <span class="keyword">get</span>; <span class="keyword">set</span>; }
+<pre><code>  var orderViewModel = <span class="hljs-keyword">session</span>.<span class="hljs-keyword">Load</span>&lt;OrderWithCustomerTransform, OrderWithCustomer&gt;("orders/1")</code></pre><p>That&#39;s a lot nicer, the code for this is as thus</p>
+<pre><code><span class="hljs-built_in">public</span> <span class="hljs-keyword">class</span> OrderWithCustomer 
+{
+   <span class="hljs-built_in">public</span> string OrderId { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }
+   <span class="hljs-built_in">public</span> string OrderDate { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }
+   <span class="hljs-built_in">public</span> string CustomerId { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }
+   <span class="hljs-built_in">public</span> stirng CustomerName { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }
 }
 
-    <span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">OrderWithCustomerTransform</span> : <span class="title">AbstractIndexCreationTask</span>&lt;<span class="title">Order</span>&gt;
-    {</span>
-         <span class="keyword">public</span> OrderWithCustomerTransform()
+    <span class="hljs-built_in">public</span> <span class="hljs-keyword">class</span> OrderWithCustomerTransform : AbstractIndexCreationTask&lt;<span class="hljs-keyword">Order</span>&gt;
+    {
+         <span class="hljs-built_in">public</span> OrderWithCustomerTransform()
          {
-                TransformResults = (database, orders) =&gt;
-                        from order in orders
-                        let customer = database.Load&lt;Pet&gt;(order.CustomerId)
-                        select <span class="keyword">new</span> {
-             OrderId = order.Id,
-             OrderDate = order.Date,
+                TransformResults = (<span class="hljs-keyword">database</span>, orders) =&gt;
+                        <span class="hljs-keyword">from</span> <span class="hljs-keyword">order</span> <span class="hljs-keyword">in</span> orders
+                        let customer = <span class="hljs-keyword">database</span>.<span class="hljs-keyword">Load</span>&lt;Pet&gt;(<span class="hljs-keyword">order</span>.CustomerId)
+                        <span class="hljs-keyword">select</span> <span class="hljs-built_in">new</span> {
+             OrderId = <span class="hljs-keyword">order</span>.Id,
+             OrderDate = <span class="hljs-keyword">order</span>.Date,
              CustomerId = customer.Id,
              CustomerName = customer.Name
                         }

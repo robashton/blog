@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
     <link rel="stylesheet" href="/assets/css/themes/default.css">
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
     <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
     <script type="text/javascript">
       var _gaq = _gaq || [];
@@ -57,9 +57,6 @@
                             <li>
                                 <a href="/blog.html">Blog</a>
                             </li>
-                            <li>
-                                <a href="/testimonials.html">Testimonials</a>
-                            </li>
                     </div>
                 </div>
             </div>
@@ -88,51 +85,51 @@
 <p>Okay, back to more practical things now we&#39;ve covered how easy <a href="/entries/evented-github-adventure---temporal-averages.html">temporal queries are with the event store</a>.</p>
 <p>Ever wondered how happy developers from different languages were? Well, let&#39;s find out </p>
 <p>First off, I downloaded a list of words for both positive and negative sentiment from the internet, here are the references to the studies done which provided these word lists for use:</p>
-<pre><code>   Minqing Hu <span class="keyword">and</span> Bing Liu. <span class="string">"Mining and Summarizing Customer Reviews."</span>
-       Proceedings <span class="keyword">of</span> <span class="keyword">the</span> ACM SIGKDD International Conference <span class="function_start"><span class="keyword">on</span> <span class="title">Knowledge</span></span>
-       Discovery <span class="keyword">and</span> Data Mining (KDD-<span class="number">2004</span>), Aug <span class="number">22</span>-<span class="number">25</span>, <span class="number">2004</span>, Seattle,
+<pre><code>   Minqing Hu <span class="hljs-keyword">and</span> Bing Liu. <span class="hljs-string">"Mining and Summarizing Customer Reviews."</span>
+       Proceedings of the ACM SIGKDD International Conference on Knowledge
+      <span class="hljs-built_in"> Discovery </span><span class="hljs-keyword">and</span> Data Mining (KDD-2004), Aug 22-25, 2004, Seattle,
        Washington, USA, 
-   Bing Liu, Minqing Hu <span class="keyword">and</span> Junsheng Cheng. <span class="string">"Opinion Observer: Analyzing
-       and Comparing Opinions on the Web."</span> Proceedings <span class="keyword">of</span> <span class="keyword">the</span> <span class="number">14</span>th
-       International World Wide Web conference (WWW-<span class="number">2005</span>), May <span class="number">10</span>-<span class="number">14</span>,
-       <span class="number">2005</span>, Chiba, Japan.</code></pre><p>So, how to use this? Well, I just pasted the list of words into a file in vim, and ran a macro over them to convert them into two arrays like so:</p>
-<pre><code><span class="keyword">var</span> happyWords = [ <span class="string">"yay"</span>, <span class="string">"funsome"</span>, <span class="string">"winsome"</span> ]
-<span class="keyword">var</span> sadWords = [ <span class="string">"boo"</span>, <span class="string">"crap"</span>, <span class="string">"lame"</span> ]</code></pre><p>There are actually about 5000 words in total, but essentially what I&#39;m going to do is partition by language and keep a count of </p>
+   Bing Liu, Minqing Hu <span class="hljs-keyword">and</span> Junsheng Cheng. <span class="hljs-string">"Opinion Observer: Analyzing
+       and Comparing Opinions on the Web."</span> Proceedings of the 14th
+       International World Wide Web conference (WWW-2005), May 10-14,
+       2005, Chiba, Japan.</code></pre><p>So, how to use this? Well, I just pasted the list of words into a file in vim, and ran a macro over them to convert them into two arrays like so:</p>
+<pre><code><span class="hljs-selector-tag">var</span> happyWords = [ <span class="hljs-string">"yay"</span>, <span class="hljs-string">"funsome"</span>, <span class="hljs-string">"winsome"</span> ]
+<span class="hljs-selector-tag">var</span> sadWords = [ <span class="hljs-string">"boo"</span>, <span class="hljs-string">"crap"</span>, <span class="hljs-string">"lame"</span> ]</code></pre><p>There are actually about 5000 words in total, but essentially what I&#39;m going to do is partition by language and keep a count of </p>
 <ul>
 <li>How many commits per language I see</li>
 <li>How many happy words I see in each commit</li>
 <li>How many sad words I see in each commit</li>
 </ul>
 <p>Now, real sentiment analysis is a little more complicated than simply looking for words, but we&#39;ll be happy with this for now, let&#39;s have a look at the projection:</p>
-<pre><code><span class="function"><span class="keyword">function</span> <span class="title">collectHappinessIndexOfCommit</span><span class="params">(commit, state)</span> <span class="comment">{
-   var index = 0
-   for(var i in happyWords) {
-       if(commit.message.indexOf(happyWords[i]) &gt;= 0)
+<pre><code>function collectHappinessIndexOfCommit(commit, state) {
+   <span class="hljs-selector-tag">var</span> index = <span class="hljs-number">0</span>
+   <span class="hljs-keyword">for</span>(<span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">i</span> <span class="hljs-keyword">in</span> happyWords) {
+       <span class="hljs-keyword">if</span>(commit<span class="hljs-selector-class">.message</span><span class="hljs-selector-class">.indexOf</span>(happyWords[i]) &gt;= <span class="hljs-number">0</span>)
           state.happycount++
-   }</span>
-   <span class="title">for</span><span class="params">(<span class="keyword">var</span> i <span class="keyword">in</span> sadWords)</span> <span class="comment">{
-       if(commit.message.indexOf(sadWords[i]) &gt;= 0)
+   }
+   <span class="hljs-keyword">for</span>(<span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">i</span> <span class="hljs-keyword">in</span> sadWords) {
+       <span class="hljs-keyword">if</span>(commit<span class="hljs-selector-class">.message</span><span class="hljs-selector-class">.indexOf</span>(sadWords[i]) &gt;= <span class="hljs-number">0</span>)
           state.sadcount++
-   }</span>
-   <span class="title">state</span>.<span class="title">commits</span>++
+   }
+   state.commits++
 }
 
-<span class="title">fromStreams</span><span class="params">([<span class="string">'github-commits'</span>])</span>
-  .<span class="title">partitionBy</span><span class="params">(<span class="keyword">function</span>(ev)</span> <span class="comment">{
-    if(ev.body.repo)
-      return ev.body.repo.language
-  }</span>)
-  .<span class="title">when</span><span class="params">({
-    "$init": <span class="keyword">function</span>()</span> <span class="comment">{
+<span class="hljs-function"><span class="hljs-title">fromStreams</span><span class="hljs-params">([<span class="hljs-string">'github-commits'</span>])</span></span>
+  .partitionBy(function(ev) {
+    <span class="hljs-keyword">if</span>(ev<span class="hljs-selector-class">.body</span><span class="hljs-selector-class">.repo</span>)
+      return ev<span class="hljs-selector-class">.body</span><span class="hljs-selector-class">.repo</span><span class="hljs-selector-class">.language</span>
+  })
+  .when({
+    <span class="hljs-string">"$init"</span>: function() {
       return { 
-         commits: 0, sadcount: 0, happycount: 0
-      }</span>
+         commits: <span class="hljs-number">0</span>, sadcount: <span class="hljs-number">0</span>, happycount: <span class="hljs-number">0</span>
+      }
     },
-    "<span class="title">Commit</span>":</span> <span class="keyword">function</span>(state, ev) <span class="comment">{
-       collectHappinessIndexOfCommit(ev.body.commit, state)
-    }</span>,
+    <span class="hljs-string">"Commit"</span>: function(state, ev) {
+       collectHappinessIndexOfCommit(ev<span class="hljs-selector-class">.body</span><span class="hljs-selector-class">.commit</span>, state)
+    },
   })</code></pre><p>I guess I&#39;ll say that my &quot;happiness index&quot; can be expressed by </p>
-<pre><code><span class="title">var</span> index = happycount / sadcount</code></pre><p>Or something similar (not the point of this post, if you want to change it then modify the JS on this page..), let&#39;s have a look at the chart of happiness over languages</p>
+<pre><code><span class="hljs-keyword">var</span> <span class="hljs-keyword">index</span> = happycount / sadcount</code></pre><p>Or something similar (not the point of this post, if you want to change it then modify the JS on this page..), let&#39;s have a look at the chart of happiness over languages</p>
 <div id="scaled"></div>
 
 <p>Wow, look at those guys writing Delphi! Presumably they&#39;ve got the best work/life balance ever known, or they know something the rest of us don&#39;t. The folk doing Puppet? I guess when your job is automating the crap that nobody else wants to touch you&#39;re going to be pretty miserable most of the time ;-)</p>

@@ -2,24 +2,24 @@
 <p>First, a re-cap on what TransformResults actually is; consider we have a couple of documents that look something like this:</p>
 <p><em>A pony</em></p>
 <pre><code>    {
-        <span class="method">id:</span> <span class="comment">"ponies/rainbowdash"</span>,
-        <span class="method">name:</span> <span class="comment">"Rainbow Dash"</span>,
-        <span class="method">colour:</span> <span class="string">'#9EDBF9'</span>,      // <span class="class">I</span> actually looked this up
-        <span class="method">trampstamp:</span> <span class="string">'rainbow-lightning'</span>,
-        <span class="method">petid:</span> <span class="string">'pets/tank'</span>
+        <span class="hljs-attribute">id</span>: <span class="hljs-string">"ponies/rainbowdash"</span>,
+        <span class="hljs-attribute">name</span>: <span class="hljs-string">"Rainbow Dash"</span>,
+        <span class="hljs-attribute">colour</span>: <span class="hljs-string">'#9EDBF9'</span>,      <span class="hljs-comment">// I actually looked this up</span>
+        <span class="hljs-attribute">trampstamp</span>: <span class="hljs-string">'rainbow-lightning'</span>,
+        <span class="hljs-attribute">petid</span>: <span class="hljs-string">'pets/tank'</span>
     }</code></pre><p><em>a pet</em></p>
 <pre><code>    {
-        <span class="property">id</span>: <span class="string">"pets/tank"</span>,
-        <span class="property">name</span>: <span class="string">"Tank"</span>,
-        species: <span class="string">"Tortoise"</span>,
-        colour: '<span class="comment">#0F0'          // I didn't look this up</span>
+        <span class="hljs-attribute">id</span>: <span class="hljs-string">"pets/tank"</span>,
+        <span class="hljs-attribute">name</span>: <span class="hljs-string">"Tank"</span>,
+        <span class="hljs-attribute">species</span>: <span class="hljs-string">"Tortoise"</span>,
+        <span class="hljs-attribute">colour</span>: <span class="hljs-string">'#0F0'</span>          <span class="hljs-comment">// I didn't look this up</span>
     }</code></pre><p>Let&#39;s say we have an index that looks like this</p>
-<pre><code>    public <span class="class"><span class="keyword">class</span> <span class="title">Ponies</span> :</span> AbstractIndexCreationTask&lt;Pony&gt;
+<pre><code>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-symbol">Ponies</span> : <span class="hljs-symbol">AbstractIndexCreationTask</span>&lt;<span class="hljs-symbol">Pony</span>&gt;
     {
-         public Ponies()
+         <span class="hljs-keyword">public</span> Ponies()
          {
               Map = ponies =&gt;
-            <span class="keyword">from</span> pony <span class="keyword">in</span> ponies
+            <span class="hljs-keyword">from</span> pony <span class="hljs-keyword">in</span> ponies
                             select new {
                                 pony.Name,
                                 pony.Colour,
@@ -32,23 +32,23 @@
 <li>Add a results transformer to the index</li>
 </ul>
 <p>We mostly end up doing the last one and so we do that and it looks like this:</p>
-<pre><code>    public <span class="class"><span class="keyword">class</span> <span class="title">Ponies</span> :</span> AbstractIndexCreationTask&lt;Pony&gt;
+<pre><code>    <span class="hljs-built_in">public</span> <span class="hljs-keyword">class</span> Ponies : AbstractIndexCreationTask&lt;Pony&gt;
     {
-         public Ponies()
+         <span class="hljs-built_in">public</span> Ponies()
          {
               Map = ponies =&gt;
-            <span class="keyword">from</span> pony <span class="keyword">in</span> ponies
-                            select new {
+            <span class="hljs-keyword">from</span> pony <span class="hljs-keyword">in</span> ponies
+                            <span class="hljs-keyword">select</span> <span class="hljs-built_in">new</span> {
                                 pony.Name,
                                 pony.Colour,
                                 pony.Trampstamp
                             }
-                TransformResults = (database, results) =&gt;
-                        <span class="keyword">from</span> result <span class="keyword">in</span> results
-                        let pet = database.Load&lt;Pet&gt;(result.PetId)
-                        select new {
+                TransformResults = (<span class="hljs-keyword">database</span>, results) =&gt;
+                        <span class="hljs-keyword">from</span> result <span class="hljs-keyword">in</span> results
+                        let pet = <span class="hljs-keyword">database</span>.<span class="hljs-keyword">Load</span>&lt;Pet&gt;(result.PetId)
+                        <span class="hljs-keyword">select</span> <span class="hljs-built_in">new</span> {
                             PonyId = pony.Id
-                            Name = pony.Name,
+                            <span class="hljs-type">Name</span> = pony.Name,
                             PetName = pet.Name,
                             PetSpecies = pet.Species
                         }

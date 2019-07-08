@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
     <link rel="stylesheet" href="/assets/css/themes/default.css">
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
     <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
     <script type="text/javascript">
       var _gaq = _gaq || [];
@@ -57,9 +57,6 @@
                             <li>
                                 <a href="/blog.html">Blog</a>
                             </li>
-                            <li>
-                                <a href="/testimonials.html">Testimonials</a>
-                            </li>
                     </div>
                 </div>
             </div>
@@ -85,31 +82,31 @@
 <p>Never thought I&#39;d be writing this much about OMeta, but I&#39;ve taken quite the shine to it.</p>
 <p>I did basic expressions, but actually expressions can be made up of other expressions so I may as well bite that bullet and get on with it.</p>
 <p>Let&#39;s look at what we might expect if we use &#39;and&#39;</p>
-<pre><code>test(<span class="string">"/some/resource?$filter=Price gt 5 and Price lt 10"</span>, <span class="string">"OData"</span>, function(<span class="constant">result</span>) {
-  <span class="keyword">it</span>(<span class="string">"A filter should be present"</span>, function() {
-     assert.notEqual(<span class="constant">result</span>.options.$filterby, null)
+<pre><code>test(<span class="hljs-string">"/some/resource?$filter=Price gt 5 and Price lt 10"</span>, <span class="hljs-string">"OData"</span>, function(<span class="hljs-name">result</span>) {
+  it(<span class="hljs-string">"A filter should be present"</span>, function() {
+     assert.notEqual(<span class="hljs-name">result</span>.options.$filterby, null)
   })
-  <span class="keyword">it</span>(<span class="string">"Filter should be an instance of 'and'"</span>, function() {
-     assert.<span class="keyword">equal</span>(<span class="constant">result</span>.options.$filterby[<span class="number">0</span>], <span class="string">"and"</span>)
-  })
-
-  <span class="keyword">it</span>(<span class="string">"Left hand side should be Price gt 5"</span>, function() {
-     var lhs = <span class="constant">result</span>.options.$filterby[<span class="number">1</span>] 
-     assert.<span class="keyword">equal</span>(lhs[<span class="number">0</span>], <span class="string">"gt"</span>)
-     assert.<span class="keyword">equal</span>(lhs[<span class="number">1</span>].<span class="property">name</span>, <span class="string">"Price"</span>)
-     assert.<span class="keyword">equal</span>(lhs[<span class="number">2</span>], <span class="number">5</span>)
+  it(<span class="hljs-string">"Filter should be an instance of 'and'"</span>, function() {
+     assert.equal(<span class="hljs-name">result</span>.options.$filterby[<span class="hljs-number">0</span>], <span class="hljs-string">"and"</span>)
   })
 
-  <span class="keyword">it</span>(<span class="string">"Right hand side should be less than 10"</span>, function() {
-     var rs = <span class="constant">result</span>.options.$filterby[<span class="number">2</span>] 
-     assert.<span class="keyword">equal</span>(rhs[<span class="number">0</span>], <span class="string">"lt"</span>)
-     assert.<span class="keyword">equal</span>(rhs[<span class="number">1</span>].<span class="property">name</span>, <span class="string">"Price"</span>)
-     assert.<span class="keyword">equal</span>(rhs[<span class="number">2</span>], <span class="number">10</span>)
+  it(<span class="hljs-string">"Left hand side should be Price gt 5"</span>, function() {
+     var lhs = result.options.$filterby[<span class="hljs-number">1</span>] 
+     assert.equal(<span class="hljs-name">lhs</span>[<span class="hljs-number">0</span>], <span class="hljs-string">"gt"</span>)
+     assert.equal(<span class="hljs-name">lhs</span>[<span class="hljs-number">1</span>].name, <span class="hljs-string">"Price"</span>)
+     assert.equal(<span class="hljs-name">lhs</span>[<span class="hljs-number">2</span>], <span class="hljs-number">5</span>)
+  })
+
+  it(<span class="hljs-string">"Right hand side should be less than 10"</span>, function() {
+     var rs = result.options.$filterby[<span class="hljs-number">2</span>] 
+     assert.equal(<span class="hljs-name">rhs</span>[<span class="hljs-number">0</span>], <span class="hljs-string">"lt"</span>)
+     assert.equal(<span class="hljs-name">rhs</span>[<span class="hljs-number">1</span>].name, <span class="hljs-string">"Price"</span>)
+     assert.equal(<span class="hljs-name">rhs</span>[<span class="hljs-number">2</span>], <span class="hljs-number">10</span>)
   })
 })</code></pre><p>We have a tree that looks like</p>
-<pre><code>[ 'and', 
-  [ 'gt', 'Price', <span class="number">5</span> ],
-  [ 'lt', 'Price', <span class="number">10</span>]
+<pre><code>[ <span class="hljs-symbol">'and</span>', 
+  [ <span class="hljs-symbol">'gt</span>', <span class="hljs-symbol">'Price</span>', <span class="hljs-number">5</span> ],
+  [ <span class="hljs-symbol">'lt</span>', <span class="hljs-symbol">'Price</span>', <span class="hljs-number">10</span>]
 ]</code></pre><p>Our next step can walk this tree and generate SQL or something similar very easily.</p>
 <p><strong>How do we generate such a thing?</strong></p>
 <p>Well, &#39;and&#39; is an operator with the lowest precedence (well, the same as &#39;or&#39;), and therefore we want it to be first in the tree (it makes senseif you think about it!). </p>
@@ -117,46 +114,46 @@
 <p>This suggests we need to cascade through the preferable options until we find something we like:</p>
 <p>There is quite a wall here, so let&#39;s break it down</p>
 <pre><code>  FilterByOption = 
-    se<span class="string">q("<span class="variable">$filterby</span>=")</span>
-    FilterByExpression:expr -&gt; { name: <span class="string">"<span class="variable">$filterby</span>"</span>, value: expr }</code></pre><p><em>When we find $filterby, then parse the expression</em></p>
-<pre><code>  <span class="title">FilterByExpression</span> =
+    se<span class="hljs-string">q("$filterby=")</span>
+    FilterByExpression:expr -&gt; { name: <span class="hljs-string">"$filterby"</span>, value: expr }</code></pre><p><em>When we find $filterby, then parse the expression</em></p>
+<pre><code><span class="hljs-attribute">  FilterByExpression</span> =
     FilterAndExpression</code></pre><p><em>The first thing we want to find is an &#39;and&#39; expression</em></p>
-<pre><code>  <span class="constant">FilterAndExpression</span> =
-    <span class="constant">FilterAndExpression</span><span class="symbol">:lhs</span>
-    <span class="constant">FilterAndOperand</span><span class="symbol">:op</span>
-    <span class="constant">FilterLogicalExpression</span><span class="symbol">:rhs</span> -&gt; [ op, lhs, rhs ]
-  | <span class="constant">FilterLogicalExpression</span></code></pre><p><em>try and find more AndExpressions</em></p>
+<pre><code>  FilterAndExpression =
+    FilterAndExpression:<span class="hljs-built_in">lhs</span>
+    FilterAndOperand:<span class="hljs-built_in">op</span>
+    FilterLogicalExpression:<span class="hljs-built_in">rhs</span> -&gt; [ <span class="hljs-built_in">op</span>, <span class="hljs-built_in">lhs</span>, <span class="hljs-built_in">rhs</span> ]
+  | FilterLogicalExpression</code></pre><p><em>try and find more AndExpressions</em></p>
 <p><em>Else, let the right hand side be the next preferable thing (a plain old logical expression)</em></p>
 <p><em>Else, just try to find a logical expression</em></p>
-<pre><code>  <span class="constant">FilterLogicalExpression</span> =
-    <span class="constant">FilterLogicalExpression</span><span class="symbol">:lhs</span>
-    <span class="constant">FilterByOperand</span><span class="symbol">:op</span>
-    <span class="constant">FilterByValue</span><span class="symbol">:rhs</span> -&gt; [ op, lhs, rhs ]
-  | <span class="constant">FilterByValue</span></code></pre><p><em>Try to find more LogicalExpressions</em></p>
+<pre><code>  FilterLogicalExpression =
+    FilterLogicalExpression:<span class="hljs-built_in">lhs</span>
+    FilterByOperand:<span class="hljs-built_in">op</span>
+    FilterByValue:<span class="hljs-built_in">rhs</span> -&gt; [ <span class="hljs-built_in">op</span>, <span class="hljs-built_in">lhs</span>, <span class="hljs-built_in">rhs</span> ]
+  | FilterByValue</code></pre><p><em>Try to find more LogicalExpressions</em></p>
 <p><em>Else, let the right hand side be the next preferable thing (a plain old value)</em></p>
 <p><em>Else fall back to finding a value</em></p>
 <pre><code>  FilterAndOperand =
     spaces
     (
-      se<span class="string">q("and")</span>
-    | se<span class="string">q("or")</span>
+      se<span class="hljs-string">q("and")</span>
+    | se<span class="hljs-string">q("or")</span>
     ):op 
     spaces -&gt; op</code></pre><p><em>And/or have the same precedence</em></p>
 <pre><code>  FilterByOperand =
     spaces
     (
-      se<span class="string">q("eq")</span>
-    | se<span class="string">q("ne")</span>
-    | se<span class="string">q("gt")</span>
-    | se<span class="string">q("ge")</span>
-    | se<span class="string">q("lt")</span>
-    | se<span class="string">q("le")</span>
+      se<span class="hljs-string">q("eq")</span>
+    | se<span class="hljs-string">q("ne")</span>
+    | se<span class="hljs-string">q("gt")</span>
+    | se<span class="hljs-string">q("ge")</span>
+    | se<span class="hljs-string">q("lt")</span>
+    | se<span class="hljs-string">q("le")</span>
     ):op 
     spaces -&gt; op</code></pre><p><em>These are unchanged</em></p>
 <pre><code>  FilterByValue = 
     Number
-  <span class="string">| QuotedText</span>
-  <span class="string">| PropertyPath</span></code></pre><p><em>As are these</em></p>
+  <span class="hljs-string">| QuotedText</span>
+  <span class="hljs-string">| PropertyPath</span></code></pre><p><em>As are these</em></p>
 </div>
       <div id="links">
         <a href="/">Index</a>

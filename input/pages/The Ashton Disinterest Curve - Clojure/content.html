@@ -17,25 +17,25 @@
 <h1 id="the-path-towards-erlang">The path towards Erlang</h1>
 <p>So okay; simplifying things a lot - you either need to pass file handles (or something that represents them, so handle handles) up to the users of your library for short lived access or wrap up long lived resources in core.async blocks to manage concurrent access to them.</p>
 <p>This ends up looking like this (keeping most of the code out of the core.async block so it can be tested in the REPL easily)</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> go-index-head [_ {<span class="keyword">:keys</span> [command-channel] <span class="keyword">:as</span> engine}]
-  <span class="list">(<span class="title">debug</span><span class="body"> <span class="string">"being asked to start"</span>)</span></span>
-  <span class="list">(<span class="title">go</span><span class="body">
-    <span class="list">(<span class="title">loop</span><span class="body"> [state <span class="list">(<span class="title">initial-state</span><span class="body"> engine)</span></span>]
-    <span class="list">(<span class="title">if-let</span><span class="body"> [{<span class="keyword">:keys</span> [cmd data]} <span class="list">(<span class="title">&lt;</span><span class="body">! command-channel)</span></span>]
-     <span class="list">(<span class="title">do</span><span class="body">
-      <span class="list">(<span class="title">debug</span><span class="body"> <span class="string">"handling index loop command"</span> cmd)</span></span>
-       <span class="list">(<span class="title">recur</span><span class="body"> <span class="list">(<span class="title">case</span><span class="body"> cmd
-         <span class="keyword">:schedule-indexing</span> <span class="list">(<span class="title">main-indexing-process</span><span class="body"> state)</span></span>
-         <span class="keyword">:notify-finished-indexing</span> <span class="list">(<span class="title">main-indexing-process-ended</span><span class="body"> state)</span></span>
-         <span class="keyword">:new-index</span> <span class="list">(<span class="title">add-chaser</span><span class="body"> state data)</span></span>
-         <span class="keyword">:chaser-finished</span> <span class="list">(<span class="title">finish-chaser</span><span class="body"> state data)</span></span>
-         <span class="keyword">:storage-request</span> <span class="list">(<span class="title">storage-request</span><span class="body"> state data)</span></span>)</span></span>)</span></span>)</span></span>
-      <span class="list">(<span class="title">do</span><span class="body">
-        <span class="list">(<span class="title">debug</span><span class="body"> <span class="string">"being asked to shut down"</span>)</span></span>
-        <span class="list">(<span class="title">wait-for-main-indexing</span><span class="body"> state)</span></span>
-        <span class="list">(<span class="title">wait-for-chasers</span><span class="body"> state)</span></span>
-        <span class="list">(<span class="title">close-open-indexes</span><span class="body"> state)</span></span>)</span></span>)</span></span>)</span></span>)</span></span>)</span></span></code></pre><p>Basically re-invent actors but without decent error handling, supervision trees, named processes... So yeah - Clojure, glorious syntax, clever libraries, great data structures, but it&#39;s not Erlang for getting things done in the kind of projects I&#39;m working on at the moment.</p>
-<h1 id="where-is-it-then-">Where is it then?</h1>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> go-index-head [_ {<span class="hljs-symbol">:keys</span> [command-channel] <span class="hljs-symbol">:as</span> engine}]
+  (<span class="hljs-name">debug</span> <span class="hljs-string">"being asked to start"</span>)
+  (<span class="hljs-name">go</span>
+    (<span class="hljs-name"><span class="hljs-builtin-name">loop</span></span> [state (<span class="hljs-name">initial-state</span> engine)]
+    (<span class="hljs-name"><span class="hljs-builtin-name">if-let</span></span> [{<span class="hljs-symbol">:keys</span> [cmd data]} (<span class="hljs-name">&lt;!</span> command-channel)]
+     (<span class="hljs-name"><span class="hljs-builtin-name">do</span></span>
+      (<span class="hljs-name">debug</span> <span class="hljs-string">"handling index loop command"</span> cmd)
+       (<span class="hljs-name"><span class="hljs-builtin-name">recur</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">case</span></span> cmd
+         <span class="hljs-symbol">:schedule-indexing</span> (<span class="hljs-name">main-indexing-process</span> state)
+         <span class="hljs-symbol">:notify-finished-indexing</span> (<span class="hljs-name">main-indexing-process-ended</span> state)
+         <span class="hljs-symbol">:new-index</span> (<span class="hljs-name">add-chaser</span> state data)
+         <span class="hljs-symbol">:chaser-finished</span> (<span class="hljs-name">finish-chaser</span> state data)
+         <span class="hljs-symbol">:storage-request</span> (<span class="hljs-name">storage-request</span> state data))))
+      (<span class="hljs-name"><span class="hljs-builtin-name">do</span></span>
+        (<span class="hljs-name">debug</span> <span class="hljs-string">"being asked to shut down"</span>)
+        (<span class="hljs-name">wait-for-main-indexing</span> state)
+        (<span class="hljs-name">wait-for-chasers</span> state)
+        (<span class="hljs-name">close-open-indexes</span> state))))))</code></pre><p>Basically re-invent actors but without decent error handling, supervision trees, named processes... So yeah - Clojure, glorious syntax, clever libraries, great data structures, but it&#39;s not Erlang for getting things done in the kind of projects I&#39;m working on at the moment.</p>
+<h1 id="where-is-it-then">Where is it then?</h1>
 <p>I can&#39;t see myself using Clojure as a backend language on its own anytime soon. If I&#39;m forced to do something on the JVM (legacy integration, cross my fingers I haven&#39;t got to do that for a while) I can see myself using Clojure to integrate with the legacy syste and export data using the wonderful library Liberator.</p>
 <p>I <em>can</em> see myself using Clojurescript rather than the mess that is JS if I have to do any higher value front-end code. (Some of the React wrappers look <em>amazing</em>) and it&#39;s a lot more professional than trying to bodge it together in a broken language. There is a project coming up next year that represents value on the front-end and I suspect it&#39;ll make an appearance there if I can persuade our editors to do sensible CLJS/REPL integration and I can persuade my colleagues to adopt a REPL driven development method on the front-end.</p>
 <p><em>Position on the curve:</em> Still interested, I just don&#39;t have use for it at the moment.</p>

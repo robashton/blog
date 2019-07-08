@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
     <link rel="stylesheet" href="/assets/css/themes/default.css">
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
     <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
     <script type="text/javascript">
       var _gaq = _gaq || [];
@@ -57,9 +57,6 @@
                             <li>
                                 <a href="/blog.html">Blog</a>
                             </li>
-                            <li>
-                                <a href="/testimonials.html">Testimonials</a>
-                            </li>
                     </div>
                 </div>
             </div>
@@ -85,52 +82,52 @@
 <li><a href="/entries/impatiently-learning-cascalog---part-3.html">Part 3</a></li>
 </ul>
 <p>I&#39;ve opened up the source for part4 and it is doing something a bit different so I guess I should be a little less impatient and have a look at the tutorial to see what I&#39;m looking at...</p>
-<pre><code>Today's lesson takes <span class="keyword">that</span> same Word Count app <span class="keyword">and</span> expands <span class="function_start"><span class="keyword">on</span> <span class="title">it</span></span> <span class="keyword">to</span> implement a stop <span class="property">words</span> filter.</code></pre><p>There is some waffle about the TF-IDF algorithm doing some of this for us, but we might want to do it ourselves because of swear-words. I suppose I should go and read about TD-IDF at some point but for now I&#39;m going to move on with this Cascalog stuff and accept that stuff exists and I don&#39;t know about it yet.</p>
+<pre><code>Today's lesson takes <span class="hljs-keyword">that</span> same Word Count app <span class="hljs-keyword">and</span> expands <span class="hljs-keyword">on</span> <span class="hljs-keyword">it</span> <span class="hljs-keyword">to</span> implement a stop <span class="hljs-built_in">words</span> filter.</code></pre><p>There is some waffle about the TF-IDF algorithm doing some of this for us, but we might want to do it ourselves because of swear-words. I suppose I should go and read about TD-IDF at some point but for now I&#39;m going to move on with this Cascalog stuff and accept that stuff exists and I don&#39;t know about it yet.</p>
 <h1 id="left-join">Left join</h1>
 <p>Feasibly we could write a custom filter method and check if a word is valid, but that&#39;s going to be a bit of a ball-ache. So, we&#39;re told that we&#39;re doing a left-join between the two sets of data.</p>
 <p>That&#39;s an interesting notion to me because we&#39;re in the world of Map/Reduce and that&#39;s not something I&#39;m used to reading in this world.</p>
 <p>So how does this work?</p>
-<pre><code class="language-clojure">  <span class="list">(<span class="title"><span class="built_in">let</span></span> <span class="collection">[rain <span class="list">(<span class="title">hfs-delimited</span> in <span class="attribute">:skip-header?</span> <span class="literal">true</span>)</span>
-        stop <span class="list">(<span class="title">hfs-delimited</span> stop <span class="attribute">:skip-header?</span> <span class="literal">true</span>)</span>]</span></code></pre>
+<pre><code class="language-clojure">  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [rain (<span class="hljs-name">hfs-delimited</span> in <span class="hljs-symbol">:skip-header?</span> <span class="hljs-literal">true</span>)
+        stop (<span class="hljs-name">hfs-delimited</span> stop <span class="hljs-symbol">:skip-header?</span> <span class="hljs-literal">true</span>)]</code></pre>
 <p>Unlike  in the previous codes, rather than simply invoke the generator with the variables, we stick it in a let block alongside another generator containing stop words.</p>
 <p>At this point in my mind I&#39;m viewing them as two tables of data, ripe for <em>doing stuff with</em>.</p>
 <p>The next line we start going about things the way we&#39;re used to</p>
-<pre><code class="language-clojure">    <span class="list">(<span class="title">?&lt;-</span> <span class="list">(<span class="title">hfs-delimited</span> out)</span>
-         <span class="collection">[?word ?count]</span></code></pre>
+<pre><code class="language-clojure">    (<span class="hljs-name">?&lt;-</span> (<span class="hljs-name">hfs-delimited</span> out)
+         [?word ?count]</code></pre>
 <p>So we&#39;re sinking words and counts into the destination file again - that&#39;s cool.</p>
 <p>We then invoke the rain generator and tidy it up like in the past two examples</p>
-<pre><code class="language-clojure">    (rain _ ?line)
-    (split ?line :&gt; ?word-dirty)
-    ((c/comp s/trim s/lower-case) ?word-dirty :&gt; ?word)</code></pre>
+<pre><code class="language-clojure">    (<span class="hljs-name">rain</span> _ ?line)
+    (<span class="hljs-name">split</span> ?line <span class="hljs-symbol">:&gt;</span> ?word-dirty)
+    ((<span class="hljs-name">c/comp</span> s/trim s/lower-case) ?word-dirty <span class="hljs-symbol">:&gt;</span> ?word)</code></pre>
 <p>I can&#39;t really see why we wouldn&#39;t just write this with the generator inline like this</p>
-<pre><code class="language-clojure">    ((hfs-delimited in :skip-header? true) _ ?line)
-    (split ?line :&gt; ?word-dirty)
-    ((c/comp s/trim s/lower-case) ?word-dirty :&gt; ?word)</code></pre>
+<pre><code class="language-clojure">    ((<span class="hljs-name">hfs-delimited</span> in <span class="hljs-symbol">:skip-header?</span> <span class="hljs-literal">true</span>) _ ?line)
+    (<span class="hljs-name">split</span> ?line <span class="hljs-symbol">:&gt;</span> ?word-dirty)
+    ((<span class="hljs-name">c/comp</span> s/trim s/lower-case) ?word-dirty <span class="hljs-symbol">:&gt;</span> ?word)</code></pre>
 <p>Other than I guess declaring the generators at the top just makes it clear to the reader where our data is coming from.</p>
 <p>The interesting bit is where we then invoke the stop word generator wit hteh word that we have</p>
-<pre><code class="language-clojure"><span class="list">(<span class="title">stop</span> ?word <span class="attribute">:&gt;</span> <span class="literal">false</span>)</span></code></pre>
+<pre><code class="language-clojure">(<span class="hljs-name">stop</span> ?word <span class="hljs-symbol">:&gt;</span> <span class="hljs-literal">false</span>)</code></pre>
 <p>Well wow, I&#39;m not really sure what I&#39;m looking at here at all, I guess there is some more magic going on where it knows I&#39;ve used the <em>?word</em> as a field and it can work out that I want to do a join on these two things based on that. I&#39;m mapping the result of this to &#39;false&#39; which I assume means <em>I don&#39;t want that crap if it returns something</em>.</p>
 <p>The major difference between the files I&#39;m looking at here (the stop file, and the rain file) is that the rain file has two columns and the stop file has one column so it has to just be the fact that I used the same name here that made the magic happen.</p>
 <p>I don&#39;t find any of this intuitive - but I can take it at face value once more and accept that it works if I do it this way. My urge to go and see how this stuff is implemented is growing and there are only two more stages of this tutorial left for me to follow.</p>
 <p>The complete query looks like this by the way</p>
-<pre><code class="language-clojure">(defn -main [in out stop &amp; args]
-  (let [rain (hfs-delimited in :skip-header? true)
-        stop (hfs-delimited stop :skip-header? true)]
-    (?&lt;- (hfs-delimited out)
+<pre><code class="language-clojure">(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> -main [in out stop &amp; args]
+  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [rain (<span class="hljs-name">hfs-delimited</span> in <span class="hljs-symbol">:skip-header?</span> <span class="hljs-literal">true</span>)
+        stop (<span class="hljs-name">hfs-delimited</span> stop <span class="hljs-symbol">:skip-header?</span> <span class="hljs-literal">true</span>)]
+    (<span class="hljs-name">?&lt;-</span> (<span class="hljs-name">hfs-delimited</span> out)
          [?word ?count]
-         (rain _ ?line)
-         (split ?line :&gt; ?word-dirty)
-         ((c/comp s/trim s/lower-case) ?word-dirty :&gt; ?word)
-         (stop ?word :&gt; false)
-         (c/count ?count))))</code></pre>
+         (<span class="hljs-name">rain</span> _ ?line)
+         (<span class="hljs-name">split</span> ?line <span class="hljs-symbol">:&gt;</span> ?word-dirty)
+         ((<span class="hljs-name">c/comp</span> s/trim s/lower-case) ?word-dirty <span class="hljs-symbol">:&gt;</span> ?word)
+         (<span class="hljs-name">stop</span> ?word <span class="hljs-symbol">:&gt;</span> <span class="hljs-literal">false</span>)
+         (<span class="hljs-name">c/count</span> ?count))))</code></pre>
 <p>Running the demo with</p>
-<pre><code>~/build/hadoop-<span class="number">1.2</span><span class="number">.1</span>/bin/hadoop jar target/impatient.jar <span class="typedef"><span class="keyword">data</span>/rain.txt output/wc <span class="keyword">data</span>/en.stop</span></code></pre><p>Seems to yield in a sensible word count being generated like so</p>
-<pre><code><span class="title">air</span>             <span class="number">1</span>
-<span class="title">area</span>            <span class="number">4</span>
-<span class="title">australia</span>       <span class="number">1</span>
-<span class="title">broken</span>          <span class="number">1</span>
-<span class="title">california's</span>    <span class="number">1</span>
-<span class="title">cause</span>           <span class="number">1</span></code></pre><p>etc</p>
+<pre><code>~<span class="hljs-regexp">/build/</span>hadoop-<span class="hljs-number">1.2</span>.<span class="hljs-number">1</span><span class="hljs-regexp">/bin/</span>hadoop jar target<span class="hljs-regexp">/impatient.jar data/</span>rain.txt output<span class="hljs-regexp">/wc data/</span>en.stop</code></pre><p>Seems to yield in a sensible word count being generated like so</p>
+<pre><code>air             <span class="hljs-number">1</span>
+area            <span class="hljs-number">4</span>
+australia       <span class="hljs-number">1</span>
+broken          <span class="hljs-number">1</span>
+california's    <span class="hljs-number">1</span>
+cause           <span class="hljs-number">1</span></code></pre><p>etc</p>
 <p>So, I guess the lesson here is that you can do joins between generators by using the same field name when running them. Neato.</p>
 <p>At this point I have to go away for the weekend to get drunk in a field, so I&#39;ll have to skip the rest of the tutorial and start work on something real at the Mastodon C office.</p>
 </div>

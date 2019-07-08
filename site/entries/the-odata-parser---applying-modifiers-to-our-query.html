@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
     <link rel="stylesheet" href="/assets/css/themes/default.css">
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
     <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
     <script type="text/javascript">
       var _gaq = _gaq || [];
@@ -57,9 +57,6 @@
                             <li>
                                 <a href="/blog.html">Blog</a>
                             </li>
-                            <li>
-                                <a href="/testimonials.html">Testimonials</a>
-                            </li>
                     </div>
                 </div>
             </div>
@@ -79,10 +76,10 @@
 <li>$filter (expressions passed in to do filtering - basically LINQ support and SQL server support &lt;/cynicism&gt;)</li>
 </ul>
 <p>These all appear at the very end of the query string like so</p>
-<pre><code>/resource/child?<span class="variable">$orderby</span>=Rating asc
-/resource?<span class="variable">$top</span>=10
-/resource?<span class="variable">$orderby</span>=Rating,Category/Name desc
-/resource?<span class="variable">$filter</span>=Rating eq 5</code></pre><p>As can be seen, the complexity of these can grow quite easily but in reality they&#39;re pretty much a combination of</p>
+<pre><code>/resource/child?<span class="hljs-variable">$orderby</span>=Rating asc
+/resource?<span class="hljs-variable">$top</span>=10
+/resource?<span class="hljs-variable">$orderby</span>=Rating,Category/Name <span class="hljs-keyword">desc</span>
+/resource?<span class="hljs-variable">$filter</span>=Rating <span class="hljs-keyword">eq</span> 5</code></pre><p>As can be seen, the complexity of these can grow quite easily but in reality they&#39;re pretty much a combination of</p>
 <ul>
 <li>the query option itself</li>
 <li>an expression that is unique to that query option</li>
@@ -92,32 +89,32 @@ I imagine when trying to re-use those rules I&#39;ll probably sort out some of t
 <p>So I guess what we need to do is parse the resource path and then apply any of these modifiers to it. There is actually a fair amount of support for this already in the Rulemotion code that I&#39;m looking to replace so I&#39;ll likely be able to copy most of it out as I write the tests for it.</p>
 <p><strong>$orderby</strong></p>
 <p>OrderBy seems quite trivial so we&#39;ll start with that</p>
-<pre><code><span class="function"><span class="title">test</span><span class="params">(<span class="string">"/resource?$orderby=Property"</span>, <span class="string">"OData"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>(result) <span class="tuple">{
-  <span class="function_name">it</span>(<span class="string">"sort options are present on the result"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
-     assert.<span class="function_name">notEqual</span>(result.options.$orderby, null)
-  }</span>)
-  <span class="function_name">it</span>(<span class="string">"sort options have the property specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
-     assert.<span class="function_name">equal</span>(result.options.$orderby.property, <span class="string">"Property"</span>)
-  }</span>)
+<pre><code>test(<span class="hljs-string">"/resource?$orderby=Property"</span>, <span class="hljs-string">"OData"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(result)</span> </span>{
+  it(<span class="hljs-string">"sort options are present on the result"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span> </span>{
+     assert.notEqual(result.options.$orderby, <span class="hljs-keyword">null</span>)
+  })
+  it(<span class="hljs-string">"sort options have the property specified"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span> </span>{
+     assert.equal(result.options.$orderby.property, <span class="hljs-string">"Property"</span>)
+  })
 })</code></pre><p>I&#39;m quite excited about this as how this model presents itself will probably help me sort out the main model I&#39;m creating to support the OData request.</p>
 <p>I&#39;ll start off with:</p>
 <pre><code>OData = (
   (
-    PathSegment:model 
+    PathSegment:<span class="hljs-keyword">model</span> 
     (
-      <span class="string">'?'</span>
-      ( listOf(`QueryOption, <span class="string">'&amp;'</span>):options
+      <span class="hljs-string">'?'</span>
+      ( listOf(`QueryOption, <span class="hljs-string">'&amp;'</span>):<span class="hljs-keyword">options</span>
       )
     )?
   ) -&gt; { 
-          <span class="keyword">if</span>(options) {
-           model<span class="variable">.options</span> = {}
-           <span class="keyword">for</span>(var i in options)
-             model<span class="variable">.options</span>[options[i]<span class="variable">.name</span>] = options[i]<span class="variable">.value</span>;
+          <span class="hljs-keyword">if</span>(<span class="hljs-keyword">options</span>) {
+           <span class="hljs-keyword">model</span>.<span class="hljs-keyword">options</span> = {}
+           <span class="hljs-keyword">for</span>(var i in <span class="hljs-keyword">options</span>)
+             <span class="hljs-keyword">model</span>.<span class="hljs-keyword">options</span>[<span class="hljs-keyword">options</span>[i].name] = <span class="hljs-keyword">options</span>[i].value;
           }
-         <span class="keyword">return</span> model
+         return <span class="hljs-keyword">model</span>
        }
-  | <span class="string">'/'</span>
+  | <span class="hljs-string">'/'</span>
 ) </code></pre><p>I&#39;ll simply look for a list of query options, and actually merge the notion of service parameters and known query options (and in fact, custom options too - which are simply any unrecognised options - without a dollar sign in front of them)</p>
 <p>What does this look like? </p>
 <pre><code>QueryOption = 
@@ -126,24 +123,24 @@ I imagine when trying to re-use those rules I&#39;ll probably sort out some of t
 ,
 
 SortOption = 
-  se<span class="string">q("<span class="variable">$orderby</span>=")</span>
-  ResourceName:property -&gt; { name: <span class="string">'$orderby'</span>, value = { property: property }}</code></pre><p>Well we&#39;ll start off with the simplest one, which is just supporting a single property and no options. I don&#39;t want to get too ahead of myself after all.</p>
+  seq(<span class="hljs-string">"$orderby="</span>)
+  ResourceName:<span class="hljs-keyword">property</span><span class="hljs-title"> </span>-&gt; { name: '$orderby', value = { <span class="hljs-keyword">property</span><span class="hljs-title"></span>: <span class="hljs-keyword">property</span><span class="hljs-title"> </span>}}</code></pre><p>Well we&#39;ll start off with the simplest one, which is just supporting a single property and no options. I don&#39;t want to get too ahead of myself after all.</p>
 <p>This works but of course I&#39;ve broken my tests for service parameters now, so I&#39;ll fix those</p>
-<pre><code>test(<span class="string">"/method(1)/child?foo=bar"</span>, <span class="string">"OData"</span>, function(<span class="constant">result</span>) {
-    console.<span class="command">log</span>(<span class="constant">result</span>)
-  <span class="keyword">it</span>(<span class="string">"should have the resource specified"</span>, function() {
-     assert.<span class="keyword">equal</span>(<span class="constant">result</span>.resource, 'method')
+<pre><code>test(<span class="hljs-string">"/method(1)/child?foo=bar"</span>, <span class="hljs-string">"OData"</span>, function(<span class="hljs-name">result</span>) {
+    console.log(<span class="hljs-name">result</span>)
+  it(<span class="hljs-string">"should have the resource specified"</span>, function() {
+     assert.equal(<span class="hljs-name">result</span>.resource, 'method')
   })
-  <span class="keyword">it</span>(<span class="string">"The result should be addressed"</span>, function() {
-     assert.<span class="keyword">equal</span>(<span class="constant">result</span>.key, '<span class="number">1</span>')
-  })
-
-  <span class="keyword">it</span>(<span class="string">"should have the path specified"</span>, function() {
-     assert.<span class="keyword">equal</span>(<span class="constant">result</span>.<span class="keyword">property</span>.resource, 'child')
+  it(<span class="hljs-string">"The result should be addressed"</span>, function() {
+     assert.equal(<span class="hljs-name">result</span>.key, '<span class="hljs-number">1</span>')
   })
 
-  <span class="keyword">it</span>(<span class="string">"should have the argument specified"</span>, function() {
-     assert.<span class="keyword">equal</span>(<span class="constant">result</span>.options.foo, 'bar')
+  it(<span class="hljs-string">"should have the path specified"</span>, function() {
+     assert.equal(<span class="hljs-name">result</span>.property.resource, 'child')
+  })
+
+  it(<span class="hljs-string">"should have the argument specified"</span>, function() {
+     assert.equal(<span class="hljs-name">result</span>.options.foo, 'bar')
   })
 })</code></pre><p><strong>A bit more $orderby</strong></p>
 <p>Not done by a long-shot, we have several aspects to $orderby</p>
@@ -154,105 +151,105 @@ SortOption =
 <li>We can order ASC or DESC</li>
 </ul>
 <p>First off, let&#39;s deal with multiple properties - it seems this will be easiest</p>
-<pre><code><span class="function"><span class="title">test</span><span class="params">(<span class="string">"/resource?$orderby=PropertyOne,PropertyTwo"</span>, <span class="string">"OData"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>(result) <span class="tuple">{
-  <span class="function_name">it</span>(<span class="string">"sort options are present on the result"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
-     assert.<span class="function_name">notEqual</span>(result.options.$orderby, null)
-  }</span>)
-  <span class="function_name">it</span>(<span class="string">"sort options have the first property specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
-     assert.<span class="function_name">equal</span>(result.options.$orderby.properties[<span class="number">0</span>].name, <span class="string">"PropertyOne"</span>)
-  }</span>)
-  <span class="function_name">it</span>(<span class="string">"sort options have the second property specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
-     assert.<span class="function_name">equal</span>(result.options.$orderby.properties[<span class="number">1</span>].name, <span class="string">"PropertyTwo"</span>)
-  }</span>)
+<pre><code><span class="hljs-function"><span class="hljs-title">test</span><span class="hljs-params">(<span class="hljs-string">"/resource?$orderby=PropertyOne,PropertyTwo"</span>, <span class="hljs-string">"OData"</span>, function(result)</span></span> {
+  it(<span class="hljs-string">"sort options are present on the result"</span>, function() {
+     assert.notEqual(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$orderby</span>, null)
+  })
+  it(<span class="hljs-string">"sort options have the first property specified"</span>, function() {
+     assert.equal(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$orderby</span><span class="hljs-selector-class">.properties</span>[<span class="hljs-number">0</span>]<span class="hljs-selector-class">.name</span>, <span class="hljs-string">"PropertyOne"</span>)
+  })
+  it(<span class="hljs-string">"sort options have the second property specified"</span>, function() {
+     assert.equal(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$orderby</span><span class="hljs-selector-class">.properties</span>[<span class="hljs-number">1</span>]<span class="hljs-selector-class">.name</span>, <span class="hljs-string">"PropertyTwo"</span>)
+  })
 })</code></pre><p>Yeugh, our data model is getting quite convoluted - I&#39;ll be working on that for sure.</p>
 <p>But first...</p>
 <pre><code>SortOption = 
-  se<span class="string">q("<span class="variable">$orderby</span>=")</span>
-  listOf(<span class="string">`SortProperty, ','):properties -&gt; { name: '$orderby', value: { properties: properties }  }
+  seq(<span class="hljs-string">"$orderby="</span>)
+  <span class="hljs-function"><span class="hljs-title">listOf</span>(`SortProperty, ','):properties -&gt;</span> { <span class="hljs-keyword">name</span>: <span class="hljs-string">'$orderby'</span>, value: { properties: properties }  }
 ,
 
 SortProperty = 
-  ResourceName:property -&gt; { name: property }
+  R<span class="hljs-function"><span class="hljs-title">esourceName</span>:property -&gt;</span> { <span class="hljs-keyword">name</span>: property }
 
 ,</code></pre><p>Pretty tidy, and this opens up the avenue of being able to specify ASC or DESC very easily</p>
 <p><em>DESC</em></p>
-<pre><code><span class="function"><span class="title">test</span><span class="params">(<span class="string">"/resource?$orderby=PropertyOne desc"</span>, <span class="string">"OData"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>(result) <span class="tuple">{
-  <span class="function_name">it</span>(<span class="string">"sort options are present on the result"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
-     assert.<span class="function_name">notEqual</span>(result.options.$orderby, null)
-  }</span>)
-  <span class="function_name">it</span>(<span class="string">"sort options have the property specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
-     assert.<span class="function_name">equal</span>(result.options.$orderby.properties[<span class="number">0</span>].name, <span class="string">"PropertyOne"</span>)
-  }</span>)
-  <span class="function_name">it</span>(<span class="string">"sort options have the property ordering specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
-     assert.<span class="function_name">equal</span>(result.options.$orderby.properties[<span class="number">0</span>].order, <span class="string">"desc"</span>)
-  }</span>)
+<pre><code><span class="hljs-function"><span class="hljs-title">test</span><span class="hljs-params">(<span class="hljs-string">"/resource?$orderby=PropertyOne desc"</span>, <span class="hljs-string">"OData"</span>, function(result)</span></span> {
+  it(<span class="hljs-string">"sort options are present on the result"</span>, function() {
+     assert.notEqual(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$orderby</span>, null)
+  })
+  it(<span class="hljs-string">"sort options have the property specified"</span>, function() {
+     assert.equal(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$orderby</span><span class="hljs-selector-class">.properties</span>[<span class="hljs-number">0</span>]<span class="hljs-selector-class">.name</span>, <span class="hljs-string">"PropertyOne"</span>)
+  })
+  it(<span class="hljs-string">"sort options have the property ordering specified"</span>, function() {
+     assert.equal(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$orderby</span><span class="hljs-selector-class">.properties</span>[<span class="hljs-number">0</span>]<span class="hljs-selector-class">.order</span>, <span class="hljs-string">"desc"</span>)
+  })
 })</code></pre><p><em>ASC</em></p>
-<pre><code><span class="function"><span class="title">test</span><span class="params">(<span class="string">"/resource?$orderby=PropertyOne asc"</span>, <span class="string">"OData"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>(result) <span class="tuple">{
-  <span class="function_name">it</span>(<span class="string">"sort options are present on the result"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
-     assert.<span class="function_name">notEqual</span>(result.options.$orderby, null)
-  }</span>)
-  <span class="function_name">it</span>(<span class="string">"sort options have the property specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
-     assert.<span class="function_name">equal</span>(result.options.$orderby.properties[<span class="number">0</span>].name, <span class="string">"PropertyOne"</span>)
-  }</span>)
-  <span class="function_name">it</span>(<span class="string">"sort options have the property ordering specified"</span>, <span class="keyword">fun</span><span class="function_name">ction</span>() <span class="tuple">{
-     assert.<span class="function_name">equal</span>(result.options.$orderby.properties[<span class="number">0</span>].order, <span class="string">"asc"</span>)
-  }</span>)
+<pre><code><span class="hljs-function"><span class="hljs-title">test</span><span class="hljs-params">(<span class="hljs-string">"/resource?$orderby=PropertyOne asc"</span>, <span class="hljs-string">"OData"</span>, function(result)</span></span> {
+  it(<span class="hljs-string">"sort options are present on the result"</span>, function() {
+     assert.notEqual(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$orderby</span>, null)
+  })
+  it(<span class="hljs-string">"sort options have the property specified"</span>, function() {
+     assert.equal(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$orderby</span><span class="hljs-selector-class">.properties</span>[<span class="hljs-number">0</span>]<span class="hljs-selector-class">.name</span>, <span class="hljs-string">"PropertyOne"</span>)
+  })
+  it(<span class="hljs-string">"sort options have the property ordering specified"</span>, function() {
+     assert.equal(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$orderby</span><span class="hljs-selector-class">.properties</span>[<span class="hljs-number">0</span>]<span class="hljs-selector-class">.order</span>, <span class="hljs-string">"asc"</span>)
+  })
 })</code></pre><p><em>Double trouble</em></p>
-<pre><code>test(<span class="string">"/resource?$orderby=PropertyOne asc,PropertyTwo desc"</span>, <span class="string">"OData"</span>, function(result) {
-  it(<span class="string">"sort options are present on the result"</span>, function() {
-     assert<span class="variable">.notEqual</span>(result<span class="variable">.options</span>.$orderby, null)
+<pre><code><span class="hljs-function"><span class="hljs-title">test</span><span class="hljs-params">(<span class="hljs-string">"/resource?$orderby=PropertyOne asc,PropertyTwo desc"</span>, <span class="hljs-string">"OData"</span>, function(result)</span></span> {
+  it(<span class="hljs-string">"sort options are present on the result"</span>, function() {
+     assert.notEqual(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$orderby</span>, null)
   })
-  it(<span class="string">"sort options have property one name specified"</span>, function() {
-     assert<span class="variable">.equal</span>(result<span class="variable">.options</span>.$orderby<span class="variable">.properties</span>[<span class="number">0</span>]<span class="variable">.name</span>, <span class="string">"PropertyOne"</span>)
+  it(<span class="hljs-string">"sort options have property one name specified"</span>, function() {
+     assert.equal(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$orderby</span><span class="hljs-selector-class">.properties</span>[<span class="hljs-number">0</span>]<span class="hljs-selector-class">.name</span>, <span class="hljs-string">"PropertyOne"</span>)
   })
-  it(<span class="string">"sort options have property one ordering specified"</span>, function() {
-     assert<span class="variable">.equal</span>(result<span class="variable">.options</span>.$orderby<span class="variable">.properties</span>[<span class="number">0</span>]<span class="variable">.order</span>, <span class="string">"asc"</span>)
+  it(<span class="hljs-string">"sort options have property one ordering specified"</span>, function() {
+     assert.equal(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$orderby</span><span class="hljs-selector-class">.properties</span>[<span class="hljs-number">0</span>]<span class="hljs-selector-class">.order</span>, <span class="hljs-string">"asc"</span>)
   })
-  it(<span class="string">"sort options have the property two name specified"</span>, function() {
-     assert<span class="variable">.equal</span>(result<span class="variable">.options</span>.$orderby<span class="variable">.properties</span>[<span class="number">1</span>]<span class="variable">.name</span>, <span class="string">"PropertyTwo"</span>)
+  it(<span class="hljs-string">"sort options have the property two name specified"</span>, function() {
+     assert.equal(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$orderby</span><span class="hljs-selector-class">.properties</span>[<span class="hljs-number">1</span>]<span class="hljs-selector-class">.name</span>, <span class="hljs-string">"PropertyTwo"</span>)
   })
-  it(<span class="string">"sort options have the property two ordering specified"</span>, function() {
-     assert<span class="variable">.equal</span>(result<span class="variable">.options</span>.$orderby<span class="variable">.properties</span>[<span class="number">1</span>]<span class="variable">.order</span>, <span class="string">"desc"</span>)
+  it(<span class="hljs-string">"sort options have the property two ordering specified"</span>, function() {
+     assert.equal(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$orderby</span><span class="hljs-selector-class">.properties</span>[<span class="hljs-number">1</span>]<span class="hljs-selector-class">.order</span>, <span class="hljs-string">"desc"</span>)
   })
 })</code></pre><p>Adding this is <em>super</em> easy</p>
 <pre><code>SortProperty = 
-  ResourceName:property
-  (
-    se<span class="string">q(" asc")</span> -&gt; <span class="string">"asc"</span>
-  | se<span class="string">q(" desc")</span> -&gt; <span class="string">"desc"</span>
-  )?:order
-  -&gt; { name: property, order: order }</code></pre><p>Simply check for the resource name, then optionally check for an &quot;asc&quot; or a &quot;desc&quot;, before bundling this into an object.</p>
+  ResourceName:<span class="hljs-keyword">property</span><span class="hljs-title">
+  </span>(
+    seq(<span class="hljs-string">" asc"</span>) -&gt; <span class="hljs-string">"asc"</span>
+  | seq(<span class="hljs-string">" desc"</span>) -&gt; <span class="hljs-string">"desc"</span>
+  )?:<span class="hljs-keyword">order</span>
+  <span class="hljs-title">-&gt; { name</span>: <span class="hljs-keyword">property</span><span class="hljs-title"></span>, order: <span class="hljs-keyword">order</span> <span class="hljs-title">}</span></code></pre><p>Simply check for the resource name, then optionally check for an &quot;asc&quot; or a &quot;desc&quot;, before bundling this into an object.</p>
 <p><strong>And the final bit - property paths</strong></p>
 <p>I already technically have this written in the form of the expression &quot;PathSegment&quot;, but that&#39;s a bit too coupled to the main query path, and un-coupling it would be tricky - so it&#39;s better off just to write a new expression for matching paths within query options.</p>
 <p>First off, the test I want to pass</p>
 <p><em>Reminder: This is the PathSegment I put together last time</em></p>
 <pre><code>PathSegment = 
-      <span class="string">'/'</span>
+      <span class="hljs-string">'/'</span>
       ResourceName:resource
       (
-        (<span class="string">"("</span> Number:key <span class="string">")"</span>)?
+        (<span class="hljs-string">"("</span> Number:key <span class="hljs-string">")"</span>)?
         (
-          (se<span class="string">q("/<span class="variable">$links</span>")</span> PathSegment:<span class="keyword">link</span>)
-        | PathSegment: <span class="keyword">next</span>
+          (se<span class="hljs-string">q("/$links")</span> PathSegment:<span class="hljs-keyword">link</span>)
+        | PathSegment: <span class="hljs-keyword">next</span>
         )?
-      ) -&gt; { resource: resource, key: key, <span class="keyword">link</span>: <span class="keyword">link</span>, property: <span class="keyword">next</span> }
+      ) -&gt; { resource: resource, key: key, <span class="hljs-keyword">link</span>: <span class="hljs-keyword">link</span>, property: <span class="hljs-keyword">next</span> }
 ,</code></pre><p>We just need a subset of this, let&#39;s call it PropertyPath</p>
 <pre><code>PropertyPath = 
-      ResourceName:resource
+      <span class="hljs-symbol">ResourceName:</span>resource
       (
-        <span class="comment">'/'</span>
-        PropertyPath: <span class="keyword">next</span>
-      )? -&gt; { name: resource, <span class="keyword">property</span>: <span class="keyword">next</span>}
+        <span class="hljs-string">'/'</span>
+        <span class="hljs-symbol">PropertyPath:</span> <span class="hljs-keyword">next</span>
+      )? -&gt; { <span class="hljs-symbol">name:</span> resource, <span class="hljs-symbol">property:</span> <span class="hljs-keyword">next</span>}
 ,</code></pre><p>And with a slight modification to our SortOptions to use this new expression:</p>
 <pre><code>SortProperty = 
-  PropertyPath:property
-  (
-    se<span class="string">q(" asc")</span> -&gt; <span class="string">"asc"</span>
-  | se<span class="string">q(" desc")</span> -&gt; <span class="string">"desc"</span>
-  )?:order
-  -&gt; {
-       property.order = order;
-       <span class="keyword">return</span> property;
+  PropertyPath:<span class="hljs-keyword">property</span><span class="hljs-title">
+  </span>(
+    seq(<span class="hljs-string">" asc"</span>) -&gt; <span class="hljs-string">"asc"</span>
+  | seq(<span class="hljs-string">" desc"</span>) -&gt; <span class="hljs-string">"desc"</span>
+  )?:<span class="hljs-keyword">order</span>
+  <span class="hljs-title">-&gt; {
+       property</span>.<span class="hljs-keyword">order</span> <span class="hljs-title">= order</span>;
+       return <span class="hljs-keyword">property</span><span class="hljs-title"></span>;
      }</code></pre><p>And we&#39;re done.</p>
 <p>Next up, I&#39;ll tackle the paging stuffs, as that should be simple.</p>
 </div>

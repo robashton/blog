@@ -8,10 +8,10 @@
 </ul>
 <p><strong>Inner classes</strong></p>
 <p>So, inner classes, a feature that both Java and C# have and each with their own set of issues.</p>
-<pre><code><span class="class"><span class="keyword">class</span> <span class="title">Outer</span><span class="params">()</span> {</span> 
-  <span class="keyword">private</span> <span class="keyword">val</span> bar : Int = <span class="number">1</span> 
-    <span class="class"><span class="keyword">class</span> <span class="title">Nested</span><span class="params">()</span> {</span> 
-      fun foo() = <span class="number">2</span> 
+<pre><code><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Outer</span></span>() { 
+  <span class="hljs-keyword">private</span> <span class="hljs-keyword">val</span> bar : <span class="hljs-built_in">Int</span> = <span class="hljs-number">1</span> 
+    <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Nested</span></span>() { 
+      <span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">foo</span><span class="hljs-params">()</span></span> = <span class="hljs-number">2</span> 
     } 
   } </code></pre><p>   val demo = Outer.Inner().foo() // == 2</p>
 <p>No biggy here, except in Java there is a problem with nested class as explained in <a href="http://blog.jetbrains.com/kotlin/2013/02/kotlin-m5-is-out/">this blog entry</a> </p>
@@ -20,64 +20,64 @@
   </blockquote>
 
 <p>Kotlin&#39;s solution is to say that you can&#39;t do this</p>
-<pre><code><span class="class"><span class="keyword">class</span> <span class="title">Outer</span><span class="params">()</span> {</span> 
-  <span class="keyword">private</span> <span class="keyword">val</span> bar : Int = <span class="number">1</span> 
-    <span class="class"><span class="keyword">class</span> <span class="title">Nested</span><span class="params">()</span> {</span> 
-      fun doSomething() {
+<pre><code><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Outer</span></span>() { 
+  <span class="hljs-keyword">private</span> <span class="hljs-keyword">val</span> bar : <span class="hljs-built_in">Int</span> = <span class="hljs-number">1</span> 
+    <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Nested</span></span>() { 
+      <span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">doSomething</span><span class="hljs-params">()</span></span> {
         println(bar)
       }
     } 
   } </code></pre><p>Instead you have to mark the inner class with &#39;inner&#39; to make this an explicit decision</p>
-<pre><code><span class="class"><span class="keyword">class</span> <span class="title">Outer</span><span class="params">()</span> {</span> 
-  <span class="keyword">private</span> <span class="keyword">val</span> bar : Int = <span class="number">1</span> 
-    inner <span class="class"><span class="keyword">class</span> <span class="title">Nested</span><span class="params">()</span> {</span> 
-      fun doSomething() {
+<pre><code><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Outer</span></span>() { 
+  <span class="hljs-keyword">private</span> <span class="hljs-keyword">val</span> bar : <span class="hljs-built_in">Int</span> = <span class="hljs-number">1</span> 
+    <span class="hljs-keyword">inner</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Nested</span></span>() { 
+      <span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">doSomething</span><span class="hljs-params">()</span></span> {
         println(bar)
       }
     } 
   } </code></pre><p>I have a better solution, <em>get rid of inner classes</em>, they&#39;re crap anyway and don&#39;t just cause problems in software, but apparently cause problems with language design too. Problem solved.</p>
 <p><strong>null and elvis</strong></p>
 <p>Kotlin operates on the basis of things not being nullable by default, which is something I wholeheartedly support.</p>
-<pre><code><span class="keyword">var</span> derpy : Pony = <span class="keyword">null</span></code></pre><p>This isn&#39;t allowed.</p>
+<pre><code><span class="hljs-keyword">var</span> derpy : Pony = <span class="hljs-literal">null</span></code></pre><p>This isn&#39;t allowed.</p>
 <p>We&#39;re allowed to say we <em>want</em> a nullable object, by adding a question mark to things.</p>
-<pre><code><span class="keyword">var</span> derpy : Pony? = <span class="keyword">null</span></code></pre><p>This is sensible, and can&#39;t be faulted.</p>
+<pre><code><span class="hljs-keyword">var</span> derpy : Pony? = <span class="hljs-literal">null</span></code></pre><p>This is sensible, and can&#39;t be faulted.</p>
 <p>Most legacy java APIs will return things that <em>can</em> be nullable, and in fact a lot of Java APIs do this in places where they really shouldn&#39;t. The compiler will complain about this though, so where I do</p>
 <p><em>Compiler error</em></p>
-<pre><code> var fileList = <span class="transposed_variable">files.</span>listFiles()
- var <span class="built_in">size</span> = <span class="transposed_variable">fileList.</span><span class="built_in">size</span>
- println(<span class="built_in">size</span>)</code></pre><p><em>Compiler success</em></p>
-<pre><code> var fileList = <span class="transposed_variable">files.</span>listFiles()
- var <span class="built_in">size</span> = fileList?.<span class="built_in">size</span>
- println(<span class="built_in">size</span>)</code></pre><p>The elvis operator gets compiled down into</p>
-<pre><code> <span class="keyword">var</span> fileList = files.listFiles()
- <span class="keyword">if</span>(fileList != <span class="keyword">null</span>) {
-   <span class="keyword">var</span> size = fileList.size
+<pre><code> <span class="hljs-selector-tag">var</span> fileList = files.listFiles()
+ <span class="hljs-selector-tag">var</span> size = fileList<span class="hljs-selector-class">.size</span>
+ println(size)</code></pre><p><em>Compiler success</em></p>
+<pre><code> var fileList = files.listFiles()
+ var <span class="hljs-built_in">size</span> = fileList?.<span class="hljs-built_in">size</span>
+ <span class="hljs-built_in">println</span>(<span class="hljs-built_in">size</span>)</code></pre><p>The elvis operator gets compiled down into</p>
+<pre><code> <span class="hljs-selector-tag">var</span> fileList = files.listFiles()
+ <span class="hljs-keyword">if</span>(fileList != null) {
+   <span class="hljs-selector-tag">var</span> size = fileList<span class="hljs-selector-class">.size</span>
    println(size)
  }</code></pre><p>This is a case where Kotlin &quot;fixes&quot; Java well, so I&#39;m not complaining.</p>
 <p><strong>Ranges</strong></p>
 <p>Syntastical sugar, but always a fan of this sort of thing</p>
-<pre><code><span class="keyword">for</span> (i <span class="keyword">in</span> (<span class="number">1.</span><span class="number">.4</span>).reversed() <span class="built_in">step</span> <span class="number">2</span>) print(i) <span class="comment">// prints "42" </span></code></pre><p>I like this sort of thing, although it gets out of hand in languages like Ruby so I&#39;d watch this stuff cautiously.</p>
+<pre><code>for (<span class="hljs-name">i</span> in (<span class="hljs-number">1</span>..<span class="hljs-number">4</span>).reversed() step <span class="hljs-number">2</span>) print(<span class="hljs-name">i</span>) // prints <span class="hljs-string">"42"</span> </code></pre><p>I like this sort of thing, although it gets out of hand in languages like Ruby so I&#39;d watch this stuff cautiously.</p>
 <p><strong>Pattern matching</strong></p>
-<pre><code><span class="keyword">when</span> (<span class="keyword">x</span>) { 
-  <span class="number">1</span> -&gt; <span class="keyword">print</span>(<span class="string">"x == 1"</span>) 
-  <span class="number">2</span> -&gt; <span class="keyword">print</span>(<span class="string">"x == 2"</span>) 
-  <span class="keyword">else</span> -&gt; { <span class="regexp">//</span> Note the block 
-    <span class="keyword">print</span>(<span class="string">"x is neither 1 nor 2"</span>) 
+<pre><code><span class="hljs-keyword">when</span> (x) { 
+  <span class="hljs-selector-tag">1</span> <span class="hljs-selector-tag">-</span>&gt; <span class="hljs-selector-tag">print</span>(<span class="hljs-string">"x == 1"</span>) 
+  <span class="hljs-selector-tag">2</span> <span class="hljs-selector-tag">-</span>&gt; <span class="hljs-selector-tag">print</span>(<span class="hljs-string">"x == 2"</span>) 
+  <span class="hljs-selector-tag">else</span> <span class="hljs-selector-tag">-</span>&gt; { <span class="hljs-comment">// Note the block </span>
+    <span class="hljs-selector-tag">print</span>(<span class="hljs-string">"x is neither 1 nor 2"</span>) 
   } 
 }</code></pre><p>or</p>
-<pre><code>when (tuple) { 
-  is <span class="comment">#(1, 2) -&gt; ... </span>
-  is <span class="comment">#(val a, 3) -&gt; print(a) // binding a to the first element of the tuple </span>
-  !is <span class="comment">#(*, 1100) -&gt; ... </span>
-  <span class="keyword">else</span> -&gt; <span class="keyword">...</span> 
+<pre><code><span class="hljs-keyword">when</span> (tuple) { 
+  <span class="hljs-keyword">is</span> <span class="hljs-comment">#(1, 2) -&gt; ... </span>
+  <span class="hljs-keyword">is</span> <span class="hljs-comment">#(val a, 3) -&gt; print(a) // binding a to the first element of the tuple </span>
+  !<span class="hljs-keyword">is</span> <span class="hljs-comment">#(*, 1100) -&gt; ... </span>
+  <span class="hljs-keyword">else</span><span class="hljs-function"> -&gt;</span> ... 
 }</code></pre><p>I&#39;m a sucker for pattern matching constructs and I like this implementation because of how easy it is to declare those function literals.</p>
 <p>Also, it does intelligent casting for you as well, cutting own on some of the cruft you&#39;d usually get with this sort of thing</p>
-<pre><code><span class="function"><span class="keyword">function</span> <span class="title">strangeFunction</span><span class="params">(a : Any)</span> <span class="type">: Any</span> {</span>
+<pre><code><span class="hljs-keyword">function</span> <span class="hljs-title">strangeFunction</span>(a : <span class="hljs-type">Any</span>) : <span class="hljs-type">Any</span> {
   when(a) {
-    <span class="keyword">is</span> Int -&gt;
-      <span class="keyword">return</span> a + <span class="number">5</span>
-    <span class="keyword">is</span> String -&gt;
-      <span class="keyword">return</span> a + <span class="string">"5"</span>
+    <span class="hljs-keyword">is</span> Int -&gt;
+      <span class="hljs-keyword">return</span> a + <span class="hljs-number">5</span>
+    <span class="hljs-keyword">is</span> String -&gt;
+      <span class="hljs-keyword">return</span> a + <span class="hljs-string">"5"</span>
   }
 }</code></pre><p>Nice</p>
 <p><strong>Round-up</strong></p>

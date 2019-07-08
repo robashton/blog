@@ -7,15 +7,15 @@
 </ul>
 <p>It turns out that this isn&#39;t too hard, let&#39;s look at how we do this:</p>
 <p>Let&#39;s start with a basic projection over our ponies stream that doesn&#39;t do anything:</p>
-<pre><code><span class="function"><span class="title">fromStream</span><span class="params">('ponies')</span>
-.<span class="title">whenAny</span><span class="params">(<span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
+<pre><code>from<span class="hljs-constructor">Stream('<span class="hljs-params">ponies</span>')</span>
+.<span class="hljs-keyword">when</span><span class="hljs-constructor">Any(<span class="hljs-params">function</span>(<span class="hljs-params">state</span>, <span class="hljs-params">ev</span>)</span> {
 
-}</span>)</code></pre><p>To re-iterate what we learned last time, this projection says &quot;From the stream &#39;ponies&#39;, please invoke this callback for every event in the stream regardless of what the EventType is&quot;</p>
+})</code></pre><p>To re-iterate what we learned last time, this projection says &quot;From the stream &#39;ponies&#39;, please invoke this callback for every event in the stream regardless of what the EventType is&quot;</p>
 <p>What we can actually do is create a new stream per pony, but link back to the original events from those new streams. </p>
-<pre><code><span class="function"><span class="title">fromStream</span><span class="params">('ponies')</span>
-.<span class="title">whenAny</span><span class="params">(<span class="keyword">fun</span><span class="function_name">ction</span>(state, ev) <span class="tuple">{
-  <span class="function_name">linkTo</span>('pony-' + ev.data.<span class="variable">PonyName</span>, ev)
-}</span>)</code></pre><p>linkTo takes two arguments</p>
+<pre><code>from<span class="hljs-constructor">Stream('<span class="hljs-params">ponies</span>')</span>
+.<span class="hljs-keyword">when</span><span class="hljs-constructor">Any(<span class="hljs-params">function</span>(<span class="hljs-params">state</span>, <span class="hljs-params">ev</span>)</span> {
+  link<span class="hljs-constructor">To('<span class="hljs-params">pony</span>-' + <span class="hljs-params">ev</span>.<span class="hljs-params">data</span>.PonyName, <span class="hljs-params">ev</span>)</span>
+})</code></pre><p>linkTo takes two arguments</p>
 <ul>
 <li>The name of the stream to link the event to</li>
 <li>The event itself</li>
@@ -24,31 +24,31 @@
 <p>In our case, we&#39;re going to have a stream created for each pony, called pony-PONYNAME (so pony-rainbowdash, pony-derpyhooves, pony-pinkiepie), let&#39;s look at this to verify</p>
 <p><em>/streams/pony-rainbowdash</em></p>
 <pre><code>{
-  <span class="method">title:</span> <span class="comment">"ponies #5502"</span>,
-  <span class="method">id:</span> <span class="comment">"http://127.0.0.1:2113/streams/ponies/5502"</span>,
-  <span class="method">updated:</span> <span class="comment">"2013-03-02T12:39:12.322785Z"</span>,
-  <span class="method">author:</span> {
-    <span class="method">name:</span> <span class="comment">"EventStore"</span>
+<span class="hljs-symbol">  title:</span> <span class="hljs-string">"ponies #5502"</span>,
+<span class="hljs-symbol">  id:</span> <span class="hljs-string">"http://127.0.0.1:2113/streams/ponies/5502"</span>,
+<span class="hljs-symbol">  updated:</span> <span class="hljs-string">"2013-03-02T12:39:12.322785Z"</span>,
+<span class="hljs-symbol">  author:</span> {
+<span class="hljs-symbol">    name:</span> <span class="hljs-string">"EventStore"</span>
   },
-  <span class="method">summary:</span> <span class="comment">"Entry #5502"</span>,
-  <span class="method">links:</span> [
+<span class="hljs-symbol">  summary:</span> <span class="hljs-string">"Entry #5502"</span>,
+<span class="hljs-symbol">  links:</span> [
     {
-      <span class="method">uri:</span> <span class="comment">"http://127.0.0.1:2113/streams/ponies/5502"</span>,
-      <span class="method">relation:</span> <span class="comment">"edit"</span>
+<span class="hljs-symbol">      uri:</span> <span class="hljs-string">"http://127.0.0.1:2113/streams/ponies/5502"</span>,
+<span class="hljs-symbol">      relation:</span> <span class="hljs-string">"edit"</span>
     },
     {
-      <span class="method">uri:</span> <span class="comment">"http://127.0.0.1:2113/streams/ponies/event/5502?format=text"</span>,
-      <span class="method">type:</span> <span class="comment">"text/plain"</span>
+<span class="hljs-symbol">      uri:</span> <span class="hljs-string">"http://127.0.0.1:2113/streams/ponies/event/5502?format=text"</span>,
+<span class="hljs-symbol">      type:</span> <span class="hljs-string">"text/plain"</span>
     },
     {
-      <span class="method">uri:</span> <span class="comment">"http://127.0.0.1:2113/streams/ponies/event/5502?format=json"</span>,
-      <span class="method">relation:</span> <span class="comment">"alternate"</span>,
-      <span class="method">type:</span> <span class="comment">"application/json"</span>
+<span class="hljs-symbol">      uri:</span> <span class="hljs-string">"http://127.0.0.1:2113/streams/ponies/event/5502?format=json"</span>,
+<span class="hljs-symbol">      relation:</span> <span class="hljs-string">"alternate"</span>,
+<span class="hljs-symbol">      type:</span> <span class="hljs-string">"application/json"</span>
     },
     {
-      <span class="method">uri:</span> <span class="comment">"http://127.0.0.1:2113/streams/ponies/event/5502?format=xml"</span>,
-      <span class="method">relation:</span> <span class="comment">"alternate"</span>,
-      <span class="method">type:</span> <span class="comment">"text/xml"</span>
+<span class="hljs-symbol">      uri:</span> <span class="hljs-string">"http://127.0.0.1:2113/streams/ponies/event/5502?format=xml"</span>,
+<span class="hljs-symbol">      relation:</span> <span class="hljs-string">"alternate"</span>,
+<span class="hljs-symbol">      type:</span> <span class="hljs-string">"text/xml"</span>
     }
   ]
 }</code></pre><p>This is just one of the events in that stream, but we can see an important point here, that <em>a new event was not created, the links are the original events from the original stream</em>. Cool!</p>

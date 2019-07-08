@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
     <link rel="stylesheet" href="/assets/css/themes/default.css">
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
     <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
     <script type="text/javascript">
       var _gaq = _gaq || [];
@@ -57,9 +57,6 @@
                             <li>
                                 <a href="/blog.html">Blog</a>
                             </li>
-                            <li>
-                                <a href="/testimonials.html">Testimonials</a>
-                            </li>
                     </div>
                 </div>
             </div>
@@ -88,41 +85,41 @@
 <p><strong>Do all this stuff before you do the other stuff</strong></p>
 <p>I don&#39;t think this will be too hard to parse given our already built-up knowledge of how to do precedence.</p>
 <p>To the test..</p>
-<pre><code>test(<span class="string">"/some/resource?$filterby=(Price div Price) mul 5 gt 10"</span>, <span class="string">"OData"</span>, function(<span class="constant">result</span>) {
-  <span class="keyword">it</span>(<span class="string">"A filter should be present"</span>, function() {
-     assert.notEqual(<span class="constant">result</span>.options.$filterby, null)
+<pre><code>test(<span class="hljs-string">"/some/resource?$filterby=(Price div Price) mul 5 gt 10"</span>, <span class="hljs-string">"OData"</span>, function(<span class="hljs-name">result</span>) {
+  it(<span class="hljs-string">"A filter should be present"</span>, function() {
+     assert.notEqual(<span class="hljs-name">result</span>.options.$filterby, null)
   })
-  <span class="keyword">it</span>(<span class="string">"Filter should be an instance of 'gt'"</span>, function() {
-     assert.<span class="keyword">equal</span>(<span class="constant">result</span>.options.$filterby[<span class="number">0</span>], <span class="string">"gt"</span>)
+  it(<span class="hljs-string">"Filter should be an instance of 'gt'"</span>, function() {
+     assert.equal(<span class="hljs-name">result</span>.options.$filterby[<span class="hljs-number">0</span>], <span class="hljs-string">"gt"</span>)
   })
-  var lexpr = <span class="constant">result</span>.options.$filterby[<span class="number">1</span>] 
+  var lexpr = result.options.$filterby[<span class="hljs-number">1</span>] 
 
-  <span class="keyword">it</span>(<span class="string">"should be {expr} mul 5"</span>, function() {
-    assert.<span class="keyword">equal</span>(lexpr[<span class="number">0</span>], <span class="string">"mul"</span>)
-    assert.<span class="keyword">equal</span>(lexpr[<span class="number">2</span>], <span class="number">5</span>)
-  })
-
-  <span class="keyword">it</span>(<span class="string">"should be {Price div Price}"</span>, function() {
-    assert.<span class="keyword">equal</span>(lexpr[<span class="number">1</span>][<span class="number">0</span>], <span class="string">"div"</span>)
-    assert.<span class="keyword">equal</span>(lexpr[<span class="number">1</span>][<span class="number">1</span>].<span class="property">name</span>, <span class="string">"Price"</span>)
-    assert.<span class="keyword">equal</span>(lexpr[<span class="number">1</span>][<span class="number">2</span>].<span class="property">name</span>, <span class="string">"Price"</span> )
+  it(<span class="hljs-string">"should be {expr} mul 5"</span>, function() {
+    assert.equal(<span class="hljs-name">lexpr</span>[<span class="hljs-number">0</span>], <span class="hljs-string">"mul"</span>)
+    assert.equal(<span class="hljs-name">lexpr</span>[<span class="hljs-number">2</span>], <span class="hljs-number">5</span>)
   })
 
-  <span class="keyword">it</span>(<span class="string">"rhr should be 10"</span>, function() {
-     assert.<span class="keyword">equal</span>(<span class="constant">result</span>.options.$filterby[<span class="number">2</span>], <span class="number">10</span>)
+  it(<span class="hljs-string">"should be {Price div Price}"</span>, function() {
+    assert.equal(<span class="hljs-name">lexpr</span>[<span class="hljs-number">1</span>][<span class="hljs-number">0</span>], <span class="hljs-string">"div"</span>)
+    assert.equal(<span class="hljs-name">lexpr</span>[<span class="hljs-number">1</span>][<span class="hljs-number">1</span>].name, <span class="hljs-string">"Price"</span>)
+    assert.equal(<span class="hljs-name">lexpr</span>[<span class="hljs-number">1</span>][<span class="hljs-number">2</span>].name, <span class="hljs-string">"Price"</span> )
+  })
+
+  it(<span class="hljs-string">"rhr should be 10"</span>, function() {
+     assert.equal(<span class="hljs-name">result</span>.options.$filterby[<span class="hljs-number">2</span>], <span class="hljs-number">10</span>)
   })
 })</code></pre><p>This is actually the same test as in our <a href="/entries/adding-arithmetic-operators-to-our-odata-parser.html">Arithmetic Operators</a> post, only we&#39;ve surrounded the div expression because we want that to happen all by itself.</p>
 <p>Well, Brackets actually have the <em>highest</em> precedence, so they&#39;ll need to go at the very end of our parser.</p>
 <pre><code>FilterByValue = 
   FilterNegateExpression
-<span class="string">| Number</span>
-<span class="string">| QuotedText</span>
-<span class="string">| PropertyPath</span>
-<span class="string">| GroupedPrecedenceExpression</span>
+| <span class="hljs-type">Number</span>
+| <span class="hljs-type">QuotedText</span>
+| <span class="hljs-type">PropertyPath</span>
+| <span class="hljs-type">GroupedPrecedenceExpression</span>
 ,
 
 GroupedPrecedenceExpression = 
-  <span class="string">"("</span> spaces FilterByExpression:expr spaces <span class="string">")"</span> -&gt; expr
+  <span class="hljs-string">"("</span> spaces FilterByExpression:expr spaces <span class="hljs-string">")"</span> -&gt; expr
 
 ,</code></pre><p>Yes, it really is that simple. This is what comes of building up the definition of a parse-target out of little building blocks and then making a sequence of them.</p>
 <p>If only all programs worked like this.</p>

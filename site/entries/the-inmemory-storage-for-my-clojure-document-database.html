@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
     <link rel="stylesheet" href="/assets/css/themes/default.css">
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
     <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
     <script type="text/javascript">
       var _gaq = _gaq || [];
@@ -57,9 +57,6 @@
                             <li>
                                 <a href="/blog.html">Blog</a>
                             </li>
-                            <li>
-                                <a href="/testimonials.html">Testimonials</a>
-                            </li>
                     </div>
                 </div>
             </div>
@@ -80,33 +77,33 @@
 </ul>
 <p>Well, this is quite a simple thing. As described in the last two entries - we have a very small surface area to implement for our storage system, and all objects are passed in as Plain Old Clojure data structures. The implemention therefore clocks in at under 40 lines of code and is shown in its entirety below.</p>
 <p>Memory storage is implemented as an atom containing a sorted map.</p>
-<pre><code><span class="list">(<span class="title">defn</span><span class="body"> create [] <span class="list">(<span class="title">MemoryStorage</span><span class="body">. <span class="list">(<span class="title">atom</span><span class="body"> <span class="list">(<span class="title">sorted-map</span><span class="body">)</span></span>)</span></span>)</span></span>)</span></span></code></pre><p>MemoryStorage merely returns whatever is in this atom at the start of a transaction (giving read isolation)</p>
-<pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> MemoryStorage [memory]
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> create [] (<span class="hljs-name">MemoryStorage.</span> (<span class="hljs-name"><span class="hljs-builtin-name">atom</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">sorted-map</span></span>))))</code></pre><p>MemoryStorage merely returns whatever is in this atom at the start of a transaction (giving read isolation)</p>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defrecord</span></span> MemoryStorage [memory]
   java.io.Closeable
   Reader
   Storage
-  <span class="list">(<span class="title">ensure-transaction</span><span class="body"> [ops] <span class="list">(<span class="title">MemoryTransaction</span><span class="body">. @<span class="list">(<span class="body"><span class="keyword">:memory</span> ops)</span></span> <span class="list">(<span class="body"><span class="keyword">:memory</span> ops)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">from-db</span><span class="body"> [this id] <span class="list">(<span class="title">get</span><span class="body"> @memory id)</span></span>)</span></span>
-  <span class="list">(<span class="title">open-iterator</span><span class="body"> [this] <span class="list">(<span class="title">MemoryIterator</span><span class="body">. <span class="literal">nil</span> memory <span class="list">(<span class="title">atom</span><span class="body"> <span class="literal">nil</span>)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span></code></pre><p>Commiting the transaction, is just a reduction of operations inside the transaction into whatever is in the atom.</p>
-<pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> MemoryTransaction [snapshot memory]
+  (<span class="hljs-name">ensure-transaction</span> [ops] (<span class="hljs-name">MemoryTransaction.</span> @(<span class="hljs-symbol">:memory</span> ops) (<span class="hljs-symbol">:memory</span> ops)))
+  (<span class="hljs-name">from-db</span> [this id] (<span class="hljs-name"><span class="hljs-builtin-name">get</span></span> @memory id))
+  (<span class="hljs-name">open-iterator</span> [this] (<span class="hljs-name">MemoryIterator.</span> <span class="hljs-literal">nil</span> memory (<span class="hljs-name"><span class="hljs-builtin-name">atom</span></span> <span class="hljs-literal">nil</span>)))
+  (<span class="hljs-name">close</span> [this] <span class="hljs-literal">nil</span>))</code></pre><p>Commiting the transaction, is just a reduction of operations inside the transaction into whatever is in the atom.</p>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defrecord</span></span> MemoryTransaction [snapshot memory]
   java.io.Closeable
   Writer
   Reader
-  <span class="list">(<span class="title">open-iterator</span><span class="body"> [this] <span class="list">(<span class="title">MemoryIterator</span><span class="body">. snapshot memory <span class="list">(<span class="title">atom</span><span class="body"> <span class="literal">nil</span>)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">from-db</span><span class="body"> [this id] <span class="list">(<span class="title">get</span><span class="body"> snapshot id)</span></span>)</span></span>
-  <span class="list">(<span class="title">commit</span><span class="body">! [this] <span class="list">(<span class="title">swap</span><span class="body">! memory #<span class="list">(<span class="title">reduce</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> [m [k v]]
-                  <span class="list">(<span class="title">if</span><span class="body"> <span class="list">(<span class="title">=</span><span class="body"> <span class="keyword">:deleted</span> v)</span></span> <span class="list">(<span class="title">dissoc</span><span class="body"> m k)</span></span> <span class="list">(<span class="title">assoc</span><span class="body"> m k v)</span></span>)</span></span>)</span></span>
-                                        %<span class="number">1</span> <span class="list">(<span class="body"><span class="keyword">:cache</span> this)</span></span>)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span></code></pre><p>And because we created a sorted map, iterating means dropping up to the point where we want to begin iterating, and returning the sequence.</p>
-<pre><code><span class="list">(<span class="title">defrecord</span><span class="body"> MemoryIterator [snapshot memory start]
+  (<span class="hljs-name">open-iterator</span> [this] (<span class="hljs-name">MemoryIterator.</span> snapshot memory (<span class="hljs-name"><span class="hljs-builtin-name">atom</span></span> <span class="hljs-literal">nil</span>)))
+  (<span class="hljs-name">from-db</span> [this id] (<span class="hljs-name"><span class="hljs-builtin-name">get</span></span> snapshot id))
+  (<span class="hljs-name">commit!</span> [this] (<span class="hljs-name"><span class="hljs-builtin-name">swap!</span></span> memory #(<span class="hljs-name"><span class="hljs-builtin-name">reduce</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [m [k v]]
+                  (<span class="hljs-name"><span class="hljs-builtin-name">if</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> <span class="hljs-symbol">:deleted</span> v) (<span class="hljs-name"><span class="hljs-builtin-name">dissoc</span></span> m k) (<span class="hljs-name"><span class="hljs-builtin-name">assoc</span></span> m k v)))
+                                        %<span class="hljs-number">1</span> (<span class="hljs-symbol">:cache</span> this))))
+  (<span class="hljs-name">close</span> [this] <span class="hljs-literal">nil</span>))</code></pre><p>And because we created a sorted map, iterating means dropping up to the point where we want to begin iterating, and returning the sequence.</p>
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defrecord</span></span> MemoryIterator [snapshot memory start]
   java.io.Closeable
   Iterator
-  <span class="list">(<span class="title">seek</span><span class="body">! [this value] <span class="list">(<span class="title">swap</span><span class="body">! start <span class="list">(<span class="title">fn</span><span class="body"> [i] value)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">as-seq</span><span class="body"> [this]
-    <span class="list">(<span class="title">map</span><span class="body"> <span class="list">(<span class="title">fn</span><span class="body"> [i] {<span class="keyword">:k</span> <span class="list">(<span class="title">key</span><span class="body"> i)</span></span> <span class="keyword">:v</span> <span class="list">(<span class="title">val</span><span class="body"> i)</span></span>})</span></span>
-      <span class="list">(<span class="title">drop-while</span><span class="body"> #<span class="list">(<span class="title">&gt;</span><span class="body"> <span class="number">0</span> <span class="list">(<span class="title">compare</span><span class="body"> <span class="list">(<span class="title">key</span><span class="body"> %<span class="number">1</span>)</span></span> @start)</span></span>)</span></span> <span class="list">(<span class="title">or</span><span class="body"> snapshot @memory)</span></span>)</span></span>)</span></span>)</span></span>
-  <span class="list">(<span class="title">close</span><span class="body"> [this] <span class="literal">nil</span>)</span></span>)</span></span></code></pre><p>Obviously not suitable for production, but it keeps the tests fast (and runnable on various environments without needing native compiles). It also makes it easier to work in the REPL as there is no need to worry about on-disk artifacts or locking.</p>
+  (<span class="hljs-name">seek!</span> [this value] (<span class="hljs-name"><span class="hljs-builtin-name">swap!</span></span> start (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [i] value)))
+  (<span class="hljs-name">as-seq</span> [this]
+    (<span class="hljs-name"><span class="hljs-builtin-name">map</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [i] {<span class="hljs-symbol">:k</span> (<span class="hljs-name"><span class="hljs-builtin-name">key</span></span> i) <span class="hljs-symbol">:v</span> (<span class="hljs-name"><span class="hljs-builtin-name">val</span></span> i)})
+      (<span class="hljs-name"><span class="hljs-builtin-name">drop-while</span></span> #(<span class="hljs-name"><span class="hljs-builtin-name">&gt;</span></span> <span class="hljs-number">0</span> (<span class="hljs-name"><span class="hljs-builtin-name">compare</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">key</span></span> %<span class="hljs-number">1</span>) @start)) (<span class="hljs-name"><span class="hljs-builtin-name">or</span></span> snapshot @memory))))
+  (<span class="hljs-name">close</span> [this] <span class="hljs-literal">nil</span>))</code></pre><p>Obviously not suitable for production, but it keeps the tests fast (and runnable on various environments without needing native compiles). It also makes it easier to work in the REPL as there is no need to worry about on-disk artifacts or locking.</p>
 <p><strong>Summary</strong></p>
 <p>Having a small surface area for storage implementation, and keeping communication with core storage a matter of using plain old clojure data structures made this easy to write.</p>
 <p><strong>Related Files</strong></p>

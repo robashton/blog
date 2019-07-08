@@ -1,0 +1,51 @@
+<p>All the posts so far..</p>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+</ul>
+<h1 id="the-structure-of-an-end-to-end-purescript-otp-project">The structure of an end-to-end Purescript OTP project</h1>
+<p>Our <a href="https://github.com/id3as/demo-ps">demo-ps</a> can be viewed as two separate chunks of code, the base layer is just a plain old Erlang application built using rebar3 and such, and then on top of that we have a pile of Purescript that compiles into Erlang that can then be compiled and used by the usual development workflow.</p>
+<h1 id="the-erlangy-bits">The Erlangy bits</h1>
+<ul>
+<li><em>release-files</em>: Assets to be shipped during the release process</li>
+<li><em>src</em>: This is usually where the Erlang code lives, but there is no Erlang code<ul>
+<li><em>demo_ps.app.src</em>: The entry point, just points at a Purescript module, we&#39;ll talk about that</li>
+</ul>
+</li>
+<li><em>rebar.config</em>: Erlang dependencies and such</li>
+<li><em>priv</em>: Assets/files we want access to from code (static html/js/etc is covered here)</li>
+</ul>
+<h1 id="the-purescript-bits">The purescript bits</h1>
+<ul>
+<li><em>server</em>: The Purescript that we want to compile into Erlang lives here</li>
+<li><em>client</em>: The Purescript we want to compile into JS lives here</li>
+<li><em>Makefile</em>: Turns the Purescript into JS/Erlang</li>
+<li><em>shared</em>: Contains Purescript we&#39;ll share between JS/Erlang</li>
+</ul>
+<p>In an ideal world, we&#39;d just have a single Purescript entry point and forego our interaction with the Erlang world, but this would involve building out a lot more tooling - the result of this, is that sometimes you will be bringing Purescript dependencies down that require Erlang dependencies and then adding these to rebar.config and the entry point will be your responsibility.</p>
+<p>As a team already familiar with the Erlang ecosystem, this doesn&#39;t represent a hardship for us; but this definitely represents an area which could be improved by an enterprising developer or two, probably a plugin to the Purescript stack that stashes the rebar assets/etc in another build folder and allows us to just write PS/Erlang in the right place. (But this would then also involve modifying our editor plugins to know about this new structure, and as you can already see, it&#39;s a lot of work when we have something that is already functional..)</p>
+<h1 id="that-entry-point-then">That entry point then</h1>
+<pre><code class="language-erlang">{application, demo_ps,
+ [{description, <span class="hljs-string">"An OTP application"</span>},
+  {vsn, <span class="hljs-string">"0.1.0"</span>},
+  {registered, []},
+  {mod, { bookApp@ps, []}},
+  {applications,
+   [kernel,
+    stdlib,
+    lager,
+    gproc,
+    recon,
+    cowboy,
+    jsx,
+    eredis
+   ]},
+  {env,[]},
+  {modules, []},
+  {maintainers, []},
+  {licenses, []},
+  {links, []}
+ ]}.</code></pre>
+<p>One of the key things to note here, is that we have cowboy as a dependency, this is to support (as mentioned), the Purescript libraries that binds to it (<a href="https://github.com/id3as/purescript-erl-stetson">stetson</a> and <a href="https://github.com/purerl/purescript-erl-cowboy">erl-cowboy</a>. </p>
+<p>The other big note, is that entry point module is <em>&#39;bookApp@ps&#39;</em> - that module can be found in server/src/BookApp.purs, which defines a module <em>&#39;BookApp&#39;</em> - the Purescript compiler will compile Purescript modules into *<moduleName>@ps*, as this is unlikely to clash with anything else in the global application namespace. Beyond this entry point there is no Erlang code in the application itself - it&#39;s Purescript all the way down...</p>
+<p>The Makefile in <em>server/Makefile</em> does the work of compiling this Purescript into Erlang that can then be compiled by the usual rebar3 toolchain. The gist of the below Makefile being that we take all the .purs files lying around in the &#39;server&#39; folder, and compile them into .erl files that end up in ../../src/compiled_ps.</p>
+<p>We&#39;ll go into detail on the Purescript stuff in the next post, as that&#39;s the key; we put a pile of Erlang supporting files in the right location, and then write PS in the other location and everything &quot;just kinda works&quot;.</p>

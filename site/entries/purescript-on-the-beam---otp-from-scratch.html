@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
     <link rel="stylesheet" href="/assets/css/themes/default.css">
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
     <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
     <script type="text/javascript">
       var _gaq = _gaq || [];
@@ -57,9 +57,6 @@
                             <li>
                                 <a href="/blog.html">Blog</a>
                             </li>
-                            <li>
-                                <a href="/testimonials.html">Testimonials</a>
-                            </li>
                     </div>
                 </div>
             </div>
@@ -83,60 +80,60 @@
 <p>Ignoring applications and supervisors for a moment, we can probably write a genserver fairly trivially in Purescript directly using an FFI to call into OTP and shuffle some data types</p>
 <p>The low level FFI could look a little like this, where the call is just an effect that results in a genserver starting.</p>
 <pre><code class="language-erlang">
-    -module(gen<span class="variable">Server</span>@foreign).
+    -module(genServer@foreign).
 
-    -export([start<span class="variable">LinkImpl</span>/<span class="number">3</span>]).
+    -export([startLinkImpl/<span class="hljs-number">3</span>]).
 
-    start<span class="variable">LinkImpl</span>(<span class="variable">ServerName</span>, <span class="variable">Module</span>, <span class="variable">Args</span>) -&gt;
-      <span class="keyword">fun</span>() -&gt;
-        gen_server:start_link(<span class="variable">ServerName</span>, <span class="variable">Module</span>, <span class="variable">Args</span>, [])
-    <span class="keyword">end</span>.
+    startLinkImpl(ServerName, Module, Args) -&gt;
+      <span class="hljs-keyword">fun</span>() -&gt;
+        gen_server:start_link(ServerName, Module, Args, [])
+    <span class="hljs-keyword">end</span>.
 </code></pre>
 <pre><code class="language-haskell">
-    <span class="module"><span class="keyword">module</span> GenServer <span class="keyword">where</span></span>
+    <span class="hljs-keyword">module</span> GenServer <span class="hljs-keyword">where</span>
 
-    <span class="import"><span class="keyword">import</span> Prelude</span>
-    <span class="import"><span class="keyword">import</span> Erl.Atom</span>
-    <span class="import"><span class="keyword">import</span> Erl.Data.List</span>
-    <span class="import"><span class="keyword">import</span> Erl.Data.Tuple</span>
-    <span class="import"><span class="keyword">import</span> Effect.Uncurried <span class="container">(<span class="title">mkEffectFn1</span>, <span class="type">EffectFn1</span>)</span></span>
-    <span class="import"><span class="keyword">import</span> Effect</span>
+    <span class="hljs-keyword">import</span> Prelude
+    <span class="hljs-keyword">import</span> Erl.Atom
+    <span class="hljs-keyword">import</span> Erl.Data.List
+    <span class="hljs-keyword">import</span> Erl.Data.Tuple
+    <span class="hljs-keyword">import</span> Effect.Uncurried (<span class="hljs-title">mkEffectFn1</span>, <span class="hljs-type">EffectFn1</span>)
+    <span class="hljs-keyword">import</span> Effect
 
-    <span class="keyword">foreign</span> <span class="import"><span class="keyword">import</span> data StartLinkResult :: Type</span>
+    <span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> data <span class="hljs-type">StartLinkResult</span> :: <span class="hljs-type">Type</span>
 
-    <span class="keyword">foreign</span> <span class="import"><span class="keyword">import</span> startLinkImpl :: forall args. <span class="container">(<span class="type">Tuple2</span> <span class="type">Atom</span> <span class="type">Atom</span>)</span> -&gt; Atom -&gt; args -&gt; Effect StartLinkResult</span>
+    <span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> startLinkImpl :: forall args. (<span class="hljs-type">Tuple2</span> <span class="hljs-type">Atom</span> <span class="hljs-type">Atom</span>) -&gt; <span class="hljs-type">Atom</span> -&gt; args -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
 
-    startLink :: forall args. (<span class="type">Tuple2</span> <span class="type">Atom</span> <span class="type">Atom</span>) -&gt; <span class="type">Atom</span> -&gt; <span class="type">EffectFn1</span> args <span class="type">StartLinkResult</span>
+    startLink :: <span class="hljs-keyword">forall</span> args. (<span class="hljs-type">Tuple2</span> <span class="hljs-type">Atom</span> <span class="hljs-type">Atom</span>) -&gt; <span class="hljs-type">Atom</span> -&gt; <span class="hljs-type">EffectFn1</span> args <span class="hljs-type">StartLinkResult</span>
     startLink serverName mod =
       mkEffectFn1 \args -&gt; startLinkImpl serverName mod args
 </code></pre>
 <p>Note the mkEffectFn1 allowing us to pass this effectful function into Erlang code, and the parameterised argument type allowing us to have custom arguments for the gen server we&#39;re writing.</p>
 <p>Allowing us to write a gen server that looks like this:</p>
 <pre><code class="language-haskell">
-    <span class="module"><span class="keyword">module</span> TestServer <span class="keyword">where</span></span>
+    <span class="hljs-keyword">module</span> TestServer <span class="hljs-keyword">where</span>
 
-    <span class="import"><span class="keyword">import</span> Prelude</span>
-    <span class="import"><span class="keyword">import</span> Erl.Atom</span>
-    <span class="import"><span class="keyword">import</span> Erl.Data.List</span>
-    <span class="import"><span class="keyword">import</span> Erl.Data.Tuple</span>
-    <span class="import"><span class="keyword">import</span> GenServer <span class="keyword">as</span> GenServer</span>
-    <span class="import"><span class="keyword">import</span> Effect.Uncurried <span class="container">(<span class="title">mkEffectFn1</span>, <span class="type">EffectFn1</span>)</span></span>
-    <span class="import"><span class="keyword">import</span> Effect.Console <span class="container">(<span class="title">log</span>)</span></span>
+    <span class="hljs-keyword">import</span> Prelude
+    <span class="hljs-keyword">import</span> Erl.Atom
+    <span class="hljs-keyword">import</span> Erl.Data.List
+    <span class="hljs-keyword">import</span> Erl.Data.Tuple
+    <span class="hljs-keyword">import</span> GenServer <span class="hljs-keyword">as</span> GenServer
+    <span class="hljs-keyword">import</span> Effect.Uncurried (<span class="hljs-title">mkEffectFn1</span>, <span class="hljs-type">EffectFn1</span>)
+    <span class="hljs-keyword">import</span> Effect.Console (<span class="hljs-title">log</span>)
 
-    <span class="typedef"><span class="keyword">newtype</span> <span class="type">State</span> = <span class="type">State</span> <span class="container">{}</span></span>
+    <span class="hljs-class"><span class="hljs-keyword">newtype</span> <span class="hljs-type">State</span> = <span class="hljs-type">State</span> {}</span>
 
-    startLink :: <span class="type">EffectFn1</span> <span class="type">String</span> <span class="type">GenServer</span>.<span class="type">StartLinkResult</span>  
-    startLink = <span class="type">GenServer</span>.startLink (tuple2 (atom <span class="string">"local"</span>) (atom <span class="string">"testServer"</span>)) (atom <span class="string">"testServer@ps"</span>)
+    startLink :: <span class="hljs-type">EffectFn1</span> <span class="hljs-type">String</span> <span class="hljs-type">GenServer</span>.<span class="hljs-type">StartLinkResult</span>  
+    startLink = <span class="hljs-type">GenServer</span>.startLink (tuple2 (atom <span class="hljs-string">"local"</span>) (atom <span class="hljs-string">"testServer"</span>)) (atom <span class="hljs-string">"testServer@ps"</span>)
 
-    init :: <span class="type">EffectFn1</span> <span class="type">String</span> (<span class="type">Tuple2</span> <span class="type">Atom</span> <span class="type">State</span>)
-    init = mkEffectFn1 \args -&gt;  <span class="keyword">do</span>
-      _ &lt;- log $ <span class="string">"Gen server started with args: "</span> &lt;&gt; args
-      pure $ tuple2 (atom <span class="string">"ok"</span>) (<span class="type">State</span> {})
+    init :: <span class="hljs-type">EffectFn1</span> <span class="hljs-type">String</span> (<span class="hljs-type">Tuple2</span> <span class="hljs-type">Atom</span> <span class="hljs-type">State</span>)
+    init = mkEffectFn1 \args -&gt;  <span class="hljs-keyword">do</span>
+      _ &lt;- log $ <span class="hljs-string">"Gen server started with args: "</span> &lt;&gt; args
+      pure $ tuple2 (atom <span class="hljs-string">"ok"</span>) (<span class="hljs-type">State</span> {})
 </code></pre>
 <p>In this case, we&#39;ve decided our start args are a string and we&#39;ll just log that out on startup, and we return a newtype with a record containing our gen server state from the init function, and of course we can just plug this into a standard Erlang supervision tree and we&#39;ll end up with a gen server running which if sent any messages will simply crash :).</p>
 <pre><code class="language-erlang">
     init([]) -&gt;
-        {ok, { {one_for_all, 0, 1}, [ #{ start =&gt; { testServer@ps, startLink, [&lt;&lt;"Your args"&gt;&gt;] },
+        {ok, { {one_for_all, <span class="hljs-number">0</span>, <span class="hljs-number">1</span>}, [ #{ start =&gt; { testServer@ps, startLink, [&lt;&lt;<span class="hljs-string">"Your args"</span>&gt;&gt;] },
                                          type =&gt; worker,
                                          id =&gt; test_server
                                        }

@@ -12,25 +12,25 @@
 <pre><code class="language-erlang">
     -module(cool_native_module).
 
-    -export([ call_me_an_ambulance/<span class="number">1</span> ]).
+    -export([ call_me_an_ambulance/<span class="hljs-number">1</span> ]).
 
-    call_me_an_ambulance(<span class="variable">Name</span>) -&gt;
-      &lt;&lt; <span class="string">"Hey "</span>, <span class="variable">Name</span>/binary, <span class="string">" - you're an ambulance"</span> &gt;&gt;.
+    call_me_an_ambulance(Name) -&gt;
+      &lt;&lt; <span class="hljs-string">"Hey "</span>, Name/binary, <span class="hljs-string">" - you're an ambulance"</span> &gt;&gt;.
 </code></pre>
 <p>Assuming we have a native module in a library somewhere we want to call (like the above), we&#39;ll need to take some steps to get this callable from anywhere in our Purescript code.</p>
 <p><em>CoolNativeModule.purs</em></p>
 <pre><code class="language-haskell">
-    <span class="module"><span class="keyword">module</span> CoolNativeModule <span class="keyword">where</span></span>
+    <span class="hljs-keyword">module</span> CoolNativeModule <span class="hljs-keyword">where</span>
 
-    <span class="keyword">foreign</span> <span class="import"><span class="keyword">import</span> callMeAnAmbulance :: String -&gt; String</span>
+    <span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> callMeAnAmbulance :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">String</span>
 </code></pre>
 <p><em>CoolNativeModule.erl</em></p>
 <pre><code class="language-erlang">
-    -module(cool<span class="variable">NativeModule</span>@foreign).
+    -module(coolNativeModule@foreign).
 
-    -export([ call<span class="variable">MeAnAmbulance</span>/<span class="number">1</span> ]).
+    -export([ callMeAnAmbulance/<span class="hljs-number">1</span> ]).
 
-    call<span class="variable">MeAnAmbulance</span>(<span class="variable">Name</span>) -&gt; cool_native_module:call_me_an_ambulance(<span class="variable">Name</span>).
+    callMeAnAmbulance(Name) -&gt; cool_native_module:call_me_an_ambulance(Name).
 </code></pre>
 <p>Essentially, you end up creating wrappers around existing modules in this manner with both a Purescript module for use from Purescript and a backing &quot;FFI&quot; which then talks to the original Erlang module and in theory can ship them as Purescript modules for download in parallel with their Erlang modules.</p>
 <p>It&#39;s not that simple though, as very often our external functions are going to have side effects and in Purescript, these are supposed to be modelled <em>as</em> an Effect, consider the following.</p>
@@ -38,30 +38,30 @@
 <pre><code class="language-erlang">
     -module(cool_native_module).
 
-    -export([ call_me_an_ambulance/<span class="number">1</span> ]).
+    -export([ call_me_an_ambulance/<span class="hljs-number">1</span> ]).
 
-    call_me_an_ambulance(<span class="variable">Name</span>) -&gt;
-      io:format(<span class="string">"You're definitely an ambulance"</span>),
-      &lt;&lt; <span class="string">"Hey "</span>, <span class="variable">Name</span>/binary, <span class="string">" - you're an ambulance"</span> &gt;&gt;.
+    call_me_an_ambulance(Name) -&gt;
+      io:format(<span class="hljs-string">"You're definitely an ambulance"</span>),
+      &lt;&lt; <span class="hljs-string">"Hey "</span>, Name/binary, <span class="hljs-string">" - you're an ambulance"</span> &gt;&gt;.
 
 </code></pre>
 <p>In this case, we&#39;re just echoing something to stdout, but it could equally be something over the network/disk etc. Modelling this a <em>String -&gt; String</em> is dishonest because in reality it&#39;s now a <em>String -&gt; Effect String</em></p>
 <p><em>CoolNativeModule.purs</em></p>
 <pre><code class="language-haskell">
-    <span class="module"><span class="keyword">module</span> CoolNativeModule <span class="keyword">where</span></span>
+    <span class="hljs-keyword">module</span> CoolNativeModule <span class="hljs-keyword">where</span>
 
-    <span class="keyword">foreign</span> <span class="import"><span class="keyword">import</span> callMeAnAmbulance :: String -&gt; Effect String</span>
+    <span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> callMeAnAmbulance :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">String</span>
 </code></pre>
 <p>How is this modelled in the FFI? </p>
 <pre><code class="language-erlang">
-    -module(cool<span class="variable">NativeModule</span>@foreign).
+    -module(coolNativeModule@foreign).
 
-    -export([ call<span class="variable">MeAnAmbulance</span>/<span class="number">1</span> ]).
+    -export([ callMeAnAmbulance/<span class="hljs-number">1</span> ]).
 
-    call<span class="variable">MeAnAmbulance</span>(<span class="variable">Name</span>) -&gt; 
-       <span class="keyword">fun</span>() -&gt; 
-         cool_native_module:call_me_an_ambulance(<span class="variable">Name</span>)
-       <span class="keyword">end</span>.
+    callMeAnAmbulance(Name) -&gt; 
+       <span class="hljs-keyword">fun</span>() -&gt; 
+         cool_native_module:call_me_an_ambulance(Name)
+       <span class="hljs-keyword">end</span>.
 </code></pre>
 <p>It&#39;s just monads innit (DW, an Effect is just a function that has a side effect, and until that happens you&#39;re effectively just passing around functions.</p>
 <p>Now - there are no guarantees when you call (most) Erlang that there are no side effects though, you can in (pretty much any) function open a file and write whatever you want to it and in theory every single function call to Erlang would probably be of type <em>Effect a</em> - this would be cumbersome though and so far in the modules I&#39;ve read there seems to be a pragmatic approach to this. Is there a side effect? It&#39;s an Effect, is there not? No Effect - there is nothing stopping you ignoring the types entirely and doing all sorts of nastiness in your FFI but on your head be it.</p>
@@ -69,7 +69,7 @@
 <pre><code class="language-erlang">
     -module(coolNativeModule@foreign).
 
-    -export([ callMeAnAmbulance/1 ]).
+    -export([ callMeAnAmbulance/<span class="hljs-number">1</span> ]).
 
     -record(some_record, {
         foo :: string()
@@ -81,17 +81,17 @@
 <p>We <em>could</em> model that record as a <em>Tuple2 Atom String</em>, but this is going to be brittle, as changes to the record&#39;s structure aren&#39;t going to show up at compilation.</p>
 <p><em>CoolNativeModule.purs</em></p>
 <pre><code class="language-haskell">
-    <span class="module"><span class="keyword">module</span> CoolNativeModule <span class="keyword">where</span></span>
+    <span class="hljs-keyword">module</span> CoolNativeModule <span class="hljs-keyword">where</span>
 
-    <span class="keyword">foreign</span> <span class="import"><span class="keyword">import</span> callMeAnAmbulance :: String -&gt; Tuple2 Atom String</span>
+    <span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> callMeAnAmbulance :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Tuple2</span> <span class="hljs-type">Atom</span> <span class="hljs-type">String</span>
 </code></pre>
 <p>We could equally pass in a constructor function to the Erlang that given all the arguments creates a record that&#39;s usable in Purescript but we could equally just accept that it&#39;s an opaque object that&#39;s only usable from the Erlang that owns it (this is 90% of most Erlang anyway). Functions can then be provided via the FFI to operate over that opaque structure.</p>
 <p><em>CoolNativeModule.purs</em></p>
 <pre><code class="language-haskell">
-    <span class="module"><span class="keyword">module</span> CoolNativeModule <span class="keyword">where</span></span>
+    <span class="hljs-keyword">module</span> CoolNativeModule <span class="hljs-keyword">where</span>
 
-    <span class="keyword">foreign</span> <span class="import"><span class="keyword">import</span> data SomeRecord :: Type</span>
+    <span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> data <span class="hljs-type">SomeRecord</span> :: <span class="hljs-type">Type</span>
 
-    <span class="keyword">foreign</span> <span class="import"><span class="keyword">import</span> callMeAnAmbulance :: String -&gt; SomeRecord</span>
+    <span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> callMeAnAmbulance :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">SomeRecord</span>
 </code></pre>
 <p>That pretty much covers much of what we need when importing libraries that are already written in Erlang, so next we&#39;ll look at how we can call Purescript <em>from</em> Erlang (Which is something that we need more than you&#39;d think at first glance).</p>

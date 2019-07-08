@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
     <link rel="stylesheet" href="/assets/css/themes/default.css">
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
     <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
     <script type="text/javascript">
       var _gaq = _gaq || [];
@@ -57,9 +57,6 @@
                             <li>
                                 <a href="/blog.html">Blog</a>
                             </li>
-                            <li>
-                                <a href="/testimonials.html">Testimonials</a>
-                            </li>
                     </div>
                 </div>
             </div>
@@ -74,18 +71,18 @@
 <p>Why don&#39;t we want to load them into memory in one go? Because large objects can wreck havoc with the garbage collector (the large object heap), and we also have streaming APIs in RavenDB that allow us to limit this sort of thing that we&#39;d like to honour.</p>
 <p>So, back to C++ as we answer the question &quot;What about large objects inside LevelDB&quot;?</p>
 <p>Looking at the APIs in our first entry, we can see that &quot;Get&quot; will load entire value into memory ala this:</p>
-<pre><code>db-&gt;Get(leveldb::ReadOptions(), key, &amp;document);</code></pre><p>We <em>could</em> simply read bytes from this document (remember, it&#39;s an std::string) and marshal them through to C# bit by bit, but that means copying the whole document out of the store before doing this. This isn&#39;t a big deal as it&#39;s still completely on the native side at this point, but it&#39;s still an expense I&#39;d prefer to skip if we&#39;re reading more than a few documents.</p>
+<pre><code>db-&gt;Get(<span class="hljs-name">leveldb</span>:<span class="hljs-symbol">:ReadOptions</span>(), key, <span class="hljs-symbol">&amp;document</span>)<span class="hljs-comment">;</span></code></pre><p>We <em>could</em> simply read bytes from this document (remember, it&#39;s an std::string) and marshal them through to C# bit by bit, but that means copying the whole document out of the store before doing this. This isn&#39;t a big deal as it&#39;s still completely on the native side at this point, but it&#39;s still an expense I&#39;d prefer to skip if we&#39;re reading more than a few documents.</p>
 <p>That&#39;s where Slice comes in.</p>
-<pre><code>  leveldb::Iterator* it = this-&gt;db-&gt;NewIterator(leveldb::ReadOptions());
-  <span class="keyword">for</span> (it-&gt;Seek(start_key); it-&gt;Valid() &amp;&amp; it-&gt;key().ToString() &lt;= end_key; it-&gt;Next()) {
-    Slice* slice = it-&gt;value();
+<pre><code>  <span class="hljs-function"><span class="hljs-title">leveldb</span>::Iterator* it = this-&gt;</span><span class="hljs-function"><span class="hljs-title">db</span>-&gt;</span>NewIterator(leveldb::ReadOptions());
+  <span class="hljs-function"><span class="hljs-title">for</span> (it-&gt;</span>S<span class="hljs-function"><span class="hljs-title">eek</span>(start_key); it-&gt;</span>V<span class="hljs-function"><span class="hljs-title">alid</span>() &amp;&amp; it-&gt;</span><span class="hljs-function"><span class="hljs-title">key</span>().ToString() &lt;= end_key; it-&gt;</span>Next()) {
+    S<span class="hljs-function"><span class="hljs-title">lice</span>* slice = it-&gt;</span>value();
 
-    <span class="regexp">//</span> Do stuff with a slice
+    <span class="hljs-comment">// Do stuff with a slice</span>
   }</code></pre><p>This is quite cool, LevelDB gives us the notion of a &quot;Slice&quot;, which is merely a pointer to the beginning of the value, and the length of the value.</p>
 <p>A &quot;Get&quot; operation merely copies this data into an std::string, and calling slice-&gt;ToString() will do this as well.</p>
 <p>What we can do is </p>
-<pre><code><span class="title">char</span> buffer[<span class="type">BUFFER_SIZE</span>];
-<span class="title">memcpy</span>(slice-&gt;<span class="typedef"><span class="keyword">data</span><span class="container">()</span>, buffer, <span class="type">BUFFER_SIZE</span>);</span></code></pre><p>Rinse and repeat, we can actually do this within an enumerator and send appropriately sized chunks aross to C# to be processed without copying the whole thing out at once.  This could be useful when iterating over a set of documents, although most likely simply copying into the string and using string.c_str() to get the pointer to the copied data will give us easier code - we&#39;ll see how that works out when it comes to actually writing the C# we need.</p>
+<pre><code><span class="hljs-title">char</span> buffer[<span class="hljs-type">BUFFER_SIZE</span>];
+<span class="hljs-title">memcpy</span>(slice-&gt;<span class="hljs-class"><span class="hljs-keyword">data</span>(), buffer, <span class="hljs-type">BUFFER_SIZE</span>);</span></code></pre><p>Rinse and repeat, we can actually do this within an enumerator and send appropriately sized chunks aross to C# to be processed without copying the whole thing out at once.  This could be useful when iterating over a set of documents, although most likely simply copying into the string and using string.c_str() to get the pointer to the copied data will give us easier code - we&#39;ll see how that works out when it comes to actually writing the C# we need.</p>
 <p>Anyway, now we just need support for secondary indexes, and for this I&#39;ll write a rudimentary document store.</p>
 </div>
       <div id="links">

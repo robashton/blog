@@ -11,72 +11,72 @@
 <p>A slightly different question and on the surface really obvious but the temptation is there to treat KO as a framework rather than a library and let it rule our application.</p>
 <p><em>The difference between a framework and a library is that you use a library, whereas a framework uses you</em></p>
 <p>So okay then, let&#39;s pull in Knockout</p>
-<pre><code><span class="comment">npm</span> <span class="comment">install</span> <span class="comment">knockout</span> <span class="literal">-</span><span class="literal">-</span><span class="comment">save</code></pre><p><em>gasp</em>, yes indeed - it is shipped as a self-contained NPM module which is pretty pleasing if you&#39;re wanting to develop applications in this way.</p>
-<pre><code><span class="keyword">var</span> ko = <span class="keyword">require</span>(<span class="string">'ko'</span>)</code></pre><p>Being that we only had a couple of hours to complete this programming exercise we needed something simple to apply this to and went for the overly simplistic example of &quot;binding to a select list&quot;. This is a bit unrealistic and I apologise for this - binding to the events of a single element isn&#39;t really the best excuse for importing a large library like KO into your application(!!).</p>
+<pre><code>npm <span class="hljs-keyword">install</span> knockout <span class="hljs-comment">--save</span></code></pre><p><em>gasp</em>, yes indeed - it is shipped as a self-contained NPM module which is pretty pleasing if you&#39;re wanting to develop applications in this way.</p>
+<pre><code><span class="hljs-variable">var</span> <span class="hljs-variable">ko</span> = <span class="hljs-function"><span class="hljs-title">require</span>(<span class="hljs-string">'ko'</span>)</span></code></pre><p>Being that we only had a couple of hours to complete this programming exercise we needed something simple to apply this to and went for the overly simplistic example of &quot;binding to a select list&quot;. This is a bit unrealistic and I apologise for this - binding to the events of a single element isn&#39;t really the best excuse for importing a large library like KO into your application(!!).</p>
 <h1 id="building-the-customer-list">Building the customer list</h1>
 <p>First we can shove some test data into a file <em>testdata.js</em>. </p>
 <pre><code>module.exports = {
-  <span class="method">banks:</span> [ <span class="comment">"spv"</span>, <span class="comment">"fana"</span>, <span class="comment">"lloyds"</span> ],
-  <span class="method">customers:</span> [
-    { <span class="method">bank:</span> <span class="comment">"spv"</span>, <span class="method">name:</span> <span class="comment">"bob"</span> , <span class="method">desc:</span> <span class="comment">"bob is a late payer"</span>},
-    { <span class="method">bank:</span> <span class="comment">"fana"</span>, <span class="method">name:</span> <span class="comment">"alice"</span>, <span class="method">desc:</span> <span class="comment">"alice always pays on time"</span>},
-    { <span class="method">bank:</span> <span class="comment">"lloyds"</span>, <span class="method">name:</span> <span class="comment">"craig"</span>, <span class="method">desc:</span> <span class="comment">"craig is chillin on sunday"</span>  },
-    // etc
+<span class="hljs-symbol">  banks:</span> [ <span class="hljs-string">"spv"</span>, <span class="hljs-string">"fana"</span>, <span class="hljs-string">"lloyds"</span> ],
+<span class="hljs-symbol">  customers:</span> [
+    { <span class="hljs-string">bank:</span> <span class="hljs-string">"spv"</span>, <span class="hljs-string">name:</span> <span class="hljs-string">"bob"</span> , <span class="hljs-string">desc:</span> <span class="hljs-string">"bob is a late payer"</span>},
+    { <span class="hljs-string">bank:</span> <span class="hljs-string">"fana"</span>, <span class="hljs-string">name:</span> <span class="hljs-string">"alice"</span>, <span class="hljs-string">desc:</span> <span class="hljs-string">"alice always pays on time"</span>},
+    { <span class="hljs-string">bank:</span> <span class="hljs-string">"lloyds"</span>, <span class="hljs-string">name:</span> <span class="hljs-string">"craig"</span>, <span class="hljs-string">desc:</span> <span class="hljs-string">"craig is chillin on sunday"</span>  },
+    <span class="hljs-comment">// etc</span>
   ]
 }</code></pre><p>And we can bind this to a template that looks like this</p>
-<pre><code><span class="tag">&lt;<span class="title">table</span>&gt;</span>
-  <span class="variable">{{#customers}}</span>
-    <span class="tag">&lt;<span class="title">tr</span>&gt;</span><span class="tag">&lt;<span class="title">td</span>&gt;</span><span class="variable">{{name}}</span><span class="tag">&lt;/<span class="title">td</span>&gt;</span><span class="tag">&lt;<span class="title">td</span>&gt;</span><span class="variable">{{bank}}</span><span class="tag">&lt;/<span class="title">td</span>&gt;</span><span class="tag">&lt;/<span class="title">tr</span>&gt;</span>
-  <span class="variable">{{/customers}}</span>
-<span class="tag">&lt;/<span class="title">table</span>&gt;</span></code></pre><p>With the following application code in <em>app.js</em></p>
-<pre><code><span class="keyword">var</span> mustache = <span class="keyword">require</span>(<span class="string">'mustache'</span>)
-  , domReady = <span class="keyword">require</span>(<span class="string">'domready'</span>)
-  , testdata = <span class="keyword">require</span>(<span class="string">'./testdata'</span>)
-  , fs = <span class="keyword">require</span>(<span class="string">'fs'</span>)
+<pre><code><span class="xml"><span class="hljs-tag">&lt;<span class="hljs-name">table</span>&gt;</span>
+  </span><span class="hljs-template-tag">{{#<span class="hljs-name">customers</span>}}</span><span class="xml">
+    <span class="hljs-tag">&lt;<span class="hljs-name">tr</span>&gt;</span><span class="hljs-tag">&lt;<span class="hljs-name">td</span>&gt;</span></span><span class="hljs-template-variable">{{name}}</span><span class="xml"><span class="hljs-tag">&lt;/<span class="hljs-name">td</span>&gt;</span><span class="hljs-tag">&lt;<span class="hljs-name">td</span>&gt;</span></span><span class="hljs-template-variable">{{bank}}</span><span class="xml"><span class="hljs-tag">&lt;/<span class="hljs-name">td</span>&gt;</span><span class="hljs-tag">&lt;/<span class="hljs-name">tr</span>&gt;</span>
+  </span><span class="hljs-template-tag">{{/<span class="hljs-name">customers</span>}}</span><span class="xml">
+<span class="hljs-tag">&lt;/<span class="hljs-name">table</span>&gt;</span></span></code></pre><p>With the following application code in <em>app.js</em></p>
+<pre><code><span class="hljs-keyword">var</span> mustache = <span class="hljs-built_in">require</span>(<span class="hljs-string">'mustache'</span>)
+  , domReady = <span class="hljs-built_in">require</span>(<span class="hljs-string">'domready'</span>)
+  , testdata = <span class="hljs-built_in">require</span>(<span class="hljs-string">'./testdata'</span>)
+  , fs = <span class="hljs-built_in">require</span>(<span class="hljs-string">'fs'</span>)
 
-<span class="keyword">var</span> template = fs.readFileSync(__dirname + <span class="string">"/customers.html"</span>)
+<span class="hljs-keyword">var</span> template = fs.readFileSync(__dirname + <span class="hljs-string">"/customers.html"</span>)
 
-domReady(function() {
-  <span class="keyword">var</span> container = document.getElementById(<span class="string">'container'</span>)
+domReady(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">var</span> container = <span class="hljs-built_in">document</span>.getElementById(<span class="hljs-string">'container'</span>)
   container.innerHtml = mustache.render(template, testdata)
 })</code></pre><p>Notice that we use a relative path in our require statement to bring in whatever code was exported via <em>module.exports</em> in the testdata.js file. Other than that, there is nothing new here so moving on.</p>
 <p><em>Filtering the list of customers</em></p>
 <p>I want a dropdown to do this with and for now I&#39;m going to add that to the customers template - we&#39;ll see shortly why that might be a bad idea but right now I&#39;m going for the prize and don&#39;t know anything about future problems.</p>
-<pre><code><span class="tag">&lt;<span class="title">select</span> <span class="attribute">name</span>=<span class="value">"bank"</span> <span class="attribute">data-bind</span>=<span class="value">"options: banks, value: selectedBank"</span>&gt;</span>
-<span class="tag">&lt;<span class="title">table</span>&gt;</span>
-  <span class="variable">{{#customers}}</span>
-    <span class="tag">&lt;<span class="title">tr</span>&gt;</span><span class="tag">&lt;<span class="title">td</span>&gt;</span><span class="variable">{{name}}</span><span class="tag">&lt;/<span class="title">td</span>&gt;</span><span class="tag">&lt;<span class="title">td</span>&gt;</span><span class="variable">{{bank}}</span><span class="tag">&lt;/<span class="title">td</span>&gt;</span><span class="tag">&lt;/<span class="title">tr</span>&gt;</span>
-  <span class="variable">{{/customers}}</span>
-<span class="tag">&lt;/<span class="title">table</span>&gt;</span></code></pre><p>Hooking this up in our <em>app.js</em> is just the standard Knockout code that we&#39;ve all seen before, and that I <em>always</em> have to go onto the documentation website to remember how to do ;-)</p>
-<pre><code><span class="keyword">var</span> mustache = <span class="keyword">require</span>(<span class="string">'mustache'</span>)
-  , domReady = <span class="keyword">require</span>(<span class="string">'domready'</span>)
-  , ko = <span class="keyword">require</span>(<span class="string">'knockout'</span>)
-  , testdata = <span class="keyword">require</span>(<span class="string">'./testdata'</span>)
-  , fs = <span class="keyword">require</span>(<span class="string">'fs'</span>)
+<pre><code><span class="xml"><span class="hljs-tag">&lt;<span class="hljs-name">select</span> <span class="hljs-attr">name</span>=<span class="hljs-string">"bank"</span> <span class="hljs-attr">data-bind</span>=<span class="hljs-string">"options: banks, value: selectedBank"</span>&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-name">table</span>&gt;</span>
+  </span><span class="hljs-template-tag">{{#<span class="hljs-name">customers</span>}}</span><span class="xml">
+    <span class="hljs-tag">&lt;<span class="hljs-name">tr</span>&gt;</span><span class="hljs-tag">&lt;<span class="hljs-name">td</span>&gt;</span></span><span class="hljs-template-variable">{{name}}</span><span class="xml"><span class="hljs-tag">&lt;/<span class="hljs-name">td</span>&gt;</span><span class="hljs-tag">&lt;<span class="hljs-name">td</span>&gt;</span></span><span class="hljs-template-variable">{{bank}}</span><span class="xml"><span class="hljs-tag">&lt;/<span class="hljs-name">td</span>&gt;</span><span class="hljs-tag">&lt;/<span class="hljs-name">tr</span>&gt;</span>
+  </span><span class="hljs-template-tag">{{/<span class="hljs-name">customers</span>}}</span><span class="xml">
+<span class="hljs-tag">&lt;/<span class="hljs-name">table</span>&gt;</span></span></code></pre><p>Hooking this up in our <em>app.js</em> is just the standard Knockout code that we&#39;ve all seen before, and that I <em>always</em> have to go onto the documentation website to remember how to do ;-)</p>
+<pre><code><span class="hljs-keyword">var</span> mustache = <span class="hljs-built_in">require</span>(<span class="hljs-string">'mustache'</span>)
+  , domReady = <span class="hljs-built_in">require</span>(<span class="hljs-string">'domready'</span>)
+  , ko = <span class="hljs-built_in">require</span>(<span class="hljs-string">'knockout'</span>)
+  , testdata = <span class="hljs-built_in">require</span>(<span class="hljs-string">'./testdata'</span>)
+  , fs = <span class="hljs-built_in">require</span>(<span class="hljs-string">'fs'</span>)
 
-<span class="keyword">var</span> template = fs.readFileSync(__dirname + <span class="string">"/customers.html"</span>)
-  , container = <span class="keyword">null</span>
+<span class="hljs-keyword">var</span> template = fs.readFileSync(__dirname + <span class="hljs-string">"/customers.html"</span>)
+  , container = <span class="hljs-literal">null</span>
 
-domReady(function() {
-  container = document.getElementById(<span class="string">'container'</span>)
+domReady(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+  container = <span class="hljs-built_in">document</span>.getElementById(<span class="hljs-string">'container'</span>)
   renderCustomers(customers)
 })</code></pre><p>So I&#39;ve broken this up a bit and I&#39;m passing in a custom model</p>
-<pre><code><span class="function"><span class="keyword">function</span> <span class="title">renderCustomers</span><span class="params">(customers)</span> {</span>
-  <span class="transposed_variable">container.</span>innerHtml = <span class="transposed_variable">mustache.</span>render(template, <span class="cell">{ customers:  customers }</span>)
+<pre><code><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">renderCustomers</span><span class="hljs-params">(customers)</span> {</span>
+  container.innerHtml = mustache.<span class="hljs-built_in">render</span>(template, { customers:  customers })
   bindBankSelection()
 }</code></pre><p>And we bind to the bank selection in a standard way</p>
-<pre><code><span class="function"><span class="keyword">function</span> <span class="title">bindBankSelection</span><span class="params">()</span> <span class="comment">{
+<pre><code><span class="hljs-keyword">function</span> bind<span class="hljs-constructor">BankSelection()</span> {
   var model = {
-    banks: ko.observableArray(testdata.banks),
-    selectedBank = ko.observable()
-  }</span>
-  <span class="title">ko</span>.<span class="title">applyBindings</span><span class="params">(model, container)</span>
-  <span class="title">model</span>.<span class="title">selectedBank</span>.<span class="title">subscribe</span><span class="params">(onBankSelected)</span>
+    banks: ko.observable<span class="hljs-constructor">Array(<span class="hljs-params">testdata</span>.<span class="hljs-params">banks</span>)</span>,
+    selectedBank = ko.observable<span class="hljs-literal">()</span>
+  }
+  ko.apply<span class="hljs-constructor">Bindings(<span class="hljs-params">model</span>, <span class="hljs-params">container</span>)</span>
+  model.selectedBank.subscribe(onBankSelected)
 }
 
-<span class="title">function</span> <span class="title">onBankSelected</span><span class="params">(bank)</span> <span class="comment">{
-  ko.cleanNode(container)
-  renderCustomers(filterCustomersByBank(bank))
-}</span></code></pre><p><em>this is a bit crap</em></p>
+<span class="hljs-keyword">function</span> on<span class="hljs-constructor">BankSelected(<span class="hljs-params">bank</span>)</span> {
+  ko.clean<span class="hljs-constructor">Node(<span class="hljs-params">container</span>)</span>
+  render<span class="hljs-constructor">Customers(<span class="hljs-params">filterCustomersByBank</span>(<span class="hljs-params">bank</span>)</span>)
+}</code></pre><p><em>this is a bit crap</em></p>
 <p>Yeah - so this is the spaghetti code we&#39;re talking about occuring if you&#39;re not using a framework. Re-rendering the whole page just to update a list of customers? Why re-render the select control at all? Why have we got two rendering systems slamming into what is effectively a global dom element with global data?</p>
 <p>Clearly there has to be a better way to have our cake <em>and</em> eat it and we&#39;ll talk about that in the next blog entry about building composable widgets.</p>

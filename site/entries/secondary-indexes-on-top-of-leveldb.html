@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
     <link rel="stylesheet" href="/assets/css/themes/default.css">
     <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/rainbow.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
     <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
     <script type="text/javascript">
       var _gaq = _gaq || [];
@@ -57,9 +57,6 @@
                             <li>
                                 <a href="/blog.html">Blog</a>
                             </li>
-                            <li>
-                                <a href="/testimonials.html">Testimonials</a>
-                            </li>
                     </div>
                 </div>
             </div>
@@ -91,38 +88,38 @@
 <p>Etags are sortable by design, in my rough and ready document database the etag is just an integer that I increase every time I add a new document.</p>
 <p>Now, when writing and reading from the database, we need to be able to differentiate between types of key in the database, and ordering for each of these types is set by the key.</p>
 <p><em>For example, reading a document</em></p>
-<pre><code><span class="preprocessor">#define DOCPREFIX "/docs/"</span>
-<span class="preprocessor">#define ETAGPREFIX "/etags/"</span>
+<pre><code><span class="hljs-meta">#<span class="hljs-meta-keyword">define</span> DOCPREFIX <span class="hljs-meta-string">"/docs/"</span></span>
+<span class="hljs-meta">#<span class="hljs-meta-keyword">define</span> ETAGPREFIX <span class="hljs-meta-string">"/etags/"</span></span>
 
 
-void Get(<span class="keyword">std</span>::string id, <span class="keyword">std</span>::string* doc) {
-  <span class="keyword">std</span>::stringstream <span class="keyword">st</span><span class="comment">;</span>
-  <span class="keyword">st</span> &lt;&lt; DOCPREFIX<span class="comment">;</span>
-  <span class="keyword">st</span> &lt;&lt; id<span class="comment">;</span>
-  <span class="keyword">std</span>::string key = <span class="keyword">st</span><span class="preprocessor">.str</span>()<span class="comment">;</span>
-  this-&gt;lastStatus = this-&gt;db-&gt;Get(leveldb::ReadOptions(), key, doc)<span class="comment">;</span>
+<span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">Get</span><span class="hljs-params">(<span class="hljs-built_in">std</span>::<span class="hljs-built_in">string</span> id, <span class="hljs-built_in">std</span>::<span class="hljs-built_in">string</span>* doc)</span> </span>{
+  <span class="hljs-built_in">std</span>::<span class="hljs-built_in">stringstream</span> st;
+  st &lt;&lt; DOCPREFIX;
+  st &lt;&lt; id;
+  <span class="hljs-built_in">std</span>::<span class="hljs-built_in">string</span> key = st.str();
+  <span class="hljs-keyword">this</span>-&gt;lastStatus = <span class="hljs-keyword">this</span>-&gt;db-&gt;Get(leveldb::ReadOptions(), key, doc);
 }</code></pre><p>So I&#39;m sticking a prefix in front of each key to denote what sort of key it is, yay.</p>
 <p>That means that my secondary index of etags will end up looking like this</p>
-<pre><code><span class="comment">/etags/0</span> <span class="literal">-</span>&gt; <span class="comment">/docs/1</span>
-<span class="comment">/etags/1</span> <span class="literal">-</span>&gt; <span class="comment">/docs/5</span>
-<span class="comment">/etags/2</span> <span class="literal">-</span>&gt; <span class="comment">/docs/4</span>
-<span class="comment">/etags/3</span> <span class="literal">-</span>&gt; <span class="comment">/docs/6</span>
-<span class="comment">/etags/4</span> <span class="literal">-</span>&gt; <span class="comment">/docs/3</span>
-<span class="comment">/etags/6</span> <span class="literal">-</span>&gt; <span class="comment">/docs/7</span>
-<span class="comment">/etags/8</span> <span class="literal">-</span>&gt; <span class="comment">/docs/12</span>
-<span class="comment">/etags/9</span> <span class="literal">-</span>&gt; <span class="comment">/docs/5</code></pre><p>When I want to index documents newer than /etags/5, I can do</p>
-<pre><code><span class="keyword">int</span> IndexNewDocumentsNewerThan(<span class="keyword">int</span> etag) {
+<pre><code>/etags/<span class="hljs-number">0</span> -&gt; /docs/<span class="hljs-number">1</span>
+/etags/<span class="hljs-number">1</span> -&gt; /docs/<span class="hljs-number">5</span>
+/etags/<span class="hljs-number">2</span> -&gt; /docs/<span class="hljs-number">4</span>
+/etags/<span class="hljs-number">3</span> -&gt; /docs/<span class="hljs-number">6</span>
+/etags/<span class="hljs-number">4</span> -&gt; /docs/<span class="hljs-number">3</span>
+/etags/<span class="hljs-number">6</span> -&gt; /docs/<span class="hljs-number">7</span>
+/etags/<span class="hljs-number">8</span> -&gt; /docs/<span class="hljs-number">12</span>
+/etags/<span class="hljs-number">9</span> -&gt; /docs/<span class="hljs-number">5</span></code></pre><p>When I want to index documents newer than /etags/5, I can do</p>
+<pre><code><span class="hljs-built_in">int</span> <span class="hljs-constructor">IndexNewDocumentsNewerThan(<span class="hljs-params">int</span> <span class="hljs-params">etag</span>)</span> {
   std::stringstream st;
   st &lt;&lt; ETAGPREFIX;
   st &lt;&lt; etag;
-  std::string startkey = st.str();
+  std::<span class="hljs-built_in">string</span> startkey = st.str<span class="hljs-literal">()</span>;
 
-  leveldb::Iterator* it = this-&gt;db-&gt;NewIterator(leveldb::ReadOptions());
-  <span class="keyword">for</span> (it-&gt;Seek(startkey); it-&gt;Valid() &amp;&amp; this-&gt;IsEtagKey(it-&gt;key().ToString()); it-&gt;Next()) {
-    std::string document = it-&gt;value().ToString();
-    IndexDocument(value);
+  leveldb::Iterator* it = this-&gt;db-&gt;<span class="hljs-constructor">NewIterator(<span class="hljs-params">leveldb</span>::ReadOptions()</span>);
+  for (it-&gt;<span class="hljs-constructor">Seek(<span class="hljs-params">startkey</span>)</span>; it-&gt;<span class="hljs-constructor">Valid()</span><span class="hljs-operator"> &amp;&amp; </span>this-&gt;<span class="hljs-constructor">IsEtagKey(<span class="hljs-params">it</span>-&gt;<span class="hljs-params">key</span>()</span>.<span class="hljs-constructor">ToString()</span>); it-&gt;<span class="hljs-constructor">Next()</span>) {
+    std::<span class="hljs-built_in">string</span> document = it-&gt;value<span class="hljs-literal">()</span>.<span class="hljs-constructor">ToString()</span>;
+    <span class="hljs-constructor">IndexDocument(<span class="hljs-params">value</span>)</span>;
   }
-  <span class="keyword">delete</span> it;
+  delete it;
 }</code></pre><p>Building up other indexes is a trivial matter of making sure we have a suitable ordering in place, and queries are simply a matter of building up these keys appropriately.</p>
 <p>With all of this, I think we have enough information to go and build persistence for RavenDB on top of LevelDB (and then test test test, performance performance performance etc).</p>
 <p>If you want to check out the spikes and playarounds with LevelDB, you can find them on my <a href="https://github.com/robashton/leveldb-play">Github</a></p>

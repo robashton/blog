@@ -12,75 +12,75 @@
 <pre><code class="language-erlang">
     -module(my_erlang).
 
-    -export([ init/<span class="number">0</span>, callback/<span class="number">1</span> ]).
+    -export([ init/<span class="hljs-number">0</span>, callback/<span class="hljs-number">1</span> ]).
 
     init() -&gt;
       ok = some_library:configure(my_erlang, callback).
 
-    callback(<span class="variable">SomeLibraryState</span>) -&gt;
-      <span class="variable">NewLibraryState</span> = some_library:do_something(<span class="variable">SomeLibraryState</span>),
-      <span class="tuple">{ ok, <span class="variable">NewLibraryState</span> }</span>.
+    callback(SomeLibraryState) -&gt;
+      NewLibraryState = some_library:do_something(SomeLibraryState),
+      { ok, NewLibraryState }.
 </code></pre>
 <p>This is a very familiar pattern for anybody used to writing Erlang, and it isn&#39;t immediately obvious how we&#39;re going to give that library anything from Purescript - most APIs in a functional language if they want a callback, will just ask for a function to callback. This isn&#39;t typically the case in Erlang because this would get in the way of the (somewhat important) code hotloading which is used during development for a rapid experience, and in production to upgrade live systems without incurring downtime.</p>
 <p>Ignoring further steps that we might take to then prettify the interaction with Erlang/Purescript here, it turns out that Purescript (currently) compiles modules/functions to fairly predictable names which we can use in our FFI.</p>
 <p>So first up, we&#39;d need to write the code to talk from Purescript to Erlang as covered in the previous post (Assuming that both configure/do_something are impure and require effects).</p>
 <p><em>SomeLibrary.erl</em></p>
 <pre><code class="language-erlang">
-    -module(some<span class="variable">Library</span>@foreign).
+    -module(someLibrary@foreign).
 
-    -export([configure/<span class="number">2</span>, do<span class="variable">Something</span>/<span class="number">1</span>]).
+    -export([configure/<span class="hljs-number">2</span>, doSomething/<span class="hljs-number">1</span>]).
 
-    configure(<span class="variable">Module</span>, <span class="variable">Function</span>) -&gt;
-      <span class="keyword">fun</span>() -&gt; some_library(<span class="variable">Module</span>, <span class="variable">Function</span>) <span class="keyword">end</span>.
+    configure(Module, Function) -&gt;
+      <span class="hljs-keyword">fun</span>() -&gt; some_library(Module, Function) <span class="hljs-keyword">end</span>.
 
-    do<span class="variable">Something</span>(<span class="variable">OpaqueState</span>) -&gt;
-      <span class="keyword">fun</span>() -&gt; some_library:do_something(<span class="variable">OpaqueState</span>) <span class="keyword">end</span>.
+    doSomething(OpaqueState) -&gt;
+      <span class="hljs-keyword">fun</span>() -&gt; some_library:do_something(OpaqueState) <span class="hljs-keyword">end</span>.
 </code></pre>
 <p><em>SomeLibrary.purs</em></p>
 <pre><code class="language-haskell">
-    <span class="module"><span class="keyword">module</span> SomeLibrary <span class="keyword">where</span></span>
+    <span class="hljs-keyword">module</span> SomeLibrary <span class="hljs-keyword">where</span>
 
-    <span class="keyword">foreign</span> <span class="import"><span class="keyword">import</span> data LibraryState :: Type</span>
+    <span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> data <span class="hljs-type">LibraryState</span> :: <span class="hljs-type">Type</span>
 
-    <span class="keyword">foreign</span> <span class="import"><span class="keyword">import</span> configure :: Atom -&gt; Atom -&gt; Effect Atom</span>
-    <span class="keyword">foreign</span> <span class="import"><span class="keyword">import</span> doSomething :: OpaqueState -&gt; Effect OpaqueState</span>
+    <span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> configure :: <span class="hljs-type">Atom</span> -&gt; <span class="hljs-type">Atom</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Atom</span>
+    <span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> doSomething :: <span class="hljs-type">OpaqueState</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">OpaqueState</span>
 </code></pre>
 <p>Using this FFI we can now re-write our original Erlang in Purescript, or at least have a go at it</p>
 <pre><code class="language-haskell">
-    <span class="module"><span class="keyword">module</span> MyCode <span class="keyword">where</span></span>
+    <span class="hljs-keyword">module</span> MyCode <span class="hljs-keyword">where</span>
 
-    init :: <span class="type">Effect</span> <span class="type">Atom</span>
-    init = <span class="type">SomeLibrary</span>.configure (atom <span class="string">"myCode@ps"</span>) (atom <span class="string">"callback"</span>)
+    init :: <span class="hljs-type">Effect</span> <span class="hljs-type">Atom</span>
+    init = <span class="hljs-type">SomeLibrary</span>.configure (atom <span class="hljs-string">"myCode@ps"</span>) (atom <span class="hljs-string">"callback"</span>)
 
-    callback :: <span class="type">OpaqueState</span> -&gt; <span class="type">Tuple2</span> <span class="type">Atom</span> <span class="type">OpaqueState</span>
-    callback state = tuple2 $ (atom <span class="string">"ok"</span>) state <span class="comment">-- don't actually do anything yet</span>
+    callback :: <span class="hljs-type">OpaqueState</span> -&gt; <span class="hljs-type">Tuple2</span> <span class="hljs-type">Atom</span> <span class="hljs-type">OpaqueState</span>
+    callback state = tuple2 $ (atom <span class="hljs-string">"ok"</span>) state <span class="hljs-comment">-- don't actually do anything yet</span>
 </code></pre>
 <p>A problem immediately presents itself, we can&#39;t use the doSomething function from our callback because it&#39;s an Effectful function and our callback function is not, this means callback is pure and can&#39;t actually have any side effects.</p>
 <p>We can try to re-write callback so it is Effectful</p>
 <pre><code class="language-haskell">
-    <span class="module"><span class="keyword">module</span> MyCode <span class="keyword">where</span></span>
+    <span class="hljs-keyword">module</span> MyCode <span class="hljs-keyword">where</span>
 
-    init :: <span class="type">Effect</span> <span class="type">Atom</span>
-    init = <span class="type">SomeLibrary</span>.configure (atom <span class="string">"myCode@ps"</span>) (atom <span class="string">"callback"</span>)
+    init :: <span class="hljs-type">Effect</span> <span class="hljs-type">Atom</span>
+    init = <span class="hljs-type">SomeLibrary</span>.configure (atom <span class="hljs-string">"myCode@ps"</span>) (atom <span class="hljs-string">"callback"</span>)
 
-    callback :: <span class="type">OpaqueState</span> -&gt; <span class="type">Effect</span> (<span class="type">Tuple2</span> <span class="type">Atom</span> <span class="type">OpaqueState</span>)
-    callback state = <span class="keyword">do</span>
-      newState &lt;- <span class="type">SomeLibrary</span>.state
-      pure $ tuple2 $ (atom <span class="string">"ok"</span>) newState 
+    callback :: <span class="hljs-type">OpaqueState</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Tuple2</span> <span class="hljs-type">Atom</span> <span class="hljs-type">OpaqueState</span>)
+    callback state = <span class="hljs-keyword">do</span>
+      newState &lt;- <span class="hljs-type">SomeLibrary</span>.state
+      pure $ tuple2 $ (atom <span class="hljs-string">"ok"</span>) newState 
 </code></pre>
 <p>But now we&#39;ll just get a runtime error because the native Erlang code expects a function of <em>(LibraryState -&gt; { ok, Library State })</em>, and we&#39;ve now giving it a function that is <em>LibraryState -&gt; (() -&gt; { ok, LibraryState})</em> - essentially passing a function reference back to Erlang instead of the result of that function (ew).</p>
 <p>We can dance around this in a number of ways, the simplest being to lie about the effect and use unsafePerformEffect in our &quot;pure&quot; function (No thanks).</p>
 <p>We can also use the namespace Effect.Uncurried to return an effectively negative arity effect back to Erlang (IE, the direct result) without writing any code that lies about what it actually is.</p>
 <pre><code class="language-haskell">
-    <span class="module"><span class="keyword">module</span> MyCode <span class="keyword">where</span></span>
+    <span class="hljs-keyword">module</span> MyCode <span class="hljs-keyword">where</span>
 
-    init :: <span class="type">Effect</span> <span class="type">Atom</span>
-    init = <span class="type">SomeLibrary</span>.configure (atom <span class="string">"myCode@ps"</span>) (atom <span class="string">"callback"</span>)
+    init :: <span class="hljs-type">Effect</span> <span class="hljs-type">Atom</span>
+    init = <span class="hljs-type">SomeLibrary</span>.configure (atom <span class="hljs-string">"myCode@ps"</span>) (atom <span class="hljs-string">"callback"</span>)
 
-    callback :: <span class="type">EffectFn1</span> <span class="type">OpaqueState</span> (<span class="type">Tuple2</span> <span class="type">Atom</span> <span class="type">OpaqueState</span>)
-    callback = mkEffectFn1 \state -&gt; <span class="keyword">do</span>
-        newState &lt;- <span class="type">SomeLibrary</span>.state
-        pure $ tuple2 $ (atom <span class="string">"ok"</span>) newState 
+    callback :: <span class="hljs-type">EffectFn1</span> <span class="hljs-type">OpaqueState</span> (<span class="hljs-type">Tuple2</span> <span class="hljs-type">Atom</span> <span class="hljs-type">OpaqueState</span>)
+    callback = mkEffectFn1 \state -&gt; <span class="hljs-keyword">do</span>
+        newState &lt;- <span class="hljs-type">SomeLibrary</span>.state
+        pure $ tuple2 $ (atom <span class="hljs-string">"ok"</span>) newState 
 </code></pre>
 <p>(IE, the direct result) without writing any code that lies about what it actually is.</p>
 <p>This is typically how we will interact directly with Erlang libraries and will get us pretty far when creating low level bindings with those libraries, but we will see as we progress into creating our wrappers around OTP we&#39;ll uncover some better patterns for making this less brittle (Passing atoms all over the show is pretty dull). For one-off cases the above is perfectly fine, but in reality we&#39;ll only be using this mechanism when writing the wrappers themselves and presenting higher level APIs to the application itself.</p>
