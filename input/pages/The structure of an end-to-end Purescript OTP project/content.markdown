@@ -16,14 +16,14 @@ Our [demo-ps](https://github.com/id3as/demo-ps) can be viewed as two separate ch
 
 # The Erlangy bits
 - *release-files*: Assets to be shipped during the release process
-- *src*: This is usually where the Erlang code lives, but there is no Erlang code
+- *src*: This is usually where the Erlang application lives, but there is no Erlang code
     - *demo_ps.app.src*: The entry point, just points at a Purescript module, we'll talk about that
 - *rebar.config*: Erlang dependencies and such
 - *priv*: Assets/files we want access to from code (static html/js/etc is covered here)
 
 # The purescript bits
-- *server*: The Purescript that we want to compile into Erlang lives here
-- *client*: The Purescript we want to compile into JS lives here
+- *[server](https://github.com/id3as/demo-ps/tree/master/server)*: The Purescript application that we want to compile into Erlang lives here
+- *[client](https://github.com/id3as/demo-ps/tree/master/client)*: The Purescript application we want to compile into JS lives here
 - *Makefile*: Turns the Purescript into JS/Erlang
 - *shared*: Contains Purescript we'll share between JS/Erlang
 
