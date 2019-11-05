@@ -1,0 +1,155 @@
+<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
+<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
+<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
+<!--[if !ie]><!-->
+<html lang="en"> <!--<![endif]-->
+<head>
+    <title id="title">Codemesh 2019 - Purerl and OTP talk</title>
+    <meta charset="utf-8">
+    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="Description" content="Rob Ashton's blog and various other things. Javascript, C#, testing, whatever.">
+    <meta name="author" content="">
+    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
+    <link rel="stylesheet" href="/assets/css/style_responsive.css">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
+    <link rel="stylesheet" href="/assets/css/themes/default.css">
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
+    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="header">
+        <div class="container">
+            <div class="logo">
+             <h2><a href="/index.html">Rob Ashton</a></h2>
+            </div>
+            <div class="navbar">
+                <div class="navbar-inner">
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </a>
+                    <div class="nav-collapse collapse">
+                        <ul class="nav top-2">
+                          <li>
+                                <a href="/">Home</a>
+                            </li>
+                            <li>
+                                <a href="/blog.html">Blog</a>
+                            </li>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <body>
+    <div id="blog-entry">
+      <h1 id="post-title">Codemesh 2019 - Purerl and OTP talk</h1>
+      <h6>Published on <span class="date">2019-11-5</span></h6>
+      <div id="post"><p>Just a note that I&#39;ll be appearing at <a href="https://www.codemesh.io/conferences/code-mesh-ldn/">Codemesh</a> on Thursday (11:25) to give a talk where I go over some of the stuff we&#39;ve been working on at <a href="https://www.id3as.com/home">Work</a>(tm) this year - with a focus on some of the implementation details and nitty gritty/etc.</p>
+<p>I silently blogged some of this recently, basically showing off how we&#39;ve now got the ability to write OTP applications in Purescript these days, and indeed are. The posts are all linked below for the majority of folk who are sensible enough not to not subscribe to this sorry excuse for a blog.</p>
+<p>Here is a sneaky peek as to what a gen server looks like in this world, tasty no?</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">findByIsbn</span> :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Maybe</span> <span class="hljs-type">Book</span>)
+<span class="hljs-title">findByIsbn</span> isbn = 
+  <span class="hljs-type">Gen</span>.doCall serverName \state@{ connection } -&gt; <span class="hljs-keyword">do</span>
+    result &lt;- <span class="hljs-type">Redis</span>.get (dbId isbn) connection
+    pure $ <span class="hljs-type">CallReply</span> result state
+
+<span class="hljs-title">findAll</span> :: <span class="hljs-type">Effect</span> (<span class="hljs-type">List</span> <span class="hljs-type">Book</span>)
+<span class="hljs-title">findAll</span> = 
+  <span class="hljs-type">Gen</span>.doCall serverName \state@{ connection } -&gt; <span class="hljs-keyword">do</span>
+    books &lt;- <span class="hljs-type">Redis</span>.findAll dbPrefix connection
+    pure $ <span class="hljs-type">CallReply</span> books state
+
+<span class="hljs-comment">-- Nothing special about this, just a function that returns a certain type</span>
+<span class="hljs-comment">-- We can supply arbitrary arguments to this via the gensup</span>
+<span class="hljs-title">startLink</span> :: <span class="hljs-type">BookLibraryStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
+<span class="hljs-title">startLink</span> args =
+  <span class="hljs-type">Gen</span>.startLink serverName $ init args
+
+<span class="hljs-comment">-- And those arguments can then end up in here, which just needs to return an effect of our State type</span>
+<span class="hljs-title">init</span> :: <span class="hljs-type">BookLibraryStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">State</span>
+<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
+  connection &lt;- <span class="hljs-type">Redis</span>.open args.connectionString
+  pure $ { connection }
+</code></pre>
+<h1 id="the-blog-entries">The blog entries</h1>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
+<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
+<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
+<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
+<li><a href="/entries/purescript-interop-with-native-erlang---interacting-with-redis.html">Purescript interop with native Erlang, interaction with Redis</a></li>
+</ul>
+<h1 id="useful-links">Useful links</h1>
+<ul>
+<li><a href="https://github.com/id3as/demo-ps">demo-ps</a> The demo codebase we&#39;re talking about here</li>
+<li><a href="https://github.com/id3as/purescript-erl-pinto">erl-pinto</a> (the opinionated bindings to OTP we&#39;re using)</li>
+<li><a href="https://github.com/id3as/purescript-erl-stetson">erl-stetson</a> (the opinionated bindings to Cowboy we&#39;re using)</li>
+</ul>
+</div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="mailto:robashton@codeofrob.com">Respond</a>
+      </div>
+
+        <!--=== Copyright ===-->
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span6">
+                <p class="terms">2018 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
+    });
+        </script>
+        <!--[if lt IE 9]>
+    <script src="assets/js/respond.js"></script>
+<![endif]-->
+        </body>
+        </html>
+

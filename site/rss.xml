@@ -1,4 +1,530 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Tue, 09 Jul 2019 10:02:18 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Purescript on the BEAM - OTP from scratch]]></title><description><![CDATA[<p>Previous entries..</p>
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Tue, 05 Nov 2019 13:01:29 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Codemesh 2019 - Purerl and OTP talk]]></title><description><![CDATA[<p>Just a note that I&#39;ll be appearing at <a href="https://www.codemesh.io/conferences/code-mesh-ldn/">Codemesh</a> on Thursday (11:25) to give a talk where I go over some of the stuff we&#39;ve been working on at <a href="https://www.id3as.com/home">Work</a>(tm) this year - with a focus on some of the implementation details and nitty gritty/etc.</p>
+<p>I silently blogged some of this recently, basically showing off how we&#39;ve now got the ability to write OTP applications in Purescript these days, and indeed are. The posts are all linked below for the majority of folk who are sensible enough not to not subscribe to this sorry excuse for a blog.</p>
+<p>Here is a sneaky peek as to what a gen server looks like in this world, tasty no?</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">findByIsbn</span> :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Maybe</span> <span class="hljs-type">Book</span>)
+<span class="hljs-title">findByIsbn</span> isbn = 
+  <span class="hljs-type">Gen</span>.doCall serverName \state@{ connection } -&gt; <span class="hljs-keyword">do</span>
+    result &lt;- <span class="hljs-type">Redis</span>.get (dbId isbn) connection
+    pure $ <span class="hljs-type">CallReply</span> result state
+
+<span class="hljs-title">findAll</span> :: <span class="hljs-type">Effect</span> (<span class="hljs-type">List</span> <span class="hljs-type">Book</span>)
+<span class="hljs-title">findAll</span> = 
+  <span class="hljs-type">Gen</span>.doCall serverName \state@{ connection } -&gt; <span class="hljs-keyword">do</span>
+    books &lt;- <span class="hljs-type">Redis</span>.findAll dbPrefix connection
+    pure $ <span class="hljs-type">CallReply</span> books state
+
+<span class="hljs-comment">-- Nothing special about this, just a function that returns a certain type</span>
+<span class="hljs-comment">-- We can supply arbitrary arguments to this via the gensup</span>
+<span class="hljs-title">startLink</span> :: <span class="hljs-type">BookLibraryStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
+<span class="hljs-title">startLink</span> args =
+  <span class="hljs-type">Gen</span>.startLink serverName $ init args
+
+<span class="hljs-comment">-- And those arguments can then end up in here, which just needs to return an effect of our State type</span>
+<span class="hljs-title">init</span> :: <span class="hljs-type">BookLibraryStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">State</span>
+<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
+  connection &lt;- <span class="hljs-type">Redis</span>.open args.connectionString
+  pure $ { connection }
+</code></pre>
+<h1 id="the-blog-entries">The blog entries</h1>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
+<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
+<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
+<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
+<li><a href="/entries/purescript-interop-with-native-erlang---interacting-with-redis.html">Purescript interop with native Erlang, interaction with Redis</a></li>
+</ul>
+<h1 id="useful-links">Useful links</h1>
+<ul>
+<li><a href="https://github.com/id3as/demo-ps">demo-ps</a> The demo codebase we&#39;re talking about here</li>
+<li><a href="https://github.com/id3as/purescript-erl-pinto">erl-pinto</a> (the opinionated bindings to OTP we&#39;re using)</li>
+<li><a href="https://github.com/id3as/purescript-erl-stetson">erl-stetson</a> (the opinionated bindings to Cowboy we&#39;re using)</li>
+</ul>
+]]></description><link>http://codeofrob.com/entries/codemesh-2019---purerl-and-otp-talk.html</link><guid isPermaLink="true">http://codeofrob.com/entries/codemesh-2019---purerl-and-otp-talk.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 05 Nov 2019 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purescript interop with native Erlang - Interacting with Redis]]></title><description><![CDATA[<p>All the posts so far..</p>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
+<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
+<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
+<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
+</ul>
+<p>Useful links</p>
+<ul>
+<li><a href="https://github.com/id3as/demo-ps">demo-ps</a> The demo codebase we&#39;re talking about here</li>
+<li><a href="https://github.com/id3as/purescript-erl-pinto">erl-pinto</a> (the opinionated bindings to OTP we&#39;re using)</li>
+<li><a href="https://github.com/id3as/purescript-erl-stetson">erl-stetson</a> (the opinionated bindings to Cowboy we&#39;re using)</li>
+</ul>
+<p>We&#39;ve handwaved over the contents of the <a href="https://github.com/id3as/demo-ps/blob/master/server/src/Native/Redis.purs">Redis</a> module so far in the demo app, showing only that we can use it from our <a href="https://github.com/id3as/demo-ps/blob/master/server/src/BookLibrary.purs">BookLibrary.purs</a> like any other module as follows.</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">update</span> :: <span class="hljs-type">Book</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Either</span> <span class="hljs-type">String</span> <span class="hljs-type">Book</span>)
+<span class="hljs-title">update</span> book =
+  <span class="hljs-type">Gen</span>.doCall serverName \state@{ connection } -&gt; <span class="hljs-keyword">do</span>
+    <span class="hljs-type">Redis</span>.put (dbId book.isbn) book connection
+    pure $ <span class="hljs-type">CallReply</span> (<span class="hljs-type">Right</span> book) state
+</code></pre>
+<p>That&#39;s pretty tidy, so let&#39;s look at the type of that function so we understand the Purescript side of things first and foremost</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">put</span> :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">WriteForeign</span> a =&gt; <span class="hljs-type">DbId</span> -&gt; a -&gt; <span class="hljs-type">RedisConnection</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+</code></pre>
+<p>For any type &#39;a&#39; that implements WriteForeign, we&#39;re a function that takes a DbId, an A and a RedisConnection to produce an Effect of type Unit - this pretty much makes sense on the surface, DbId is just a newtype around String, and given a Key and a Value (which we can get from calling writeJSON on our type &#39;a&#39;), we can dump stuff in Redis - but how?</p>
+<p>Let&#39;s take a step back a moment and approach this from the <em>other</em> end.</p>
+<p>There is an application for accessing Redis in Erlang, called <a href="https://github.com/wooga/eredis">eredis</a> imaginatively enough, the usage of which looks a little like this.</p>
+<pre><code class="language-erlang">
+   { ok, C } = eredis:start_link(ConnectionString),
+
+   eredis:q(C, [ &lt;&lt;<span class="hljs-string">"SET"</span>&gt;&gt;, &lt;&lt;<span class="hljs-string">"key"</span>&gt;&gt;, &lt;&lt;<span class="hljs-string">"value"</span>&gt;&gt; ]).
+</code></pre>
+<p>So what we want to do is surface this meaningfully to Purescript is define some foreign imports in our <em>Redis.purs</em>, which map onto their native counterparts in our <em>Redis.erl.</em></p>
+<pre><code class="language-haskell">
+<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> data <span class="hljs-type">ConnectionString</span> :: <span class="hljs-type">Type</span>
+<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> data <span class="hljs-type">RedisConnection</span> :: <span class="hljs-type">Type</span>
+<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> open :: <span class="hljs-type">ConnectionString</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">RedisConnection</span>
+</code></pre>
+<p>By importing a foreign type, we&#39;re saying to Purescript &quot;Hey, this thing exists in Erlang but we don&#39;t know what is inside it, but we want to model it as something we can pass around thanks&quot;, the ConnectionString comes from sys.config and the RedisConnection is actually a Pid but we don&#39;t need to know that.</p>
+<p>By importing a foreign function, we&#39;re saying that there is a function in Erlang with this name and signature and we&#39;d like to call it from Purescript. The &quot;open&quot; function we&#39;re importing from Erlang takes one of those ConnectionStrings and produces an Effect of type RedisConnection.</p>
+<pre><code class="language-erlang">
+<span class="hljs-function"><span class="hljs-title">open</span><span class="hljs-params">(ConnectionString)</span> -&gt;</span>
+  <span class="hljs-keyword">fun</span>() -&gt;
+      { ok, C } = eredis:start_link(ConnectionString),
+      C
+  <span class="hljs-keyword">end</span>.
+</code></pre>
+<p>We wrap our actual functionality in a function, because that&#39;s how an Effect is modelled in Purerl, and we can return our &#39;Connection&#39; as an opaque type to Purescript when this Effect is processed. I&#39;ve made the decision here to match directly on <em>{ ok, C }</em> which means we&#39;ll crash at runtime if we can&#39;t open a connection - an alternative API could look like this.</p>
+<pre><code class="language-erlang">
+<span class="hljs-function"><span class="hljs-title">open_</span><span class="hljs-params">(ConnectionString, Just, Nothing)</span> -&gt;</span>
+  <span class="hljs-keyword">fun</span>() -&gt;
+      { ok, C } = <span class="hljs-keyword">case</span> eredis:start_link(ConnectionString) <span class="hljs-keyword">of</span>
+                    { ok, C } -&gt; Just(C);
+                    _ -&gt; Nothing
+                    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>.
+</code></pre>
+<p>where</p>
+<pre><code class="language-haskell">
+<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> open_ :: <span class="hljs-type">ConnectionString</span> -&gt; (<span class="hljs-type">RedisConnection</span> -&gt; <span class="hljs-type">Maybe</span> <span class="hljs-type">RedisConnection</span>) -&gt; <span class="hljs-type">Maybe</span> <span class="hljs-type">RedisConnection</span>  -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Maybe</span> <span class="hljs-type">RedisConnection</span>)
+
+<span class="hljs-title">open</span> :: <span class="hljs-type">ConnectionString</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">RedisConnection</span>
+<span class="hljs-title">open</span> connectionString = open_ connectionString <span class="hljs-type">Just</span> <span class="hljs-type">Nothing</span>
+</code></pre>
+<p>I&#39;ve chosen to &quot;let it crash&quot;, as that fits with how I&#39;d build the supervsion tree in Erlang around this (Restart periodically every 30s until the connection works please), but either approach is valid and not one I have strong opinions on at this time. (an Either with the failure reason would also be an option).</p>
+<p>Anyway, going back to that <em>put</em> function with all of this in mind, we want to keep the Erlang pretty minimal, so some transformation on the Purescript side will be required. </p>
+<pre><code class="language-haskell">
+<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> put_ :: <span class="hljs-type">DbId</span> -&gt; <span class="hljs-type">String</span> -&gt; <span class="hljs-type">RedisConnection</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+
+<span class="hljs-title">put</span> :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">WriteForeign</span> a =&gt; <span class="hljs-type">DbId</span> -&gt; a -&gt; <span class="hljs-type">RedisConnection</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">put</span> id obj conn =
+  put_ id (writeJSON obj) conn
+</code></pre>
+<p>Purescript knows how to turn our obj into JSON so we&#39;ll do that there, and then use a foreign function that takes just the primitive objects for use within Erlang with eredis.</p>
+<pre><code class="language-erlang">
+<span class="hljs-keyword">-define</span><span class="hljs-params">(SET(Key, Value)</span>, [ &lt;&lt;"SET"&gt;&gt;, Key, Value ]).
+
+<span class="hljs-function"><span class="hljs-title">put_</span><span class="hljs-params">(Id, Data, Pid)</span> -&gt;</span>
+  <span class="hljs-keyword">fun</span>() -&gt;
+      { ok, &lt;&lt;<span class="hljs-string">"OK"</span>&gt;&gt;} = eredis:q(Pid, ?SET(Id, Data)),
+      ok
+  <span class="hljs-keyword">end</span>.
+</code></pre>
+<p>Now, this is not necessarily how we should approach building an FFI for a native library, as we&#39;re making some decisions in Erlang that could be made in Purescript, a more traditional FFI would look like this.</p>
+<pre><code class="language-erlang">
+<span class="hljs-function"><span class="hljs-title">q</span><span class="hljs-params">(Pid, Operation)</span> -&gt;</span>
+  eredis:q(Pid, Operation).
+</code></pre>
+<pre><code class="language-haskell">
+<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> q :: <span class="hljs-type">RedisConnection</span> -&gt; <span class="hljs-type">List</span> <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Tuple2</span> <span class="hljs-type">Atom</span> <span class="hljs-type">Binary</span>)
+</code></pre>
+<p>And then we could build the API we <em>actually</em> want on top of <em>that</em> instead - I&#39;ve rather skipped that step in my demo for clarity, but if I was producing a library wrapper for publication that&#39;s probably the approach I&#39;d take, as unwieldy as it is to actually use it means we end up writing more Purescript and less Erlang.</p>
+<p>This is the approach that erl-cowboy and Stetson took, whereas erl-pinto takes the direct approach to &quot;desired API&quot;, making the concession that it&#39;ll be easier to build without 1-1 FFI in existence. Either way, it&#39;s pretty easy to call into existing code in Erlang.</p>
+<h1 id="next-up">Next up</h1>
+<p>We&#39;ve pretty much covered the surface area of the demo project, so I&#39;ll be going off on a little journey talking about some of the common things that we like to do in Erlang and how to get that behaviour into Purerl, if I get any questions about these posts I&#39;ll follow up with answers in blog format also.</p>
+]]></description><link>http://codeofrob.com/entries/purescript-interop-with-native-erlang---interacting-with-redis.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purescript-interop-with-native-erlang---interacting-with-redis.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 29 Aug 2019 09:30:00 GMT</pubDate></item><item><title><![CDATA[Shared code twixt Purescript server and client]]></title><description><![CDATA[<p>All the posts so far..</p>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
+<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
+<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
+</ul>
+<p>Useful links</p>
+<ul>
+<li><a href="https://github.com/id3as/demo-ps">demo-ps</a> The demo codebase we&#39;re talking about here</li>
+<li><a href="https://github.com/id3as/purescript-erl-pinto">erl-pinto</a> (the opinionated bindings to OTP we&#39;re using)</li>
+<li><a href="https://github.com/id3as/purescript-erl-stetson">erl-stetson</a> (the opinionated bindings to Cowboy we&#39;re using)</li>
+</ul>
+<p>We&#39;ve got a basic model representing our &#39;book&#39;</p>
+<pre><code class="language-haskell">
+<span class="hljs-keyword">module</span> Books <span class="hljs-keyword">where</span>
+
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Book</span> = { <span class="hljs-title">isbn</span> :: <span class="hljs-type">String</span>
+            , <span class="hljs-title">title</span> :: <span class="hljs-type">String</span>
+            , <span class="hljs-title">author</span> :: <span class="hljs-type">String</span>
+            }</span>
+</code></pre>
+<p>Which is pretty terribly exciting - the key thing to note here is that this is a plain ol&#39; record containing primitive types - this makes it pretty shareable as far as view models go (Let&#39;s ignore that we&#39;re using it for persistence here, demo code gonna demo code).</p>
+<p>We&#39;ve shoved Books.purs into a folder called &#39;shared&#39; which has been softlinked from both the client and server directories, which means it will be separately compiled into JS And Purescript respectively.</p>
+<p>There is a great library over in Purescript world called <a href="https://github.com/justinwoo/purescript-simple-json">simple-json</a> which defines a <em>ReadForeign</em> and <em>WriteForeign</em> for these basic types, which means that the functions readJSON and writeJSON will do the back and forth between JSON and the Purescript types.</p>
+<p>There is also (thanks to the efforts of <a href="https://github.com/purerl/purescript-simple-json">@nwolverson</a>, a port of this library exists on the Purerl side of things which works in exactly the same way, using <a href="https://github.com/talentdeficit/jsx">JSX</a> under the hood. This is a fairly common pattern across the Purerl world, and you&#39;ll see when browsing the org repos that a lot of the code from the JS Purescript world has been ported across with minimal changes so that the two worlds look as alike as possible.</p>
+<p>So, in the previous post we loaded a list of Books out of our genserver in Cowboy and simply called writeJSON on it.</p>
+<pre><code class="language-haskell">
+<span class="hljs-meta"># Rest.contentTypesProvided (\req state -&gt; Rest.result (jsonWriter : nil) req state)</span>
+
+<span class="hljs-title">jsonWriter</span> :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">WriteForeign</span> a =&gt; <span class="hljs-type">Tuple2</span> <span class="hljs-type">String</span> (<span class="hljs-type">Req</span> -&gt; a -&gt; (<span class="hljs-type">Effect</span> (<span class="hljs-type">RestResult</span> <span class="hljs-type">String</span> a)))
+<span class="hljs-title">jsonWriter</span> = tuple2 <span class="hljs-string">"application/json"</span> (\req state -&gt; <span class="hljs-type">Rest</span>.result (writeJSON state) req state)
+</code></pre>
+<p>If we open up the client code, we can see</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">maybeBook</span> &lt;- <span class="hljs-type">H</span>.liftAff $ loadItem $ <span class="hljs-string">"/api/books/"</span> &lt;&gt; isbn
+
+<span class="hljs-comment">-- where</span>
+
+<span class="hljs-title">loadItem</span> :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">ReadForeign</span> a =&gt; <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Aff</span> (<span class="hljs-type">Either</span> <span class="hljs-type">String</span> a)
+<span class="hljs-title">loadItem</span> uri = <span class="hljs-keyword">do</span>
+  response &lt;- <span class="hljs-type">AX</span>.get <span class="hljs-type">AXResponse</span>.string uri
+  <span class="hljs-keyword">case</span> response.body <span class="hljs-keyword">of</span>
+     <span class="hljs-type">Left</span> err -&gt; pure $ <span class="hljs-type">Left</span> <span class="hljs-string">"No"</span>
+     <span class="hljs-type">Right</span> json -&gt; pure $ bimap show identity $ readJSON json
+</code></pre>
+<p>That is all that is required to shift data between the server Purescript and the client Purescript which is pretty tidy indeed! Because we&#39;re using the same library, any custom implementations of <em>ReadForeign</em> and <em>WriteForeign</em> we might choose to write can then also be shared between the two.</p>
+<p>Obviously sharing code between both client and server is something that should be entered into with caution, typically sharing a lot of business logic is the sign of a problem - but I can easily see us ending up in a world where we can start using Halogen on the server-side to pre-render HTML for serving to the client much in the same way that the ReactJS community have started doing similar with NodeJS.</p>
+<h1 id="next-up">Next up</h1>
+<p>We&#39;ll look at our bindings to Redis, to get a feel for what interop with &quot;native&quot; Erlang with FFI looks like.</p>
+]]></description><link>http://codeofrob.com/entries/shared-code-twixt-purescript-server-and-client.html</link><guid isPermaLink="true">http://codeofrob.com/entries/shared-code-twixt-purescript-server-and-client.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 27 Aug 2019 09:30:00 GMT</pubDate></item><item><title><![CDATA[Building a Purescript web server with Stetson and Pinto]]></title><description><![CDATA[<p>All the posts so far..</p>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
+<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
+</ul>
+<p>Useful links</p>
+<ul>
+<li><a href="https://github.com/id3as/demo-ps">demo-ps</a> The demo codebase we&#39;re talking about here</li>
+<li><a href="https://github.com/id3as/purescript-erl-pinto">erl-pinto</a> (the opinionated bindings to OTP we&#39;re using)</li>
+<li><a href="https://github.com/id3as/purescript-erl-stetson">erl-stetson</a> (the opinionated bindings to Cowboy we&#39;re using)</li>
+</ul>
+<p>Having now gotten a basic OTP application up and running, it&#39;d be nice to get some data out to the world.</p>
+<h1 id="cowboy">Cowboy</h1>
+<p>Cowboy is the defacto web server in the Erlang world, each route loosely maps to a module which has callbacks defined in it to handle various stages of the decisioning process.</p>
+<pre><code class="language-erlang">
+<span class="hljs-keyword">-module</span><span class="hljs-params">(my_handler)</span>.
+
+<span class="hljs-keyword">-export</span><span class="hljs-params">([init/<span class="hljs-number">2</span>,
+         get_text/<span class="hljs-number">2</span>,
+         content_types_provided/<span class="hljs-number">2</span>
+        ])</span>.
+
+<span class="hljs-function"><span class="hljs-title">init</span><span class="hljs-params">(Req, _Opts)</span> -&gt;</span>
+  { cowboy_rest, Req, #state{} }.
+
+<span class="hljs-function"><span class="hljs-title">content_types_provided</span><span class="hljs-params">(Req, State)</span> -&gt;</span>
+  {[{ &lt;&lt;<span class="hljs-string">"text/plain"</span>&gt;&gt;, get_text}], Req, State}.
+
+<span class="hljs-function"><span class="hljs-title">get_json</span><span class="hljs-params">(Req, State)</span> -&gt;</span>
+  { &lt;&lt;<span class="hljs-string">"Hello World"</span>&gt;&gt;, Req, State }.
+</code></pre>
+<p>This is directly representable in Purescript, using <a href="https://github.com/purerl/purescript-erl-cowboy">erl-cowboy</a>.</p>
+<pre><code class="language-haskell"><span class="hljs-keyword">module</span> MyHandler <span class="hljs-keyword">where</span>
+
+<span class="hljs-title">init</span> :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">InitHandler</span> a a
+<span class="hljs-title">init</span> = mkEffectFn2 \req c -&gt; pure (initResult c req)
+
+<span class="hljs-title">content_types_provided</span> :: <span class="hljs-keyword">forall</span> s. <span class="hljs-type">ContentTypesProvidedHandler</span> s
+<span class="hljs-title">content_types_provided</span> =  mkEffectFn2 \req s -&gt; pure $
+  restResult
+    (contentTypesProvidedResult $ fromFoldable
+      [ tuple2 (<span class="hljs-type">ContentType</span> <span class="hljs-string">"text"</span> <span class="hljs-string">"plain"</span> <span class="hljs-type">AnyParams</span>) (<span class="hljs-type">ProvideCallback</span> $ atom <span class="hljs-string">"asText"</span>) ]
+    )
+    s req
+
+
+<span class="hljs-title">asText</span> :: <span class="hljs-keyword">forall</span> s. <span class="hljs-type">EffectFn2</span> <span class="hljs-type">Req</span> s (<span class="hljs-type">Tuple3</span> <span class="hljs-type">String</span> <span class="hljs-type">Req</span> s)
+<span class="hljs-title">asText</span> = mkEffectFn2 \req s -&gt; pure $ tuple3 <span class="hljs-string">"Hello World"</span> req s
+</code></pre>
+<p>However, this doesn&#39;t make the best use of Purescript itself - and writing out a few dozen handlers like this would soon get a bit tedious, which is why I went away and wrote <a href="https://github.com/id3as/purescript-erl-stetson">Stetson</a>. Purescript is a functional programming language and it makes sense that rather than provide a bunch of loosely typed callbacks referred to by name using strings, that we built an API that took functions to do all the heavy lifting.</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">helloWorld</span> :: <span class="hljs-type">StetsonHandler</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">helloWorld</span> =
+  <span class="hljs-type">Rest</span>.handler (\req -&gt; <span class="hljs-type">Rest</span>.initResult req unit)
+    # <span class="hljs-type">Rest</span>.contentTypesProvided (\req state -&gt; <span class="hljs-type">Rest</span>.result (tuple2 <span class="hljs-string">"text/html"</span> asText) req state)
+    # <span class="hljs-type">Rest</span>.yeeha
+    <span class="hljs-keyword">where</span> 
+      asText req state = <span class="hljs-keyword">do</span>
+        <span class="hljs-type">Rest</span>.result <span class="hljs-string">"Hello World"</span> req state)
+</code></pre>
+<p>The idea of course being that we can configure Stetson/Cowboy at the top level by providing a pile of functions and abstract over the common bits like &quot;This is an accept handler that turns state into JSON because State has the typeclass &quot;WriteForeign&quot;, and start to get rid of a lot of duplication across our routes.</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">init</span> :: <span class="hljs-type">BookWebStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">State</span>
+<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
+  <span class="hljs-type">Stetson</span>.configure
+    # <span class="hljs-type">Stetson</span>.route <span class="hljs-string">"/api/books"</span> books
+    # <span class="hljs-type">Stetson</span>.route <span class="hljs-string">"/api/books/:isbn"</span> book
+    # <span class="hljs-type">Stetson</span>.static <span class="hljs-string">"/assets/[...]"</span> (<span class="hljs-type">PrivDir</span> <span class="hljs-string">"demo_ps"</span> <span class="hljs-string">"www/assets"</span>)
+    # <span class="hljs-type">Stetson</span>.static <span class="hljs-string">"/[...]"</span> (<span class="hljs-type">PrivFile</span> <span class="hljs-string">"demo_ps"</span> <span class="hljs-string">"www/index.html"</span>)
+    # <span class="hljs-type">Stetson</span>.port args.webPort
+    # <span class="hljs-type">Stetson</span>.bindTo <span class="hljs-number">0</span> <span class="hljs-number">0</span> <span class="hljs-number">0</span> <span class="hljs-number">0</span>
+    # <span class="hljs-type">Stetson</span>.startClear <span class="hljs-string">"http_listener"</span>
+  pure $ <span class="hljs-type">State</span> {}
+</code></pre>
+<p>where books and book are handlers as described above. In our own applications, we have ended up with pretty much the entire web server and all routes in a single file - which is in stark contrast to our usual Erlang apps where we have a folder containing dozens of separate erlang modules.</p>
+<pre><code class="language-haskell"><span class="hljs-title">books</span> :: <span class="hljs-type">StetsonHandler</span> (<span class="hljs-type">List</span> <span class="hljs-type">Book</span>)
+<span class="hljs-title">books</span> =
+  <span class="hljs-type">Rest</span>.handler (\req -&gt; <span class="hljs-keyword">do</span>
+                        state &lt;- <span class="hljs-type">BookLibrary</span>.findAll
+                        <span class="hljs-type">Rest</span>.initResult req state)
+    # <span class="hljs-type">Rest</span>.allowedMethods (\req state -&gt; <span class="hljs-type">Rest</span>.result (<span class="hljs-type">Stetson</span>.<span class="hljs-type">POST</span> :  <span class="hljs-type">Stetson</span>.<span class="hljs-type">HEAD</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">GET</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">OPTIONS</span> : nil) req state)
+    # <span class="hljs-type">Rest</span>.contentTypesProvided (\req state -&gt; <span class="hljs-type">Rest</span>.result (jsonWriter : nil) req state)
+    # <span class="hljs-type">Rest</span>.contentTypesAccepted (\req state -&gt; <span class="hljs-type">Rest</span>.result ((tuple2 <span class="hljs-string">"application/json"</span> acceptJson) : nil)
+                                req state)
+    # <span class="hljs-type">Rest</span>.yeeha
+    <span class="hljs-keyword">where</span> 
+          acceptJson req state = <span class="hljs-keyword">do</span>
+            body &lt;- allBody req mempty
+            result &lt;- either (pure &lt;&lt;&lt; <span class="hljs-type">Left</span> &lt;&lt;&lt; show) <span class="hljs-type">BookLibrary</span>.create $ readJSON $ unsafeCoerce body
+            <span class="hljs-keyword">case</span> result <span class="hljs-keyword">of</span>
+                 <span class="hljs-type">Left</span> err -&gt; <span class="hljs-type">Rest</span>.result false (setBody err req) state
+                 <span class="hljs-type">Right</span> c -&gt; <span class="hljs-type">Rest</span>.result true req state
+
+<span class="hljs-title">jsonWriter</span> :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">WriteForeign</span> a =&gt; <span class="hljs-type">Tuple2</span> <span class="hljs-type">String</span> (<span class="hljs-type">Req</span> -&gt; a -&gt; (<span class="hljs-type">Effect</span> (<span class="hljs-type">RestResult</span> <span class="hljs-type">String</span> a)))
+<span class="hljs-title">jsonWriter</span> = tuple2 <span class="hljs-string">"application/json"</span> (\req state -&gt; <span class="hljs-type">Rest</span>.result (writeJSON state) req state)
+</code></pre>
+<p>So that&#39;s a handler that has a state of type <em>&#39;List Book&#39;</em>, which it gets from our <em>BookLibrary</em> via a call (as in the previous blog entry), jsonWriter being a function as decscribed above - simply taking that model and spitting it out as JSON, leveraging our model which happens to implement that type class.</p>
+<p>We&#39;ll look more into that in the next entry, where we talk about that model and how we&#39;re using it on both client and server.</p>
+]]></description><link>http://codeofrob.com/entries/building-a-purescript-web-server-with-stetson-and-pinto.html</link><guid isPermaLink="true">http://codeofrob.com/entries/building-a-purescript-web-server-with-stetson-and-pinto.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 22 Aug 2019 09:30:00 GMT</pubDate></item><item><title><![CDATA[Building on top of OTP with Purescript with Pinto]]></title><description><![CDATA[<p>All the posts so far..</p>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
+</ul>
+<p>Useful links</p>
+<ul>
+<li><a href="https://github.com/id3as/demo-ps">demo-ps</a> The demo codebase we&#39;re talking about here</li>
+<li><a href="https://github.com/id3as/purescript-erl-pinto">erl-pinto</a> (the opinionated bindings to OTP we&#39;re using)</li>
+<li><a href="https://github.com/id3as/purescript-erl-stetson">erl-stetson</a> (the opinionated bindings to Cowbou we&#39;re using)</li>
+</ul>
+<p>We left the last post demonstrating that an end-to-end Purescript project was essentially a pile of Purescript written in the right place, in order that the usual Erlang application/rebar3/etc can just work with it.</p>
+<h1 id="that-entry-point-again-then">That entry point again then</h1>
+<p>We looked at <em>BookApp.purs</em>, which compiled into an Erlang module called <em>bookApp@ps</em>. which ends up in <em>src/compiled_ps</em> and gets picked up with the usual Erlang structure. Let&#39;s look at that file and see what we see:</p>
+<pre><code class="language-haskell"><span class="hljs-keyword">module</span> BookApp <span class="hljs-keyword">where</span>
+
+<span class="hljs-keyword">import</span> Prelude
+<span class="hljs-keyword">import</span> BookSup <span class="hljs-keyword">as</span> BookSup
+
+<span class="hljs-keyword">import</span> Pinto.App <span class="hljs-keyword">as</span> App
+
+<span class="hljs-title">start</span> = <span class="hljs-type">App</span>.simpleStart <span class="hljs-type">BookSup</span>.startLink</code></pre>
+<p>That <em>simpleStart</em> function is just a Pinto helper that describes an entry point that doesn&#39;t worry about inputs, and provided a Supervisor will start that Supervisor when the application is started.</p>
+<p>This gets compiled into the following Erlang</p>
+<pre><code class="language-erlang"><span class="hljs-comment">% Generated by purs version 0.12.3</span>
+<span class="hljs-keyword">-module</span><span class="hljs-params">(bookApp@ps)</span>.
+<span class="hljs-keyword">-export</span><span class="hljs-params">([start/<span class="hljs-number">0</span>, start/<span class="hljs-number">2</span>])</span>.
+<span class="hljs-keyword">-compile</span><span class="hljs-params">(nowarn_shadow_vars)</span>.
+<span class="hljs-keyword">-compile</span><span class="hljs-params">(nowarn_unused_vars)</span>.
+<span class="hljs-keyword">-compile</span><span class="hljs-params">(no_auto_import)</span>.
+<span class="hljs-keyword">-file</span><span class="hljs-params">(<span class="hljs-string">"src/BookApp.purs"</span>, <span class="hljs-number">8</span>)</span>.
+<span class="hljs-function"><span class="hljs-title">start</span><span class="hljs-params">()</span> -&gt;</span> (pinto_app@ps:simpleStart((bookSup@ps:startLink()))).
+<span class="hljs-keyword">-file</span><span class="hljs-params">(<span class="hljs-string">"src/BookApp.purs"</span>, <span class="hljs-number">8</span>)</span>.
+<span class="hljs-function"><span class="hljs-title">start</span><span class="hljs-params">(_@<span class="hljs-number">0</span>,_@<span class="hljs-number">1</span>)</span> -&gt;</span> ((pinto_app@ps:simpleStart((bookSup@ps:startLink())))(_@<span class="hljs-number">0</span>, _@<span class="hljs-number">1</span>)).</code></pre>
+<p>If get rid of the cruft, that&#39;s essentially just</p>
+<pre><code class="language-erlang"><span class="hljs-keyword">-module</span><span class="hljs-params">(bookApp@ps)</span>.
+<span class="hljs-keyword">-export</span><span class="hljs-params">([start/<span class="hljs-number">0</span>, start/<span class="hljs-number">2</span>])</span>.
+<span class="hljs-function"><span class="hljs-title">start</span><span class="hljs-params">()</span> -&gt;</span> (pinto_app@ps:simpleStart((bookSup@ps:startLink()))).
+<span class="hljs-function"><span class="hljs-title">start</span><span class="hljs-params">(_@<span class="hljs-number">0</span>,_@<span class="hljs-number">1</span>)</span> -&gt;</span> ((pinto_app@ps:simpleStart((bookSup@ps:startLink())))(_@<span class="hljs-number">0</span>, _@<span class="hljs-number">1</span>)).</code></pre>
+<p>This is just a standard application module that you&#39;d find in an Erlang application, exporting the usual start function that calls into a supervisor to start it. This is the only time I&#39;ll be loading up the compiled Purescript as it&#39;s the simplest example - but nearly all of the Pinto helpers are about making sure we can end up exposing a module that looks like the equivalent OTP erlang module.</p>
+<p>The supervisor? More of the same</p>
+<pre><code class="language-haskell"><span class="hljs-keyword">module</span> BookSup <span class="hljs-keyword">where</span>
+
+<span class="hljs-comment">-- [[ imports redacted ]]</span>
+
+<span class="hljs-title">startLink</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Pinto</span>.<span class="hljs-type">StartLinkResult</span>
+<span class="hljs-title">startLink</span> = <span class="hljs-type">Sup</span>.startLink <span class="hljs-string">"book_sup"</span> init
+
+<span class="hljs-title">init</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">SupervisorSpec</span>
+<span class="hljs-title">init</span> = <span class="hljs-keyword">do</span>
+  connectionString &lt;- <span class="hljs-type">BookConfig</span>.connectionString
+  webPort &lt;- <span class="hljs-type">BookConfig</span>.webPort
+  pure $ buildSupervisor
+                # supervisorStrategy <span class="hljs-type">OneForOne</span>
+                # supervisorChildren ( ( buildChild
+                                       # childType <span class="hljs-type">Worker</span>
+                                       # childId <span class="hljs-string">"book_web"</span>
+                                       # childStart <span class="hljs-type">BookWeb</span>.startLink  { webPort } )
+                                       : 
+                                       ( buildChild
+                                       # childType <span class="hljs-type">Worker</span>
+                                       # childId <span class="hljs-string">"book_library"</span>
+                                       # childStart <span class="hljs-type">BookLibrary</span>.startLink { connectionString } )
+                                        : nil)</code></pre>
+<p><em>Sup.startLink</em> is a Pinto helper that&#39;ll end up calling our usual <em>supervisor:start_link</em> under the hood, with our <em>init</em> function being invoked within the context of that created supervisor and returning a supervisor spec when invoked. </p>
+<p>The supervisor spec structure is quite a complicated tangle of maps in Erlang, and while possible to directly represent these in Purescript with records, there are convenience builders/etc provided by Pinto to describe these specs in a more Purescripty and type safe manner - all of these values are pretty much relatable right back to the OTP documentation which is handy and intentional.</p>
+<p>Now, let&#39;s break down one of these gen servers to see what we can see - we&#39;ll have to do this piece-meal as there is a lot to uncover. We&#39;ll be looking at <em>BookLibrary.purs</em>, invoked above in the second child of the supervision tree with BookLibrary.startLink and the code for which is shown below..</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">serverName</span> :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span>
+<span class="hljs-title">serverName</span> = <span class="hljs-type">ServerName</span> <span class="hljs-string">"book_library"</span>
+
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">BookLibraryStartArgs</span> = {
+  <span class="hljs-title">connectionString</span> :: <span class="hljs-type">ConnectionString</span>
+}</span>
+
+<span class="hljs-title">startLink</span> :: <span class="hljs-type">BookLibraryStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
+<span class="hljs-title">startLink</span> args =
+  <span class="hljs-type">Gen</span>.startLink serverName $ init args
+</code></pre>
+<p>So there is nothing too special about this, we&#39;re exporting a function called startLink that takes some configuration from the supervisor, and that calls into the Pinto function <em>Gen.startLink</em> with the serverName, and an init function to invoke within the context of the started GenServer along with those args. This isn&#39;t disimilar to how this looks in the Erlang world so far. </p>
+<p>That serverName construct represents both the unique identifier for this started process, and also encapsulates the type of the &#39;state&#39; that is held by the GenServer, and will be used in all interactions with the <em>Gen</em> module.</p>
+<p>That init function?</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">init</span> :: <span class="hljs-type">BookLibraryStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">State</span>
+<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
+  connection &lt;- <span class="hljs-type">Redis</span>.open args.connectionString
+  pure $ { connection }
+</code></pre>
+<p>Takes place inside the context of the newly started GenServer, and is responsible for effectfully creating the initial state of the GenServer, which is just a Redis connection (We&#39;ll talk about that later). This is actually all we need to create a running GenServer as everything else is entirely optonal.</p>
+<p>Obviously that&#39;s useless, so let&#39;s look at how we can externally call into this GenServer to do something useful</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">findAll</span> :: <span class="hljs-type">Effect</span> (<span class="hljs-type">List</span> <span class="hljs-type">Book</span>)
+<span class="hljs-title">findAll</span> = 
+  <span class="hljs-type">Gen</span>.doCall serverName \state@{ connection } -&gt; <span class="hljs-keyword">do</span>
+    books &lt;- <span class="hljs-type">Redis</span>.findAll dbPrefix connection
+    pure $ <span class="hljs-type">CallReply</span> books state
+</code></pre>
+<p>We can export a plain ol&#39; Purescript function called findAll that returns a plain ol&#39; Effect producing a List of Book, and we can do the rest of the work by invoking a &#39;call&#39; with the <em>Gen</em> module, by giving <em>Gen.doCall</em> our <em>serverName</em> construct, we are able to then provide a typed callback that  will be invoked within the context of the gen-server as part of a <em>handle_call</em>, and therefore gain access to the state and return some books by calling into the Redis connection.</p>
+<p>The original Erlang would of course look a little like this.</p>
+<pre><code class="language-erlang">
+<span class="hljs-keyword">-export</span><span class="hljs-params">([start_link/<span class="hljs-number">1</span>, 
+         init/<span class="hljs-number">1</span>,
+         find_all/<span class="hljs-number">0</span>])</span>.
+
+<span class="hljs-keyword">-record</span><span class="hljs-params">(args, {
+    connection_string :: connection_string()
+    })</span>.
+
+<span class="hljs-keyword">-record</span><span class="hljs-params">(state, {
+    connection :: redis:connection()
+  })</span>.
+
+<span class="hljs-function"><span class="hljs-title">find_all</span><span class="hljs-params">()</span> -&gt;</span>
+  gen_server:call({via, gproc, {n, l, ?MODULE}}, find_all).
+
+<span class="hljs-function"><span class="hljs-title">start_link</span><span class="hljs-params">(Args)</span> -&gt;</span>
+  gen_server:start_link({via, gproc, {n, l, ?MODULE}}, ?MODULE, [Args], []).
+
+<span class="hljs-function"><span class="hljs-title">init</span><span class="hljs-params">([#args { connection_string = ConnectionString }])</span> -&gt;</span>
+  { ok, Connection } = redis:open(ConnectionString),
+  {ok, #state { connection = Connection }}.
+
+<span class="hljs-function"><span class="hljs-title">handle_call</span><span class="hljs-params">(find_all, _Sender, State = #state { connection = Connection })</span> -&gt;</span>
+  { ok, Result } = redis:find_prefix(dbPrefix, Connection),
+  { reply, Result, State }.
+
+</code></pre>
+<p>This is a bit unwieldy, lacks any notion of type safety across the calls being made, but is still pleasantly relatable to the Purescript variant.</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">serverName</span> :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span>
+<span class="hljs-title">serverName</span> = <span class="hljs-type">ServerName</span> <span class="hljs-string">"book_library"</span>
+
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">BookLibraryStartArgs</span> = {
+  <span class="hljs-title">connectionString</span> :: <span class="hljs-type">ConnectionString</span>
+}</span>
+
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">State</span> = {
+  <span class="hljs-title">connection</span> :: <span class="hljs-type">RedisConnection</span>
+}</span>
+
+<span class="hljs-title">startLink</span> :: <span class="hljs-type">BookLibraryStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
+<span class="hljs-title">startLink</span> args =
+  <span class="hljs-type">Gen</span>.startLink serverName $ init args
+
+<span class="hljs-title">init</span> :: <span class="hljs-type">BookLibraryStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">State</span>
+<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
+  connection &lt;- <span class="hljs-type">Redis</span>.open args.connectionString
+  pure $ { connection }
+
+<span class="hljs-title">findAll</span> :: <span class="hljs-type">Effect</span> (<span class="hljs-type">List</span> <span class="hljs-type">Book</span>)
+<span class="hljs-title">findAll</span> = 
+  <span class="hljs-type">Gen</span>.doCall serverName \state@{ connection } -&gt; <span class="hljs-keyword">do</span>
+    books &lt;- <span class="hljs-type">Redis</span>.findAll dbPrefix connection
+    pure $ <span class="hljs-type">CallReply</span> books state
+</code></pre>
+<p>Note: Wrapping up a connection behind a genserver is nearly always not the thing you want to do (effectively it introduces a read/write lock), but sample code gonna sample code.</p>
+<p>Next up, we&#39;ll look at how we could use this GenServer from Stetson to provide a restful JSON API to our client.</p>
+]]></description><link>http://codeofrob.com/entries/building-on-top-of-otp-with-purescript-with-pinto.html</link><guid isPermaLink="true">http://codeofrob.com/entries/building-on-top-of-otp-with-purescript-with-pinto.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 20 Aug 2019 09:30:00 GMT</pubDate></item><item><title><![CDATA[The structure of an end-to-end Purescript OTP project]]></title><description><![CDATA[<p>All the posts so far..</p>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+</ul>
+<p>Useful links</p>
+<ul>
+<li><a href="https://github.com/id3as/demo-ps">demo-ps</a> The demo codebase we&#39;re talking about here</li>
+<li><a href="https://github.com/id3as/purescript-erl-pinto">erl-pinto</a> (the opinionated bindings to OTP we&#39;re using)</li>
+<li><a href="https://github.com/id3as/purescript-erl-stetson">erl-stetson</a> (the opinionated bindings to Cowbou we&#39;re using)</li>
+</ul>
+<h1 id="the-structure-of-an-end-to-end-purescript-otp-project">The structure of an end-to-end Purescript OTP project</h1>
+<p>Our <a href="https://github.com/id3as/demo-ps">demo-ps</a> can be viewed as two separate chunks of code, the base layer is just a plain old Erlang application built using rebar3 and such, and then on top of that we have a pile of Purescript that compiles into Erlang that can then be compiled and used by the usual development workflow.</p>
+<h1 id="the-erlangy-bits">The Erlangy bits</h1>
+<ul>
+<li><em>release-files</em>: Assets to be shipped during the release process</li>
+<li><em>src</em>: This is usually where the Erlang application lives, but there is no Erlang code<ul>
+<li><em>demo_ps.app.src</em>: The entry point, just points at a Purescript module, we&#39;ll talk about that</li>
+</ul>
+</li>
+<li><em>rebar.config</em>: Erlang dependencies and such</li>
+<li><em>priv</em>: Assets/files we want access to from code (static html/js/etc is covered here)</li>
+</ul>
+<h1 id="the-purescript-bits">The purescript bits</h1>
+<ul>
+<li><em><a href="https://github.com/id3as/demo-ps/tree/master/server">server</a></em>: The Purescript application that we want to compile into Erlang lives here</li>
+<li><em><a href="https://github.com/id3as/demo-ps/tree/master/client">client</a></em>: The Purescript application we want to compile into JS lives here</li>
+<li><em>Makefile</em>: Turns the Purescript into JS/Erlang</li>
+<li><em>shared</em>: Contains Purescript we&#39;ll share between JS/Erlang</li>
+</ul>
+<p>In an ideal world, we&#39;d just have a single Purescript entry point and forego our interaction with the Erlang world, but this would involve building out a lot more tooling - the result of this, is that sometimes you will be bringing Purescript dependencies down that require Erlang dependencies and then adding these to rebar.config and the entry point will be your responsibility.</p>
+<p>The purescript dependencies can be found in in <em>psc-package.json</em> inside the server and client directories, and the Erlang dependencies can be found in rebar.config at the top level.</p>
+<p>As a team already familiar with the Erlang ecosystem, this doesn&#39;t represent a hardship for us; but this definitely represents an area which could be improved by an enterprising developer or two, probably a plugin to the Purescript stack that stashes the rebar assets/etc in another build folder and allows us to just write PS/Erlang in the right place. (But this would then also involve modifying our editor plugins to know about this new structure, and as you can already see, it&#39;s a lot of work when we have something that is already functional..)</p>
+<h1 id="that-entry-point-then">That entry point then</h1>
+<pre><code class="language-erlang">{application, demo_ps,
+ [{description, <span class="hljs-string">"An OTP application"</span>},
+  {vsn, <span class="hljs-string">"0.1.0"</span>},
+  {registered, []},
+  {mod, { bookApp@ps, []}},
+  {applications,
+   [kernel,
+    stdlib,
+    lager,
+    gproc,
+    recon,
+    cowboy,
+    jsx,
+    eredis
+   ]},
+  {env,[]},
+  {modules, []},
+  {maintainers, []},
+  {licenses, []},
+  {links, []}
+ ]}.</code></pre>
+<p>One of the key things to note here, is that we have cowboy as a dependency, this is to support (as mentioned), the Purescript libraries that binds to it (<a href="https://github.com/id3as/purescript-erl-stetson">stetson</a> and <a href="https://github.com/purerl/purescript-erl-cowboy">erl-cowboy</a>. </p>
+<p>The other big note, is that entry point module is <em>&#39;bookApp@ps&#39;</em> - that module can be found in server/src/BookApp.purs, which defines a module <em>&#39;BookApp&#39;</em> - the Purescript compiler will compile Purescript modules into *<moduleName>@ps*, as this is unlikely to clash with anything else in the global application namespace. Beyond this entry point there is no Erlang code in the application itself - it&#39;s Purescript all the way down...</p>
+<p>The Makefile in <em>server/Makefile</em> does the work of compiling this Purescript into Erlang that can then be compiled by the usual rebar3 toolchain. The gist of the below Makefile being that we take all the .purs files lying around in the &#39;server&#39; folder, and compile them into .erl files that end up in ../../src/compiled_ps.</p>
+<p>We&#39;ll go into detail on the Purescript stuff in the next post, as that&#39;s the key; we put a pile of Erlang supporting files in the right location, and then write PS in the other location and everything &quot;just kinda works&quot;.</p>
+]]></description><link>http://codeofrob.com/entries/the-structure-of-an-end-to-end-purescript-otp-project.html</link><guid isPermaLink="true">http://codeofrob.com/entries/the-structure-of-an-end-to-end-purescript-otp-project.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 15 Aug 2019 09:30:00 GMT</pubDate></item><item><title><![CDATA[Introducing Pinto and Stetson - Opinionated Purescript bindings to OTP and Cowboy]]></title><description><![CDATA[<p>If you&#39;re reading this, you&#39;ve either been given the link to the posts ahead of time cos you&#39;ve asked to see what is going on, or I&#39;ve hit the publish button in which case hooray. Either way, this is a little series of posts going through some of the Purescript/Purerl code that we&#39;ve quietly open sourced on Github under the Apache 2.0 license. Hopefully betwen these posts, the published markdown docs and the sample application there will be enough to get started with.</p>
+<p>Over the last year or so, we&#39;ve been gradually building out our capacity to create applications end-to-end in Purescript, compiled to JS on the front-end and compiled to Erlang on the back, building on top of both OTP and our existing libraries from nearly a decade of company history doing business on top of the Erlang stack.</p>
+<p>The repositories we&#39;re looking at are:</p>
+<ul>
+<li><a href="https://github.com/purerl/">Purerl</a> itself</li>
+<li>The <a href="https://github.com/purerl/package-sets">purerl-package-sets</a></li>
+<li><a href="https://github.com/id3as/purescript-erl-stetson">Stetson</a> (Opinionated Cowboy bindings)</li>
+<li><a href="git@github.com:id3as/purescript-erl-pinto.git">Pinto</a> (Opinionated OTP bindings)</li>
+<li><a href="https://github.com/id3as/demo-ps">demo-ps</a> (end-to-end sample code)</li>
+</ul>
+<p>The best place to start if you want to dive right in, is probably the demo-ps project as it demonstrates the usage of most of the above, and that is indeed where we&#39;ll be starting in this series.</p>
+<h1 id="purerl">Purerl</h1>
+<p>The Purerl organisation contains the core sets of bindings to much of Erlang&#39;s base libraries, as well as the fork of the Purescript compiler that can generate Erlang as a backend. </p>
+<h1 id="purerl-package-sets">Purerl-package-sets</h1>
+<p>Essentially a pile of Dhall that generates a package.json containing a list of versions of the various Purerl libraries that work together, you&#39;ll not need to touch this directly unless you end up using Purerl internally in an organisation and you want to fork it and add your own internal/private Purerl dependencies.</p>
+<h1 id="stetson">Stetson</h1>
+<p><a href="https://github.com/ninenines/cowboy">Cowboy</a> is the de-facto webserver in the Erlang world, and <a href="https://github.com/purerl/purescript-erl-cowboy">direct bindings</a> exist for the project already, however when it came time to start building applications on top of this, it was clear that there was little gain to be had by directly using them over simply writing Erlang in the first place. Stetson was my attempt to mirror the experience I&#39;ve had in other functional languages using libraries such as <a href="https://github.com/weavejester/compojure">Compojure</a> and <a href="https://github.com/scotty-web/scotty">Scotty</a>. It isn&#39;t by any means complete, and merely serves as a statement of intent around the kind of interaction I&#39;d personally like to have around routing/etc in a Purerl world. I fully hope/expect that somebody will write a native http server in time rather than simply wrapping Cowboy as I have done here.</p>
+<h1 id="pinto">Pinto</h1>
+<p>There have been a <a href="https://github.com/purerl/purerl_otp_sandbox">few examples</a> written demonstrating how to interact with OTP from Purerl, but again at the point of building a real application, direct bindings don&#39;t offer a good user experience once you start building out functionality and repeating yourself a whole ton. I cheated a lot when putting together Pinto and skipped the direct bindings step, going straight to the &quot;desired usage&quot; step and doing a pile of cheats around types and such. It seeks to largely mirror the existing OTP interactions, but in a more functional manner. Much like with Stetson, I fully expect/hope that in time somebody (maybe even us) will want a more idiomatic Purescript experience and choose to build something even more opinionated outside the familiar comfort of the OTP vocabulary. For now, we have Pinto.. :)</p>
+<h1 id="demo-ps">Demo-ps</h1>
+<p>This is a completely pointless web app that uses <a href="https://github.com/id3as/purescript-erl-stetson">purescript-erl-stetson</a>, <a href="https://github.com/id3as/purescript-erl-pinto">purescript-erl-pinto</a>, <a href="https://github.com/purerl/purescript-simple-json">purescript-simple-json</a> and <a href="https://github.com/slamdata/purescript-halogen">purescript-halogen</a> to store data in Redis using some FFI and display it in a single page application, sharing the view models between the server and client components. It seeks to demonstrate rough usages of all of these without cluttering up the interactions with &quot;real code&quot; (read: business logic).</p>
+<p>Next post, we&#39;ll look at the structure of the demo-ps project, as understanding this is essential if you wish to build your own.</p>
+]]></description><link>http://codeofrob.com/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html</link><guid isPermaLink="true">http://codeofrob.com/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 13 Aug 2019 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purescript on the BEAM - OTP from scratch]]></title><description><![CDATA[<p>Previous entries..</p>
 <ul>
 <li><a href="/entries/functional-erlang---purescript-on-the-beam---intro.html">Intro</a></li>
 <li><a href="/entries/purescript-on-the-beam:-getting-started.html">Getting Started</a></li>
@@ -263,508 +789,4 @@
     <span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> callMeAnAmbulance :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">SomeRecord</span>
 </code></pre>
 <p>That pretty much covers much of what we need when importing libraries that are already written in Erlang, so next we&#39;ll look at how we can call Purescript <em>from</em> Erlang (Which is something that we need more than you&#39;d think at first glance).</p>
-]]></description><link>http://codeofrob.com/entries/purescript-on-the-beam---basic-interop-with-erlang.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purescript-on-the-beam---basic-interop-with-erlang.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 13 Nov 2018 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purescript on the BEAM - Writing some basic code]]></title><description><![CDATA[<p>Previous entries..</p>
-<ul>
-<li><a href="/entries/functional-erlang---purescript-on-the-beam---intro.html">Intro</a></li>
-<li><a href="/entries/purescript-on-the-beam:-getting-started.html">Getting Started</a></li>
-</ul>
-<p>I&#39;ve got the tools for building Purescript, I&#39;ve got an empty repo - what now then?</p>
-<h3 id="writing-some-code">Writing some code</h3>
-<p>I don&#39;t want to leap off into writing a fully fledged gen server in Purescript, I&#39;d settle with being able to spawn an Erlang shell and invoking a function I&#39;ve written in - baby steps and all that. </p>
-<p>So, creating a file in ps_src called &quot;mycode.purs&quot;, let&#39;s get a hello world sorted and see what we can see.</p>
-<pre><code><span class="hljs-keyword">module</span> MyCode <span class="hljs-keyword">where</span>
-
-<span class="hljs-keyword">import</span> Effect.Console (<span class="hljs-title">log</span>)
-<span class="hljs-keyword">import</span> Effect (<span class="hljs-type">Effect</span>)
-<span class="hljs-keyword">import</span> Prelude
-
-<span class="hljs-title">hi</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
-<span class="hljs-title">hi</span> = <span class="hljs-keyword">do</span>
-  log <span class="hljs-string">"Hi everybody"</span>
-  pure $ unit</code></pre><p>I guess the first thing we notice here is that we have as many import statements as we do lines of code - this seems to be a thing with languages like this - indeed some of our Elm modules have nearly a whole page of imports at the top of them. Apparently the trick is to get something installed to help you with managing the damned things - I&#39;ve not done that yet, I need to do that - maybe I&#39;ll do that soon - but for now, manually importing stuff as the compiler bitches at me seems to be getting me just as far as I need.</p>
-<p>We have a function called &#39;hi&#39; that returns an <em><a href="https://github.com/purescript/documentation/blob/master/guides/Eff.md">Effect</a></em> which yields a value of type <em>Unit</em>, bleh - let&#39;s not worry about monads and stuff and just accept that you need to return Effects from functions if you want side effects like printing to screen or writing to a database, or spinning a new process up, that&#39;ll just be a theme from now on. When interacting with native Erlang code this is typically going to be the shape of things, as Erlang is very much not a pure functional environment.</p>
-<p>The code is as simple as, &quot;use do notation to perform some side effects, then return &quot;unit&quot; to whatever is going to call our function (either in another do block or so from Erlang itself).</p>
-<pre><code>rebar3 <span class="hljs-keyword">compile</span></code></pre><p>A pile of stuff happens, and I end up with some beams in ebin, notably I end up with *&quot;<a href="mailto:myCode@ps.beam">myCode@ps.beam</a>&quot;*  - Purescript modules end up camelCase with a @ps suffix so core Purescript modules don&#39;t clash with the default Erlang modules, this may well change over the coming year but for now that&#39;s now it is.</p>
-<pre><code>erl -pa _build/default/<span class="hljs-class"><span class="hljs-keyword">lib</span>/*/<span class="hljs-title">ebin</span></span></code></pre><p>And in the shell:</p>
-<pre><code>Erlang/OTP <span class="hljs-number">21</span> [erts<span class="hljs-number">-10.0</span><span class="hljs-number">.5</span>] [source] [<span class="hljs-number">64</span>-bit] [smp:<span class="hljs-number">8</span>:<span class="hljs-number">8</span>] [ds:<span class="hljs-number">8</span>:<span class="hljs-number">8</span>:<span class="hljs-number">10</span>] [async-threads:<span class="hljs-number">1</span>] [hipe]
-
-Eshell V10<span class="hljs-number">.0</span><span class="hljs-number">.5</span>  (abort with ^G)
-<span class="hljs-number">1</span>&gt; l(<span class="hljs-symbol">myCode@</span>ps).
-{module,<span class="hljs-symbol">myCode@</span>ps}
-<span class="hljs-number">2</span>&gt; <span class="hljs-symbol">myCode@</span>ps:hi().
-#Fun&lt;<span class="hljs-symbol">myCode@</span>ps<span class="hljs-number">.0</span><span class="hljs-number">.117199341</span>&gt;</code></pre><p>What? Well - we&#39;re returning an Effect, which it turns out under the covers is just a function that&#39;s waiting to be evaled at a higher level, I can actually do</p>
-<pre><code><span class="hljs-meta">3&gt; </span>Fn = myCode@ps:hi().
-#Fun&lt;myCode@ps.<span class="hljs-number">0.117199341</span>&gt;
-<span class="hljs-meta">4&gt; </span>Fn().
-Hi everybody
-unit</code></pre><p>And I get my side effect and my return result from within the Purescript - this isn&#39;t terribly useful if I&#39;m to be calling Purescript code from Erlang code, and given that OTP kinda requires that we have the ability to do that, that&#39;ll be something I need to sort out in the next post.</p>
-]]></description><link>http://codeofrob.com/entries/purescript-on-the-beam---writing-some-basic-code.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purescript-on-the-beam---writing-some-basic-code.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 08 Nov 2018 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purescript on the BEAM: Getting Started]]></title><description><![CDATA[<p>Previous entries..</p>
-<ul>
-<li><a href="/entries/functional-erlang---purescript-on-the-beam---intro.html">Intro</a></li>
-</ul>
-<p>I guess the first thing we need to do is get some sort of environment up and running on my machine - seeing as this is a <a href="https://github.com/purerl/purescript">fork of Purescript</a> with an Erlang backend and it&#39;s reasonably likely at some point I&#39;m going to have to make a pull request or two, I settled with cloning the repo and running </p>
-<pre><code><span class="hljs-built_in">stack</span> build 
-<span class="hljs-built_in">stack</span> install</code></pre><p>Haven&#39;t got stack? Well this isn&#39;t a tutorial, so you can Google that if you need to.</p>
-<p>I then did the same for <a href="https://github.com/purescript/psc-package">psc-package</a> simply because I couldn&#39;t be bothered working out a different way, if it ain&#39;t broke then don&#39;t fix it - that&#39;s what I always say, my definition of broke is probably more lax than others though so YMMV.</p>
-<p>Armed with a purescript compiler and a package manager, the next step is to obviously get something building.</p>
-<p>I decided to base my meanderings off of <a href="https://github.com/purerl/purerl_otp_sandbox">pureerl_otp_sandbox</a> at least as far as basic structure goes, although I did modify the makefile a tad so it looks a bit like this (I&#39;m sure it&#39;s changed by the time anybody will read this, but close enough)</p>
-<pre><code><span class="hljs-meta"><span class="hljs-meta-keyword">.PHONY</span>: all clean</span>
-
-PS_SRC = ps_src
-COMPILED_PS = src/compiled_ps
-OUTPUT = output
-
-<span class="hljs-section">all: <span class="hljs-variable">$(COMPILED_PS)</span></span>
-
-<span class="hljs-variable">$(COMPILED_PS)</span>: output
-    mkdir -p <span class="hljs-variable">$(COMPILED_PS)</span>
-    cp -pu <span class="hljs-variable">$(OUTPUT)</span>/*/*.erl <span class="hljs-variable">$(COMPILED_PS)</span>/
-    touch <span class="hljs-variable">$(COMPILED_PS)</span>
-
-<span class="hljs-section">output: <span class="hljs-variable">$(PS_SRC)</span>/**/*.purs <span class="hljs-variable">$(PS_SRC)</span>/*.purs .psc-package</span>
-    psc-package sources | xargs purs compile '<span class="hljs-variable">$(PS_SRC)</span>/**/*.purs'
-    touch output
-
-<span class="hljs-section">.psc-package: psc-package.json</span>
-    psc-package install
-    touch .psc-package
-
-<span class="hljs-section">clean:</span>
-    rm -rf <span class="hljs-variable">$(OUTPUT)</span>/*
-    rm -f <span class="hljs-variable">$(COMPILED_PS)</span>/*</code></pre><p>This is added to a hook in the rebar.config so it happens automatically on rebar3 compile</p>
-<pre><code>{pre_hooks,
-  [
-   {<span class="hljs-string">"(linux|darwin|solaris|win32)"</span>, compile, <span class="hljs-string">"make"</span>},
-   {<span class="hljs-string">"(linux|darwin|solaris|win32)"</span>, clean, <span class="hljs-string">"clean"</span>}
-  ]}.</code></pre><p>Essentially, I can write an Erlang app as if ever ordinarily did, and as long as I have some .purs files in a folder called &quot;ps_src&quot; they&#39;ll get compiled into beam and everything will &quot;just work&quot;.</p>
-<p>My psc-package.json is about as stock as it gets at this point and just contains a pile of packages from the <a href="https://github.com/purerl/package-sets">pureerl package set</a>.</p>
-<pre><code>{
-  <span class="hljs-attr">"name"</span>: <span class="hljs-string">"untitled"</span>,
-  <span class="hljs-attr">"set"</span>: <span class="hljs-string">"erl-0.12.0-20180730"</span>,
-  <span class="hljs-attr">"source"</span>: <span class="hljs-string">"https://github.com/purerl/package-sets.git"</span>,
-  <span class="hljs-attr">"depends"</span>: [
-    <span class="hljs-string">"console"</span>,
-    <span class="hljs-string">"erl-atom"</span>,
-    <span class="hljs-string">"erl-binary"</span>,
-    <span class="hljs-string">"erl-lists"</span>,
-    <span class="hljs-string">"erl-tuples"</span>,
-    <span class="hljs-string">"erl-jsone"</span>,
-    <span class="hljs-string">"maybe"</span>,
-    <span class="hljs-string">"prelude"</span>
-  ]
-}</code></pre><p>This is probably already too long for most people to read when sat on the loo, so I&#39;ll leave the writing of any code at all to the next entry..</p>
-]]></description><link>http://codeofrob.com/entries/purescript-on-the-beam:-getting-started.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purescript-on-the-beam:-getting-started.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 06 Nov 2018 09:30:00 GMT</pubDate></item><item><title><![CDATA[Functional Erlang - Purescript on the BEAM - Intro]]></title><description><![CDATA[<p>Not gonna make a big deal or fanfare about this, but I&#39;m going to jot down my thoughts as the company I work for starts moving into using Purescript for more of our day to day work instead of Erlang.</p>
-<h3 id="what">WHAT?</h3>
-<p>Indeed, our codebases are starting to get pretty unwieldy with their sizes and as much as we keep a tight ship with Dialyzer and such, writing all of our code in a language like Erlang is just asking for easily avoidable bugs to enter the room.</p>
-<p>So, what is there to look at in this space?</p>
-<ul>
-<li>The project has a <a href="https://github.com/purerl">Github Org</a></li>
-<li>There are a <a href="https://github.com/purerl/package-sets">pile of packages</a> for getting started with</li>
-<li>Purescript itself has a ton of users and <a href="http://www.purescript.org/">documentation</a> so we&#39;re not working in unfamiliar lands</li>
-<li>There has been some <a href="https://github.com/purerl/purerl_otp_sandbox">experimentation with OTP</a> already, with a few different strategies</li>
-</ul>
-<p>Our strategy going forward is to take a greenfield app, and start to write it in Purescript, accepting that there will be marginal gains if any when writing the periphery code in Purescript as opposed to the meaty stuff that already exists. (Not to mention all the interop required). This will at least give us in-roads into the language and platform, and highlight any core-work required in the Purerl space to support our needs as we go forwards.</p>
-<p>The first targets therefore for our attack, and I&#39;ll do these posts fairly bite-size over the coming weeks to keep things easily digestible..</p>
-<ul>
-<li>Writing a gen server in Purescript </li>
-<li>Persisting data from Purescript</li>
-<li>Serving a JS frontend (presumably interop with Cowboy)</li>
-</ul>
-<p>I imagine there will be a lot of stumbling blocks and &quot;This isn&#39;t quite right yet&quot; comments along the way, nonetheless, it&#39;s going to be fun to write and hopefully to read as well - enjoy.</p>
-]]></description><link>http://codeofrob.com/entries/functional-erlang---purescript-on-the-beam---intro.html</link><guid isPermaLink="true">http://codeofrob.com/entries/functional-erlang---purescript-on-the-beam---intro.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Fri, 02 Nov 2018 09:30:00 GMT</pubDate></item><item><title><![CDATA[A few notes on Elm 0.17 - Composing Applications]]></title><description><![CDATA[<p>Last little &#39;note&#39; on Elm</p>
-<ul>
-<li><a href="/entries/a-few-notes-on-elm-0.17---intro.html">A few notes - Intro</a></li>
-<li><a href="/entries/a-few-notes-on-elm-0.17---the-language.html">A few notes - The Language</a></li>
-<li>A few notes - Composing Applications</li>
-</ul>
-<p>One of the most common questions in the Slack channels right now is </p>
-<pre>
-  "How do I do parent/child communication in Elm 0.17"
-</pre>
-
-<p>At the heart of it all is <a href="http://guide.elm-lang.org/architecture/index.html">The Elm Architecture</a> enouraging developers to write modules that look like this</p>
-<pre><code class="language-haskell">    <span class="hljs-keyword">import</span> Html exposing (..)
-
-    <span class="hljs-class"><span class="hljs-keyword">type</span> alias <span class="hljs-type">Model</span> = { ... }</span>
-    <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">Reset</span> | ...</span>
-
-    update : <span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">Model</span> -&gt; ( <span class="hljs-type">Model</span>, <span class="hljs-type">Cmd</span> <span class="hljs-type">Msg</span> )
-    update msg model =
-      <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span>
-        <span class="hljs-type">Reset</span> -&gt; handleReset model
-
-    view : <span class="hljs-type">Model</span> -&gt; <span class="hljs-type">Html</span> <span class="hljs-type">Msg</span>
-    view model = someHtml model</code></pre>
-<p>This seems inherently sensible and you can nest components simply by storing their child models on the parent model, and calling into the child &#39;view&#39; and &#39;update&#39; functions with messages and that model that are entirely opaque to the parent.</p>
-<p>This is great, two things stand out here</p>
-<ul>
-<li>Unlike in React, control over the state you use is kept inside the component (updates/etc)</li>
-<li>How do you get useful events back up to the parent or send commands to the child when something changes?</li>
-</ul>
-<p>The first one is a bit weird because it means while you have a top level state object most of it is generally opaque to the code at the top level. A component will create its initial state, send messages to itself to update its state and then use that state to render. The &quot;parent&quot; then has boilerplate to route those messages. Components are therefore entirely standalone.</p>
-<p>We are currently rolling with the following concepts for our Elm apps.</p>
-<ul>
-<li><em>Routing</em>: Top level component, doesn&#39;t have any state other than current page and current model. Handles top level shared events (more on this coming up)</li>
-<li><em>Pages</em>: isolated components following the init/update/view/subscriptions pattern and doing all their own data loading/saving internally</li>
-<li><em>Children</em>: Mostly don&#39;t require their own models, just dumb rendering functions, no init/update/etc. Raise events from attributes passed in in &#39;view&#39;</li>
-</ul>
-<p>There are some exceptions to Children, but mostly events come from the DOM and we can just wire them up pretty much directly without any need for intermediate models. You don&#39;t tend to need much more nesting than this. I&#39;m a bit concerned that the Html module seems to load its source of truth from the dom instead of relying on the model passed in but <em>shrug</em>.</p>
-<p>What this effectively means is that each Page holds the &quot;Single Source of Truth&quot; and simply renders a tree based on that source of truth, wires up events from that tree into messages within the page, handles those messages, updates the single source of truth and the cycle goes on. </p>
-<pre><code class="language-haskell">    update : <span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">Model</span> -&gt; ( <span class="hljs-type">Model</span>, <span class="hljs-type">Cmd</span> <span class="hljs-type">Msg</span> )
-    update msg model = 
-        <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span> 
-          <span class="hljs-type">MyClickMessage</span> -&gt; ( model, loadSomethingCool )
-
-    view : <span class="hljs-type">Model</span> -&gt; <span class="hljs-type">Html</span>.<span class="hljs-type">Msg</span>
-    view model -&gt;
-       <span class="hljs-type">MyButton</span>.<span class="hljs-keyword">default</span> [ onClick <span class="hljs-type">MyClickMessage</span> ] <span class="hljs-string">"Click me!"</span></code></pre>
-<p>There are some things that need to be handled globally however, changes to navigation, displaying generic error messages/feedback, dialog management (okay, not dialog management, don&#39;t use dialogs please), global data management (which user are we?) and sometimes we need to </p>
-<ul>
-<li>Tell a Page that something has changed while it wasn&#39;t looking</li>
-<li>Tell the Router that we want something to happen</li>
-</ul>
-<p>There have been (in the last few days) a couple of posts written on this subject</p>
-<ul>
-<li><a href="http://folkertdev.nl/blog/elm-child-parent-communication">Child/Parent Communication in Elm</a></li>
-<li><a href="https://medium.com/@alex.lew/f4bfaa1d3f98#.otdxecxl8">The Translator Pattern</a></li>
-</ul>
-<p>Our current preferred method for getting messages to the Router is detailed in the first post and looks a bit like this</p>
-<p><em>Update method in Page</em></p>
-<pre><code class="language-haskell">  update : <span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">Model</span> -&gt; ( <span class="hljs-type">Model</span>, <span class="hljs-type">Cmd</span> <span class="hljs-type">Msg</span>, <span class="hljs-type">Cmd</span> <span class="hljs-type">Common</span>.<span class="hljs-type">Event</span> )
-  update msg model =
-      <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span>
-          <span class="hljs-type">FetchFail</span> err -&gt;
-              handleError err model
-
-          <span class="hljs-type">Tick</span> -&gt;
-              ( model, <span class="hljs-type">Cmd</span>.none, <span class="hljs-type">Cmd</span>.none )
-
-          <span class="hljs-type">ReloadSomeState</span> -&gt;
-              ( model, updateSomeState, <span class="hljs-type">Cmd</span>.none )
-
-          <span class="hljs-type">VisitResource</span> id -&gt;
-              changeRoute (<span class="hljs-type">ResourcePageRoute</span> id) model
-
-          <span class="hljs-type">FetchSomeStateSucceed</span> state -&gt;
-              ( { model | <span class="hljs-type">SomeState</span> = <span class="hljs-type">Just</span> state }, <span class="hljs-type">Cmd</span>.none, <span class="hljs-type">Cmd</span>.none )
-</code></pre>
-<p>See the tuple? Pages return a triplet where the third item can be something from Common.Event. Common also exports ways of making those events to keep life easy for us in our Pages.</p>
-<pre><code class="language-haskell">
-    changeRoute : <span class="hljs-type">Route</span> -&gt; model -&gt; ( model, <span class="hljs-type">Cmd</span> msg, <span class="hljs-type">Cmd</span> <span class="hljs-type">Event</span> )
-    changeRoute route model =
-        ( model, <span class="hljs-type">Cmd</span>.none, event (<span class="hljs-type">RouteChanged</span> route) )
-</code></pre>
-<p>I wouldn&#39;t try and force this any further down than the Page level, most Components below this can get away with just using [ onEvent SomeMsg ] and we don&#39;t want too much child-&gt;parent communication anyway, it&#39;s usually indicative that we&#39;re trying to keep state in the wrong place.</p>
-<p>Our current preferred method for getting messages from the Router to the Child (this is very rare) is simply to export a method from the child component which knows what sort of message to return.</p>
-<pre><code class="language-haskell">    <span class="hljs-keyword">module</span> Child exposing (<span class="hljs-type">Msg</span>, <span class="hljs-type">Model</span>, <span class="hljs-title">doSomethingInteresting</span>) 
-
-    doSomethingInteresting : SomeArgumentType -&gt; Model -&gt; ( <span class="hljs-type">Model</span>, <span class="hljs-type">Cmd</span> <span class="hljs-type">Msg</span> )
-    doSomethingInteresting arg model = ( <span class="hljs-title">model</span>, <span class="hljs-title">kickTaskOffFor</span> <span class="hljs-title">arg</span> )
-</code></pre>
-<p>This can just be called in the &#39;update&#39; method of the parent.</p>
-<h1 id="the-ugly-bit-of-routing">The ugly bit of routing</h1>
-<p>Dynamic dispatch in a typed language is a pain and currently we have a lot of boilerplate around child components, it looks a bit like this in our &#39;update&#39; function in our Router, you can easily imagine our init/subscriptions/view methods.</p>
-<pre><code class="language-haskell">
-    bubble : (a -&gt; <span class="hljs-type">Msg</span>) -&gt; <span class="hljs-type">Cmd</span> a -&gt; <span class="hljs-type">Cmd</span> <span class="hljs-type">Common</span>.<span class="hljs-type">Event</span> -&gt; <span class="hljs-type">Cmd</span> <span class="hljs-type">Msg</span>
-    bubble lifter cmd ev =
-        <span class="hljs-type">Cmd</span>.batch
-            [ <span class="hljs-type">Cmd</span>.map lifter cmd
-            , <span class="hljs-type">Cmd</span>.map <span class="hljs-type">Event</span> ev
-            ]
-
-    update : <span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">Model</span> -&gt; ( <span class="hljs-type">Model</span>, <span class="hljs-type">Cmd</span> <span class="hljs-type">Msg</span> )
-    update msg model =
-        <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span>
-            <span class="hljs-type">HomePageMsg</span> act -&gt;
-                <span class="hljs-keyword">let</span>
-                    ( newPage, cmd, ev ) =
-                        <span class="hljs-type">HomePage</span>.update act model.homePage
-                <span class="hljs-keyword">in</span>
-                    ( { model | homePage = newPage }, bubble <span class="hljs-type">HomePageMsg</span> cmd ev )
-
-            <span class="hljs-type">ResourcePageMsg</span> act -&gt;
-                <span class="hljs-keyword">let</span>
-                    ( newPage, cmd, ev ) =
-                        <span class="hljs-type">ResourcePage</span>.update act model.resourcePage
-                <span class="hljs-keyword">in</span>
-                    ( { model | resourcePage = newPage }, bubble <span class="hljs-type">ResourcePageMsg</span> cmd ev )
-
-            <span class="hljs-type">Event</span> ev -&gt;
-                <span class="hljs-keyword">case</span> ev <span class="hljs-keyword">of</span>
-                    <span class="hljs-type">Common</span>.<span class="hljs-type">RouteChanged</span> newRoute -&gt;
-                        ( model, newUrl (toHash newRoute) )
-
-                    <span class="hljs-type">Common</span>.<span class="hljs-type">HttpError</span> err -&gt;
-                        <span class="hljs-type">Debug</span>.log (toString err) ( model, <span class="hljs-type">Cmd</span>.none )
-</code></pre>
-<p>That&#39;s a whopping case clause for each child component. It&#39;s avoidable if they all share the same model and you can do tricks by lifting the model into a parametric type but you still need to write a clause for each child because you can&#39;t have a heterogenous list of &#39;routes&#39; to dispatch from.</p>
-<p>I haven&#39;t seen a tidy way of doing this yet, an example of lifting the child models into a parametric type can be found in the <a href="https://github.com/debois/elm-parts">elm-parts</a> repo, but it&#39;s a bit invasive while not adding all that much (it&#39;s a good start though).</p>
-<p>I think if records had &#39;setter&#39; functions then most of these functions for update/init/view/etc could be generated on start-up by calling a builder repeatedly with each route, something worth musing on but not seen in the wild yet.</p>
-<p>Honestly I think Elm needs some metaprogramming up in its face, Haskell templating or something similar.  There are arguments against it along the lines of it &quot;It&#39;s complicated and it will scare people off&quot; but currently I think the boilerplate is a growing issue of annoyance with no good solution as of yet.</p>
-<h1 id="some-modules">Some modules</h1>
-<p>We&#39;re using <a href="https://github.com/elm-lang/navigation">elm navigation</a> and <a href="https://github.com/evancz/url-parser">evancz UrlParser</a> to do our routing and that&#39;s all fairly simple, just onerous as far as updates go. </p>
-<p>Nuff said, I don&#39;t have opinions beyond &quot;this is going to get a bit clunky when our web-app has a few dozen routes. There is an argument that we should just do this on the server and go all progressive-enhancement on our app - no thanks, we&#39;re using Erlang for most of our apps and it&#39;s not a path we want to tread.</p>
-]]></description><link>http://codeofrob.com/entries/a-few-notes-on-elm-0.17---composing-applications.html</link><guid isPermaLink="true">http://codeofrob.com/entries/a-few-notes-on-elm-0.17---composing-applications.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 05 Jul 2016 09:30:00 GMT</pubDate></item><item><title><![CDATA[A few notes on Elm 0.17 - The Language]]></title><description><![CDATA[<p>Continuing on then</p>
-<ul>
-<li><a href="/entries/a-few-notes-on-elm-0.17---intro.html">A few notes - Intro</a></li>
-<li>A few notes - The Language</li>
-</ul>
-<h1 id="so-its-haskell">So it&#39;s Haskell?</h1>
-<p>Not really, there are a lot of things in common with Haskell but on closer inspection they are typically same-same-but-different.</p>
-<pre><code class="language-haskell">    <span class="hljs-comment">-- Haskell</span>
-    doSomething :: <span class="hljs-type">Foo</span> -&gt; <span class="hljs-type">Bar</span>
-
-    <span class="hljs-comment">-- Elm</span>
-    doSomething : <span class="hljs-type">Foo</span> -&gt; <span class="hljs-type">Bar</span></code></pre>
-<p>or</p>
-<pre><code class="language-haskell">    <span class="hljs-comment">-- Haskell</span>
-    doSomething x y = x $ somethingElse y
-
-    <span class="hljs-comment">-- Elm</span>
-    doSomething x y = x &lt;| somethingElse y</code></pre>
-<p>I don&#39;t really care about any of these differences, as they are largely arbitrary syntax/naming decisions - although I do feel as though maintaining more of a similarity with Haskell seeing as these choices <em>are</em> arbitrary would make it easier to port code or read documentation across the two.  (The Elm compiler is hosted in Haskell after all anyway...)</p>
-<p>The lack of typeclasses has lead to things like this though</p>
-<pre><code class="language-haskell">
-
-    <span class="hljs-comment">-- Haskell</span>
-    andFinally &lt;$&gt; somethingElse &lt;$&gt; something
-
-    <span class="hljs-comment">-- Elm</span>
-    <span class="hljs-type">Maybe</span>.andThen (<span class="hljs-type">Maybe</span>.andThen something somethingElse) andFinally
-
-</code></pre>
-<p>Not to mention the functions that List has that String doesn&#39;t (I don&#39;t care if String is a list or not, a lot of the same operations do apply and having to look up functions for &#39;String&#39; or &#39;List&#39; instead of just functions that apply against monoids - bleh.</p>
-<p>Agh.</p>
-<h1 id="typeclasses">Typeclasses</h1>
-<p>No type classes, there is a whole history of conversation about the lack of need for them (and the ability for ADTs to do the job admirably), I have yet to see this promised land however, all I see is a bunch of modules for different data structures with methods dangling off them and it reminds me a bit of Erlang where my ability to write sensibly composed functional code is often hampered by its fudge of modules.</p>
-<p>By getting rid (in name anyway) of Monads, Applicative, etc - Elm seems much more acessible to the average user. That&#39;s not to say that they don&#39;t exist in some form in the codebase but side effects/etc have been shoved into the more domain specific &quot;<a href="https://github.com/elm-lang/core/blob/master/src/Task.elm">Task</a>&quot; and Effect managers and in the Elm Architecture itself it&#39;s rare you have to touch anything that isn&#39;t &quot;just data&quot;. </p>
-<p>This is a sensible design decision on the surface, as users who are new to functional programming aren&#39;t overwhelmed by concepts but I can&#39;t help but feel that the data-oriented patterns in Elm couldn&#39;t be exposed in Haskell itself without surfacing those &quot;tricky&quot; concepts whilst keeping them available (there&#39;s a weekend project then). </p>
-<p>Moving on, by placing focus on ADTs and records and inferring expected structure from usage the error messages can be a bit perplexing to start off with, despite them being very well written.</p>
-<p>Consider this function for example</p>
-<pre><code class="language-haskell">    <span class="hljs-class"><span class="hljs-keyword">type</span> alias <span class="hljs-type">Model</span> = {
-      <span class="hljs-title">realField</span> : <span class="hljs-type">String</span>
-    }</span>
-
-    extractThingy : <span class="hljs-type">Model</span> -&gt; <span class="hljs-type">String</span>
-    extractThingy model = model.missingField
-</code></pre>
-<p>The error from this both simultaneously very useful and counter-intuitive:</p>
-<pre>
-    -- TYPE MISMATCH ------------------------------------------------------ Test.elm
-
-    The type annotation for `extractThingy` does not match its definition.
-
-    23| extractThingy : Model -> String
-                        ^^^^^^^^^^^^^^^
-    The type annotation is saying:
-
-        { realField : ... } -> String
-
-    But I am inferring that the definition has this type:
-
-        { b | missingField : ... } -> a
-
-    Detected errors in 1 module.  
-</pre>
-
-<p>Instead of &quot;Hey, Model doesn&#39;t have a field called missingField&quot; we get a complaint that the code is inferring a structure with &#39;missingField&#39; by usage and it doesn&#39;t match the definition it has been supplied. This is because the compiler works backwards from the point of usage and gives its error messages from that context.</p>
-<p>I&#39;m not the only one who got confused initially by this and with more complicated structures and nested code the errors being dumped out can be pretty daunting. It&#39;s something you get the hang of though and the descriptive nature of the error messages make them look a lot more excessive than they really are.</p>
-<h1 id="functional-records">Functional Records</h1>
-<p><a href="http://lexi-lambda.github.io/blog/2015/11/06/functionally-updating-record-types-in-elm/">This has been covered before</a>, but records have &#39;getters&#39; generated for them so we can do things like this</p>
-<pre><code class="language-haskell">    <span class="hljs-class"><span class="hljs-keyword">type</span> alias <span class="hljs-type">Model</span> = { 
-          <span class="hljs-title">realField</span> : <span class="hljs-type">String</span>
-        }</span>
-
-    extractThingy : <span class="hljs-type">List</span> <span class="hljs-type">Model</span> -&gt; <span class="hljs-type">List</span> <span class="hljs-type">String</span>
-    extractThingy items = <span class="hljs-type">List</span>.map .realField items
-</code></pre>
-<p>This can be quite handy if we&#39;re writing functional code around records, sadly no equivalent setters are generated so it&#39;s hard to compose operations against records.</p>
-<h1 id="development-environment">Development environment</h1>
-<p>I&#39;m in Emacs these days on account of our company&#39;s switch to <a href="https://www.rebar3.org/">Rebar3</a> in the <a href="http://erlang.org/">Erlang</a> world and my reluctance to sit there and fix my Vim plug-ins; I&#39;m therefore using <a href="https://github.com/jcollard/elm-mode">elm-mode</a> which gives me access to some integration with elm-reactor and elm-format which we use and don&#39;t even bother arguing about.</p>
-<p>Following the <a href="https://github.com/NoRedInk/elm-style-guide">elm-style guide</a> from No-Red-Ink leaves us one less thing to worry about when writing code.</p>
-<p>I currently really miss the following things from my Haskell development:</p>
-<ul>
-<li><a href="http://www.mew.org/~kazu/proj/ghc-mod/en/">ghc-mod</a></li>
-<li><a href="www.haskell.org/hoogle/">hoogle</a></li>
-<li>compile-on-save insta-feedback-in-repl</li>
-</ul>
-<p>I think I can probably do the latter in an hour or so with existing tooling, but right now I feel one of the biggest benefits of having a sensible type system is missing: Being able to inspect the darned types and work out how functions are supposed to compose without having to constantly jump to documentation.</p>
-<p>Hoogle or a hoogle-like is a must, even with something as low on surface area as Elm; when you know the types of what you&#39;re working with and you know the types of the things you want then Hoogle is one of the most useful things in your arsenal.</p>
-<p>That said, a lot of the time in Haskell we are dealing with parametric types and the functions we are looking for go from (a -&gt; b) -&gt; b, in our record and ADT oriented world we don&#39;t have the interchangeability that we&#39;d get in that world and Hoogle is less useful. I don&#39;t know how I feel about that yet.</p>
-<h1 id="a-note-on-purescript-at-this-point">A note on Purescript at this point</h1>
-<p>I see that the Almighty <a href="http://twitter.com/bodil">@bodil</a> <a href="https://github.com/bodil/purescript-signal">Got there already</a> as I was just musing about using the patterns in Elm in a better programming language, I&#39;d be interested in seeing 0.17 &quot;bye bye FRP&quot; patterns written in Purescript for sure.</p>
-<h1 id="next-up">Next up..</h1>
-<p>I&#39;ll look at the structure of our web apps and highlight some of the issues and decisions we&#39;ve encountered so far in 0.17</p>
-]]></description><link>http://codeofrob.com/entries/a-few-notes-on-elm-0.17---the-language.html</link><guid isPermaLink="true">http://codeofrob.com/entries/a-few-notes-on-elm-0.17---the-language.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 30 Jun 2016 09:30:00 GMT</pubDate></item><item><title><![CDATA[A few notes on Elm 0.17 - Intro]]></title><description><![CDATA[<p>I&#39;ve been writing a bit of Elm lately for work as we have never really liked Javascript and with Elm 0.17.0 it looks like some sensible decisions have been made and it&#39;s going to be a viable replacement for our currect defacto choice of React + NPM.</p>
-<p>Obviously I&#39;m in favour of that, I&#39;m a big fan of Haskell and Haskell type languages and the only reason I hadn&#39;t thrust down this direction already is my own reluctance to spend time learning an immature technology for application code that has generally been &quot;good enough&quot; up until now (I&#39;d prefer to spend the time on my guitar/coffee sorry not sorry).</p>
-<p>Now I&#39;ve written a couple of Elm applications (one of which will have gone into production by the time this post is published), I just want to make a few remarks about the &#39;state of things&#39;, knowing that I don&#39;t really have the full history of things regarding Elm and there may well be reasons behind some of the design decisions I&#39;m having a hard time with.</p>
-<p>This post is more of an overview of what things look like and what resources I used to learn Elm with, my other posts will deal with language and application structure separately so I don&#39;t just dump out a few thousand words that nobody will ever read.</p>
-<h1 id="the-state-of-docssamples">The state of docs/samples</h1>
-<p><a href="https://elm-community.github.io/elm-faq/17.html">0.17</a> only came out fairly recently and most of the bigger examples available were written before this. This means that a lot of the sample code use concepts that don&#39;t exist any more (<a href="http://elm-lang.org/blog/farewell-to-frp">Signals</a>) and there has been very little written of any consequence in the New Way. This means that composing larger applications is a bit of a stab in the dark and we&#39;ve had to guess our way around this.</p>
-<p>There are examples written by <a href="https://github.com/evancz/">evancz</a> in 0.17, but like any other examples I can find they are limited to using a single top level model and command structure and don&#39;t really give any indication as to what something larger would look like. It&#39;s really good reading that the &quot;Commands and Subscriptions help nest components infinitely&quot; but there isn&#39;t really any indication as to what that actually looks like in the wild.</p>
-<p>That said, the docs around the language itself and <a href="http://guide.elm-lang.org/architecture/">&quot;The Elm Architecture&quot;</a> are very good and a lot more complete than a lot of &quot;small&quot; projects like this would have usually been. The absolute focus on &quot;user oriented design&quot; really shows itself in that Elm is doing its best to use simple language and hide anything that isn&#39;t data or &#39;plain old code&#39; from the developer.</p>
-<h1 id="learning-from-others">Learning from others</h1>
-<p>While I have not directly interacted with any community members, I have joined the <a href="http://elmlang.slack.com">Slack</a> and browsed the <a href="https://groups.google.com/forum/#!forum/elm-discuss">mailing list</a> in an attempt to find answers to the questions I have had and that other people have similarly had.</p>
-<p>I get the feeling that most people doing Elm are either writing fun little games (It looks <em>excellent</em> for this, or they&#39;ve not really attempted to write anything substantial in 0.17 yet. There are a lot of questions about composition and events and no real answers other than &quot;it&#39;s bit awkward&quot;. It feels a bit head-in-sand at the moment and one of the reasons I&#39;m doing these posts is to get some feedback over the way I&#39;ve ended up doing things.</p>
-<p>The people <em>in</em> the mailing list and Slack seem to of the resoundingly friendly variety and the people approaching the language appear to be in the camp of it being their first functional language and there are no shortage of people ready to answer their questions in the Slack channels.  Searching through the history of the Slack and mailing list answered most of my questions about 0.17 or at least left me at a level of understanding that there isn&#39;t an answer yet and I&#39;d better just get on and do it my way for now.</p>
-<h1 id="my-overall-impression">My overall impression</h1>
-<p>Elm is in a place where I&#39;m happily going to use it for most of our front-end work from now on; the up-front time putting together the types and calls to get data is easily regained when building the actual application because compilation errors massively outweigh the runtime errors once the data is in place. </p>
-<p>I&#39;ll probably do some more posts beyond these &quot;notes&quot; as I build larger things and have anything worth sharing; for now Elm seems to be a sensible option for those building applications for web browsers.</p>
-]]></description><link>http://codeofrob.com/entries/a-few-notes-on-elm-0.17---intro.html</link><guid isPermaLink="true">http://codeofrob.com/entries/a-few-notes-on-elm-0.17---intro.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 28 Jun 2016 09:30:00 GMT</pubDate></item><item><title><![CDATA[A Londoner's guide to emigrating to Glasgow]]></title><description><![CDATA[<p>I&#39;ve been asked a couple of times already about moving to Glasgow in Scotland from depressed folks in England knowing that</p>
-<ul>
-<li>The economy is going to shit (crashy crashy yay)</li>
-<li>The community is going to shit (racism, etc)</li>
-<li>The UK is going to be a bad place to do business from if it&#39;s not part of the EU</li>
-</ul>
-<p>And part of this is the hope that</p>
-<ul>
-<li>Scotland was very pro-remain</li>
-<li>Scotland recognises the value of immigrants</li>
-<li>Scotland may have another #indyref and they want to come here to vote &quot;yes&quot; in it</li>
-</ul>
-<p>My own personal feelings? I voted no to independence because being part of the UK which was part of the EU was economically and globally sensible and given how things are now, I&#39;d change my vote to yes and hope that whoever was in charge put in place incentives for the tech industry/etc to start hiring and building in Scotland as it&#39;s a relatively cheap place to do business already and we could do with the income if we&#39;re no longer relying on money from England. (Sorry Cybernats, you were always wrong about this).</p>
-<h1 id="why-glasgow">Why Glasgow?</h1>
-<p>So step one on that plan, get the tech community to start moving up here anyway - here are some reasons for you to consider moving to Glasgow</p>
-<p><em>It&#39;s not London</em></p>
-<p>I moved to Glasgow because it wasn&#39;t London; okay I moved to Glasgow because I had a nasty break-up and needed a change of scenery and it made me very happy indeed. A metaphor perhaps? It worked for me and it could work for you too.</p>
-<p>You don&#39;t want to move to Edinburgh because Edinburgh is like a mini-London and is full of the same kinds of people in London that you&#39;d rather not hang out with. Not to mention that just like some parts of London it&#39;s impossible to move around because tourists are shuffling all over the place. Tourism is good for Scotland and thankfully they have a place to go and it&#39;s called Edinburgh.</p>
-<p>Okay, so Edinburgh has better coffee, food and cocktails; c&#39;est la vie, it&#39;s less than an hour away by train and the tourists haven&#39;t discovered that yet, long may it stay that way.</p>
-<p>So yeah, Glasgow = Not London. It&#39;d be nice to keep it that way too so keep your expectations to yourself and come and love Glasgow for what it is.</p>
-<p><em>It&#39;s cheap</em></p>
-<p>This is a hard one to wrestle with, telling everybody about Glasgow may increase rental and purchase prices and may damage those that already live here (not me, the indigineous Glaswegians). My hope is that the buy-to-invest nightmare that is London won&#39;t be repeated up here because since #brexit nobody wants to buy anything in GBP any more.</p>
-<p>But you can&#39;t deny it, Glasgow is a cheap place to live - from the rent, the buses, the nights out and even the flights across to the continent; come up here and hire some of the locals and let&#39;s build a new tech hub eh?</p>
-<p><em>The people are amazing</em></p>
-<p>They can be scary at times the Glaswegians, but that&#39;s mostly because we&#39;ve been indoctrinated by the media to view their accent as one step away from getting a &quot;bottling&quot; to the face (Pretty sure that the verbification of the word &quot;bottle&quot; was a Scottish thing too) but honestly it&#39;s not like that at all. I have found conversations in the most unlikely of places with the most unlikely of people and so long as you&#39;re not putting on airs or trying to be something you&#39;re not you&#39;ll get on well with everybody up here.</p>
-<p>I&#39;m often asked (especially since I started spending time in Japan) why I&#39;d return to Glasgow and the answer is always the people. Doing my circuit of the coffee shops and bars when I get back is an absolute pleasure and it&#39;s amazing to see the hard work people are putting in to building sustainable business that doesn&#39;t alienate the local crowd.</p>
-<h1 id="so-where-do-i-move-to">So where do I move to?</h1>
-<p>You&#39;re sold? Excellent; my advice would be to get on a train up this way and get yourself in an AirBNB for a week, walk around and find an area that suits you. One of the great things about Glasgow not being London is that you don&#39;t need to sign the paperwork in blood before renting a house and pay up to six months in advance. Nae bother - sign your contract, pay a month&#39;s rent and deposit and that apartment is yours. This isn&#39;t the same level of commitment you have previously been used to.</p>
-<p>One of the other great things about Glasgow is that no matter where you live, is that most places around the Subway are within 20 minutes of everywhere else around the Subway. There is only one Subway, it is a circle and it goes to most of the places you&#39;d like to be.</p>
-<p>Taxis are cheap too, so if you end up going for a night out in Finnieston and you want to get home to your apartment in East Glasgow you&#39;re not going to have to take out a new mortgage to afford one.</p>
-<p>So location isn&#39;t actually that important and I&#39;d probably encourage the tech community to think before clustering together in a single area and pricing everyone else out of it. That said, let&#39;s look at a few of the distinct areas and see what you&#39;re getting into if you hit them.</p>
-<p><em>The West End</em></p>
-<p>Ah the west end; this is where a lot of the more &quot;posh&quot; restaurants and bars are, Porter and Rye, The Finnieston, Ox &amp; Finch, Kelvingrove Cafe etc. It can be a bit pricey to plonk yourself in the &quot;nicer&quot; looking parts of this because it&#39;s probably also one of the wealthiest parts of town. It&#39;s surprisingly unconnected to the Subway - the nearest stops being a 20 minute walk across Kelvingrove park or west across to Kelvinhall or Partick.</p>
-<p>I&#39;d probably not advise people to set up here, the extra cost isn&#39;t really worth it and you&#39;re better off being somewhere quieter nearby if you&#39;re wanting to hang out here a lot. If you&#39;re wanting to get the train regularly from Glasgow Central then you&#39;re best off between here and centre (The M8 is smack between the two locations, so somewhere near that) but if you&#39;re not fussed go further west around the Subway for cheaper digs and quieter evenings.</p>
-<p>Similar to: The posher bits of Shoreditch</p>
-<p><em>The East End</em></p>
-<p>There is a lot of theatre around here and it&#39;s where the Barrowlands is. You can have a very good night out in this neck of the woods without spending anywhere near as much as you would in Finnieston. There is an occasional lost tourist looking for the Glasgow Museum of Modern Art or the Necropolis (both worth checking out by the way) but again you&#39;re better off being somewhere quieter nearby if you&#39;re wanting to hang out here a lot. Further east is lots of housing (and a good deli!) but the Subway doesn&#39;t reach out that far so you&#39;re either going to be looking at the mainline trains or buses to get back into town if you&#39;re in a hurry.</p>
-<p>Similar to: North London, think zone 2/3 onwards if they had theatres</p>
-<p><em>Southside</em></p>
-<p>I&#39;m starting to think that this is where it&#39;s all happening but it&#39;s only just kicking off. The best bakery in the world is down here (Bakery47) and down in Strathbungo there are some interesting restaurant happenings. It&#39;s cheap and it&#39;s not sexy and it&#39;s also (mostly) not on the Subway but there are so many trains both in and out of Glasogw (plus NextBike + Bus) that this isn&#39;t a big deal. If you&#39;re going out in the East/West ends then it&#39;s a definite taxi home but that&#39;s only going to be a tenner so it&#39;s probably worth it.</p>
-<p>Similar to: I don&#39;t think we can really draw comparisons, London is far too busy to have a place like this - even in the outskirts.</p>
-<p><em>The Centre</em></p>
-<p>I wouldn&#39;t try and live here, you won&#39;t be spending that much time here anyway outside of the occasional coffee shop visit, to go shopping or to catch a train; it&#39;s not worth it for the lack of sleep all the noise would cost you.</p>
-<p>Similar to: Probably that bit of scrub between Farringdon and City, er yeah.</p>
-<p><em>The North</em></p>
-<p>I&#39;m sure I&#39;ll offend some people here but there is nothing there but housing, maybe if you&#39;re buying a house and don&#39;t mind a bit of a trek to get into town then I&#39;m sure this is fine. Think Borehamwood, look it up - you have time.</p>
-<p><em>Recommendation</em></p>
-<p>I&#39;d probably look at somewhere within 15 minutes walk of a Subway stop and call it a day. It&#39;s all good and Glasgow isn&#39;t that big. Location doesn&#39;t matter in the same way that it does in London because it doesn&#39;t take two hours to get everywhere. Read the info below and look at where all the things are on a map and work out what&#39;s going to work for you.</p>
-<h1 id="getting-out-of-the-country">Getting out of the country</h1>
-<p>The extra flight from Glasgow when going international can be a bit of a burden although it rarely increases the price of the ticket all that much. A return flight to London can often be had for less than £90 which is less then the train ticket in most cases and can get you in before the first meeting of the day.</p>
-<p>The main international hub is sadly Amsterdam which means going with KLM and Air France if you&#39;re wanting fast convenience, I usually stick with BA however and go via London because for the longer flights the overhead is worth it. </p>
-<p>The train down to London is about six hours and there is little phone coverage on the way down (plus the line is as shakey AF), don&#39;t expect to get much work done even in first class if you&#39;re prone to feeling a bit sick when you&#39;re being jolted around all over the place.</p>
-<p>I have found that I have fewer reasons to visit London than I expected however, you probably will too. </p>
-<h1 id="where-can-i-work">Where can I work?</h1>
-<p>Assuming you already have a job (if you don&#39;t then you&#39;re on your own, they do exist though) you probably want to find coffee shops and co-working spaces to hang in.</p>
-<h2 id="lets-start-with-coffee-shopsetc">Let&#39;s start with coffee shops/etc.</h2>
-<p><em><a href="http://labespr.tumblr.com/">Laboratorio Espresso</a></em></p>
-<p>Probably some of the best coffee in Glasgow, it isn&#39;t a large establishment but most of their custom comes from takeaway so nobody is going to worry if you&#39;re sat there with a laptop for an hour or two (especially if you share a table with somebody else). I usually perch on the bar so I can natter to the baristas/customers as they come by and can do this for an hour or two. No power but there is wifi.</p>
-<p>Best: In the early morning when you still have battery left on the laptop.</p>
-<p><em><a href="http://avenue.coffee/location/great-western-road/">Avenue GWR</a></em></p>
-<p>A great place to work, plenty of space although they do get busy around lunchtime; I usually perch on the bar (this is a trend I know) but there are ample tables to set up shop on too and most people do just that.</p>
-<p>Best: Either side of lunch is good, not lunch though</p>
-<p><em><a href="http://www.spitfireespresso.com/">Spitfire Espresso</a></em></p>
-<p>Amazing breakfasts, fun sound track (you&#39;ll get bored of it after a while though), wifi and lots of seating and tables and power. This is a good place to recharge for an hour with a bite to eat while you get some work done.</p>
-<p>Best: Either at breakfast time or anytime in the afternoon; the lunchtime rush is strong here so don&#39;t be taking up those tables if you&#39;re not eating lunch.</p>
-<p><em><a href="http://allthatissolid.co.uk/">All that is Coffee</a></em></p>
-<p>Bright and airy artspace with a coffee shop on the ground floor. I usually tether to my phone for internet and I don&#39;t think there is power down here but there is a lot of space and it&#39;s a good place to hit up for a couple of hours when you&#39;re with other people because of the ample seating.</p>
-<p>Across the road is <em><a href="http://www.monocafebar.com/">Mono</a></em>, a vegan restaurant/record shop where you can usually get a bit of work done with a beer or two for very little money but when it&#39;s busy it&#39;s very busy indeed and it&#39;s always worth bearing that in mind.</p>
-<p><em><a href="http://www.stereocafebar.com/">Stereo</a></em></p>
-<p>Vegetarian bar near central station - banging tunes and food and nobody minds you sitting there in the afternoon plugging away at work with a plate of nachos and a beer to hand (or diet coke, whatever floats your boat). </p>
-<p><em><a href="http://theoldhairdressers.com/">The Old Hairdressers</a></em></p>
-<p>Across the road from Stereo, often a good place to head if Stereo is too busy.</p>
-<p><em><a href="http://www.stravaigin.co.uk/">Stravaigin</a></em></p>
-<p>This is a restaurant with two floors, the ground floor is a less formal bar area and you can happily sit here with a glass of wine and a laptop and not get bothered for a couple of hours. Again lunchtime is busy and you know the drill - the lunch is great though so perhaps an hour of work before lunch and an hour or two after lunch and you&#39;re golden.</p>
-<p><em><a href="http://www.alstonglasgow.co.uk/">Alston Bar &amp; Beef</a></em></p>
-<p>It&#39;s a gin bar underneath Glasgow Central that has power and wifi and gin - you&#39;ll find me here towards the end of a day working in town when I need to recharge both mentally and electrically.</p>
-<h2 id="co-working-spaces">Co-working spaces</h2>
-<p>There are a few that I know of and they&#39;re fairly decent..</p>
-<p><em><a href="http://www.thewhiskybond.co.uk/">The Whisky Bond</a></em></p>
-<p>£200 a month for a fixed desk, £20 day rate, fast wifi etc. This is a place that advertised heavily and is pretty commercial. It&#39;s in &quot;the north&quot;, but is actually only 10 minutes from Cowcaddens Subway so isn&#39;t so bad to get to. There is little nearby but thankfully there is a cafe in the building and while their coffee isn&#39;t to my taste they do some great sandwiches. Convenient.</p>
-<p><em><a href="https://rookieoven.com">Rookie Oven</a></em></p>
-<p>Younger and fresher and at a cool location at the Fairfield Shipyard Offices just south of the river, this is also 10 minutes walk from a Subway station (Govan) and again there isn&#39;t that much around here. It&#39;s cheaper than the Whisky Bond (£175 monthly fixed desk) and for better or for worse they advertise as having a Sonos playing the very best 80s tunes but hey - did I mention it&#39;s at the Fairfield Shipyard Offices? They have a museum to visit! This is where the Glasgow Elixir/Erlang meet-up takes place so it&#39;s not a bad place to be.</p>
-<p><em><a href="http://thinktankglasgow.com">Thinktank</a></em></p>
-<p>Super professional city-centre co-working at £300 a desk. This is quieter and more serious than Rookie Oven and comes with free tea/coffee. Advantage of being in the centre is there are no shortage of lunch spots nearby and all the amenities (post offices/etc) are there so those little things can get done that need doing during the day.</p>
-<h2 id="what-rob-does">What Rob Does</h2>
-<p>I personally choose to work from home at home - I know it&#39;s a novel idea but I make some of the best coffee in Glasgow and with far more interesting beans than you&#39;ll find in most shops. That said, occasionally I&#39;ll have a day out and I&#39;ll just hop between the various locations listed above as I see fit/when I get bored. It&#39;ll cost me about £30 to spend the whole day out of the house including lunch and coffee and it&#39;s generally worth it.</p>
-<p>I&#39;ll often grab lunch at <em>Riverhill</em> while I&#39;m down there, Glasgow isn&#39;t big and it doesn&#39;t take long to get around it.</p>
-<h1 id="the-basics-coffee-and-brunch">The basics (Coffee and Brunch)</h1>
-<p>I get it, you&#39;re coming from London where you have a gazillion options for brunching around and coming to Glasgow can be a bit of a culture shock on that front. Nowhere serves booze before 11am/12pm and  that 9am bloody mary just ain&#39;t gonna happen.</p>
-<p>That said there are some great options for some really good breakfasts with coffee at the start of the day and your liver will thank you for not killing it with the London drinking culture. Some of these were covered above for &#39;working spaces&#39; but I&#39;ll cover them again with more detail here.</p>
-<p><em><a href="http://papercupcoffeecompany.bigcartel.com/where">Papercup GWR</a></em></p>
-<p>Tiny shop, small menu but AMAZING EATS. This is my favourite breakfast in Glasgow and I love coming here. Some of the filter coffee is <em>great</em> - get here early if you don&#39;t want an awkward wait for a table. No booze.</p>
-<p><em><a href="http://papercupcoffeecompany.bigcartel.com/where">Papercup High Street</a></em></p>
-<p>Bigger version of the above with a slightly different menu and a different coffee set-up. I&#39;ve not had the espresso here yet as they only opened recently but they&#39;re rocking an EK43 so it&#39;s probably quite good. No booze.</p>
-<p><em><a href="http://avenue.coffee/location/byres-road/">Avenue Byres Road</a></em></p>
-<p>Weekends will see you a good fry up here alongside some pretty decent coffee, gerronit. No Booze.</p>
-<p><em><a href="http://www.riverhillcafe.com/west-nile.htm">Riverhill West Nile Street</a></em></p>
-<p>Brunchy lunchy, they do a bone marrow bloody mary and some damned good breakfasts to boot. Coffee is from the local roastery Dear Green and while the espresso isn&#39;t usually to my tastes you can order a flat white and be happy with what you get. But you&#39;re here for the bloody mary anyway aren&#39;t you?</p>
-<p><em><a href="http://www.spitfireespresso.com/">Spitfire Espresso</a></em></p>
-<p>Eggs and eggs and fry ups and eggs, this is the stuff of dreams when you just need some stodge to get over that hangover. Espresso is a very safe medium roast and I prefer it in milk. OH GOD THOSE FRY UPS. No Booze.</p>
-<p><em><a href="http://www.hutchesonsglasgow.com">Hutchesons Glasgow</a></em></p>
-<p>Posh breakfast or brunch - the latter comes with bubbles and this is definitely a place to head to when you want something a bit more special.</p>
-<p><em><a href="http://13thnote.co.uk/">Thirteenth Note</a></em></p>
-<p>Vegetarian breakfast :) Booze once the law allows it..</p>
-<p><em><a href="http://www.cafegandolfi.com/">Cafe Gandolfi</a></em></p>
-<p>I&#39;ve been here for a dinner date and it was reeet good. Holy crap though if the breakfast doesn&#39;t completely blow the socks off the East End; huge variety including vegetarian options and I assume given they have a license that at some point towards lunchtime the booze will start flowing.</p>
-<h1 id="date-night---eatingboozing">Date night - Eating/Boozing</h1>
-<p>Okay most of these are in the West End, like I said above that&#39;s just where this stuff is clustered. Some of these places are owned by larger companies or by the same people - you can look this up yourself if you&#39;re bothered. The G1 group own a lot of things in Glasgow and we try to avoid anything they have their grubby mitts on.</p>
-<p><em><a href="http://www.oxandfinch.com">Ox and Finch</a></em></p>
-<p>Some of the best foods; classic western stuff with an occasional twist. Large vegetarian menu as well as a non-patronising children&#39;s menu make this a pretty great place to bring an inclusive party.</p>
-<p><em><a href="http://www.thefinniestonbar.com/">The Finnieston</a></em></p>
-<p>Seafood focused restaurant with a fairly decent cocktail bar which you can go to even if you&#39;re not dining (and a lot of people do!). It gets crowded in the evenings but don&#39;t let that put you off ordering a couple of good drinks to stand around and natter with.</p>
-<p><em><a href="http://www.porterandrye.com/">Porter &amp; Rye</a></em></p>
-<p>Sometimes the steak here is better than some of the best I&#39;ve had from Hawksmoor, it&#39;s all dry-aged in-house and they do some stonking rye-based cocktails (as well as other classics). I love this place and I love their menu and I often treat myself to a solo-dinner here when I&#39;m feeling blue.</p>
-<p><em><a href="http://www.kelvingrovecafe.com/">Kelvingrove Cafe</a></em></p>
-<p>Probably the best cocktails in Glasgow, nice long bar to sit on if you&#39;re by yourself. Best off reserving a table if you&#39;re coming with a party - they do food too.</p>
-<p><em><a href="http://www.alstonglasgow.co.uk/">Alston Bar &amp; Beef</a></em></p>
-<p>Second best steak in Glasgow and SO MUCH GIN TO CHOOSE FROM. A few barrel aged cocktails too, definitely a great place to come if you&#39;re in the area.</p>
-<p><em><a href="http://www.stravaigin.co.uk/">Stravaigin</a></em></p>
-<p>Posh food downstairs in the basement, more rustic food upstairs and it&#39;s all great and all local. I&#39;d say it has an Indian/Asian theme going for it as most of the good stuff is curry-based but it&#39;s hard to pin it down as the ingredients are locally sourced and black pudding and haggis aren&#39;t exactly asian fare...</p>
-<h1 id="some-other-cool-stuff">Some other cool stuff</h1>
-<p><em><a href="http://www.bakery47.com/">Bakery47</a></em></p>
-<p>Mostly baking for catering, the owners Sam and Anna open some days of the week (and usually post a picture of their opening hours on Instagram each week). </p>
-<p>Usually they&#39;ll open shop on Sunday morning at 9am with a rotating guest barista (All Started Here/Back to Black/Fun in a cup/Dear Green) serving coffee and stay open until they&#39;re sold out; a process that usually takes about three hours.</p>
-<p>Get there at 9am for the best croissants you&#39;re going to get probably in the UK, and grab a loaf of bread to take home for the week ahead. Weep because it&#39;s going to be another week until you get to come here again.</p>
-<p><em><a href="http://www.ranjitskitchen.com">Ranjit&#39;s Kitchen</a></em></p>
-<p>Homemade punjabi food, super busy, super affordable, south of the river. I don&#39;t need to say anything else about this.</p>
-<h1 id="getting-around">Getting around</h1>
-<p>The <em><a href="http://www.spt.co.uk/subway/">Subway</a></em> will do 90% of the job for you, it runs in a circle through most of the neighbourhoods that you&#39;ll need access to on a day to day basis and is affordable as it&#39;s a flat day rate (£3.4 at time of writing) once you&#39;ve used it twice in one day.</p>
-<p>That said, it&#39;s not open on Sunday mornings or evenings, public holidays tend to be an issue as well and if you want to get somewhere it doesn&#39;t go you&#39;ll need to find other options.</p>
-<p><em><a href="http://www.nextbike.co.uk/en/glasgow/">Nextbike</a></em> is our equivalent to the Boris Bike - they&#39;re lighter and more balanced, cheaper and you can download an app to your phone that lets you pay by the bike (you can press the right buttons on your walk to the bike stand and know which bike is yours before you even get there). There is an annual rate available if this is something you&#39;re going to use a lot. This is how I get to the Bakery on Sunday mornings.</p>
-<p><em>The buses</em> are frustration incarnate, exact change required, ran by various different companies and who even knows how much it&#39;s going to cost in advance without being the kind of person who looks that up and counts out the right money in advance. One day they&#39;ll upgrade to contactless payment but until then I&#39;m going to cary on relying on the bikes and subway.</p>
-<p><em>Taxi</em>s are cheap and plentiful from the town centre, but I mostly only use them once it gets late and I can&#39;t be bothered walking home. It&#39;s cheaper if you call private hire</p>
-<p>You only need a <em>car</em> if you&#39;re going to be doing your large weekly shop at one of the large out of town supermarkets or wanting to do tourism outside of Glasgow without relying on public transport.</p>
-<h1 id="the-music">The Music</h1>
-<p>Scottish music is amazing, it must be the weather. Frightened Rabbit, Twilight Sad, Belle and Sebastien, James Yorkston, Glasvegas, Mogwai, etc. (Also did you know Mark Knopfler was born in Glasgow? He was! Look it up!</p>
-<p>Anyway we have some great music venues (some of them are already listed) and there is always something on - I don&#39;t need to list them out, just go look at a gig guide already..</p>
-<h1 id="the-arts">The Arts</h1>
-<p>I have a friend who is well into theatre and I&#39;ve been to quite a few of the productions in the east end, there is some fantastic and weird stuff happening in the art scene in Glasgow and it&#39;s fun to play lucky dip with the theatre productions that are on here.</p>
-<p>My favourite experience so far has been in the (sadly now closed) Arches, lying in bed with a complete stranger and being asked to share some very intimate things as part of a performance on sexuality; did I mention fantastic and weird?</p>
-<h1 id="getting-out-of-glasgow">Getting out of Glasgow</h1>
-<p>One of the greatest things until last then; </p>
-<h2 id="this-is-what-awaits-you-a-mere-30-minute-train-ride-out-of-glasgow">This is what awaits you a mere 30 minute train ride out of Glasgow</h2>
-<img src="/img/lomond.jpg" width="400px" />
-
-<h2 id="this-is-what-awaits-you-30-minutes-train--30-minutes-boat-out-of-glasgow">This is what awaits you 30 minutes train + 30 minutes boat out of Glasgow</h2>
-<img src="/img/arran.jpg" width="400px" />
-
-<h2 id="this-is-what-awaits-you-in-autumn">This is what awaits you in Autumn</h2>
-<img src="/img/autumn.jpg" width="400px" />
-
-<h2 id="and-over-in-edinburgh">And over in Edinburgh</h2>
-<img src="/img/edinburgh.jpg" width="400px" />
-
-<h1 id="summary">Summary</h1>
-<p>Sod England, it&#39;s all down hill from here; come and make Scotland great again, it&#39;s a cheaper place to do business, full of really great people and amazing ways to relax the brain (whisky!). It&#39;s going to take a lot less effort to make this the kind of open and liberal place we want to live in because we&#39;re already 90% of the way there; let&#39;s do this together.</p>
-<p>I&#39;ll make you some coffee at Cafe Ashton once you&#39;re in town. It&#39;s a promise.</p>
-]]></description><link>http://codeofrob.com/entries/a-londoners-guide-to-emigrating-to-glasgow.html</link><guid isPermaLink="true">http://codeofrob.com/entries/a-londoners-guide-to-emigrating-to-glasgow.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Mon, 27 Jun 2016 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/purescript-on-the-beam---basic-interop-with-erlang.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purescript-on-the-beam---basic-interop-with-erlang.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 13 Nov 2018 09:30:00 GMT</pubDate></item></channel></rss>

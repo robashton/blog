@@ -1,0 +1,43 @@
+<p>Just a note that I&#39;ll be appearing at <a href="https://www.codemesh.io/conferences/code-mesh-ldn/">Codemesh</a> on Thursday (11:25) to give a talk where I go over some of the stuff we&#39;ve been working on at <a href="https://www.id3as.com/home">Work</a>(tm) this year - with a focus on some of the implementation details and nitty gritty/etc.</p>
+<p>I silently blogged some of this recently, basically showing off how we&#39;ve now got the ability to write OTP applications in Purescript these days, and indeed are. The posts are all linked below for the majority of folk who are sensible enough not to not subscribe to this sorry excuse for a blog.</p>
+<p>Here is a sneaky peek as to what a gen server looks like in this world, tasty no?</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">findByIsbn</span> :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Maybe</span> <span class="hljs-type">Book</span>)
+<span class="hljs-title">findByIsbn</span> isbn = 
+  <span class="hljs-type">Gen</span>.doCall serverName \state@{ connection } -&gt; <span class="hljs-keyword">do</span>
+    result &lt;- <span class="hljs-type">Redis</span>.get (dbId isbn) connection
+    pure $ <span class="hljs-type">CallReply</span> result state
+
+<span class="hljs-title">findAll</span> :: <span class="hljs-type">Effect</span> (<span class="hljs-type">List</span> <span class="hljs-type">Book</span>)
+<span class="hljs-title">findAll</span> = 
+  <span class="hljs-type">Gen</span>.doCall serverName \state@{ connection } -&gt; <span class="hljs-keyword">do</span>
+    books &lt;- <span class="hljs-type">Redis</span>.findAll dbPrefix connection
+    pure $ <span class="hljs-type">CallReply</span> books state
+
+<span class="hljs-comment">-- Nothing special about this, just a function that returns a certain type</span>
+<span class="hljs-comment">-- We can supply arbitrary arguments to this via the gensup</span>
+<span class="hljs-title">startLink</span> :: <span class="hljs-type">BookLibraryStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
+<span class="hljs-title">startLink</span> args =
+  <span class="hljs-type">Gen</span>.startLink serverName $ init args
+
+<span class="hljs-comment">-- And those arguments can then end up in here, which just needs to return an effect of our State type</span>
+<span class="hljs-title">init</span> :: <span class="hljs-type">BookLibraryStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">State</span>
+<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
+  connection &lt;- <span class="hljs-type">Redis</span>.open args.connectionString
+  pure $ { connection }
+</code></pre>
+<h1 id="the-blog-entries">The blog entries</h1>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
+<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
+<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
+<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
+<li><a href="/entries/purescript-interop-with-native-erlang---interacting-with-redis.html">Purescript interop with native Erlang, interaction with Redis</a></li>
+</ul>
+<h1 id="useful-links">Useful links</h1>
+<ul>
+<li><a href="https://github.com/id3as/demo-ps">demo-ps</a> The demo codebase we&#39;re talking about here</li>
+<li><a href="https://github.com/id3as/purescript-erl-pinto">erl-pinto</a> (the opinionated bindings to OTP we&#39;re using)</li>
+<li><a href="https://github.com/id3as/purescript-erl-stetson">erl-stetson</a> (the opinionated bindings to Cowboy we&#39;re using)</li>
+</ul>
