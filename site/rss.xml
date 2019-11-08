@@ -1,4 +1,204 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Tue, 05 Nov 2019 13:01:29 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Codemesh 2019 - Purerl and OTP talk]]></title><description><![CDATA[<p>Just a note that I&#39;ll be appearing at <a href="https://www.codemesh.io/conferences/code-mesh-ldn/">Codemesh</a> on Thursday (11:25) to give a talk where I go over some of the stuff we&#39;ve been working on at <a href="https://www.id3as.com/home">Work</a>(tm) this year - with a focus on some of the implementation details and nitty gritty/etc.</p>
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Fri, 08 Nov 2019 12:48:12 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Purerl - Some questions from #CodeMeshLdn]]></title><description><![CDATA[<p>Talk at CodeMesh now given, because of a demo god intervention (I discovered a Purerl compiler bug mid-demo, how&#39;s that for luck?) I didn&#39;t have time to receive questions during my actual session, but I kept a note of questions asked afterwards and will cover them here for those not present during their discussion.</p>
+<p>I&#39;ll carry on linking these Purerl posts from each other before that however, &#39;cos it serves as a handy indexing mechanism in lieu of having a real blog engine..</p>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
+<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
+<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
+<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
+<li><a href="/entries/purescript-interop-with-native-erlang---interacting-with-redis.html">Purescript interop with native Erlang, interaction with Redis</a></li>
+<li><a href="/entries/codemesh-2019---purerl-and-otp-talk.html">Codemesh 2019 - Purerl and OTP</a></li>
+</ul>
+<h1 id="useful-links">Useful links</h1>
+<ul>
+<li><a href="https://github.com/id3as/demo-ps">demo-ps</a> The demo codebase we&#39;re talking about here</li>
+<li><a href="https://github.com/id3as/purescript-erl-pinto">erl-pinto</a> (the opinionated bindings to OTP we&#39;re using)</li>
+<li><a href="https://github.com/id3as/purescript-erl-stetson">erl-stetson</a> (the opinionated bindings to Cowboy we&#39;re using)</li>
+</ul>
+<h1 id="some-questions-then">Some questions then.</h1>
+<ul>
+<li>What if I use the wrong types in my FFI</li>
+<li>What if I don&#39;t use Effect in my FFI</li>
+<li>How do you map complex union types back into Purerl when doing FFI (specifically, errors)</li>
+<li>Are there any situations where you feel the types in Purescript would get in the way and you&#39;d just write Erlang instead?</li>
+</ul>
+<h1 id="wrong-types">Wrong types</h1>
+<p>In one demo I did a very simple import of the base64 module from base Erlang:</p>
+<pre><code class="language-erlang"><span class="hljs-keyword">-module</span><span class="hljs-params">(cool@foreign)</span>.
+
+<span class="hljs-keyword">-export</span><span class="hljs-params">([base64/<span class="hljs-number">1</span>])</span>.
+
+<span class="hljs-function"><span class="hljs-title">base64</span><span class="hljs-params">(String)</span> -&gt;</span> base64:encode(String).
+</code></pre>
+<p>Consumed in purescript with the following import</p>
+<pre><code class="language-haskell">
+<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> base64 :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">String</span>
+</code></pre>
+<p>And all is right and proper, from the erlang shell, I can call this function</p>
+<pre><code class="language-bash">Eshell V10.5  (abort with ^G)
+1&gt; l(cool@ps).
+{module,cool@ps}
+2&gt; cool@ps:base64(&lt;&lt;<span class="hljs-string">"foo"</span>&gt;&gt;).
+&lt;&lt;<span class="hljs-string">"Zm9v"</span>&gt;&gt;
+3&gt;</code></pre>
+<p>So.. what if we lie about the types at play here?</p>
+<pre><code class="language-haskell">
+<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> base64 :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Int</span>
+</code></pre>
+<p>Well, the result of calling the purescript function from Erlang isn&#39;t going to change because it doesn&#39;t care about types</p>
+<pre><code class="language-bash">Eshell V10.5  (abort with ^G)
+1&gt; l(cool@ps).
+{module,cool@ps}
+2&gt; cool@ps:base64(&lt;&lt;<span class="hljs-string">"foo"</span>&gt;&gt;).
+&lt;&lt;<span class="hljs-string">"Zm9v"</span>&gt;&gt;
+3&gt;</code></pre>
+<p>How about using it in a purescript application?</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">doSomething</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">doSomething</span> = <span class="hljs-keyword">do</span>
+  <span class="hljs-keyword">let</span> result = base64 <span class="hljs-string">"wow"</span>
+  _ &lt;- <span class="hljs-type">Console</span>.log $ show result
+  pure unit
+</code></pre>
+<pre><code class="language-bash">
+&gt; (cool@ps:doSomething())().
+** exception error: bad argument
+     <span class="hljs-keyword">in</span> <span class="hljs-keyword">function</span>  integer_to_binary/1
+        called as integer_to_binary(&lt;&lt;<span class="hljs-string">"d293"</span>&gt;&gt;)
+     <span class="hljs-keyword">in</span> call from data_show@foreign:showIntImpl/1 (output/Data.Show/data_show@foreign.erl, line 4)
+     <span class="hljs-keyword">in</span> call from main@ps:<span class="hljs-string">'-doSomething/0-fun-0-'</span>/1 (/home/robashton/talks/purescript_beam/demo_2/src/Main.purs, line 19)
+</code></pre>
+<p>Passing the variable around in Purescript land, nothing cares - it is assumed that if you&#39;ve said something is a certain type, that it is that type and all type checking will be done on that basis - sooner or later, every bit of data will end up getting somewhere where it needs to be serialized whether for display, storage or transmission and that will involve passing the data into code that makes assumptions based on the type being passed in and you&#39;ll get a runtime crash.</p>
+<p>So obviously the answer is &quot;don&#39;t do it&quot; - when building FFI, getting types correct is essential - definitely something worth testing.</p>
+<h1 id="what-if-i-dont-use-effect-in-my-ffi">What if I don&#39;t use Effect in my FFI</h1>
+<p>You maniac, why would you want to lie about side effects??! Well it turns out to not actually be a big deal, the main reason you&#39;re telling the type system about side effects is for your own benefit and if you choose to lie then at some point you will be hoisted on your own petard and we will all laugh at you. An example of places where this could happen is with legacy code and logging, I guess, probably, maybe.</p>
+<pre><code class="language-erlang">
+<span class="hljs-keyword">-module</span><span class="hljs-params">(cool@foreign)</span>.
+<span class="hljs-keyword">-export</span><span class="hljs-params">([ add/<span class="hljs-number">2</span> ])</span>.
+
+<span class="hljs-function"><span class="hljs-title">add</span><span class="hljs-params">(X,Y)</span> -&gt;</span>
+  io:format(user, <span class="hljs-string">"WOW, I AM ADDING ~p and ~p"</span>, [ X, Y ]),
+  X + Y.
+</code></pre>
+<pre><code class="language-haskell">
+<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> add :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">Int</span>
+
+<span class="hljs-title">doSomething</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">doSomething</span> = <span class="hljs-keyword">do</span>
+  <span class="hljs-keyword">let</span> result = add <span class="hljs-number">5</span> <span class="hljs-number">6</span>
+  _ &lt;- <span class="hljs-type">Console</span>.log $ show result
+  pure unit
+</code></pre>
+<pre><code class="language-bash">8&gt; (main@ps:doSomething())().
+WOW, I AM ADDING 5 and 611
+unit</code></pre>
+<p>Is this the future you want to be a part of? No I didn&#39;t think so - friends don&#39;t let friends write effectful code without declaring it as effectful.</p>
+<h1 id="how-do-you-map-complex-union-types-back-into-purerl">How do you map complex union types back into Purerl </h1>
+<p>Consider the <a href="http://erlang.org/documentation/doc-6.2/lib/kernel-3.0.3/doc/html/file.html#list_dir-1">read_dir API</a> in classic Erlang: </p>
+<pre><code class="language-erlang">  list_dir(Dir) -&gt; {ok, Filenames} | {error, Reason}
+
+  Types:
+
+  Dir = name_all()
+  Filenames = [filename()]
+  Reason = posix()
+         | badarg
+         | {no_translation, Filename :: unicode:latin1_binary()}
+</code></pre>
+<p>There are some decisions to be made when writing code that exposes this API to the Purerl world, and none of them are <em>wrong</em> per se. The default position is usually &quot;Map the exact API across as it is, and if you don&#39;t like it then fix it by writing a somewhat more Purescripty wrapper&quot;.</p>
+<p>So that would be.</p>
+<pre><code class="language-haskell">
+<span class="hljs-keyword">module</span> Erl.File <span class="hljs-keyword">where</span>
+
+<span class="hljs-type">ListDir</span>  :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Either</span> <span class="hljs-type">ListDirFailure</span> (<span class="hljs-type">List</span> <span class="hljs-type">String</span>))
+
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">ListDirFailure</span> = <span class="hljs-type">ListDirPosixFailure</span> <span class="hljs-type">Atom</span></span>
+                    | <span class="hljs-type">ListDirBadArg</span>
+                    | <span class="hljs-type">ListDirNoTranslation</span> <span class="hljs-type">Binary</span>
+</code></pre>
+<p>Which means then passing in the constructors to the FFI so this can be constructed in Erlang without knowing about these types at the top level.</p>
+<pre><code class="language-haskell">
+<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> <span class="hljs-type">ListDir_</span> :: (<span class="hljs-type">Atom</span> -&gt; <span class="hljs-type">ListDirFailure</span>)  
+                            -&gt; <span class="hljs-type">ListDirFailure</span> 
+                            -&gt; (<span class="hljs-type">Binary</span> -&gt; <span class="hljs-type">ListDirFailure</span>) 
+                            -&gt; <span class="hljs-type">ListDirFailure</span> -&gt; (<span class="hljs-type">Either</span> <span class="hljs-type">ListDirFailure</span> (<span class="hljs-type">List</span> <span class="hljs-type">String</span>))
+                            -&gt; (<span class="hljs-type">List</span> <span class="hljs-type">String</span> -&gt; (<span class="hljs-type">Either</span> <span class="hljs-type">ListDirFailure</span> (<span class="hljs-type">List</span> <span class="hljs-type">String</span>)))
+                            -&gt; <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Either</span> <span class="hljs-type">ListDirFailure</span> (<span class="hljs-type">List</span> <span class="hljs-type">String</span>))
+
+<span class="hljs-type">ListDir</span>  :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Either</span> <span class="hljs-type">ListDirFailure</span> (<span class="hljs-type">List</span> <span class="hljs-type">String</span>))
+<span class="hljs-title">listDir</span> = listDir_ <span class="hljs-type">ListDirPosixFailure</span> <span class="hljs-type">ListDirBadArg</span> <span class="hljs-type">ListDirNoTranslation</span> <span class="hljs-type">Left</span> <span class="hljs-type">Right</span>
+
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">ListDirFailure</span> = <span class="hljs-type">ListDirPosixFailure</span> <span class="hljs-type">Atom</span></span>
+                    | <span class="hljs-type">ListDirBadArg</span>
+                    | <span class="hljs-type">ListDirNoTranslation</span> <span class="hljs-type">Binary</span>
+</code></pre>
+<p>Youch that&#39;s a mouthful, obviously we can make that a bit more legible with</p>
+<pre><code class="language-haskell">
+<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> <span class="hljs-type">ListDir_</span> :: (<span class="hljs-type">Atom</span> -&gt; <span class="hljs-type">ListDirFailure</span>)  
+                            -&gt; <span class="hljs-type">ListDirFailure</span> 
+                            -&gt; (<span class="hljs-type">Binary</span> -&gt; <span class="hljs-type">ListDirFailure</span>) 
+                            -&gt; <span class="hljs-type">ListDirFailure</span> -&gt; <span class="hljs-type">ListDirResult</span>
+                            -&gt; (<span class="hljs-type">List</span> <span class="hljs-type">String</span> -&gt; <span class="hljs-type">ListDirResult</span>
+                            -&gt; <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">ListDirResult</span>
+
+<span class="hljs-type">ListDir</span>  :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Either</span> <span class="hljs-type">ListDirFailure</span> (<span class="hljs-type">List</span> <span class="hljs-type">String</span>))
+<span class="hljs-type">ListDir</span> = listDir_ <span class="hljs-type">ListDirPosixFailure</span> <span class="hljs-type">ListDirBadArg</span> <span class="hljs-type">ListDirNoTranslation</span> <span class="hljs-type">Left</span> <span class="hljs-type">Right</span>
+
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">ListDirResult</span> = <span class="hljs-type">Either</span> <span class="hljs-type">ListDirResult</span> (<span class="hljs-type">List</span> <span class="hljs-type">String</span>)</span>
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">ListDirFailure</span> = <span class="hljs-type">ListDirPosixFailure</span> <span class="hljs-type">Atom</span></span>
+                    | <span class="hljs-type">ListDirBadArg</span>
+                    | <span class="hljs-type">ListDirNoTranslation</span> <span class="hljs-type">Binary</span>
+</code></pre>
+<p>And the FFI then looks like</p>
+<pre><code class="language-erlang">
+<span class="hljs-function"><span class="hljs-title">listDir_</span><span class="hljs-params">(ListDirPosixFailure, ListDirBadArg, NoTranslationError, Failure, Success, Dir)</span> -&gt;</span>
+  <span class="hljs-keyword">fun</span>() -&gt;
+    <span class="hljs-keyword">case</span> file:list_dir(Dir) <span class="hljs-keyword">of</span>
+      { ok, Filenames } -&gt; Success(Filenames);
+      { error, { no_translation, Encoded } } -&gt; Failure(NoTranslationError(Encoded));
+      { error, badarg } -&gt; Failure(ListDirBadArg);
+      { error, Posix } -&gt; Failure(ListDirPosixFailure(Posix));
+  <span class="hljs-keyword">end</span>.
+</code></pre>
+<p>If you wanted a nicer API on top of this, let&#39;s call it &quot;CoolFileApi&quot; for example, you&#39;d then wrap <em>that</em> binding with something nicer - having at least type-safe-ified the original API in all of its glory, and then you&#39;re doing the work in Purescript rather than Erlang, I haven&#39;t ran this through a compiler so I probably got it a bit wrong but you&#39;ll get picture..</p>
+<pre><code class="language-haskell"><span class="hljs-keyword">module</span> CoolFileApi <span class="hljs-keyword">where</span>
+
+<span class="hljs-keyword">import</span> Erl.File <span class="hljs-keyword">as</span> File
+<span class="hljs-keyword">import</span> Data.Newtype (<span class="hljs-title">unwrap</span>, <span class="hljs-title">wrap</span>)
+
+<span class="hljs-class"><span class="hljs-keyword">newtype</span> <span class="hljs-type">Filepath</span> = <span class="hljs-type">Filepath</span> <span class="hljs-type">String</span></span>
+<span class="hljs-title">derive</span> <span class="hljs-keyword">instance</span> ntFilepath :: <span class="hljs-type">Newtype</span> <span class="hljs-type">Filepath</span> _
+
+<span class="hljs-type">ListDir</span> :: <span class="hljs-type">Filepath</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Either</span> <span class="hljs-type">CoolListDirFailureReason</span> (<span class="hljs-type">List</span> <span class="hljs-type">Filepath</span>))
+<span class="hljs-type">ListDir</span> <span class="hljs-type">Filepath</span> = <span class="hljs-keyword">do</span>
+  result &lt;- <span class="hljs-type">File</span>.<span class="hljs-type">ListDir</span> $ unwrap <span class="hljs-type">Filepath</span>
+  pure $ either (<span class="hljs-type">Left</span> &lt;&lt;&lt; nativeFailureToShinyFailure) (<span class="hljs-type">Right</span> &lt;&lt;&lt; wrap)
+
+
+<span class="hljs-title">nativeFailureToShinyFailure</span> :: <span class="hljs-type">File</span>.<span class="hljs-type">ListDirFailure</span> -&gt; <span class="hljs-type">CoolListDirFailureReason</span>
+<span class="hljs-title">nativeFailureToShinyFailure</span> reason =
+  <span class="hljs-keyword">case</span> reason <span class="hljs-keyword">of</span>
+    <span class="hljs-type">ListDirBadArg</span> -&gt; <span class="hljs-type">CoolListDirBadArg</span>
+    <span class="hljs-type">ListDirNoTranslation</span> filename -&gt; <span class="hljs-type">CoolListDirNoTranslation</span> filename
+    <span class="hljs-type">ListDirPosixFailure</span> a -&gt; <span class="hljs-type">CoolListDirPosixFailure</span> (atomToCool a)
+
+<span class="hljs-title">atomToCool</span>  :: <span class="hljs-type">Erl</span>.<span class="hljs-type">Atom</span> -&gt; <span class="hljs-type">CoolListDirPosixFailure</span>
+<span class="hljs-title">atomToCool</span> a = 
+  <span class="hljs-keyword">case</span> a <span class="hljs-keyword">of</span>
+    (atom <span class="hljs-string">"eacces"</span>) -&gt; <span class="hljs-type">Eaccess</span>
+    (atom <span class="hljs-string">"enoent"</span>) -&gt; <span class="hljs-type">Enoent</span>
+    <span class="hljs-comment">--- etc</span>
+</code></pre>
+<p>Essentially getting rid of those arbitary atoms and Erlang data types and representing them as native Purerl data types. You <em>could</em> just write your binding directly in this way from the get-go, but it&#39;s considered polite to write the low level bindings as directly as possible to the original API because it saves on mental load (and doing as little work as possible in the Erlang code), the documentation for the original API is then applicable to the low level bindings too.</p>
+<h1 id="arent-types-a-huge-pain-in-the-ass">Aren&#39;t types a huge pain in the ass?</h1>
+<p>I mean that&#39;s what I heard for this question, and it&#39;s a bit of a loaded one - people that aren&#39;t used to working in a sensibly typed environment tend to look at the typed environment as being a form of burden, instead of an aid to help you write better code. Some of the conversation around this was about whether we&#39;d be re-writing some of our core functionality in Purescript, and whether that would even be desirable as the types might get in the way of productivity.</p>
+<p>I think that actually there is a lot of desire internally for us to do our next re-write of our orchestration logic in Purerl for example, but because  we&#39;re in a different language with a different way of looking at the world, the API and even the design of that would probably not look anything like the original (and the same goes for our media workflow engine too). We&#39;re not afraid of re-writes, we write code  to be thrown away after all - but usually when doing a re-write of a module, you get to learn from the previous iterations and Do It Better this time - the pendulum of compensation from past mistakes slowly zeroes in around an ideal design and by version 3 or 4 you&#39;re laughing.</p>
+<p>The main pain of having to do things differently is while there will be some lessons that can be passed into the rewrites into Purescript, a lot of the design decisions don&#39;t come through to the new world and you&#39;re essentially going back to version 1/2 again for that component. That&#39;ll be the pain that we&#39;ll go through but we&#39;ll come out the other side as better Purescript developers so we&#39;re not afraid of that.</p>
+<p>I really can&#39;t see a point where I&#39;d say that types are going to get in the way of Just Getting Stuff Done, in my experience so far, the type system is just a more honest way of looking at effort, when you&#39;re working in a sloppy-typed environment you can pretend that it&#39;s really easy and fun and you&#39;re dead smart so it&#39;s okay, but you end up paying the cost in bugs and mistakes eventually - the upfront cost might not be there but you&#39;ve just shifted it elsewhere. Types also typically enable you to write better abstractions to lessen the load of repeated operations - you can be a lot more clever when the compiler has your back.</p>
+<p>It&#39;s very hard to currently view what a typed version of some of our core IP would look like, but that&#39;s down to our inexperience rather than it being an impossible task; it&#39;ll come in time.</p>
+<h1 id="anyway">Anyway</h1>
+<p>That&#39;s some answers, if you have more questions about Purerl/Stetson/Pinto <a href="http://twitter.com/robashton">hit me up on Twitter</a> and I&#39;ll do my best to help..</p>
+]]></description><link>http://codeofrob.com/entries/purerl---some-questions-from-codemeshldn.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purerl---some-questions-from-codemeshldn.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 07 Nov 2019 09:30:00 GMT</pubDate></item><item><title><![CDATA[Codemesh 2019 - Purerl and OTP talk]]></title><description><![CDATA[<p>Just a note that I&#39;ll be appearing at <a href="https://www.codemesh.io/conferences/code-mesh-ldn/">Codemesh</a> on Thursday (11:25) to give a talk where I go over some of the stuff we&#39;ve been working on at <a href="https://www.id3as.com/home">Work</a>(tm) this year - with a focus on some of the implementation details and nitty gritty/etc.</p>
 <p>I silently blogged some of this recently, basically showing off how we&#39;ve now got the ability to write OTP applications in Purescript these days, and indeed are. The posts are all linked below for the majority of folk who are sensible enough not to not subscribe to this sorry excuse for a blog.</p>
 <p>Here is a sneaky peek as to what a gen server looks like in this world, tasty no?</p>
 <pre><code class="language-haskell">
@@ -692,101 +892,4 @@
 </code></pre>
 <p>(IE, the direct result) without writing any code that lies about what it actually is.</p>
 <p>This is typically how we will interact directly with Erlang libraries and will get us pretty far when creating low level bindings with those libraries, but we will see as we progress into creating our wrappers around OTP we&#39;ll uncover some better patterns for making this less brittle (Passing atoms all over the show is pretty dull). For one-off cases the above is perfectly fine, but in reality we&#39;ll only be using this mechanism when writing the wrappers themselves and presenting higher level APIs to the application itself.</p>
-]]></description><link>http://codeofrob.com/entries/purescript-on-the-beam---calling-purescript-from-erlang.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purescript-on-the-beam---calling-purescript-from-erlang.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 15 Nov 2018 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purescript on the BEAM - Basic interop with Erlang]]></title><description><![CDATA[<p>Previous entries..</p>
-<ul>
-<li><a href="/entries/functional-erlang---purescript-on-the-beam---intro.html">Intro</a></li>
-<li><a href="/entries/purescript-on-the-beam:-getting-started.html">Getting Started</a></li>
-<li><a href="/entries/purescript-on-the-beam---writing-some-basic-code.html">Writing some basic code</a></li>
-</ul>
-<p>Super, now it&#39;s all very well and good being able to write code Purescript that runs on the BEAM but unless we want to do absolutely everything from scratch and ignore everything that OTP has to give us (more on that later) we&#39;ll need to be able to invoke Purescript from Erlang and we&#39;ll need to be able to invoke Erlang from Purescript.</p>
-<p>We&#39;ll cover both of these over the next two posts as it&#39;s not complicated but there are some nuances that we need to be aware of.</p>
-<h1 id="calling-erlang-from-purescript">Calling Erlang from Purescript</h1>
-<p>This is probably the easiest direction to go in, we know the shape of Erlang and it&#39;s relatively simple as everything is an MFA (Module, Function, Arguments). </p>
-<p><em>cool_native_module.erl</em></p>
-<pre><code class="language-erlang">
-    -module(cool_native_module).
-
-    -export([ call_me_an_ambulance/<span class="hljs-number">1</span> ]).
-
-    call_me_an_ambulance(Name) -&gt;
-      &lt;&lt; <span class="hljs-string">"Hey "</span>, Name/binary, <span class="hljs-string">" - you're an ambulance"</span> &gt;&gt;.
-</code></pre>
-<p>Assuming we have a native module in a library somewhere we want to call (like the above), we&#39;ll need to take some steps to get this callable from anywhere in our Purescript code.</p>
-<p><em>CoolNativeModule.purs</em></p>
-<pre><code class="language-haskell">
-    <span class="hljs-keyword">module</span> CoolNativeModule <span class="hljs-keyword">where</span>
-
-    <span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> callMeAnAmbulance :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">String</span>
-</code></pre>
-<p><em>CoolNativeModule.erl</em></p>
-<pre><code class="language-erlang">
-    -module(coolNativeModule@foreign).
-
-    -export([ callMeAnAmbulance/<span class="hljs-number">1</span> ]).
-
-    callMeAnAmbulance(Name) -&gt; cool_native_module:call_me_an_ambulance(Name).
-</code></pre>
-<p>Essentially, you end up creating wrappers around existing modules in this manner with both a Purescript module for use from Purescript and a backing &quot;FFI&quot; which then talks to the original Erlang module and in theory can ship them as Purescript modules for download in parallel with their Erlang modules.</p>
-<p>It&#39;s not that simple though, as very often our external functions are going to have side effects and in Purescript, these are supposed to be modelled <em>as</em> an Effect, consider the following.</p>
-<p><em>cool_native_module.erl</em></p>
-<pre><code class="language-erlang">
-    -module(cool_native_module).
-
-    -export([ call_me_an_ambulance/<span class="hljs-number">1</span> ]).
-
-    call_me_an_ambulance(Name) -&gt;
-      io:format(<span class="hljs-string">"You're definitely an ambulance"</span>),
-      &lt;&lt; <span class="hljs-string">"Hey "</span>, Name/binary, <span class="hljs-string">" - you're an ambulance"</span> &gt;&gt;.
-
-</code></pre>
-<p>In this case, we&#39;re just echoing something to stdout, but it could equally be something over the network/disk etc. Modelling this a <em>String -&gt; String</em> is dishonest because in reality it&#39;s now a <em>String -&gt; Effect String</em></p>
-<p><em>CoolNativeModule.purs</em></p>
-<pre><code class="language-haskell">
-    <span class="hljs-keyword">module</span> CoolNativeModule <span class="hljs-keyword">where</span>
-
-    <span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> callMeAnAmbulance :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">String</span>
-</code></pre>
-<p>How is this modelled in the FFI? </p>
-<pre><code class="language-erlang">
-    -module(coolNativeModule@foreign).
-
-    -export([ callMeAnAmbulance/<span class="hljs-number">1</span> ]).
-
-    callMeAnAmbulance(Name) -&gt; 
-       <span class="hljs-keyword">fun</span>() -&gt; 
-         cool_native_module:call_me_an_ambulance(Name)
-       <span class="hljs-keyword">end</span>.
-</code></pre>
-<p>It&#39;s just monads innit (DW, an Effect is just a function that has a side effect, and until that happens you&#39;re effectively just passing around functions.</p>
-<p>Now - there are no guarantees when you call (most) Erlang that there are no side effects though, you can in (pretty much any) function open a file and write whatever you want to it and in theory every single function call to Erlang would probably be of type <em>Effect a</em> - this would be cumbersome though and so far in the modules I&#39;ve read there seems to be a pragmatic approach to this. Is there a side effect? It&#39;s an Effect, is there not? No Effect - there is nothing stopping you ignoring the types entirely and doing all sorts of nastiness in your FFI but on your head be it.</p>
-<p>You can also export types from these modules, and they&#39;ll be opaque as far as the Purescript is concerned but at least type safe while you&#39;re still <em>in</em> Purescript, consider</p>
-<pre><code class="language-erlang">
-    -module(coolNativeModule@foreign).
-
-    -export([ callMeAnAmbulance/<span class="hljs-number">1</span> ]).
-
-    -record(some_record, {
-        foo :: string()
-      }).
-
-    callMeAnAmbulance(Name) -&gt; 
-      #some_record { foo = Name }.
-</code></pre>
-<p>We <em>could</em> model that record as a <em>Tuple2 Atom String</em>, but this is going to be brittle, as changes to the record&#39;s structure aren&#39;t going to show up at compilation.</p>
-<p><em>CoolNativeModule.purs</em></p>
-<pre><code class="language-haskell">
-    <span class="hljs-keyword">module</span> CoolNativeModule <span class="hljs-keyword">where</span>
-
-    <span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> callMeAnAmbulance :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Tuple2</span> <span class="hljs-type">Atom</span> <span class="hljs-type">String</span>
-</code></pre>
-<p>We could equally pass in a constructor function to the Erlang that given all the arguments creates a record that&#39;s usable in Purescript but we could equally just accept that it&#39;s an opaque object that&#39;s only usable from the Erlang that owns it (this is 90% of most Erlang anyway). Functions can then be provided via the FFI to operate over that opaque structure.</p>
-<p><em>CoolNativeModule.purs</em></p>
-<pre><code class="language-haskell">
-    <span class="hljs-keyword">module</span> CoolNativeModule <span class="hljs-keyword">where</span>
-
-    <span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> data <span class="hljs-type">SomeRecord</span> :: <span class="hljs-type">Type</span>
-
-    <span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> callMeAnAmbulance :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">SomeRecord</span>
-</code></pre>
-<p>That pretty much covers much of what we need when importing libraries that are already written in Erlang, so next we&#39;ll look at how we can call Purescript <em>from</em> Erlang (Which is something that we need more than you&#39;d think at first glance).</p>
-]]></description><link>http://codeofrob.com/entries/purescript-on-the-beam---basic-interop-with-erlang.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purescript-on-the-beam---basic-interop-with-erlang.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 13 Nov 2018 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/purescript-on-the-beam---calling-purescript-from-erlang.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purescript-on-the-beam---calling-purescript-from-erlang.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 15 Nov 2018 09:30:00 GMT</pubDate></item></channel></rss>
