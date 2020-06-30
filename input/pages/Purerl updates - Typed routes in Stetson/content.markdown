@@ -76,6 +76,8 @@ Gone is the hand-waving, for our apps now have a shared module twixt client and 
 
 *Our routes*
 
+Our routes exist as an ADT describing the various  options and the typed parameters they expect.
+
 ```haskell
 
 data Route
@@ -88,6 +90,8 @@ data Route
 ```
 
 *How the routes map to paths*
+
+Using the type RouteDuplex' with this ADT, we are required  to fill out each of the options with a path with the args expected  in the ADT. None  of these  are optional and we'll get type errors (more on this in a bit) if we don't supply all of the args or routes expected.
 
 ```
 
