@@ -1,4 +1,145 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Wed, 24 Jun 2020 22:57:55 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Purerl - Some questions from #CodeMeshLdn]]></title><description><![CDATA[<p>Talk at CodeMesh now given, because of a demo god intervention (I discovered a Purerl compiler bug mid-demo, how&#39;s that for luck?) I didn&#39;t have time to receive questions during my actual session, but I kept a note of questions asked afterwards and will cover them here for those not present during their discussion.</p>
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Tue, 30 Jun 2020 06:20:20 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Updates to Pinto+Stetson - Purerl In Progress]]></title><description><![CDATA[<p>Whew, a lot of things have happened over the last year and nearly all of it in private Github repos for work as we carry on doing &quot;everything&quot; in Purerl.</p>
+<p>These posts are a reminder of where we were last time we poked our heads over the parapet, although some of their content is now a tad out of date the demo code they link to is thankfully updated (I&#39;ve been busy).</p>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
+<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
+<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
+<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
+<li><a href="/entries/purescript-interop-with-native-erlang---interacting-with-redis.html">Purescript interop with native Erlang, interaction with Redis</a></li>
+</ul>
+<p>So what has changed?  </p>
+<ul>
+<li>Nix overlays for Purerl/etc</li>
+<li>Typed routing for Stetson</li>
+<li>Emitter based messages for handle_info in Gen Server</li>
+<li>Monitors for arbitrary pids from Gen servers + Stetson handlers</li>
+<li>WebSocket handlers in Stetson</li>
+<li>Streaming handlers in Stetson</li>
+<li>MessageRouting in Pinto to easily bind to legacy code that sends us messages</li>
+</ul>
+<p>Some of these things existed in one form or another last year, indeed it is hard to write a substantial amount of Erlang without requiring them, however as we started building more and more critical functionality on top of Purerl, the warts in the existing implementations started becoming apparent and eventually needed dealing with.</p>
+<p>The advantage to eating our own dog food is that we have a lot of mouths to feed and the dog food needs to taste good if we&#39;re to keep on going with it.</p>
+<p>For those that are super keen, the updated demo code can be found <a href="https://github.com/id3as/demo-ps">here</a> for perusal, for those who want an explanation, the following blog posts will cover them, for now  I&#39;ll quickly cover the various nix packages that are available for us about the place and the tools we are currently using to do our builds.</p>
+<h1 id="nix-packages--development-stack">Nix Packages + Development Stack</h1>
+<p>The demo-ps project has been &#39;nixified&#39;, with a <a href="https://nixos.org/download.html">nix-shell</a> and <a href="https://direnv.net/">direnv</a> or similar, a fully operational development environment will appear (and yes it works on MacOS).</p>
+<p>Our entry point can be found <a href="https://github.com/id3as/demo-ps/blob/master/env/common/shell.nix">here</a>, dumped below for convenience.</p>
+<pre><code><span class="hljs-keyword">let</span>
+  <span class="hljs-attr">erlangReleases</span> = <span class="hljs-built_in">builtins</span>.fetchTarball https://github.com/nixerl/nixpkgs-nixerl/archive/v1.<span class="hljs-number">0.4</span>-devel.tar.gz;
+
+  <span class="hljs-attr">pinnedNix</span> =
+    <span class="hljs-built_in">builtins</span>.fetchGit {
+      <span class="hljs-attr">name</span> = <span class="hljs-string">"nixpkgs-pinned"</span>;
+      <span class="hljs-attr">url</span> = <span class="hljs-string">"https://github.com/NixOS/nixpkgs.git"</span>;
+      <span class="hljs-attr">rev</span> = <span class="hljs-string">"cc6cf0a96a627e678ffc996a8f9d1416200d6c81"</span>;
+    };
+
+  <span class="hljs-attr">pursPackages</span> =
+    <span class="hljs-built_in">builtins</span>.fetchGit {
+      <span class="hljs-attr">name</span> = <span class="hljs-string">"purerl-packages"</span>;
+      <span class="hljs-attr">url</span> = <span class="hljs-string">"git@github.com:purerl/nixpkgs-purerl.git"</span>;
+      <span class="hljs-attr">rev</span> = <span class="hljs-string">"5da0a433bcefe607e0bd182b79b220af980a4c78"</span>;
+    };
+
+
+  <span class="hljs-attr">nixpkgs</span> =
+    <span class="hljs-built_in">import</span> pinnedNix {
+      <span class="hljs-attr">overlays</span> = [
+        (<span class="hljs-built_in">import</span> erlangReleases)
+        (<span class="hljs-built_in">import</span> pursPackages)
+        (<span class="hljs-built_in">import</span> ./.)
+      ];
+    };
+
+  <span class="hljs-keyword">inherit</span> (nixpkgs.stdenv.lib) optionals;
+  <span class="hljs-keyword">inherit</span> (nixpkgs)stdenv;
+<span class="hljs-keyword">in</span>
+
+<span class="hljs-keyword">with</span> nixpkgs;
+
+mkShell {
+  <span class="hljs-attr">buildInputs</span> = <span class="hljs-keyword">with</span> pkgs; [
+
+    nixerl.erlang-<span class="hljs-number">22</span>-<span class="hljs-number">3</span>.erlang
+    nixerl.erlang-<span class="hljs-number">22</span>-<span class="hljs-number">3</span>.rebar3
+
+    purerl.purerl-<span class="hljs-number">0</span>-<span class="hljs-number">0</span>-<span class="hljs-number">5</span>
+
+    demo_ps.purescript-<span class="hljs-number">0</span>-<span class="hljs-number">13</span>-<span class="hljs-number">6</span>
+    demo_ps.spago-<span class="hljs-number">0</span>-<span class="hljs-number">12</span>-<span class="hljs-number">1</span>-<span class="hljs-number">0</span>
+    demo_ps.dhall-json-<span class="hljs-number">1</span>-<span class="hljs-number">5</span>-<span class="hljs-number">0</span>
+   ];
+}</code></pre><p><a href="https://github.com/nixerl/nixpkgs-nixerl">nixerl/nixpkgs-nixerl</a> is maintained  by <a href="http://twitter.com/philipstears">@philipstears</a>, <a href="https://github.com/purerl/nixpkgs-purerl">purerl/nixpkgs-purerl</a> is maintained by the purerl org (<a href="http://twitter.com/nwolverson">nick</a>) - the demo-ps project itself  provides some  overlays for purescript/spago/dhall because we want specific versions of them.</p>
+<p>I strongly recommend investigating Nix for development workflows based on the last year or so of using it in earnest as a team, we have built our own internal packages for native/shared dependencies across our projects and have started  looking into using it to aid in our deployment as well. It is not without its pain points (it&#39;s a lot easier if you just run Nixos like half the team), but it has made managing our dependencies a lot easier. As a way of getting a sensible Purerl development environment up and running it&#39;s probably the easiest avenue.</p>
+<p>We&#39;ve pretty much set ourselves on using</p>
+<ul>
+<li>dhall-json for our package sets</li>
+<li>Spago for building</li>
+<li>Purescript is the main compiler</li>
+<li>Purerl is the backend for the compiler</li>
+<li>Rebar3 is the build engine for our Erlang projects</li>
+<li>Erlang is the compiler/VM for... well, Erlang</li>
+</ul>
+<p>Getting all of these installed is probably a journey that is going to be differ wildly depending on the host OS and Nix at least gets that solved for us.</p>
+<h1 id="dhall">Dhall</h1>
+<p>There are two dhall files per Purescript project at the moment, there is packages.dhall which describes the package set we are using to pull packages, and then spago.dhall which describes which packaages from that package set we want to use.</p>
+<p>At the time of writing, our package set looks like this</p>
+<pre><code><span class="hljs-keyword">let</span> <span class="hljs-attr">upstream</span> = https://github.com/purerl/package-sets/releases/download/erl-<span class="hljs-number">0.13</span>.<span class="hljs-number">6</span>-<span class="hljs-number">20200402</span>/packages.dhall sha256:<span class="hljs-number">5442</span>e50aa76c20bd60b2770ab41c68bae80f6ec96f2df1cfaea310673de567d1
+
+<span class="hljs-keyword">let</span> <span class="hljs-attr">overrides</span> =
+      { <span class="hljs-attr">erl-cowboy</span> =
+          { <span class="hljs-attr">dependencies</span> = [ <span class="hljs-string">"erl-modules"</span> ]
+          , <span class="hljs-attr">repo</span> = <span class="hljs-string">"https://github.com/id3as/purescript-erl-cowboy.git"</span>
+          , <span class="hljs-attr">version</span> = <span class="hljs-string">"4ee391f0349c00d92f68e4331425174eb8bdff9e"</span>
+          },
+
+      <span class="hljs-attr">erl-pinto</span> =
+          { <span class="hljs-attr">dependencies</span> = [ <span class="hljs-string">"erl-process"</span> ]
+          , <span class="hljs-attr">repo</span> = <span class="hljs-string">"ssh://git@github.com/id3as/purescript-erl-pinto.git"</span>
+          , <span class="hljs-attr">version</span> = <span class="hljs-string">"59fd04bb0215f532b984909b3cd52bbaf1c10e6a"</span>
+          },
+
+      <span class="hljs-attr">erl-stetson</span> =
+          { <span class="hljs-attr">dependencies</span> = [<span class="hljs-string">"erl-atom"</span> , <span class="hljs-string">"erl-binary"</span> , <span class="hljs-string">"erl-lists"</span> , <span class="hljs-string">"erl-maps"</span> , <span class="hljs-string">"erl-tuples"</span> , <span class="hljs-string">"erl-modules"</span> , <span class="hljs-string">"foreign"</span> , <span class="hljs-string">"maybe"</span> , <span class="hljs-string">"prelude"</span> , <span class="hljs-string">"transformers"</span> , <span class="hljs-string">"routing-duplex"</span>]
+          , <span class="hljs-attr">repo</span> = <span class="hljs-string">"ssh://git@github.com/id3as/purescript-erl-stetson.git"</span>
+          , <span class="hljs-attr">version</span> = <span class="hljs-string">"2244181d4905c16f7a62ead62a12a2056eb0c975"</span>
+          }
+      }
+
+<span class="hljs-keyword">let</span> <span class="hljs-attr">extras</span> = {
+       <span class="hljs-attr">erl-simplebus</span> =
+          { <span class="hljs-attr">dependencies</span> =
+              [ <span class="hljs-string">"erl-process"</span>
+              , <span class="hljs-string">"effect"</span>
+              ]
+          , <span class="hljs-attr">repo</span> = <span class="hljs-string">"ssh://git@github.com/id3as/purescript-erl-simplebus.git"</span>
+          , <span class="hljs-attr">version</span> = <span class="hljs-string">"14b5bd5971e7f2eeba99b51f1c6d4f43761b5376"</span>
+          }
+  }
+
+<span class="hljs-keyword">in</span>  upstream ⫽ overrides⫽ extras
+</code></pre><p><a href="https://github.com/id3as/purescript-erl-simplebus">erl-simplebus</a> is a new package not yet added to the <a href="https://github.com/purerl/package-sets">purerl package-sets</a> so that&#39;s been defined as an &#39;extra&#39;, and our cowboy/pinto/stetson repos are a moving target so we&#39;re using git commit hashes for them as the versions in the package set are out of date. In general our packages.dhall breath a little as we work on core libraries, stabilise changes and then get official releases pushed into the official package set.</p>
+<p>With all of this defined, we can define our build package spago.dhall</p>
+<pre><code>{-
+-}
+{ <span class="hljs-attr">name</span> = <span class="hljs-string">"demo"</span>
+, <span class="hljs-attr">dependencies</span> =
+    [ <span class="hljs-string">"console"</span>
+    , <span class="hljs-string">"effect"</span>
+    , <span class="hljs-string">"erl-cowboy"</span>
+    , <span class="hljs-string">"erl-pinto"</span>
+    , <span class="hljs-string">"erl-stetson"</span>
+    , <span class="hljs-string">"psci-support"</span>
+    , <span class="hljs-string">"simple-json"</span>
+    , <span class="hljs-string">"erl-simplebus"</span>
+    ]
+, <span class="hljs-attr">packages</span> = ./packages.dhall
+, <span class="hljs-attr">sources</span> = [ <span class="hljs-string">"src/**/*.purs"</span>, <span class="hljs-string">"test/**/*.purs"</span> ]
+, <span class="hljs-attr">backend</span> = <span class="hljs-string">"purerl"</span>
+}</code></pre><p>This allows us to use spago build on the CLI, which will pull down all of our packages and build them and our Erlang. Note the presence of &#39;backend&#39; for compiling to Erlang rather than JavaScript - this is a fairly recent change to the Purescript env and definitely differs from my previous blog posts on the subject (We&#39;ve done away with psc-package for starters).</p>
+<h1 id="anyway">Anyway</h1>
+<p>Look into Nix or install all the dependencies manually, I know which I&#39;d pick these days. Presumably it could be done in a docker container too, but docker is old hat, don&#39;t be old hat.</p>
+]]></description><link>http://codeofrob.com/entries/updates-to-pinto+stetson---purerl-in-progress.html</link><guid isPermaLink="true">http://codeofrob.com/entries/updates-to-pinto+stetson---purerl-in-progress.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 25 Jun 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purerl - Some questions from #CodeMeshLdn]]></title><description><![CDATA[<p>Talk at CodeMesh now given, because of a demo god intervention (I discovered a Purerl compiler bug mid-demo, how&#39;s that for luck?) I didn&#39;t have time to receive questions during my actual session, but I kept a note of questions asked afterwards and will cover them here for those not present during their discussion.</p>
 <p>I&#39;ll carry on linking these Purerl posts from each other before that however, &#39;cos it serves as a handy indexing mechanism in lieu of having a real blog engine..</p>
 <ul>
 <li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
@@ -806,90 +947,4 @@ unit</code></pre>
 <li>There is no guarantee that certain methods (handle_info/etc) are actually present, although most of these behaviours are optional these days thankfully!</li>
 </ul>
 <p>We can see that manually writing and using 1:1 mappings between Purescript and Erlang code for use across an application is not going to be a sustainable ideal - and yet we will press on and look at a few of the attempts made to do this in the following blog entries before finally trying to do something a little more idiomatic.</p>
-]]></description><link>http://codeofrob.com/entries/purescript-on-the-beam---otp-from-scratch.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purescript-on-the-beam---otp-from-scratch.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 20 Nov 2018 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purescript on the BEAM - Calling Purescript from Erlang]]></title><description><![CDATA[<p>Previous entries..</p>
-<ul>
-<li><a href="/entries/functional-erlang---purescript-on-the-beam---intro.html">Intro</a></li>
-<li><a href="/entries/purescript-on-the-beam:-getting-started.html">Getting Started</a></li>
-<li><a href="/entries/purescript-on-the-beam---writing-some-basic-code.html">Writing some basic code</a></li>
-<li><a href="/entries/purescript-on-the-beam---basic-interop-with-erlang.html">Basic interop with Erlang</a></li>
-</ul>
-<p>Why would we want to call Purescript <em>from</em> Erlang? Given that moving <em>from</em> Erlang <em>to</em> Purescript as our day to day language is one of our stated goals? Well the answer is in the whole &quot;Module Function Arguments&quot; thing, a lot of APIs in Erlang make you provide an MFA for callback with your state/the library state for performing operations. This is true for all of the web frameworks certainly, and most of OTP (Again, more on that later..)</p>
-<h1 id="calling-purescript-from-erlang">Calling Purescript from Erlang</h1>
-<p>Consider the following contrived example first.. </p>
-<p><em>my_erlang.erl</em></p>
-<pre><code class="language-erlang">
-    -module(my_erlang).
-
-    -export([ init/<span class="hljs-number">0</span>, callback/<span class="hljs-number">1</span> ]).
-
-    init() -&gt;
-      ok = some_library:configure(my_erlang, callback).
-
-    callback(SomeLibraryState) -&gt;
-      NewLibraryState = some_library:do_something(SomeLibraryState),
-      { ok, NewLibraryState }.
-</code></pre>
-<p>This is a very familiar pattern for anybody used to writing Erlang, and it isn&#39;t immediately obvious how we&#39;re going to give that library anything from Purescript - most APIs in a functional language if they want a callback, will just ask for a function to callback. This isn&#39;t typically the case in Erlang because this would get in the way of the (somewhat important) code hotloading which is used during development for a rapid experience, and in production to upgrade live systems without incurring downtime.</p>
-<p>Ignoring further steps that we might take to then prettify the interaction with Erlang/Purescript here, it turns out that Purescript (currently) compiles modules/functions to fairly predictable names which we can use in our FFI.</p>
-<p>So first up, we&#39;d need to write the code to talk from Purescript to Erlang as covered in the previous post (Assuming that both configure/do_something are impure and require effects).</p>
-<p><em>SomeLibrary.erl</em></p>
-<pre><code class="language-erlang">
-    -module(someLibrary@foreign).
-
-    -export([configure/<span class="hljs-number">2</span>, doSomething/<span class="hljs-number">1</span>]).
-
-    configure(Module, Function) -&gt;
-      <span class="hljs-keyword">fun</span>() -&gt; some_library(Module, Function) <span class="hljs-keyword">end</span>.
-
-    doSomething(OpaqueState) -&gt;
-      <span class="hljs-keyword">fun</span>() -&gt; some_library:do_something(OpaqueState) <span class="hljs-keyword">end</span>.
-</code></pre>
-<p><em>SomeLibrary.purs</em></p>
-<pre><code class="language-haskell">
-    <span class="hljs-keyword">module</span> SomeLibrary <span class="hljs-keyword">where</span>
-
-    <span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> data <span class="hljs-type">LibraryState</span> :: <span class="hljs-type">Type</span>
-
-    <span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> configure :: <span class="hljs-type">Atom</span> -&gt; <span class="hljs-type">Atom</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Atom</span>
-    <span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> doSomething :: <span class="hljs-type">OpaqueState</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">OpaqueState</span>
-</code></pre>
-<p>Using this FFI we can now re-write our original Erlang in Purescript, or at least have a go at it</p>
-<pre><code class="language-haskell">
-    <span class="hljs-keyword">module</span> MyCode <span class="hljs-keyword">where</span>
-
-    init :: <span class="hljs-type">Effect</span> <span class="hljs-type">Atom</span>
-    init = <span class="hljs-type">SomeLibrary</span>.configure (atom <span class="hljs-string">"myCode@ps"</span>) (atom <span class="hljs-string">"callback"</span>)
-
-    callback :: <span class="hljs-type">OpaqueState</span> -&gt; <span class="hljs-type">Tuple2</span> <span class="hljs-type">Atom</span> <span class="hljs-type">OpaqueState</span>
-    callback state = tuple2 $ (atom <span class="hljs-string">"ok"</span>) state <span class="hljs-comment">-- don't actually do anything yet</span>
-</code></pre>
-<p>A problem immediately presents itself, we can&#39;t use the doSomething function from our callback because it&#39;s an Effectful function and our callback function is not, this means callback is pure and can&#39;t actually have any side effects.</p>
-<p>We can try to re-write callback so it is Effectful</p>
-<pre><code class="language-haskell">
-    <span class="hljs-keyword">module</span> MyCode <span class="hljs-keyword">where</span>
-
-    init :: <span class="hljs-type">Effect</span> <span class="hljs-type">Atom</span>
-    init = <span class="hljs-type">SomeLibrary</span>.configure (atom <span class="hljs-string">"myCode@ps"</span>) (atom <span class="hljs-string">"callback"</span>)
-
-    callback :: <span class="hljs-type">OpaqueState</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Tuple2</span> <span class="hljs-type">Atom</span> <span class="hljs-type">OpaqueState</span>)
-    callback state = <span class="hljs-keyword">do</span>
-      newState &lt;- <span class="hljs-type">SomeLibrary</span>.state
-      pure $ tuple2 $ (atom <span class="hljs-string">"ok"</span>) newState 
-</code></pre>
-<p>But now we&#39;ll just get a runtime error because the native Erlang code expects a function of <em>(LibraryState -&gt; { ok, Library State })</em>, and we&#39;ve now giving it a function that is <em>LibraryState -&gt; (() -&gt; { ok, LibraryState})</em> - essentially passing a function reference back to Erlang instead of the result of that function (ew).</p>
-<p>We can dance around this in a number of ways, the simplest being to lie about the effect and use unsafePerformEffect in our &quot;pure&quot; function (No thanks).</p>
-<p>We can also use the namespace Effect.Uncurried to return an effectively negative arity effect back to Erlang (IE, the direct result) without writing any code that lies about what it actually is.</p>
-<pre><code class="language-haskell">
-    <span class="hljs-keyword">module</span> MyCode <span class="hljs-keyword">where</span>
-
-    init :: <span class="hljs-type">Effect</span> <span class="hljs-type">Atom</span>
-    init = <span class="hljs-type">SomeLibrary</span>.configure (atom <span class="hljs-string">"myCode@ps"</span>) (atom <span class="hljs-string">"callback"</span>)
-
-    callback :: <span class="hljs-type">EffectFn1</span> <span class="hljs-type">OpaqueState</span> (<span class="hljs-type">Tuple2</span> <span class="hljs-type">Atom</span> <span class="hljs-type">OpaqueState</span>)
-    callback = mkEffectFn1 \state -&gt; <span class="hljs-keyword">do</span>
-        newState &lt;- <span class="hljs-type">SomeLibrary</span>.state
-        pure $ tuple2 $ (atom <span class="hljs-string">"ok"</span>) newState 
-</code></pre>
-<p>(IE, the direct result) without writing any code that lies about what it actually is.</p>
-<p>This is typically how we will interact directly with Erlang libraries and will get us pretty far when creating low level bindings with those libraries, but we will see as we progress into creating our wrappers around OTP we&#39;ll uncover some better patterns for making this less brittle (Passing atoms all over the show is pretty dull). For one-off cases the above is perfectly fine, but in reality we&#39;ll only be using this mechanism when writing the wrappers themselves and presenting higher level APIs to the application itself.</p>
-]]></description><link>http://codeofrob.com/entries/purescript-on-the-beam---calling-purescript-from-erlang.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purescript-on-the-beam---calling-purescript-from-erlang.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 15 Nov 2018 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/purescript-on-the-beam---otp-from-scratch.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purescript-on-the-beam---otp-from-scratch.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 20 Nov 2018 09:30:00 GMT</pubDate></item></channel></rss>
