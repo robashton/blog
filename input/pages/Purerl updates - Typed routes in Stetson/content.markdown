@@ -22,7 +22,7 @@ A continuation of progress updates on Pinto/Stetson then..
 
 # How it was
 
-The initial blast of [Stetson](https://github.com/id3as/purescript-erl-stetson) was thrown up around [Cowboy](https://github.com/ninenines/cowboy) with the express goal of "getting me started on our first client project written in Purerl. As such it wasn't fancy and routing/dispatch looked like this.
+The initial blast of [Stetson](https://github.com/id3as/purescript-erl-stetson) was thrown up around [Cowboy](https://github.com/ninenines/cowboy) with the express goal of "getting me started on our first client project written in Purerl". As such it wasn't fancy and routing/dispatch looked like this.
 
 ```haskell
 
