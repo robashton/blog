@@ -22,7 +22,7 @@ A continuation of progress updates on Pinto/Stetson then..
 
 # How it was
 
-The initial blast of [Stetson](https://github.com/id3as/purescript-erl-stetson) was thrown up around [Cowboy](https://github.com/ninenines/cowboy) with the express goal of "getting me started on our first client project written ini Purerl. As such it wasn't fancy and routing/dispatch looked like this.
+The initial blast of [Stetson](https://github.com/id3as/purescript-erl-stetson) was thrown up around [Cowboy](https://github.com/ninenines/cowboy) with the express goal of "getting me started on our first client project written in Purerl. As such it wasn't fancy and routing/dispatch looked like this.
 
 ```haskell
 
@@ -59,7 +59,7 @@ book =
 ```
 
 
-Urgh, so we've got *:isbn* as a binding in our route, which we're pulling out as a *Maybe String* in our init handler, more hand waving here than at a parade. To compound matters, our client is building these urls like so
+Urgh, so we've got *:isbn* as a binding in our route, which we're pulling out as a *Maybe String* in our init handler, more hand waving here than at a Tory party conference. To compound matters, our client is building these urls like so
 
 ```haskell
 
@@ -113,7 +113,7 @@ Note that our Newtype 'isbn' is an integrated part of both of these APIs, *Book*
 
 *On the server*
 
-Rather than try and make this stuff optional in Stetson, we decided to just lump it in as code code - why would you choose strings with more strings and hand waving when you've got types at your disposal? We're not Javascript programmers after all - this means that these routes are accepted as a first class citizen in this world.
+Rather than try and make this stuff optional in Stetson, we decided to just lump it in as core code - why would you choose strings with more strings and hand waving when you've got types at your disposal? We're not Javascript programmers after all - this means that these routes are accepted as a first class citizen in this world.
 
 ```haskell
 
@@ -132,7 +132,7 @@ _ <- Stetson.configure
 
 ```
 
-We can see here that once again we are supplying a record with the names from the ADT and these are once again type-checked against that ADT so you can't miss any out or get the types wrong. What types you ask? Well this is the 'book' handler from earlier.
+We can see here that once again we are supplying a record with the names from the ADT and these are once again type-checked against that ADT so you can't miss any out or get the types wrong. What types you ask? Well this is the 'book' handler from earlier. (If you're not familiar with Purescript you might see the strings in our record above and go 'whaaaaa??', don't worry about it; because of the ADT 'Route' and the fact that our 'RoutingDuplex' has that as a type parameter, these strings are checked at a compile time against that ADT - it's a neat feature that has great potential when API building.
 
 
 ```haskell
