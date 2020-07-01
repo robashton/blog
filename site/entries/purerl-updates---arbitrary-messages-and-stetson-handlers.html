@@ -1,0 +1,235 @@
+<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
+<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
+<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
+<!--[if !ie]><!-->
+<html lang="en"> <!--<![endif]-->
+<head>
+    <title id="title">Purerl Updates - Arbitrary messages and Stetson handlers</title>
+    <meta charset="utf-8">
+    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="Description" content="Rob Ashton's blog, Purescript, Erlang, Purerl, Javascript, Software Design, etc"/> 
+    <meta name="author" content="Rob Ashton">
+    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
+    <link rel="stylesheet" href="/assets/css/style_responsive.css">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
+    <link rel="stylesheet" href="/assets/css/themes/default.css">
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
+    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="header">
+        <div class="container">
+            <div class="logo">
+             <h2><a href="/index.html">Rob Ashton</a></h2>
+            </div>
+            <div class="navbar">
+                <div class="navbar-inner">
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </a>
+                    <div class="nav-collapse collapse">
+                        <ul class="nav top-2">
+                          <li>
+                                <a href="/">Home</a>
+                            </li>
+                            <li>
+                                <a href="/blog.html">Blog</a>
+                            </li>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <body>
+    <div id="blog-entry">
+      <h1 id="post-title">Purerl Updates - Arbitrary messages and Stetson handlers</h1>
+      <h6>Published on <span class="date">2020-7-7</span></h6>
+      <div id="post"><p>An extra post was required on this topic..</p>
+<h1 id="previous-purerl-posts">Previous Purerl posts</h1>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
+<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
+<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
+<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
+<li><a href="/entries/purescript-interop-with-native-erlang---interacting-with-redis.html">Purescript interop with native Erlang, interaction with Redis</a></li>
+</ul>
+<h1 id="updates">Updates</h1>
+<ul>
+<li><a href="/entries/updates-to-pinto+stetson---purerl-in-progress.html">Nix overlays for Purerl/etc</a></li>
+<li><a href="/entries/purerl-updates---typed-routes-in-stetson.html">Typed routing for Stetson</a></li>
+<li><a href="/entries/purerl-updates---arbitrary-messages-and-handle_info-in-gen-servers.html">Arbitrary messages and handle_info in gen_servers</a></li>
+<li>Arbitrary messages and Stetson handlers</li>
+<li>Monitors for arbitrary pids from Gen servers + Stetson handlers</li>
+<li>WebSocket handlers in Stetson</li>
+<li>Streaming handlers in Stetson</li>
+<li>MessageRouting in Pinto to easily bind to legacy code that sends us messages</li>
+</ul>
+<h1 id="the-story-so-far">The story so far</h1>
+<p>Stetson was thrown together at the same time as Pinto to enable me to start building real products in Purerl and I didn&#39;t have a lot of use for websockets at that time. When the need occurred in a client project, I added a new handler (WebSocketHandler) to Stetson to deal with this with an &#39;emitter&#39; function as part of the &#39;init&#39; callback and got on with my life.</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">busEvents</span> :: <span class="hljs-type">ReceivingStetsonHandler</span> <span class="hljs-type">ExternalMessage</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">busEvents</span> =
+
+  <span class="hljs-type">WebSocket</span>.handler (\req -&gt; <span class="hljs-type">WebSocket</span>.initResult req unit)
+  # <span class="hljs-type">WebSocket</span>.init (\emitter s -&gt;  <span class="hljs-keyword">do</span>
+                             <span class="hljs-type">Bus</span>.callback msg <span class="hljs-type">ExternalMessages</span>.bus
+                             pure $ <span class="hljs-type">NoReply</span> s
+                             )
+  # <span class="hljs-type">WebSocket</span>.handle (\msg state -&gt; pure $ <span class="hljs-type">NoReply</span> state)
+  # <span class="hljs-type">WebSocket</span>.info (\msg state -&gt; pure $ <span class="hljs-type">Reply</span> ((<span class="hljs-type">TextFrame</span> $ writeJSON msg) : nil) state)
+  # <span class="hljs-type">WebSocket</span>.yeeha
+</code></pre>
+<p>While I was &quot;getting on with my life&quot;, people were writing code on top of this, and a pull request came into Stetson to add a mapper for arbitrary messages being received into the process that I accepted without a second thought. </p>
+<pre><code class="language-haskell">
+
+<span class="hljs-title">nativeMapper</span> :: <span class="hljs-keyword">forall</span> msg. msg -&gt; <span class="hljs-type">ExternalMessage</span>
+
+<span class="hljs-title">_</span> &lt;- (<span class="hljs-type">Stetson</span>.registerMapper $ nativeMapper <span class="hljs-type">SomeConstructor</span> <span class="hljs-type">SomeOtherConstructor</span>)
+<span class="hljs-title">_</span> &lt;- subscribeToNativeEvents
+</code></pre>
+<p>At some point a month ago, I was asked about the Loop handler and streaming in Stetson by a colleague, I gazed apon the abomination that was external mapping and realised that it was time to do a proper job of unifying these handlers (a single type for all of them, meaning the death of &#39;yeeha&#39; sadly), deleting the ability to register external mappers and providing the ability to switch from a Rest handler into a Loop handler as part of Conneg.  The actual means of doing this isn&#39;t worth covering in this post, but the end result is that we now had three namespaces for building handlers over the top of a single record and a standard pattern of being supplied an &#39;emitter&#39; function in the init callback for Loop and WebSocket for sending typed messages into had handler.</p>
+<h1 id="straight-rest">Straight Rest</h1>
+<pre><code class="language-haskell">
+<span class="hljs-title">rest</span> :: <span class="hljs-type">StetsonHandler</span> {}
+<span class="hljs-type">Rest</span>.handler (\req -&gt; <span class="hljs-type">Rest</span>.initResult req {})
+  # <span class="hljs-type">Rest</span>.serviceAvailable (\req s -&gt; <span class="hljs-type">Rest</span>.result true req s)
+    # <span class="hljs-type">Rest</span>.allowedMethods (\req url -&gt; <span class="hljs-type">Rest</span>.result (<span class="hljs-type">Stetson</span>.<span class="hljs-type">HEAD</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">GET</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">OPTIONS</span> : nil) req s)
+    # <span class="hljs-type">Rest</span>.contentTypesProvided (\s url -&gt; <span class="hljs-type">Rest</span>.result (jsonWriter : nil) req s)
+
+<span class="hljs-meta"># Rest into Loop</span>
+
+```haskell
+
+<span class="hljs-title">eventsFirehoseRest</span> :: <span class="hljs-type">StetsonHandler</span> <span class="hljs-type">EventsWsMsg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">eventsFirehoseRest</span> =
+  <span class="hljs-type">Rest</span>.handler (\req -&gt; <span class="hljs-type">Rest</span>.initResult req unit)
+    # <span class="hljs-type">Rest</span>.allowedMethods (\req state -&gt; <span class="hljs-type">Rest</span>.result (<span class="hljs-type">Stetson</span>.<span class="hljs-type">HEAD</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">GET</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">OPTIONS</span> : nil) req state)
+    # <span class="hljs-type">Rest</span>.contentTypesProvided (\req state -&gt; <span class="hljs-type">Rest</span>.result (streamEvents : nil) req state)
+    # <span class="hljs-type">Loop</span>.init (\emitter req state -&gt; <span class="hljs-keyword">do</span>
+                              _ &lt;- <span class="hljs-type">SimpleBus</span>.subscribe <span class="hljs-type">BookLibrary</span>.bus $ <span class="hljs-type">BookMsg</span> &gt;&gt;&gt; emitter
+                              pure state)
+    # <span class="hljs-type">Loop</span>.info (\(<span class="hljs-type">BookMsg</span> msg) req state -&gt;  <span class="hljs-keyword">do</span>
+          _ &lt;- streamBody (stringToBinary $ writeJSON msg) req
+          pure $ <span class="hljs-type">LoopOk</span> req state)
+    <span class="hljs-keyword">where</span>
+          streamEvents = tuple2 <span class="hljs-string">"application/json"</span> (\req state -&gt; <span class="hljs-keyword">do</span>
+                         req2 &lt;- streamReply (<span class="hljs-type">StatusCode</span> <span class="hljs-number">200</span>) <span class="hljs-type">Map</span>.empty req
+                         <span class="hljs-type">Rest</span>.switchHandler <span class="hljs-type">LoopHandler</span> req2 state)
+</code></pre>
+<h1 id="straight-loop">Straight Loop</h1>
+<pre><code class="language-haskell">
+<span class="hljs-title">eventsFirehoseLoop</span> :: <span class="hljs-type">StetsonHandler</span> <span class="hljs-type">EventsWsMsg</span> {}
+<span class="hljs-title">eventsFirehoseLoop</span> =
+   <span class="hljs-type">Loop</span>.handler (\req -&gt; <span class="hljs-type">Loop</span>.initResult req {})
+    # <span class="hljs-type">Loop</span>.init (\emitter req state -&gt; <span class="hljs-keyword">do</span>
+                              _ &lt;- <span class="hljs-type">SimpleBus</span>.subscribe <span class="hljs-type">BookLibrary</span>.bus $ <span class="hljs-type">BookMsg</span> &gt;&gt;&gt; emitter
+                              pure s{})
+    # <span class="hljs-type">Loop</span>.info (\(<span class="hljs-type">BookMsg</span> msg) req s -&gt; <span class="hljs-keyword">do</span>
+          _ &lt;- streamBody (stringToBinary $ writeJSON msg) req
+          pure $ <span class="hljs-type">LoopOk</span> req s)
+</code></pre>
+<h1 id="websocket">WebSocket</h1>
+<pre><code class="language-haskell">
+<span class="hljs-title">eventsWs</span> :: <span class="hljs-type">StetsonHandler</span> <span class="hljs-type">EventsWsMsg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">eventsWs</span> =
+  <span class="hljs-type">WebSocket</span>.handler (\req -&gt; <span class="hljs-type">WebSocket</span>.initResult req unit)
+  # <span class="hljs-type">WebSocket</span>.init (\emitter req s -&gt;  <span class="hljs-keyword">do</span>
+                              _ &lt;- <span class="hljs-type">SimpleBus</span>.subscribe <span class="hljs-type">BookLibrary</span>.bus $ <span class="hljs-type">BookMsg</span> &gt;&gt;&gt; emitter
+                              pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">NoReply</span> s
+                             )
+  # <span class="hljs-type">WebSocket</span>.handle (\frame state -&gt; pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">NoReply</span> state)
+  # <span class="hljs-type">WebSocket</span>.info (\(<span class="hljs-type">BookMsg</span> msg) state -&gt; pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">Reply</span> ((<span class="hljs-type">TextFrame</span> $ writeJSON msg) : nil) state)
+</code></pre>
+<p>Similarly to the <a href="/entries/purerl-updates---arbitrary-messages-and-handle_info-in-gen-servers.html">last post</a>, doing this as an emitter function made sense on first pass, but this was swiftly replaced with a plain ol&#39; pid because it played nicer with monitors, existing APIs, etc.</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">eventsWs</span> :: <span class="hljs-type">StetsonHandler</span> <span class="hljs-type">EventsWsMsg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">eventsWs</span> =
+  <span class="hljs-type">WebSocket</span>.handler (\req -&gt; <span class="hljs-type">WebSocket</span>.initResult req unit)
+  # <span class="hljs-type">WebSocket</span>.init (\self s -&gt;  <span class="hljs-keyword">do</span>
+                              _ &lt;- <span class="hljs-type">SimpleBus</span>.subscribe <span class="hljs-type">BookLibrary</span>.bus $ <span class="hljs-type">BookMsg</span> &gt;&gt;&gt; send emitter
+                              pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">NoReply</span> s
+                             )
+  # <span class="hljs-type">WebSocket</span>.handle (\frame state -&gt; pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">NoReply</span> state)
+  # <span class="hljs-type">WebSocket</span>.info (\(<span class="hljs-type">BookMsg</span> msg) state -&gt; pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">Reply</span> ((<span class="hljs-type">TextFrame</span> $ writeJSON msg) : nil) state)
+</code></pre>
+<p>This all said, requiring this pid to be passed in as an argument is quite awkward, having to stash it in state if we want to access it from outside of our init function etc, once again StateT was employed so that the API for Stetson and Pinto would be aligned.</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">eventsWs</span> :: <span class="hljs-type">StetsonHandler</span> <span class="hljs-type">EventsWsMsg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">eventsWs</span> =
+  <span class="hljs-type">WebSocket</span>.handler (\req -&gt; <span class="hljs-type">WebSocket</span>.initResult req unit)
+  # <span class="hljs-type">WebSocket</span>.init (\req s -&gt;  <span class="hljs-keyword">do</span>
+                              self &lt;- <span class="hljs-type">WebSocket</span>.self
+                              _ &lt;- <span class="hljs-type">WebSocket</span>.lift $ <span class="hljs-type">SimpleBus</span>.subscribe <span class="hljs-type">BookLibrary</span>.bus $ <span class="hljs-type">BookMsg</span> &gt;&gt;&gt; send emitter
+                              pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">NoReply</span> s
+                             )
+  # <span class="hljs-type">WebSocket</span>.handle (\frame state -&gt; pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">NoReply</span> state)
+  # <span class="hljs-type">WebSocket</span>.info (\(<span class="hljs-type">BookMsg</span> msg) state -&gt; pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">Reply</span> ((<span class="hljs-type">TextFrame</span> $ writeJSON msg) : nil) state)
+</code></pre>
+<p>This then affords us to stash internal state in the implementation of Stetson and indeed there is no way of accidentally calling the wrong &#39;self&#39; and sending messages to the wrong process much like in Pinto. Every callback takes place within a typed  context that enforces what &#39;state&#39; and &#39;msg&#39; are - pretty neat.</p>
+</div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="mailto:robashton@codeofrob.com">Respond</a>
+      </div>
+
+        <!--=== Copyright ===-->
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span6">
+                <p class="terms">2020 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
+    });
+        </script>
+        <!--[if lt IE 9]>
+    <script src="assets/js/respond.js"></script>
+<![endif]-->
+        </body>
+        </html>
+

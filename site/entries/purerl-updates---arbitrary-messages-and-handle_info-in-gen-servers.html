@@ -88,7 +88,7 @@
 <li>MessageRouting in Pinto to easily bind to legacy code that sends us messages</li>
 </ul>
 <h1 id="the-story-so-far">The story so far</h1>
-<p>The code for dealing with handle_info was very hand-wavey and  involves the creation and registration of mappers and receivers within the gen server itself. This involves the use of a cast to the gen server in order to function correctly and it wasn&#39;t really obvious where messages were coming from. It was a ticking time bomb as far as supporting the increasing amounts of code we are writing in Purescript.</p>
+<p>The code for dealing with handle_info was very hand-wavey and involved the creation and registration of mappers and receivers within the gen server itself. This also ended up abusing gen_server:cast in order to function correctly and it wasn&#39;t really obvious where messages were coming from. It was a ticking time bomb as far as supporting the increasing amounts of code we are writing in Purescript goes.</p>
 <p>There was <em>some</em> good in this approach, in that the type of the Gen Server specified both the State of the Gen Server and the type of the Msg it would receive, and the handleInfo function could  be supplied  in Gen.init, forcibly typed with this server name.</p>
 <pre><code class="language-haskell">
   <span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">Tick</span> | <span class="hljs-type">SomethingHappened</span> <span class="hljs-type">String</span></span>
@@ -129,7 +129,7 @@
 <p>This is somewhat an improvement, as it could at this point be assumed that anything passed into that function would automatically be the right type for handle_info and the mapping code from inside the gen server could be removed entirely. It requires the use of proxy processes to intercept messages, and I spent a day or two upgrading nearly all of our company Purescript over to this new model because it felt good.</p>
 <p>It didn&#39;t feel <em>great</em> after doing that though, once again we&#39;re relying on convention to create that emitter with the right &#39;serverName&#39; and it&#39;s not very &#39;Erlang&#39;, in theory it also means that code could be written to send messages to arbitrary gen servers providing you have access to the serverName and thats a bit naff.</p>
 <h1 id="second-pass-making-it-more-erlang">Second pass, making it more Erlang</h1>
-<p>The type of &#39;emitter&#39; was changed to <em>Process Msg</em> (which maps under the hood to a new type of a plain ol&#39; pid and is therefore compatible automatically with classic Erlang APIs. (Specifically erlang monitors and such being a useful end-goal here).</p>
+<p>The type of &#39;emitter&#39; was changed to <em>Process Msg</em> (A welcome suggestion from <a href="@louispilfold">http://twitter.com/louispilfold</a> when I was putting code samples out for feedback). This maps under the hood to a new type of a plain ol&#39; pid and is therefore compatible automatically with classic Erlang APIs. (Specifically erlang monitors and such being a useful end-goal here).</p>
 <pre><code class="language-haskell">
 <span class="hljs-title">init</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">State</span> = <span class="hljs-keyword">do</span>
 <span class="hljs-title">init</span> = <span class="hljs-keyword">do</span>
@@ -138,7 +138,7 @@
     <span class="hljs-type">SomethingElse</span>.registerForEvents $ send self &lt;&lt;&lt; <span class="hljs-type">SomethingHappened</span>
     pure {}
 </code></pre>
-<p>This was still not ideal however, the call to Gen.self included a runtime check (below) to ensure that the caller was indeed the &quot;self&quot; we were looking at to prevent external clients from abusing the API (if you provide an API, it <em>will</em> be abused and I&#39;d already seen some &quot;interesting&quot; code already written around these APIs while I was upgrading our own code!)</p>
+<p>This was still not ideal however, the call to Gen.self included a runtime check (below) to ensure that the caller was indeed the &quot;self&quot; we were looking at to prevent external clients from abusing the API (if you provide an API, it <em>will</em> be abused and I&#39;d already seen some &quot;interesting&quot; code already written around these APIs while I was upgrading just our own code!)</p>
 <pre><code class="language-erlang">
 <span class="hljs-function"><span class="hljs-title">selfImpl</span><span class="hljs-params">(Name)</span> -&gt;</span>
   <span class="hljs-keyword">fun</span>() -&gt;
@@ -159,7 +159,7 @@
 <li>Be typed around ServerName, so that all calls to Pinto APIs automatically assume this type</li>
 <li>have access to the &#39;internal&#39; state in the Pinto gen_server implementation, so no casts ever have to be made again</li>
 </ul>
-<p>We had quite a bit of code in Gen.purs (our gen server wrapper) that relied on making casts to modify its state, monitors and such - removing all of this was just a sensible idea.</p>
+<p>We had quite a bit of code in Gen.purs (our gen server wrapper) that relied on making casts to modify its state, monitors and such - removing all of this was just a sensible idea -  the idea being that if the callbacks to client coded operated within the context of that state, it could be retrieved and modified (optionally) as part of those callbacks.</p>
 <pre><code class="language-haskell">
 <span class="hljs-title">startLink</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
 <span class="hljs-title">startLink</span> = <span class="hljs-type">Gen</span>.startLink init handleInfo
@@ -185,7 +185,7 @@
     <span class="hljs-type">GenContext</span> { pid } &lt;- <span class="hljs-type">State</span>.get
     pure pid
 </code></pre>
-<p>Similarly now then, Gen.Cast and Gen.Call are provided for <em>those</em> callbacks too, and all code executed  within the context of a Pinto Genserver has access to those internal state via the API so in theory things like trapExit/handleInfo/config can be modified safely from within that context without doing weird things around async casts back to that gen server.</p>
+<p>Similarly, Gen.Cast and Gen.Call are provided for <em>those</em> callbacks too, and all code executed  within the context of a Pinto Genserver has access to the internal state via the API so in theory things like trapExit/handleInfo/config can be modified safely from within that context without doing weird things around async casts back to that gen server.</p>
 <p>That&#39;s a lot of words to say that Gen Servers and arbitrary messages are now very pretty indeed in Purerl. Example below of a gen server subscribing to a message bus from the <a href="https://github.com/id3as/demo-ps/blob/master/server/src/HandleInfoExample.purs">demo_ps</a> web project. You&#39;ll note that the actual API used in startLink has evolved to include a builder for setting the initial handlers/etc - there are a number of optional things to tweak about a gen server and it made sense to do this rather than accept an endlessly growing list of arguments.</p>
 <pre><code class="language-haskell">
 <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">BookWatchingStartArgs</span> = {}</span>
