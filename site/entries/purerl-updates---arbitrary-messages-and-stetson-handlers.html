@@ -96,7 +96,7 @@
 
   <span class="hljs-type">WebSocket</span>.handler (\req -&gt; <span class="hljs-type">WebSocket</span>.initResult req unit)
   # <span class="hljs-type">WebSocket</span>.init (\emitter s -&gt;  <span class="hljs-keyword">do</span>
-                             <span class="hljs-type">Bus</span>.callback msg <span class="hljs-type">ExternalMessages</span>.bus
+                             <span class="hljs-type">Bus</span>.callback msg <span class="hljs-type">ExternalMessages</span>.bus $ emitter &lt;&lt;&lt; <span class="hljs-type">ExternalMsg</span>
                              pure $ <span class="hljs-type">NoReply</span> s
                              )
   # <span class="hljs-type">WebSocket</span>.handle (\msg state -&gt; pure $ <span class="hljs-type">NoReply</span> state)
@@ -111,7 +111,7 @@
 <span class="hljs-title">_</span> &lt;- (<span class="hljs-type">Stetson</span>.registerMapper $ nativeMapper <span class="hljs-type">SomeConstructor</span> <span class="hljs-type">SomeOtherConstructor</span>)
 <span class="hljs-title">_</span> &lt;- subscribeToNativeEvents
 </code></pre>
-<p>At some point a month ago, I was asked about the Loop handler and streaming in Stetson by a colleague, I gazed apon the abomination that was external mapping and realised that it was time to do a proper job of unifying these handlers (a single type for all of them, meaning the death of &#39;yeeha&#39; sadly), deleting the ability to register external mappers and providing the ability to switch from a Rest handler into a Loop handler as part of Conneg.  The actual means of doing this isn&#39;t worth covering in this post, but the end result is that we now had three namespaces for building handlers over the top of a single record and a standard pattern of being supplied an &#39;emitter&#39; function in the init callback for Loop and WebSocket for sending typed messages into had handler.</p>
+<p>At some point a month ago, I was asked about the Loop handler and streaming in Stetson by a colleague, I gazed apon the abomination that was external mapping and realised that it was time to do a proper job of unifying these handlers (a single type for all of them, meaning the death of &#39;yeeha&#39; sadly), deleting the ability to register external mappers and providing the ability to switch from a Rest handler into a Loop handler as part of content negotiation.  The actual means of doing this isn&#39;t worth covering in this post, but the end result is that we now had three namespaces for building handlers over the top of a single record and a standard pattern of being supplied an &#39;emitter&#39; function in the init callback for Loop and WebSocket for sending typed messages into had handler.</p>
 <h1 id="straight-rest">Straight Rest</h1>
 <pre><code class="language-haskell">
 <span class="hljs-title">rest</span> :: <span class="hljs-type">StetsonHandler</span> {}
@@ -119,11 +119,9 @@
   # <span class="hljs-type">Rest</span>.serviceAvailable (\req s -&gt; <span class="hljs-type">Rest</span>.result true req s)
     # <span class="hljs-type">Rest</span>.allowedMethods (\req url -&gt; <span class="hljs-type">Rest</span>.result (<span class="hljs-type">Stetson</span>.<span class="hljs-type">HEAD</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">GET</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">OPTIONS</span> : nil) req s)
     # <span class="hljs-type">Rest</span>.contentTypesProvided (\s url -&gt; <span class="hljs-type">Rest</span>.result (jsonWriter : nil) req s)
-
-<span class="hljs-meta"># Rest into Loop</span>
-
-```haskell
-
+</code></pre>
+<h1 id="rest-into-loop">Rest into Loop</h1>
+<pre><code class="language-haskell">
 <span class="hljs-title">eventsFirehoseRest</span> :: <span class="hljs-type">StetsonHandler</span> <span class="hljs-type">EventsWsMsg</span> <span class="hljs-type">Unit</span>
 <span class="hljs-title">eventsFirehoseRest</span> =
   <span class="hljs-type">Rest</span>.handler (\req -&gt; <span class="hljs-type">Rest</span>.initResult req unit)
@@ -165,12 +163,13 @@
   # <span class="hljs-type">WebSocket</span>.info (\(<span class="hljs-type">BookMsg</span> msg) state -&gt; pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">Reply</span> ((<span class="hljs-type">TextFrame</span> $ writeJSON msg) : nil) state)
 </code></pre>
 <p>Similarly to the <a href="/entries/purerl-updates---arbitrary-messages-and-handle_info-in-gen-servers.html">last post</a>, doing this as an emitter function made sense on first pass, but this was swiftly replaced with a plain ol&#39; pid because it played nicer with monitors, existing APIs, etc.</p>
+<h1 id="passing-in-a-pid-instead">Passing in a Pid instead</h1>
 <pre><code class="language-haskell">
 <span class="hljs-title">eventsWs</span> :: <span class="hljs-type">StetsonHandler</span> <span class="hljs-type">EventsWsMsg</span> <span class="hljs-type">Unit</span>
 <span class="hljs-title">eventsWs</span> =
   <span class="hljs-type">WebSocket</span>.handler (\req -&gt; <span class="hljs-type">WebSocket</span>.initResult req unit)
   # <span class="hljs-type">WebSocket</span>.init (\self s -&gt;  <span class="hljs-keyword">do</span>
-                              _ &lt;- <span class="hljs-type">SimpleBus</span>.subscribe <span class="hljs-type">BookLibrary</span>.bus $ <span class="hljs-type">BookMsg</span> &gt;&gt;&gt; send emitter
+                              _ &lt;- <span class="hljs-type">SimpleBus</span>.subscribe <span class="hljs-type">BookLibrary</span>.bus $ <span class="hljs-type">BookMsg</span> &gt;&gt;&gt; send self
                               pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">NoReply</span> s
                              )
   # <span class="hljs-type">WebSocket</span>.handle (\frame state -&gt; pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">NoReply</span> state)
@@ -189,7 +188,7 @@
   # <span class="hljs-type">WebSocket</span>.handle (\frame state -&gt; pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">NoReply</span> state)
   # <span class="hljs-type">WebSocket</span>.info (\(<span class="hljs-type">BookMsg</span> msg) state -&gt; pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">Reply</span> ((<span class="hljs-type">TextFrame</span> $ writeJSON msg) : nil) state)
 </code></pre>
-<p>This then affords us to stash internal state in the implementation of Stetson and indeed there is no way of accidentally calling the wrong &#39;self&#39; and sending messages to the wrong process much like in Pinto. Every callback takes place within a typed  context that enforces what &#39;state&#39; and &#39;msg&#39; are - pretty neat.</p>
+<p>This then allows Stetson to stash internal state in the underlying implementation and surface an API over this; indeed there is no way of accidentally calling the wrong &#39;self&#39; and sending messages to the wrong process much like in Pinto. Every callback takes place within a typed  context that enforces what &#39;state&#39; and &#39;msg&#39; are - pretty neat.</p>
 </div>
       <div id="links">
         <a href="/">Index</a>
