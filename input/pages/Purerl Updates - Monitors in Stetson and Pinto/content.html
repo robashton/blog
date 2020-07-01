@@ -1,0 +1,150 @@
+<p>We&#39;ve managed to get nicely typed arbitrary messages into our web handlers and gen servers, now it&#39;s time to look at Monitors.</p>
+<h1 id="previous-purerl-posts">Previous Purerl posts</h1>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
+<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
+<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
+<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
+<li><a href="/entries/purescript-interop-with-native-erlang---interacting-with-redis.html">Purescript interop with native Erlang, interaction with Redis</a></li>
+</ul>
+<h1 id="updates">Updates</h1>
+<ul>
+<li><a href="/entries/updates-to-pinto+stetson---purerl-in-progress.html">Nix overlays for Purerl/etc</a></li>
+<li><a href="/entries/purerl-updates---typed-routes-in-stetson.html">Typed routing for Stetson</a></li>
+<li><a href="/entries/purerl-updates---arbitrary-messages-and-handle_info-in-gen-servers.html">Arbitrary messages and handle_info in gen_servers</a></li>
+<li><a href="/entries/purerl-updates---arbitrary-messages-and-stetson-handlers.html">Arbitrary messages and Stetson handlers</a></li>
+<li>Monitors for arbitrary pids from Gen servers + Stetson handlers</li>
+<li>MessageRouting in Pinto to easily bind to legacy code that sends us messages</li>
+</ul>
+<p>A reasonably common pattern for monitors in some of our code is</p>
+<ul>
+<li>Internal server manages a collection of pids that are recipients of data streams</li>
+<li>Websockets open and register with this server to receive those data streams</li>
+</ul>
+<p>In this case <em>sometimes</em></p>
+<ul>
+<li>It&#39;s useful for the internal server to monitor the subscribers and remove the pids when they become invalid</li>
+<li>It&#39;s useful for the Websocket handler to monitor the server, so it can close the connection if that goes away</li>
+</ul>
+<p>This isn&#39;t always the case, sometimes a static message bus is a better option, sometimes pids can be checked ad-hoc, but for the purpose of this example we&#39;ll assume that this is exactly what we want as it&#39;ll be a nice end-to-end example of message passing and monitoring in Purerl.</p>
+<h1 id="the-internal-server">The internal server</h1>
+<p>So we&#39;ll define a basic gen server that keeps a state that&#39;s a map of pids to functions that receive data <em>(Binary -&gt; Effecgt Unit)</em>, and set up a timer to send us a Tick message after 500ms - our message type will therefore just be either that Tick message, or a message telling us that a client has disconnected. We&#39;ll configure the gen server to use a handleInfo function when these come in (explored further below).</p>
+<pre><code class="language-haskell">
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">State</span> = {
+  <span class="hljs-title">handlers</span> :: <span class="hljs-type">Map</span>.<span class="hljs-type">Map</span> <span class="hljs-type">Pid</span> <span class="hljs-type">MessageHandler</span>
+}</span>
+
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">MessageHandler</span> = (<span class="hljs-type">Binary</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>)</span>
+
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">ClientDisconnected</span> <span class="hljs-type">Pid</span></span>
+         | <span class="hljs-type">Tick</span>
+
+<span class="hljs-title">startLink</span> :: <span class="hljs-type">BookWatchingStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
+<span class="hljs-title">startLink</span> args =
+  <span class="hljs-type">Gen</span>.buildStartLink serverName (init args) $ <span class="hljs-type">Gen</span>.defaultStartLink { handleInfo = handleInfo }
+
+<span class="hljs-title">init</span> :: <span class="hljs-type">BookWatchingStartArgs</span> -&gt; <span class="hljs-type">Gen</span>.<span class="hljs-type">Init</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
+<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
+  self &lt;- <span class="hljs-type">Gen</span>.self
+  void $ <span class="hljs-type">Gen</span>.lift $ <span class="hljs-type">Timer</span>.sendAfter <span class="hljs-number">500</span> <span class="hljs-type">Tick</span> self
+  pure $ {
+    handlers: <span class="hljs-type">Map</span>.empty
+  }
+</code></pre>
+<p>We can export a function <em>registerClient</em> for clients to invoke in order to start receiving data, while we&#39;re still in the process that called us we can get its pid by calling to &#39;Pinto.self&#39;, and then in the context of the gen server, we&#39;ll get our own pid so we can add the monitor in the next function <em>addHandler</em>.</p>
+<p>As we have the pid of our calling process, we can invoke <em>Monitor.pid</em>, and pass in a callback that disregards the message given to us when the monitor pops and just sends a message with the handler pid back to our handleInfo. Once we&#39;ve added that monitor, we add the handler to our map using the pid as a lookup so we can remove it later when we get that message.</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">registerClient</span> :: <span class="hljs-type">MessageHandler</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">registerClient</span> handler = <span class="hljs-keyword">do</span>
+  handlerPid &lt;- <span class="hljs-type">Pinto</span>.self
+  <span class="hljs-type">Gen</span>.doCall serverName \state -&gt; <span class="hljs-keyword">do</span>
+     self &lt;- <span class="hljs-type">Gen</span>.self
+     newState &lt;- <span class="hljs-type">Gen</span>.lift $ addHandler handler self handlerPid state
+     pure $ <span class="hljs-type">CallReply</span> unit newState
+
+<span class="hljs-title">addHandler</span> :: <span class="hljs-type">MessageHandler</span> -&gt; <span class="hljs-type">Process</span> <span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">Pid</span> -&gt; <span class="hljs-type">State</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">State</span>
+<span class="hljs-title">addHandler</span> handler self handlerPid state@{ handlers } = <span class="hljs-keyword">do</span>
+  void $ <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">"Adding handler ~p as it has connected"</span> handlerPid
+  void $ <span class="hljs-type">Monitor</span>.pid handlerPid (\_ -&gt; self ! <span class="hljs-type">ClientDisconnected</span> handlerPid)
+  pure $ state { handlers = <span class="hljs-type">Map</span>.insert handlerPid handler handlers }
+</code></pre>
+<p>All that is left therefore, is to handle the messages we might receive into the handleInfo we configured earlier as part of startLink. </p>
+<ul>
+<li>If we get a ClientDisconnected, we simply remove the handler from our map so we no longer send any data to it</li>
+<li>If we get a Tick, we invoke sendData on the map of handlers, before scheduling another tick for 500ms time</li>
+</ul>
+<pre><code class="language-haskell">
+<span class="hljs-title">handleInfo</span> :: <span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">State</span> -&gt; <span class="hljs-type">Gen</span>.<span class="hljs-type">HandleInfo</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
+<span class="hljs-title">handleInfo</span> msg state@{ handlers  } = <span class="hljs-keyword">do</span>
+  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span>
+     <span class="hljs-type">ClientDisconnected</span> handlerPid -&gt; <span class="hljs-keyword">do</span>
+        void $ <span class="hljs-type">Gen</span>.lift $ <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">"Removing ~p as it disconnected"</span> handlerPid
+        pure $ <span class="hljs-type">CastNoReply</span> $ state { handlers = <span class="hljs-type">Map</span>.delete handlerPid handlers }
+     <span class="hljs-type">Tick</span> -&gt; <span class="hljs-keyword">do</span>
+        <span class="hljs-type">Gen</span>.lift $ sendData handlers
+        self &lt;- <span class="hljs-type">Gen</span>.self
+        void $ <span class="hljs-type">Gen</span>.lift $ <span class="hljs-type">Timer</span>.sendAfter <span class="hljs-number">500</span> <span class="hljs-type">Tick</span> self
+        pure $ <span class="hljs-type">CastNoReply</span> $ state 
+</code></pre>
+<p>Sending data is easy, seeing as the handlers are just a list of effectful callbacks of <em>(Binary -&gt; Effect Unit)</em></p>
+<pre><code class="language-haskell">
+<span class="hljs-title">sendData</span> :: <span class="hljs-type">Map</span>.<span class="hljs-type">Map</span> <span class="hljs-type">Pid</span> <span class="hljs-type">MessageHandler</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">sendData</span> handlers = <span class="hljs-keyword">do</span>
+  freshData &lt;- getDataFromSomeNativeCode
+  void $ traverse (\handler -&gt; <span class="hljs-keyword">do</span> handler freshData) $ <span class="hljs-type">Map</span>.values handlers 
+  pure unit
+</code></pre>
+<p>So that&#39;s an entire gen server, which </p>
+<ul>
+<li>Allows the registration of callbacks that&#39;ll accept data</li>
+<li>Monitors the pids of the calling process, and removes the callbacks when the monitor pops</li>
+<li>Ticks every 500ms and traverses over the callbacks to send the data</li>
+</ul>
+<p>Note: Because of the callback/pids there is nothing stopping us using this code from any other Purerl (or indeed Erlang). None of this is Pinto specific and this is very much by design.</p>
+<h1 id="subscribing-and-monitoring-from-stetson">Subscribing (and monitoring) from Stetson</h1>
+<p>Speaking of other Purerl, a lot of Purerl gets written using Stetson to support Rest/Websockets/Streams/etc; so that&#39;s where we&#39;ll subscribe to this data. We&#39;ll also then add a monitor to that streaming process that closes the connection when it goes away. (We could also just block while we wait for it to restart for example).</p>
+<p>So, we&#39;ll define a data type for our messages, we&#39;re either receiving data that needs to be streamed, our data source died, or our data source was already down when we tried to connect to it.</p>
+<pre><code class="language-haskell">
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">DataStreamMessage</span> = <span class="hljs-type">Data</span> <span class="hljs-type">Binary</span></span>
+                       | <span class="hljs-type">DataSourceDied</span>
+                       | <span class="hljs-type">DataSourceAlreadyDown</span>
+
+</code></pre>
+<p>We&#39;ll just kick off our handler with <em>Loop.handler</em>, start a streamed reply with a status code 200 and make sure that Stetson knows we&#39;re doing a Loop, we&#39;re typed as a <em>StetsonHandler DataStreamMessage Unit</em> because we receive DataSteamMessage and don&#39;t store any state of our own.</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">dataStream</span> :: <span class="hljs-type">StetsonHandler</span> <span class="hljs-type">DataStreamMessage</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">dataStream</span> =
+  <span class="hljs-type">Loop</span>.handler (\req -&gt; <span class="hljs-keyword">do</span>
+               req2 &lt;- streamReply (<span class="hljs-type">StatusCode</span> <span class="hljs-number">200</span>) <span class="hljs-type">Map</span>.empty req
+               <span class="hljs-type">Loop</span>.initResult req2 unit)
+</code></pre>
+<p>In our <em>Loop.init</em>, we&#39;ll get our own typed process <em>(Process DataStreamMessage)</em>, invoking &#39;send&#39; on this gives us a function of type (Msg -&gt; Effect Unit) so we&#39;ll compose that with a constructor for our own data type (Data) giving us the correct function type of <em>(Binary -&gt; Effect Unit)</em></p>
+<p>Using <em>Gen.monitor</em> with the server name of <em>MonitorExample</em>, we can detect when that process dies - there are two effectful callbacks for this, one for when the process dies and one for if the process is already down (there is no pid to monitor). </p>
+<pre><code class="language-haskell">
+    # <span class="hljs-type">Loop</span>.init (\req state -&gt; <span class="hljs-keyword">do</span> 
+                      self &lt;- <span class="hljs-type">Loop</span>.self
+                      void $ <span class="hljs-type">Loop</span>.lift $ <span class="hljs-type">MonitorExample</span>.registerClient $ send self &lt;&lt;&lt; <span class="hljs-type">Data</span>
+                      void $ <span class="hljs-type">Loop</span>.lift $ <span class="hljs-type">Gen</span>.monitor <span class="hljs-type">MonitorExample</span>.serverName (\_ -&gt; send self <span class="hljs-type">DataSourceDied</span>) (send self <span class="hljs-type">DataSourceAlreadyDown</span>)
+                      pure unit)
+</code></pre>
+<p>We receive those messages in the <em>Loop.info</em> callback</p>
+<ul>
+<li>if we get data then we can stream that directly to the client and carry on looping</li>
+<li>if the data source died then we unceremoniously terminate the stream</li>
+<li>if the data source is already down then we unceremoniously terminate the stream</li>
+</ul>
+<pre><code class="language-haskell">    # <span class="hljs-type">Loop</span>.info (\msg req state -&gt;  <span class="hljs-keyword">do</span>
+                <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span>
+                     <span class="hljs-type">Data</span> binary -&gt; <span class="hljs-keyword">do</span>
+                        _ &lt;- <span class="hljs-type">Loop</span>.lift $ streamBody binary req
+                        pure $ <span class="hljs-type">LoopOk</span> req state
+
+                     <span class="hljs-type">DataSourceDied</span> -&gt;  <span class="hljs-keyword">do</span>
+                       pure $ <span class="hljs-type">LoopStop</span> req state
+
+                     <span class="hljs-type">DataSourceAlreadyDown</span> -&gt;  <span class="hljs-keyword">do</span>
+                       pure $ <span class="hljs-type">LoopStop</span> req state
+</code></pre>
+<p>And that&#39;s that, we have a gen server running which will send data to any subscribers and clean up when those subscribers terminate, and we have a loop handler that&#39;ll subcribe to that data source and clean up if that data source dies. There is a lot going on here but it&#39;s worth unpicking as there are a lot of useful concepts here neatly packaged into a single example.</p>
+<p>By sticking to plain ol&#39; pids and callbacks, all of this code remains portable and not tied to either of these libraries, which is handy because at some point somebody smarter than I will write something more Purerl idiomatic for web serving and OTP wrapping and we&#39;ll probably want to switch to those things..</p>

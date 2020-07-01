@@ -16,8 +16,6 @@ An extra post was required on this topic..
 - [Arbitrary messages and handle_info in gen_servers](/entries/purerl-updates---arbitrary-messages-and-handle_info-in-gen-servers.html)
 - Arbitrary messages and Stetson handlers
 - Monitors for arbitrary pids from Gen servers + Stetson handlers
-- WebSocket handlers in Stetson
-- Streaming handlers in Stetson
 - MessageRouting in Pinto to easily bind to legacy code that sends us messages
 
 # The story so far
@@ -53,7 +51,7 @@ _ <- subscribeToNativeEvents
 
 ```
 
-At some point a month ago, I was asked about the Loop handler and streaming in Stetson by a colleague, I gazed apon the abomination that was external mapping and realised that it was time to do a proper job of unifying these handlers (a single type for all of them, meaning the death of 'yeeha' sadly), deleting the ability to register external mappers and providing the ability to switch from a Rest handler into a Loop handler as part of content negotiation.  The actual means of doing this isn't worth covering in this post, but the end result is that we now had three namespaces for building handlers over the top of a single record and a standard pattern of being supplied an 'emitter' function in the init callback for Loop and WebSocket for sending typed messages into had handler.
+At some point a month ago, I was asked about the Loop handler and streaming in Stetson by a colleague, I gazed apon the abomination that was external mapping and realised that it was time to do a proper job of unifying these handlers (a single type for all of them, meaning the death of 'yeeha' sadly), deleting the ability to register external mappers and providing the ability to switch from a Rest handler into a Loop handler as part of content negotiation.  The actual means of doing this isn't worth covering in this post, but the end result is that we now had three namespaces for building handlers over the top of a single record and a standard pattern of being supplied an 'emitter' function in the init callback for Loop and WebSocket for sending typed messages into the handler.
 
 # Straight Rest
 
