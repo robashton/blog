@@ -1,4 +1,181 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Tue, 30 Jun 2020 07:26:14 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Updates to Pinto+Stetson - Purerl In Progress]]></title><description><![CDATA[<p>Whew, a lot of things have happened over the last year and nearly all of it in private Github repos for work as we carry on doing &quot;everything&quot; in Purerl.</p>
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Wed, 01 Jul 2020 12:33:01 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Purerl updates - Typed routes in Stetson]]></title><description><![CDATA[<p>A continuation of progress updates on Pinto/Stetson then..</p>
+<h1 id="previous-purerl-posts">Previous Purerl posts</h1>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
+<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
+<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
+<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
+<li><a href="/entries/purescript-interop-with-native-erlang---interacting-with-redis.html">Purescript interop with native Erlang, interaction with Redis</a></li>
+</ul>
+<h1 id="updates">Updates</h1>
+<ul>
+<li><a href="/entries/updates-to-pinto+stetson---purerl-in-progress.html">Nix overlays for Purerl/etc</a></li>
+<li>Typed routing for Stetson</li>
+<li>Emitter based messages for handle_info in Gen Server</li>
+<li>Monitors for arbitrary pids from Gen servers + Stetson handlers</li>
+<li>WebSocket handlers in Stetson</li>
+<li>Streaming handlers in Stetson</li>
+<li>MessageRouting in Pinto to easily bind to legacy code that sends us messages</li>
+</ul>
+<h1 id="how-it-was">How it was</h1>
+<p>The initial blast of <a href="https://github.com/id3as/purescript-erl-stetson">Stetson</a> was thrown up around <a href="https://github.com/ninenines/cowboy">Cowboy</a> with the express goal of &quot;getting me started on our first client project written in Purerl&quot;. As such it wasn&#39;t fancy and routing/dispatch looked like this.</p>
+<pre><code class="language-haskell">
+<span class="hljs-type">Stetson</span>.configure
+    # <span class="hljs-type">Stetson</span>.route <span class="hljs-string">"/api/books"</span> books
+    # <span class="hljs-type">Stetson</span>.route <span class="hljs-string">"/api/books/:isbn"</span> book
+    # <span class="hljs-type">Stetson</span>.static <span class="hljs-string">"/assets/[...]"</span> (<span class="hljs-type">PrivDir</span> <span class="hljs-string">"demo_ps"</span> <span class="hljs-string">"www/assets"</span>)
+    # <span class="hljs-type">Stetson</span>.static <span class="hljs-string">"/[...]"</span> (<span class="hljs-type">PrivFile</span> <span class="hljs-string">"demo_ps"</span> <span class="hljs-string">"www/index.html"</span>)
+</code></pre>
+<p>Where a handler operating over  &#39;id&#39; to get a specific item might look like this</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">book</span> :: <span class="hljs-type">StetsonHandler</span> (<span class="hljs-type">Maybe</span> <span class="hljs-type">Book</span>)
+<span class="hljs-title">book</span> = 
+  <span class="hljs-type">Rest</span>.handler (\req -&gt; <span class="hljs-keyword">do</span>
+                          <span class="hljs-keyword">let</span> id = binding (atom <span class="hljs-string">"isbn"</span>) req
+                          book &lt;- maybe (pure <span class="hljs-type">Nothing</span>) <span class="hljs-type">BookLibrary</span>.findByIsbn id
+                          <span class="hljs-type">Rest</span>.initResult req book)
+    # <span class="hljs-type">Rest</span>.allowedMethods (\req state -&gt; <span class="hljs-type">Rest</span>.result (<span class="hljs-type">Stetson</span>.<span class="hljs-type">HEAD</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">PUT</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">DELETE</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">GET</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">OPTIONS</span> : nil) req state)
+    # <span class="hljs-type">Rest</span>.resourceExists (\req state -&gt; 
+                             <span class="hljs-type">Rest</span>.result (isJust state) 
+                             (maybe (setBody <span class="hljs-string">"This book does not exist"</span> req) (\_ -&gt; req) state)
+                             state)
+    # <span class="hljs-type">Rest</span>.deleteResource (\req state -&gt; <span class="hljs-keyword">do</span>
+                              _ &lt;- maybe (pure unit) (\book -&gt; <span class="hljs-type">BookLibrary</span>.delete book.isbn) state
+                              <span class="hljs-type">Rest</span>.result true req state)
+    # <span class="hljs-type">Rest</span>.contentTypesProvided (\req state -&gt; <span class="hljs-type">Rest</span>.result (jsonWriter : nil) req state)
+    # <span class="hljs-type">Rest</span>.contentTypesAccepted (\req state -&gt; <span class="hljs-type">Rest</span>.result ((tuple2 <span class="hljs-string">"application/json"</span> acceptJson) : nil) req state)
+</code></pre>
+<p>Urgh, so we&#39;ve got <em>:isbn</em> as a binding in our route, which we&#39;re pulling out as a <em>Maybe String</em> in our init handler, more hand waving here than at a Tory party conference. To compound matters, our client is building these urls like so</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">getBook</span> :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Maybe</span> <span class="hljs-type">Book</span>
+<span class="hljs-title">getBook</span> id = fetchJson <span class="hljs-string">"/api/books/"</span> &lt;&gt; id
+</code></pre>
+<p>This was fine for a year or so, but once you&#39;ve got a few real applications running on top of this stuff and a great many URLs indeed you start running into issues where typos, incorrect types, etc start rearing their head - especially if you&#39;re making changes. (Quiet down at the back if you mention rest, url discovery and client independence to me I&#39;ll throw something at you, this isn&#39;t that).</p>
+<p>Thankfully, we have <a href="http://twitter.com/nwolverson">nwolverson</a> working with us and he&#39;s unafraid of the wonders of <a href="https://pursuit.purerl.fun/packages/typelevel-prelude/3.0.0/docs/Type.Data.Symbol">Data.Symbol.SProxy</a> and spent a chunk of time re-working <a href="https://github.com/natefaubion/purescript-routing-duplex">routing-duplex</a> from the client world so that it compiles/works/is-usable in the world of Purerl and Stetson.  Did I ever mention that the great thing about re-purposing an existing language/toolset for Erlang is that code already exists for most things you&#39;d want to do in that language? I&#39;ll mention it again here because it&#39;s pretty great.</p>
+<p>Gone is the hand-waving, for our apps now have a shared module twixt client and server describing the routes available and the types they accept and no mistakes will be accepted by the compiler.</p>
+<p><em>Our routes</em></p>
+<p>Our routes exist as an ADT describing the various  options and the typed parameters they expect.</p>
+<pre><code class="language-haskell">
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Route</span></span>
+  = <span class="hljs-type">Books</span>
+  | <span class="hljs-type">Book</span> <span class="hljs-type">Isbn</span>
+  | <span class="hljs-type">Assets</span> (<span class="hljs-type">Array</span> <span class="hljs-type">String</span>)
+  | <span class="hljs-type">Index</span>
+  | <span class="hljs-type">Index2</span> <span class="hljs-type">String</span> (<span class="hljs-type">Array</span> <span class="hljs-type">String</span>)
+</code></pre>
+<p><em>How the routes map to paths</em></p>
+<p>Using the type RouteDuplex&#39; with this ADT, we are required  to fill out each of the options with a path with the args expected  in the ADT. None  of these  are optional and we&#39;ll get type errors (more on this in a bit) if we don&#39;t supply all of the args or routes expected.</p>
+<pre><code>
+-- | This combinator transforms <span class="hljs-literal">a</span> codec over `String` into one that operates on the `Isbn` type.
+<span class="hljs-symbol">isbn ::</span> RouteDuplex' String -&gt; RouteDuplex' Isbn
+isbn = asNewtype
+
+<span class="hljs-symbol">apiRoute ::</span> RouteDuplex' Route
+apiRoute = path <span class="hljs-string">""</span> $ sum
+  { <span class="hljs-string">"Books"</span>: <span class="hljs-string">"api"</span> / <span class="hljs-string">"books"</span> / noArgs
+  , <span class="hljs-string">"Book"</span>: <span class="hljs-string">"api"</span> / <span class="hljs-string">"books"</span> / isbn segment
+  , <span class="hljs-string">"EventsWs"</span>: <span class="hljs-string">"api"</span> / <span class="hljs-string">"events"</span> / <span class="hljs-string">"ws"</span>
+  , <span class="hljs-string">"EventsFirehose"</span>: <span class="hljs-string">"api"</span> / <span class="hljs-string">"events"</span> / <span class="hljs-string">"firehose"</span>
+  , <span class="hljs-string">"Assets"</span> : <span class="hljs-string">"assets"</span> / rest
+  , <span class="hljs-string">"Index"</span> : noArgs
+  , <span class="hljs-string">"Index2"</span> : segment / rest
+  }
+
+</code></pre><p>Note that our Newtype &#39;isbn&#39; is an integrated part of both of these APIs, <em>Book</em> is a route that is available over <em>api/books/:isbn</em> where <em>:isbn</em> is of type <em>Isbn</em>. No messing around; yes it&#39;s just a newtype in this case, but there is nothing stopping us doing more elaborate parsing here into more complicated types. We can&#39;t accidentally miss any routes off, those strings are checked against the record at compile type thanks to the magic of SProxy and such.</p>
+<p><em>On the server</em></p>
+<p>Rather than try and make this stuff optional in Stetson, we decided to just lump it in as core code - why would you choose strings with more strings and hand waving when you&#39;ve got types at your disposal? We&#39;re not Javascript programmers after all - this means that these routes are accepted as a first class citizen in this world.</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">_</span> &lt;- <span class="hljs-type">Stetson</span>.configure
+    # <span class="hljs-type">Stetson</span>.routes
+      <span class="hljs-type">Routes</span>.apiRoute {
+          <span class="hljs-string">"Book"</span>: book
+        , <span class="hljs-string">"Books"</span>: books
+        , <span class="hljs-string">"EventsWs"</span>: eventsWs
+        , <span class="hljs-string">"EventsFirehose"</span>: eventsFirehose
+        , <span class="hljs-string">"Assets"</span>: <span class="hljs-type">PrivDir</span> <span class="hljs-string">"demo_ps"</span> <span class="hljs-string">"www/assets"</span>
+        , <span class="hljs-string">"Index"</span>: <span class="hljs-type">PrivFile</span> <span class="hljs-string">"demo_ps"</span> <span class="hljs-string">"www/index.html"</span>
+        , <span class="hljs-string">"Index2"</span>: (\(_ :: <span class="hljs-type">String</span>)  -&gt; <span class="hljs-type">PrivFile</span> <span class="hljs-string">"demo_ps"</span> <span class="hljs-string">"www/index.html"</span>)
+      }
+
+</code></pre>
+<p>We can see here that once again we are supplying a record with the names from the ADT and these are once again type-checked against that ADT so you can&#39;t miss any out or get the types wrong. What types you ask? Well this is the &#39;book&#39; handler from earlier. (If you&#39;re not familiar with Purescript you might see the strings in our record above and go &#39;whaaaaa??&#39;, don&#39;t worry about it; because of the ADT &#39;Route&#39; and the fact that our &#39;RoutingDuplex&#39; has that as a type parameter, these strings are checked at a compile time against that ADT - it&#39;s a neat feature that has great potential when API building.</p>
+<pre><code class="language-haskell">
+
+<span class="hljs-title">book</span> :: <span class="hljs-type">Isbn</span> -&gt; <span class="hljs-type">StetsonHandler</span> (<span class="hljs-type">Maybe</span> <span class="hljs-type">Book</span>)
+<span class="hljs-title">book</span> id =
+  <span class="hljs-type">Rest</span>.handler (\req -&gt; <span class="hljs-keyword">do</span>
+                          book &lt;- <span class="hljs-type">BookLibrary</span>.findByIsbn id
+                          <span class="hljs-type">Rest</span>.initResult req book)
+    # <span class="hljs-type">Rest</span>.allowedMethods (\req state -&gt; <span class="hljs-type">Rest</span>.result (<span class="hljs-type">Stetson</span>.<span class="hljs-type">HEAD</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">PUT</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">DELETE</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">GET</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">OPTIONS</span> : nil) req state)
+    # <span class="hljs-type">Rest</span>.resourceExists (\req state -&gt;
+                             <span class="hljs-type">Rest</span>.result (isJust state)
+                             (maybe (setBody <span class="hljs-string">"This book does not exist"</span> req) (\_ -&gt; req) state)
+                             state)
+    # <span class="hljs-type">Rest</span>.deleteResource (\req state -&gt; <span class="hljs-keyword">do</span>
+                              _ &lt;- maybe (pure unit) (\book -&gt; <span class="hljs-type">BookLibrary</span>.delete book.isbn) state
+                              <span class="hljs-type">Rest</span>.result true req state)
+    # <span class="hljs-type">Rest</span>.contentTypesProvided (\req state -&gt; <span class="hljs-type">Rest</span>.result (jsonWriter : nil) req state)
+    # <span class="hljs-type">Rest</span>.contentTypesAccepted (\req state -&gt; <span class="hljs-type">Rest</span>.result ((tuple2 <span class="hljs-string">"application/json"</span> acceptJson) : nil) req state)
+</code></pre>
+<p>Say what now? Because we define</p>
+<pre><code class="language-haskell">
+  | <span class="hljs-type">Book</span> <span class="hljs-type">Isbn</span>
+</code></pre>
+<p>in our Routes ADT, we have </p>
+<pre><code class="language-haskell">
+  , <span class="hljs-string">"Book"</span>: <span class="hljs-string">"api"</span> / <span class="hljs-string">"books"</span> / isbn segment
+</code></pre>
+<p>in our RouteDuplex definition, and we have</p>
+<pre><code class="language-haskell">
+  <span class="hljs-string">"Book"</span>: book
+</code></pre>
+<p>In our Stetson routes, the compiler knows that &#39;book&#39; needs to be a function that accepts an &#39;Isbn&#39; and returns a StetsonHandler. So what if I change the type of &#39;book&#39; to integer? to integer? to integer? to integer?</p>
+<pre><code class="language-haskell">  book :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">StetsonHandler</span> (<span class="hljs-type">Maybe</span> <span class="hljs-type">Book</span>)
+  book id =</code></pre>
+<pre><code><span class="hljs-builtin-name">Error</span> found:
+<span class="hljs-keyword">in</span> module BookWeb
+at src/BookWeb.purs:122:58 - 122:60 (line 122, column 58 - line 122, column 60)
+
+  Could <span class="hljs-keyword">not</span> match<span class="hljs-built_in"> type
+</span>
+    Int
+
+  with<span class="hljs-built_in"> type
+</span>
+    Isbn
+</code></pre><p>hot damn yes, and what if I do a typo in my handlers?</p>
+<pre><code class="language-haskell">
+      <span class="hljs-type">Routes</span>.apiRoute {
+          <span class="hljs-string">"B00k"</span>: book
+        , <span class="hljs-string">"Books"</span>: books
+        , <span class="hljs-string">"EventsWs"</span>: eventsWs
+</code></pre>
+<p>Well</p>
+<pre><code>
+  Could <span class="hljs-keyword">not</span> match<span class="hljs-built_in"> type
+</span>
+    ( <span class="hljs-string">"Book"</span> :: t0
+    <span class="hljs-built_in">..</span>.
+    | t1
+    )
+
+  with<span class="hljs-built_in"> type
+</span>
+    ( <span class="hljs-string">"Assets"</span> :: StaticAssetLocation
+    , <span class="hljs-string">"B00k"</span> :: Isbn -&gt; StetsonHandler Unit (Maybe <span class="hljs-built_in">..</span>.)
+</code></pre><p>You get the picture, by up-front defining the routes and the types they expect as input to the handler functions, we&#39;ve just done away with the handwaving and given ourselves a pile of safety.</p>
+<p><em>On the client</em></p>
+<p>Remember our <em>getBook :: String -&gt; Maybe Book</em>? </p>
+<pre><code class="language-haskell">
+<span class="hljs-title">routeUrl</span> :: <span class="hljs-type">Route</span> -&gt; <span class="hljs-type">String</span>
+<span class="hljs-title">routeUrl</span> = <span class="hljs-type">RouteDuplex</span>.print apiRoute
+
+<span class="hljs-title">getBook</span> :: <span class="hljs-type">Isbn</span> -&gt; <span class="hljs-type">Maybe</span> <span class="hljs-type">Book</span>
+<span class="hljs-title">getBook</span> id = fetchJson $ routeUrl (<span class="hljs-type">Book</span> id)
+</code></pre>
+<p>No more strings, no more guessing, thanks Nick!</p>
+]]></description><link>http://codeofrob.com/entries/purerl-updates---typed-routes-in-stetson.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purerl-updates---typed-routes-in-stetson.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 30 Jun 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Updates to Pinto+Stetson - Purerl In Progress]]></title><description><![CDATA[<p>Whew, a lot of things have happened over the last year and nearly all of it in private Github repos for work as we carry on doing &quot;everything&quot; in Purerl.</p>
 <p>These posts are a reminder of where we were last time we poked our heads over the parapet, although some of their content is now a tad out of date the demo code they link to is thankfully updated (I&#39;ve been busy).</p>
 <ul>
 <li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
@@ -865,86 +1042,4 @@ unit</code></pre>
 <h1 id="demo-ps">Demo-ps</h1>
 <p>This is a completely pointless web app that uses <a href="https://github.com/id3as/purescript-erl-stetson">purescript-erl-stetson</a>, <a href="https://github.com/id3as/purescript-erl-pinto">purescript-erl-pinto</a>, <a href="https://github.com/purerl/purescript-simple-json">purescript-simple-json</a> and <a href="https://github.com/slamdata/purescript-halogen">purescript-halogen</a> to store data in Redis using some FFI and display it in a single page application, sharing the view models between the server and client components. It seeks to demonstrate rough usages of all of these without cluttering up the interactions with &quot;real code&quot; (read: business logic).</p>
 <p>Next post, we&#39;ll look at the structure of the demo-ps project, as understanding this is essential if you wish to build your own.</p>
-]]></description><link>http://codeofrob.com/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html</link><guid isPermaLink="true">http://codeofrob.com/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 13 Aug 2019 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purescript on the BEAM - OTP from scratch]]></title><description><![CDATA[<p>Previous entries..</p>
-<ul>
-<li><a href="/entries/functional-erlang---purescript-on-the-beam---intro.html">Intro</a></li>
-<li><a href="/entries/purescript-on-the-beam:-getting-started.html">Getting Started</a></li>
-<li><a href="/entries/purescript-on-the-beam---writing-some-basic-code.html">Writing some basic code</a></li>
-<li><a href="/entries/purescript-on-the-beam---basic-interop-with-erlang.html">Basic interop with Erlang</a></li>
-<li><a href="/entries/purescript-on-the-beam---otp-from-scratch.html">Calling Purecript from Erlang</a></li>
-</ul>
-<p>Armed with the tools from the last explorations, it should be relatively trivial to start interacting with OTP in Purescript, and we&#39;ll give that a bash directly in this entry to see how well <em>that</em> goes..</p>
-<h1 id="writing-a-gen-server-in-purescript">Writing a Gen Server in Purescript</h1>
-<p>Ignoring applications and supervisors for a moment, we can probably write a genserver fairly trivially in Purescript directly using an FFI to call into OTP and shuffle some data types</p>
-<p>The low level FFI could look a little like this, where the call is just an effect that results in a genserver starting.</p>
-<pre><code class="language-erlang">
-    -module(genServer@foreign).
-
-    -export([startLinkImpl/<span class="hljs-number">3</span>]).
-
-    startLinkImpl(ServerName, Module, Args) -&gt;
-      <span class="hljs-keyword">fun</span>() -&gt;
-        gen_server:start_link(ServerName, Module, Args, [])
-    <span class="hljs-keyword">end</span>.
-</code></pre>
-<pre><code class="language-haskell">
-    <span class="hljs-keyword">module</span> GenServer <span class="hljs-keyword">where</span>
-
-    <span class="hljs-keyword">import</span> Prelude
-    <span class="hljs-keyword">import</span> Erl.Atom
-    <span class="hljs-keyword">import</span> Erl.Data.List
-    <span class="hljs-keyword">import</span> Erl.Data.Tuple
-    <span class="hljs-keyword">import</span> Effect.Uncurried (<span class="hljs-title">mkEffectFn1</span>, <span class="hljs-type">EffectFn1</span>)
-    <span class="hljs-keyword">import</span> Effect
-
-    <span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> data <span class="hljs-type">StartLinkResult</span> :: <span class="hljs-type">Type</span>
-
-    <span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> startLinkImpl :: forall args. (<span class="hljs-type">Tuple2</span> <span class="hljs-type">Atom</span> <span class="hljs-type">Atom</span>) -&gt; <span class="hljs-type">Atom</span> -&gt; args -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
-
-    startLink :: <span class="hljs-keyword">forall</span> args. (<span class="hljs-type">Tuple2</span> <span class="hljs-type">Atom</span> <span class="hljs-type">Atom</span>) -&gt; <span class="hljs-type">Atom</span> -&gt; <span class="hljs-type">EffectFn1</span> args <span class="hljs-type">StartLinkResult</span>
-    startLink serverName mod =
-      mkEffectFn1 \args -&gt; startLinkImpl serverName mod args
-</code></pre>
-<p>Note the mkEffectFn1 allowing us to pass this effectful function into Erlang code, and the parameterised argument type allowing us to have custom arguments for the gen server we&#39;re writing.</p>
-<p>Allowing us to write a gen server that looks like this:</p>
-<pre><code class="language-haskell">
-    <span class="hljs-keyword">module</span> TestServer <span class="hljs-keyword">where</span>
-
-    <span class="hljs-keyword">import</span> Prelude
-    <span class="hljs-keyword">import</span> Erl.Atom
-    <span class="hljs-keyword">import</span> Erl.Data.List
-    <span class="hljs-keyword">import</span> Erl.Data.Tuple
-    <span class="hljs-keyword">import</span> GenServer <span class="hljs-keyword">as</span> GenServer
-    <span class="hljs-keyword">import</span> Effect.Uncurried (<span class="hljs-title">mkEffectFn1</span>, <span class="hljs-type">EffectFn1</span>)
-    <span class="hljs-keyword">import</span> Effect.Console (<span class="hljs-title">log</span>)
-
-    <span class="hljs-class"><span class="hljs-keyword">newtype</span> <span class="hljs-type">State</span> = <span class="hljs-type">State</span> {}</span>
-
-    startLink :: <span class="hljs-type">EffectFn1</span> <span class="hljs-type">String</span> <span class="hljs-type">GenServer</span>.<span class="hljs-type">StartLinkResult</span>  
-    startLink = <span class="hljs-type">GenServer</span>.startLink (tuple2 (atom <span class="hljs-string">"local"</span>) (atom <span class="hljs-string">"testServer"</span>)) (atom <span class="hljs-string">"testServer@ps"</span>)
-
-    init :: <span class="hljs-type">EffectFn1</span> <span class="hljs-type">String</span> (<span class="hljs-type">Tuple2</span> <span class="hljs-type">Atom</span> <span class="hljs-type">State</span>)
-    init = mkEffectFn1 \args -&gt;  <span class="hljs-keyword">do</span>
-      _ &lt;- log $ <span class="hljs-string">"Gen server started with args: "</span> &lt;&gt; args
-      pure $ tuple2 (atom <span class="hljs-string">"ok"</span>) (<span class="hljs-type">State</span> {})
-</code></pre>
-<p>In this case, we&#39;ve decided our start args are a string and we&#39;ll just log that out on startup, and we return a newtype with a record containing our gen server state from the init function, and of course we can just plug this into a standard Erlang supervision tree and we&#39;ll end up with a gen server running which if sent any messages will simply crash :).</p>
-<pre><code class="language-erlang">
-    init([]) -&gt;
-        {ok, { {one_for_all, <span class="hljs-number">0</span>, <span class="hljs-number">1</span>}, [ #{ start =&gt; { testServer@ps, startLink, [&lt;&lt;<span class="hljs-string">"Your args"</span>&gt;&gt;] },
-                                         type =&gt; worker,
-                                         id =&gt; test_server
-                                       }
-                                    ]} }.
-</code></pre>
-<p>Already we can see that we&#39;ve not gained an awful lot by writing this thin wrapper allowing us to write gen servers in this way</p>
-<ul>
-<li>There are no guarantees that the arguments passed in from the supervisor are the right type</li>
-<li>Erlang probably can&#39;t even construct the arguments properly if it&#39;s anything more complicated than a string (say, a record or ADT)</li>
-<li>There is no requirement for init/startLink to align their types, the args are going to be coerced back and forth and we&#39;ll get runtime crashes if we make a mistake there</li>
-<li>Low level wrappers are cumbersome, and gen servers are a very common tool in our arsenal, this could get old fast.</li>
-<li>We haven&#39;t even started to cover passing of arbitrary messages into the gen server (handle call, info, etc) (Spoiler alert: They&#39;re cumbersome too)</li>
-<li>There is no guarantee that certain methods (handle_info/etc) are actually present, although most of these behaviours are optional these days thankfully!</li>
-</ul>
-<p>We can see that manually writing and using 1:1 mappings between Purescript and Erlang code for use across an application is not going to be a sustainable ideal - and yet we will press on and look at a few of the attempts made to do this in the following blog entries before finally trying to do something a little more idiomatic.</p>
-]]></description><link>http://codeofrob.com/entries/purescript-on-the-beam---otp-from-scratch.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purescript-on-the-beam---otp-from-scratch.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 20 Nov 2018 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html</link><guid isPermaLink="true">http://codeofrob.com/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 13 Aug 2019 09:30:00 GMT</pubDate></item></channel></rss>
