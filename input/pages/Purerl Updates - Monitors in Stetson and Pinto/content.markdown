@@ -18,21 +18,23 @@ We've managed to get nicely typed arbitrary messages into our web handlers and g
 - Monitors for arbitrary pids from Gen servers + Stetson handlers
 - MessageRouting in Pinto to easily bind to legacy code that sends us messages
 
+# Monitors
+
 A reasonably common pattern for monitors in some of our code is
 
 - Internal server manages a collection of pids that are recipients of data streams
-- Websockets open and register with this server to receive those data streams
+- web handlers open and register with this server to receive those data streams
 
 In this case *sometimes*
 
 - It's useful for the internal server to monitor the subscribers and remove the pids when they become invalid
-- It's useful for the Websocket handler to monitor the server, so it can close the connection if that goes away
+- It's useful for the web handler to monitor the server, so it can close the connection if that goes away
 
 This isn't always the case, sometimes a static message bus is a better option, sometimes pids can be checked ad-hoc, but for the purpose of this example we'll assume that this is exactly what we want as it'll be a nice end-to-end example of message passing and monitoring in Purerl.
 
 # The internal server
 
-So we'll define a basic gen server that keeps a state that's a map of pids to functions that receive data *(Binary -> Effecgt Unit)*, and set up a timer to send us a Tick message after 500ms - our message type will therefore just be either that Tick message, or a message telling us that a client has disconnected. We'll configure the gen server to use a handleInfo function when these come in (explored further below).
+So we'll define a basic gen server that keeps a state that's a map of pids to functions that receive data *(Binary -> Effect Unit)*, and set up a timer to send us a *Tick* message after 500ms - our message type will therefore just be either that *Tick* message, or a message telling us that a client has disconnected. We'll configure the gen server to use a *handleInfo* function when these come in (explored further below).
 
 
 ```haskell
@@ -60,9 +62,9 @@ init args = do
 
 ```
 
-We can export a function *registerClient* for clients to invoke in order to start receiving data, while we're still in the process that called us we can get its pid by calling to 'Pinto.self', and then in the context of the gen server, we'll get our own pid so we can add the monitor in the next function *addHandler*.
+We can export a function *registerClient* for clients to invoke in order to start receiving data, while we're still in the process that called us we can get its pid by calling out to '*Pinto.self*', and then in the context of the gen server, we'll get our own pid so we can add the monitor in the next function *addHandler*.
 
-As we have the pid of our calling process, we can invoke *Monitor.pid*, and pass in a callback that disregards the message given to us when the monitor pops and just sends a message with the handler pid back to our handleInfo. Once we've added that monitor, we add the handler to our map using the pid as a lookup so we can remove it later when we get that message.
+As we have the pid of our calling process, we can invoke *Monitor.pid*, and pass in a callback that disregards the message given to us when the monitor pops and just sends a message with the handler pid back to our *handleInfo*. Once we're monitoring the handler, we can add it to our map using the pid as a key so we can easily remove it later when we get the message telling us it went down.
 
 ```haskell
 
@@ -139,7 +141,7 @@ data DataStreamMessage = Data Binary
 
 ```
 
-We'll just kick off our handler with *Loop.handler*, start a streamed reply with a status code 200 and make sure that Stetson knows we're doing a Loop, we're typed as a *StetsonHandler DataStreamMessage Unit* because we receive DataSteamMessage and don't store any state of our own.
+We'll just kick off our handler with *Loop.handler*, start a streamed reply with a status code 200 and make sure that Stetson knows we're doing a Loop, we're typed as a *StetsonHandler DataStreamMessage Unit* because we receive *DataSteamMessage* and don't store any state of our own.
 
 ```haskell
                                            
@@ -151,7 +153,7 @@ dataStream =
 
 ```
 
-In our *Loop.init*, we'll get our own typed process *(Process DataStreamMessage)*, invoking 'send' on this gives us a function of type (Msg -> Effect Unit) so we'll compose that with a constructor for our own data type (Data) giving us the correct function type of *(Binary -> Effect Unit)*
+In our *Loop.init*, we'll get our own typed process *(Process DataStreamMessage)*, invoking '*Process.send*' on this gives us a function of type (Msg -> Effect Unit) so we'll compose that with a constructor for our own data type (Data) giving us the correct function type of *(Binary -> Effect Unit)*
 
 Using *Gen.monitor* with the server name of *MonitorExample*, we can detect when that process dies - there are two effectful callbacks for this, one for when the process dies and one for if the process is already down (there is no pid to monitor). 
 

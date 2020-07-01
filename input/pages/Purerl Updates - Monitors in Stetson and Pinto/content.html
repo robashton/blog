@@ -17,19 +17,20 @@
 <li>Monitors for arbitrary pids from Gen servers + Stetson handlers</li>
 <li>MessageRouting in Pinto to easily bind to legacy code that sends us messages</li>
 </ul>
+<h1 id="monitors">Monitors</h1>
 <p>A reasonably common pattern for monitors in some of our code is</p>
 <ul>
 <li>Internal server manages a collection of pids that are recipients of data streams</li>
-<li>Websockets open and register with this server to receive those data streams</li>
+<li>web handlers open and register with this server to receive those data streams</li>
 </ul>
 <p>In this case <em>sometimes</em></p>
 <ul>
 <li>It&#39;s useful for the internal server to monitor the subscribers and remove the pids when they become invalid</li>
-<li>It&#39;s useful for the Websocket handler to monitor the server, so it can close the connection if that goes away</li>
+<li>It&#39;s useful for the web handler to monitor the server, so it can close the connection if that goes away</li>
 </ul>
 <p>This isn&#39;t always the case, sometimes a static message bus is a better option, sometimes pids can be checked ad-hoc, but for the purpose of this example we&#39;ll assume that this is exactly what we want as it&#39;ll be a nice end-to-end example of message passing and monitoring in Purerl.</p>
 <h1 id="the-internal-server">The internal server</h1>
-<p>So we&#39;ll define a basic gen server that keeps a state that&#39;s a map of pids to functions that receive data <em>(Binary -&gt; Effecgt Unit)</em>, and set up a timer to send us a Tick message after 500ms - our message type will therefore just be either that Tick message, or a message telling us that a client has disconnected. We&#39;ll configure the gen server to use a handleInfo function when these come in (explored further below).</p>
+<p>So we&#39;ll define a basic gen server that keeps a state that&#39;s a map of pids to functions that receive data <em>(Binary -&gt; Effect Unit)</em>, and set up a timer to send us a <em>Tick</em> message after 500ms - our message type will therefore just be either that <em>Tick</em> message, or a message telling us that a client has disconnected. We&#39;ll configure the gen server to use a <em>handleInfo</em> function when these come in (explored further below).</p>
 <pre><code class="language-haskell">
 <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">State</span> = {
   <span class="hljs-title">handlers</span> :: <span class="hljs-type">Map</span>.<span class="hljs-type">Map</span> <span class="hljs-type">Pid</span> <span class="hljs-type">MessageHandler</span>
@@ -52,8 +53,8 @@
     handlers: <span class="hljs-type">Map</span>.empty
   }
 </code></pre>
-<p>We can export a function <em>registerClient</em> for clients to invoke in order to start receiving data, while we&#39;re still in the process that called us we can get its pid by calling to &#39;Pinto.self&#39;, and then in the context of the gen server, we&#39;ll get our own pid so we can add the monitor in the next function <em>addHandler</em>.</p>
-<p>As we have the pid of our calling process, we can invoke <em>Monitor.pid</em>, and pass in a callback that disregards the message given to us when the monitor pops and just sends a message with the handler pid back to our handleInfo. Once we&#39;ve added that monitor, we add the handler to our map using the pid as a lookup so we can remove it later when we get that message.</p>
+<p>We can export a function <em>registerClient</em> for clients to invoke in order to start receiving data, while we&#39;re still in the process that called us we can get its pid by calling out to &#39;<em>Pinto.self</em>&#39;, and then in the context of the gen server, we&#39;ll get our own pid so we can add the monitor in the next function <em>addHandler</em>.</p>
+<p>As we have the pid of our calling process, we can invoke <em>Monitor.pid</em>, and pass in a callback that disregards the message given to us when the monitor pops and just sends a message with the handler pid back to our <em>handleInfo</em>. Once we&#39;re monitoring the handler, we can add it to our map using the pid as a key so we can easily remove it later when we get the message telling us it went down.</p>
 <pre><code class="language-haskell">
 <span class="hljs-title">registerClient</span> :: <span class="hljs-type">MessageHandler</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
 <span class="hljs-title">registerClient</span> handler = <span class="hljs-keyword">do</span>
@@ -111,7 +112,7 @@
                        | <span class="hljs-type">DataSourceAlreadyDown</span>
 
 </code></pre>
-<p>We&#39;ll just kick off our handler with <em>Loop.handler</em>, start a streamed reply with a status code 200 and make sure that Stetson knows we&#39;re doing a Loop, we&#39;re typed as a <em>StetsonHandler DataStreamMessage Unit</em> because we receive DataSteamMessage and don&#39;t store any state of our own.</p>
+<p>We&#39;ll just kick off our handler with <em>Loop.handler</em>, start a streamed reply with a status code 200 and make sure that Stetson knows we&#39;re doing a Loop, we&#39;re typed as a <em>StetsonHandler DataStreamMessage Unit</em> because we receive <em>DataSteamMessage</em> and don&#39;t store any state of our own.</p>
 <pre><code class="language-haskell">
 <span class="hljs-title">dataStream</span> :: <span class="hljs-type">StetsonHandler</span> <span class="hljs-type">DataStreamMessage</span> <span class="hljs-type">Unit</span>
 <span class="hljs-title">dataStream</span> =
@@ -119,7 +120,7 @@
                req2 &lt;- streamReply (<span class="hljs-type">StatusCode</span> <span class="hljs-number">200</span>) <span class="hljs-type">Map</span>.empty req
                <span class="hljs-type">Loop</span>.initResult req2 unit)
 </code></pre>
-<p>In our <em>Loop.init</em>, we&#39;ll get our own typed process <em>(Process DataStreamMessage)</em>, invoking &#39;send&#39; on this gives us a function of type (Msg -&gt; Effect Unit) so we&#39;ll compose that with a constructor for our own data type (Data) giving us the correct function type of <em>(Binary -&gt; Effect Unit)</em></p>
+<p>In our <em>Loop.init</em>, we&#39;ll get our own typed process <em>(Process DataStreamMessage)</em>, invoking &#39;<em>Process.send</em>&#39; on this gives us a function of type (Msg -&gt; Effect Unit) so we&#39;ll compose that with a constructor for our own data type (Data) giving us the correct function type of <em>(Binary -&gt; Effect Unit)</em></p>
 <p>Using <em>Gen.monitor</em> with the server name of <em>MonitorExample</em>, we can detect when that process dies - there are two effectful callbacks for this, one for when the process dies and one for if the process is already down (there is no pid to monitor). </p>
 <pre><code class="language-haskell">
     # <span class="hljs-type">Loop</span>.init (\req state -&gt; <span class="hljs-keyword">do</span> 
