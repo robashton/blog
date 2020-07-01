@@ -1,0 +1,248 @@
+<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
+<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
+<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
+<!--[if !ie]><!-->
+<html lang="en"> <!--<![endif]-->
+<head>
+    <title id="title">Purerl Updates - Message Routing From Legacy Code</title>
+    <meta charset="utf-8">
+    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="Description" content="Rob Ashton's blog, Purescript, Erlang, Purerl, Javascript, Software Design, etc"/> 
+    <meta name="author" content="Rob Ashton">
+    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
+    <link rel="stylesheet" href="/assets/css/style_responsive.css">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
+    <link rel="stylesheet" href="/assets/css/themes/default.css">
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
+    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="header">
+        <div class="container">
+            <div class="logo">
+             <h2><a href="/index.html">Rob Ashton</a></h2>
+            </div>
+            <div class="navbar">
+                <div class="navbar-inner">
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </a>
+                    <div class="nav-collapse collapse">
+                        <ul class="nav top-2">
+                          <li>
+                                <a href="/">Home</a>
+                            </li>
+                            <li>
+                                <a href="/blog.html">Blog</a>
+                            </li>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <body>
+    <div id="blog-entry">
+      <h1 id="post-title">Purerl Updates - Message Routing From Legacy Code</h1>
+      <h6>Published on <span class="date">2020-7-14</span></h6>
+      <div id="post"><p>We&#39;ve covered the essential upgrades to Pinto and Stetson, so now we&#39;ll cover a quick bonus topic which is one of the concepts thrown into Pinto to help with all of this work.</p>
+<h1 id="previous-purerl-posts">Previous Purerl posts</h1>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
+<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
+<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
+<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
+<li><a href="/entries/purescript-interop-with-native-erlang---interacting-with-redis.html">Purescript interop with native Erlang, interaction with Redis</a></li>
+</ul>
+<h1 id="updates">Updates</h1>
+<ul>
+<li><a href="/entries/updates-to-pinto+stetson---purerl-in-progress.html">Nix overlays for Purerl/etc</a></li>
+<li><a href="/entries/purerl-updates---typed-routes-in-stetson.html">Typed routing for Stetson</a></li>
+<li><a href="/entries/purerl-updates---arbitrary-messages-and-handle_info-in-gen-servers.html">Arbitrary messages and handle_info in gen_servers</a></li>
+<li><a href="/entries/purerl-updates---arbitrary-messages-and-stetson-handlers.html">Arbitrary messages and Stetson handlers</a></li>
+<li><a href="/entries/purerl-updates---monitors-in-stetson-and-pinto.html">Monitors for arbitrary pids from Gen servers + Stetson handlers</a></li>
+<li>MessageRouting in Pinto to easily bind to legacy code that sends us messages</li>
+</ul>
+<h1 id="the-problem">The problem</h1>
+<p>A <em>lot</em> of legacy Erlang code (ours included) will have something along the lines of </p>
+<pre><code class="language-erlang">
+cool_api:do_something().
+</code></pre>
+<p>That behind the scenes will almost immediately do a call to <em>self()</em> to get the caller pid and then probably spin up some more processes and start sending messages back to us.</p>
+<pre><code class="language-erlang">
+  do_something() -&gt;
+    Self = self(),
+    spawn_link(<span class="hljs-keyword">fun</span> Fun() -&gt;
+      <span class="hljs-keyword">receive</span>
+        _ -&gt;  ok
+      <span class="hljs-keyword">after</span> <span class="hljs-number">1000</span> -&gt;
+         Self ! hi
+         Fun()
+      <span class="hljs-keyword">end</span>
+    <span class="hljs-keyword">end</span>).
+</code></pre>
+<p>In this case, we&#39;ve got a native function called do_something() that captures the current pid, spins up a process which will stop if it receives anything and otherwise every second send a message back to the parent (hi).</p>
+<p>If we were to write FFI for this, it&#39;d look a lot like this:</p>
+<pre><code class="language-haskell">
+<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> doSomething :: <span class="hljs-type">Effect</span> <span class="hljs-type">Pid</span>
+<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> stop :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+
+</code></pre>
+<pre><code class="language-erlang">
+<span class="hljs-function"><span class="hljs-title">doSomething</span><span class="hljs-params">()</span> -&gt;</span>
+  <span class="hljs-keyword">fun</span>() -&gt;
+    cool_api:do_something()
+  <span class="hljs-keyword">end</span>.
+
+<span class="hljs-function"><span class="hljs-title">stop</span><span class="hljs-params">(Pid)</span> -&gt;</span>
+  <span class="hljs-keyword">fun</span>() -&gt;
+    Pid ! this_will_stop_you_cos_you_received_something
+  <span class="hljs-keyword">end</span>.
+</code></pre>
+<p>We would immediately start receiving atoms of &#39;hi&#39; to the calling process, which unless we happen to be very specific and careful, won&#39;t know how to receive them, for example in a gen server.</p>
+<pre><code class="language-haskell">
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">State</span> = {}</span>
+
+<span class="hljs-title">serverName</span> :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span> <span class="hljs-type">Atom</span>
+<span class="hljs-title">serverName</span> = <span class="hljs-type">Local</span> $ atom <span class="hljs-string">"listener"</span>
+
+<span class="hljs-title">startLink</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
+<span class="hljs-title">startLink</span> =
+  <span class="hljs-type">Gen</span>.buildStartLink serverName init $ <span class="hljs-type">Gen</span>.defaultStartLink { handleInfo = handleInfo }
+
+<span class="hljs-title">init</span> :: <span class="hljs-type">Gen</span>.<span class="hljs-type">Init</span> <span class="hljs-type">State</span> <span class="hljs-type">Atom</span>
+<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
+  <span class="hljs-type">Gen</span>.lift <span class="hljs-type">CoolApi</span>.doSomething
+  pure $ {}
+
+<span class="hljs-title">handleInfo</span> :: <span class="hljs-type">Atom</span> -&gt; <span class="hljs-type">State</span> -&gt; <span class="hljs-type">Gen</span>.<span class="hljs-type">HandleInfo</span> <span class="hljs-type">State</span> <span class="hljs-type">Atom</span>
+<span class="hljs-title">handleInfo</span> msg state = <span class="hljs-keyword">do</span>
+  <span class="hljs-comment">-- got an atom, woo</span>
+  <span class="hljs-comment">-- not much to do with it</span>
+  pure <span class="hljs-type">CastNoReply</span> state
+</code></pre>
+<p>This will work, it&#39;s a gen server that knows how to receive atoms - but it&#39;s unlikely we&#39;ll want to write a gen server that only receives atoms and nothing else - as soon as we add a timer, monitor or subscribe to anything else we&#39;ll want to change our message type into an ADT so that we can dispatch over the various message types.</p>
+<pre><code class="language-haskell">
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">CoolApiMsg</span> <span class="hljs-type">Atom</span></span>
+         | <span class="hljs-type">Tick</span>
+</code></pre>
+<p>So we&#39;re going to need some way to map this. </p>
+<p><em>The old way</em>: We&#39;d register a mapping function with the gen server that would recognise the cool_api messages and convert them into the right type for us, this was janky AF and has been deleted in the latest Pinto
+<em>the new way</em>: Proxy process that receives the message, translates it and then sends it on to the main process</p>
+<p>That proxy process is a burden to create because if we start spawning processes in Erlang, we need to make sure we monitor the parent so we terminate when it does, yada yada yada what a mess. Thankfully this is what <em>MessageRouter</em> in Pinto is for, it neatly wraps up this common pattern safely so we don&#39;t have to.</p>
+<h1 id="pintomessagerouter">Pinto.MessageRouter</h1>
+<p>The message router exports three functions of interest, one of which invokes a router on top of a process that will always start, and one on top of a process that might fail, the third takes a RouterRef (returned on success) and terminates the router.</p>
+<pre><code class="language-haskell">
+    startRouter :: <span class="hljs-keyword">forall</span> handle msg. <span class="hljs-type">Effect</span> handle -&gt; (handle -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>) -&gt; (msg -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>) -&gt;  <span class="hljs-type">Effect</span> (<span class="hljs-type">RouterRef</span> handle)
+
+    maybeStartRouter = maybeStartRouterImpl <span class="hljs-type">RouterRef</span>
+
+    stopRouter  :: <span class="hljs-keyword">forall</span> handle. <span class="hljs-type">RouterRef</span> handle -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+</code></pre>
+<p>We&#39;ll focus on the simple case. </p>
+<ul>
+<li>Given an <em>Effect handle</em> - ie something that returns some reference to whatever is created (in our case a pid)</li>
+<li>Given a function that given that handle, terminates the process</li>
+<li>Given a callback that takes &#39;whatever is received&#39; and &#39;does something to it&#39; (<em>Effect Unit</em>)</li>
+<li>We&#39;ll get an <em>Effect</em> of <em>(RouterRef handle)</em> back (which we can hold onto in order to terminate the whole show by calling stopRouter)</li>
+</ul>
+<p>Wrapping our legacy API is &quot;simple&quot; now that we&#39;ve already written the FFI for it</p>
+<pre><code class="language-haskell">
+<span class="hljs-keyword">import</span> Pinto.MessageRouting <span class="hljs-keyword">as</span> MR
+
+<span class="hljs-title">wrappedDoSomething</span> :: <span class="hljs-keyword">forall</span>. (<span class="hljs-type">Atom</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>) -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">MR</span>.<span class="hljs-type">RouterRef</span> <span class="hljs-type">Pid</span>)
+<span class="hljs-title">wrappedDoSomething</span> recv = <span class="hljs-type">MR</span>.startRouter <span class="hljs-type">CoolApi</span>.doSomething <span class="hljs-type">CoolApi</span>.stop recv
+
+</code></pre>
+<p>With this, we can re-write our gen server with the message lifted into the appropriate type</p>
+<pre><code class="language-haskell">
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">State</span> = {}</span>
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">Tick</span> | <span class="hljs-type">DoSomething</span> <span class="hljs-type">Atom</span></span>
+
+<span class="hljs-title">serverName</span> :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
+<span class="hljs-title">serverName</span> = <span class="hljs-type">Local</span> $ atom <span class="hljs-string">"listener"</span>
+
+<span class="hljs-title">startLink</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
+<span class="hljs-title">startLink</span> =
+  <span class="hljs-type">Gen</span>.buildStartLink serverName init $ <span class="hljs-type">Gen</span>.defaultStartLink { handleInfo = handleInfo }
+
+<span class="hljs-title">init</span> :: <span class="hljs-type">Gen</span>.<span class="hljs-type">Init</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
+<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
+  self &lt;- <span class="hljs-type">Gen</span>.self
+  <span class="hljs-type">Gen</span>.lift <span class="hljs-type">Wrapper</span>.wrappedDoSomething $ send self &lt;&lt;&lt; <span class="hljs-type">DoSomething</span>
+  pure $ {}
+
+<span class="hljs-title">handleInfo</span> :: <span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">State</span> -&gt; <span class="hljs-type">Gen</span>.<span class="hljs-type">HandleInfo</span> <span class="hljs-type">State</span> <span class="hljs-type">Atom</span>
+<span class="hljs-title">handleInfo</span> msg state = <span class="hljs-keyword">do</span>
+  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span>
+    <span class="hljs-type">Tick</span> -&gt; ...
+    <span class="hljs-type">DoSomething</span> msg -&gt; ...
+</code></pre>
+<p>It means an extra process per router, so isn&#39;t something we want to be using if we&#39;re going to be spinning up 1000s of short lived versions of it, but for that sort of thing we&#39;re in specialist territory where we&#39;d be using a look up table or dropping to plain ol&#39; Erlang. (See also <em>Pinto.Timer</em> which just uses the underlying mechanisms to send messages of the right type directly without an intermediary process.</p>
+<p>The point is that wrapping up legacy code that sends us arbitrary messages has been turned into a relatively small amount of work as a result of these changes, so long as we supply a start function and a stop function and a callback that knows what to do with the messages we can transform and then send accordingly. This has been used across our codebases with great success (as well as in Pinto itself) and has enabled our gen servers and web handlers to remain clean and receive the right typed messages.</p>
+</div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="mailto:robashton@codeofrob.com">Respond</a>
+      </div>
+
+        <!--=== Copyright ===-->
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span6">
+                <p class="terms">2020 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
+    });
+        </script>
+        <!--[if lt IE 9]>
+    <script src="assets/js/respond.js"></script>
+<![endif]-->
+        </body>
+        </html>
+
