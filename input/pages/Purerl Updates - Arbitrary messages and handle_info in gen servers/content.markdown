@@ -20,7 +20,7 @@ A continuation of progress updates on Pinto/Stetson then..
 
 # The story so far
 
-The code for dealing with handle_info was very hand-wavey and  involves the creation and registration of mappers and receivers within the gen server itself. This involves the use of a cast to the gen server in order to function correctly and it wasn't really obvious where messages were coming from. It was a ticking time bomb as far as supporting the increasing amounts of code we are writing in Purescript.
+The code for dealing with handle_info was very hand-wavey and involved the creation and registration of mappers and receivers within the gen server itself. This also ended up abusing gen_server:cast in order to function correctly and it wasn't really obvious where messages were coming from. It was a ticking time bomb as far as supporting the increasing amounts of code we are writing in Purescript goes.
 
 There was *some* good in this approach, in that the type of the Gen Server specified both the State of the Gen Server and the type of the Msg it would receive, and the handleInfo function could  be supplied  in Gen.init, forcibly typed with this server name.
 
@@ -78,7 +78,7 @@ It didn't feel *great* after doing that though, once again we're relying on conv
 
 # Second pass, making it more Erlang
 
-The type of 'emitter' was changed to *Process Msg* (which maps under the hood to a new type of a plain ol' pid and is therefore compatible automatically with classic Erlang APIs. (Specifically erlang monitors and such being a useful end-goal here).
+The type of 'emitter' was changed to *Process Msg* (A welcome suggestion from [http://twitter.com/louispilfold](@louispilfold) when I was putting code samples out for feedback). This maps under the hood to a new type of a plain ol' pid and is therefore compatible automatically with classic Erlang APIs. (Specifically erlang monitors and such being a useful end-goal here).
 
 
 ```haskell
@@ -92,7 +92,7 @@ init = do
 
 ```
 
-This was still not ideal however, the call to Gen.self included a runtime check (below) to ensure that the caller was indeed the "self" we were looking at to prevent external clients from abusing the API (if you provide an API, it *will* be abused and I'd already seen some "interesting" code already written around these APIs while I was upgrading our own code!)
+This was still not ideal however, the call to Gen.self included a runtime check (below) to ensure that the caller was indeed the "self" we were looking at to prevent external clients from abusing the API (if you provide an API, it *will* be abused and I'd already seen some "interesting" code already written around these APIs while I was upgrading just our own code!)
 
 
 ```erlang
@@ -120,7 +120,7 @@ What we really want is that all the callbacks to automatically
 - Be typed around ServerName, so that all calls to Pinto APIs automatically assume this type
 - have access to the 'internal' state in the Pinto gen_server implementation, so no casts ever have to be made again
 
-We had quite a bit of code in Gen.purs (our gen server wrapper) that relied on making casts to modify its state, monitors and such - removing all of this was just a sensible idea.
+We had quite a bit of code in Gen.purs (our gen server wrapper) that relied on making casts to modify its state, monitors and such - removing all of this was just a sensible idea -  the idea being that if the callbacks to client coded operated within the context of that state, it could be retrieved and modified (optionally) as part of those callbacks.
 
 
 ```haskell
@@ -157,7 +157,7 @@ Gen.self doesn't need to do anything other than pull state out of that state mon
 
 ```
 
-Similarly now then, Gen.Cast and Gen.Call are provided for *those* callbacks too, and all code executed  within the context of a Pinto Genserver has access to those internal state via the API so in theory things like trapExit/handleInfo/config can be modified safely from within that context without doing weird things around async casts back to that gen server.
+Similarly, Gen.Cast and Gen.Call are provided for *those* callbacks too, and all code executed  within the context of a Pinto Genserver has access to the internal state via the API so in theory things like trapExit/handleInfo/config can be modified safely from within that context without doing weird things around async casts back to that gen server.
 
 
 That's a lot of words to say that Gen Servers and arbitrary messages are now very pretty indeed in Purerl. Example below of a gen server subscribing to a message bus from the [demo_ps](https://github.com/id3as/demo-ps/blob/master/server/src/HandleInfoExample.purs) web project. You'll note that the actual API used in startLink has evolved to include a builder for setting the initial handlers/etc - there are a number of optional things to tweak about a gen server and it made sense to do this rather than accept an endlessly growing list of arguments.
