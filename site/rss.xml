@@ -1,4 +1,570 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Wed, 01 Jul 2020 18:24:35 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Purerl updates - Typed routes in Stetson]]></title><description><![CDATA[<p>A continuation of progress updates on Pinto/Stetson then..</p>
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Wed, 28 Oct 2020 10:14:50 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Purerl Updates - Message Routing From Legacy Code]]></title><description><![CDATA[<p>We&#39;ve covered the essential upgrades to Pinto and Stetson, so now we&#39;ll cover a quick bonus topic which is one of the concepts thrown into Pinto to help with all of this work.</p>
+<h1 id="previous-purerl-posts">Previous Purerl posts</h1>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
+<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
+<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
+<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
+<li><a href="/entries/purescript-interop-with-native-erlang---interacting-with-redis.html">Purescript interop with native Erlang, interaction with Redis</a></li>
+</ul>
+<h1 id="updates">Updates</h1>
+<ul>
+<li><a href="/entries/updates-to-pinto+stetson---purerl-in-progress.html">Nix overlays for Purerl/etc</a></li>
+<li><a href="/entries/purerl-updates---typed-routes-in-stetson.html">Typed routing for Stetson</a></li>
+<li><a href="/entries/purerl-updates---arbitrary-messages-and-handle_info-in-gen-servers.html">Arbitrary messages and handle_info in gen_servers</a></li>
+<li><a href="/entries/purerl-updates---arbitrary-messages-and-stetson-handlers.html">Arbitrary messages and Stetson handlers</a></li>
+<li><a href="/entries/purerl-updates---monitors-in-stetson-and-pinto.html">Monitors for arbitrary pids from Gen servers + Stetson handlers</a></li>
+<li>MessageRouting in Pinto to easily bind to legacy code that sends us messages</li>
+</ul>
+<h1 id="the-problem">The problem</h1>
+<p>A <em>lot</em> of legacy Erlang code (ours included) will have something along the lines of </p>
+<pre><code class="language-erlang">
+cool_api:do_something().
+</code></pre>
+<p>That behind the scenes will almost immediately do a call to <em>self()</em> to get the caller pid and then probably spin up some more processes and start sending messages back to us.</p>
+<pre><code class="language-erlang">
+  do_something() -&gt;
+    Self = self(),
+    spawn_link(<span class="hljs-keyword">fun</span> Fun() -&gt;
+      <span class="hljs-keyword">receive</span>
+        _ -&gt;  ok
+      <span class="hljs-keyword">after</span> <span class="hljs-number">1000</span> -&gt;
+         Self ! hi
+         Fun()
+      <span class="hljs-keyword">end</span>
+    <span class="hljs-keyword">end</span>).
+</code></pre>
+<p>In this case, we&#39;ve got a native function called do_something() that captures the current pid, spins up a process which will stop if it receives anything and otherwise every second send a message back to the parent (hi).</p>
+<p>If we were to write FFI for this, it&#39;d look a lot like this:</p>
+<pre><code class="language-haskell">
+<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> doSomething :: <span class="hljs-type">Effect</span> <span class="hljs-type">Pid</span>
+<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> stop :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+
+</code></pre>
+<pre><code class="language-erlang">
+<span class="hljs-function"><span class="hljs-title">doSomething</span><span class="hljs-params">()</span> -&gt;</span>
+  <span class="hljs-keyword">fun</span>() -&gt;
+    cool_api:do_something()
+  <span class="hljs-keyword">end</span>.
+
+<span class="hljs-function"><span class="hljs-title">stop</span><span class="hljs-params">(Pid)</span> -&gt;</span>
+  <span class="hljs-keyword">fun</span>() -&gt;
+    Pid ! this_will_stop_you_cos_you_received_something
+  <span class="hljs-keyword">end</span>.
+</code></pre>
+<p>We would immediately start receiving atoms of &#39;hi&#39; to the calling process, which unless we happen to be very specific and careful, won&#39;t know how to receive them, for example in a gen server.</p>
+<pre><code class="language-haskell">
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">State</span> = {}</span>
+
+<span class="hljs-title">serverName</span> :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span> <span class="hljs-type">Atom</span>
+<span class="hljs-title">serverName</span> = <span class="hljs-type">Local</span> $ atom <span class="hljs-string">"listener"</span>
+
+<span class="hljs-title">startLink</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
+<span class="hljs-title">startLink</span> =
+  <span class="hljs-type">Gen</span>.buildStartLink serverName init $ <span class="hljs-type">Gen</span>.defaultStartLink { handleInfo = handleInfo }
+
+<span class="hljs-title">init</span> :: <span class="hljs-type">Gen</span>.<span class="hljs-type">Init</span> <span class="hljs-type">State</span> <span class="hljs-type">Atom</span>
+<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
+  <span class="hljs-type">Gen</span>.lift <span class="hljs-type">CoolApi</span>.doSomething
+  pure $ {}
+
+<span class="hljs-title">handleInfo</span> :: <span class="hljs-type">Atom</span> -&gt; <span class="hljs-type">State</span> -&gt; <span class="hljs-type">Gen</span>.<span class="hljs-type">HandleInfo</span> <span class="hljs-type">State</span> <span class="hljs-type">Atom</span>
+<span class="hljs-title">handleInfo</span> msg state = <span class="hljs-keyword">do</span>
+  <span class="hljs-comment">-- got an atom, woo</span>
+  <span class="hljs-comment">-- not much to do with it</span>
+  pure <span class="hljs-type">CastNoReply</span> state
+</code></pre>
+<p>This will work, it&#39;s a gen server that knows how to receive atoms - but it&#39;s unlikely we&#39;ll want to write a gen server that only receives atoms and nothing else - as soon as we add a timer, monitor or subscribe to anything else we&#39;ll want to change our message type into an ADT so that we can dispatch over the various message types.</p>
+<pre><code class="language-haskell">
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">CoolApiMsg</span> <span class="hljs-type">Atom</span></span>
+         | <span class="hljs-type">Tick</span>
+</code></pre>
+<p>So we&#39;re going to need some way to map this. </p>
+<p><em>The old way</em>: We&#39;d register a mapping function with the gen server that would recognise the cool_api messages and convert them into the right type for us, this was janky AF and has been deleted in the latest Pinto</p>
+<p><em>the new way</em>: Proxy process that receives the message, translates it and then sends it on to the main process</p>
+<p>That proxy process is a burden to create because if we start spawning processes in Erlang, we need to make sure we monitor the parent so we terminate when it does, yada yada yada what a mess. Thankfully this is what <em>MessageRouter</em> in Pinto is for, it neatly wraps up this common pattern safely so we don&#39;t have to.</p>
+<h1 id="pintomessagerouter">Pinto.MessageRouter</h1>
+<p>The message router exports three functions of interest, one of which invokes a router on top of a process that will always start, and one on top of a process that might fail, the third takes a RouterRef (returned on success) and terminates the router.</p>
+<pre><code class="language-haskell">
+    startRouter :: <span class="hljs-keyword">forall</span> handle msg. <span class="hljs-type">Effect</span> handle -&gt; (handle -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>) -&gt; (msg -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>) -&gt;  <span class="hljs-type">Effect</span> (<span class="hljs-type">RouterRef</span> handle)
+
+    maybeStartRouter = maybeStartRouterImpl <span class="hljs-type">RouterRef</span>
+
+    stopRouter  :: <span class="hljs-keyword">forall</span> handle. <span class="hljs-type">RouterRef</span> handle -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+</code></pre>
+<p>We&#39;ll focus on the simple case. </p>
+<ul>
+<li>Given an <em>Effect handle</em> - ie something that returns some reference to whatever is created (in our case a pid)</li>
+<li>Given a function that given that handle, terminates the process</li>
+<li>Given a callback that takes &#39;whatever is received&#39; and &#39;does something to it&#39; (<em>Effect Unit</em>)</li>
+<li>We&#39;ll get an <em>Effect</em> of <em>(RouterRef handle)</em> back (which we can hold onto in order to terminate the whole show by calling stopRouter)</li>
+</ul>
+<p>Wrapping our legacy API is &quot;simple&quot; now that we&#39;ve already written the FFI for it</p>
+<pre><code class="language-haskell">
+<span class="hljs-keyword">import</span> Pinto.MessageRouting <span class="hljs-keyword">as</span> MR
+
+<span class="hljs-title">wrappedDoSomething</span> :: <span class="hljs-keyword">forall</span>. (<span class="hljs-type">Atom</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>) -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">MR</span>.<span class="hljs-type">RouterRef</span> <span class="hljs-type">Pid</span>)
+<span class="hljs-title">wrappedDoSomething</span> recv = <span class="hljs-type">MR</span>.startRouter <span class="hljs-type">CoolApi</span>.doSomething <span class="hljs-type">CoolApi</span>.stop recv
+
+</code></pre>
+<p>With this, we can re-write our gen server with the message lifted into the appropriate type</p>
+<pre><code class="language-haskell">
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">State</span> = {}</span>
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">Tick</span> | <span class="hljs-type">DoSomething</span> <span class="hljs-type">Atom</span></span>
+
+<span class="hljs-title">serverName</span> :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
+<span class="hljs-title">serverName</span> = <span class="hljs-type">Local</span> $ atom <span class="hljs-string">"listener"</span>
+
+<span class="hljs-title">startLink</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
+<span class="hljs-title">startLink</span> =
+  <span class="hljs-type">Gen</span>.buildStartLink serverName init $ <span class="hljs-type">Gen</span>.defaultStartLink { handleInfo = handleInfo }
+
+<span class="hljs-title">init</span> :: <span class="hljs-type">Gen</span>.<span class="hljs-type">Init</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
+<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
+  self &lt;- <span class="hljs-type">Gen</span>.self
+  <span class="hljs-type">Gen</span>.lift <span class="hljs-type">Wrapper</span>.wrappedDoSomething $ send self &lt;&lt;&lt; <span class="hljs-type">DoSomething</span>
+  pure $ {}
+
+<span class="hljs-title">handleInfo</span> :: <span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">State</span> -&gt; <span class="hljs-type">Gen</span>.<span class="hljs-type">HandleInfo</span> <span class="hljs-type">State</span> <span class="hljs-type">Atom</span>
+<span class="hljs-title">handleInfo</span> msg state = <span class="hljs-keyword">do</span>
+  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span>
+    <span class="hljs-type">Tick</span> -&gt; ...
+    <span class="hljs-type">DoSomething</span> msg -&gt; ...
+</code></pre>
+<p>It means an extra process per router, so isn&#39;t something we want to be using if we&#39;re going to be spinning up 1000s of short lived versions of it, but for that sort of thing we&#39;re in specialist territory where we&#39;d be using a look up table or dropping to plain ol&#39; Erlang. (See also <em>Pinto.Timer</em> which just uses the underlying mechanisms to send messages of the right type directly without an intermediary process.</p>
+<p>The point is that wrapping up legacy code that sends us arbitrary messages has been turned into a relatively small amount of work as a result of these changes, so long as we supply a start function and a stop function and a callback that knows what to do with the messages we can transform and then send accordingly. This has been used across our codebases with great success (as well as in Pinto itself) and has enabled our gen servers and web handlers to remain clean and receive the right typed messages.</p>
+]]></description><link>http://codeofrob.com/entries/purerl-updates---message-routing-from-legacy-code.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purerl-updates---message-routing-from-legacy-code.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 14 Jul 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purerl Updates - Monitors in Stetson and Pinto]]></title><description><![CDATA[<p>We&#39;ve managed to get nicely typed arbitrary messages into our web handlers and gen servers, now it&#39;s time to look at Monitors.</p>
+<h1 id="previous-purerl-posts">Previous Purerl posts</h1>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
+<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
+<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
+<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
+<li><a href="/entries/purescript-interop-with-native-erlang---interacting-with-redis.html">Purescript interop with native Erlang, interaction with Redis</a></li>
+</ul>
+<h1 id="updates">Updates</h1>
+<ul>
+<li><a href="/entries/updates-to-pinto+stetson---purerl-in-progress.html">Nix overlays for Purerl/etc</a></li>
+<li><a href="/entries/purerl-updates---typed-routes-in-stetson.html">Typed routing for Stetson</a></li>
+<li><a href="/entries/purerl-updates---arbitrary-messages-and-handle_info-in-gen-servers.html">Arbitrary messages and handle_info in gen_servers</a></li>
+<li><a href="/entries/purerl-updates---arbitrary-messages-and-stetson-handlers.html">Arbitrary messages and Stetson handlers</a></li>
+<li>Monitors for arbitrary pids from Gen servers + Stetson handlers</li>
+<li>MessageRouting in Pinto to easily bind to legacy code that sends us messages</li>
+</ul>
+<h1 id="monitors">Monitors</h1>
+<p>A reasonably common pattern for monitors in some of our code is</p>
+<ul>
+<li>Internal server manages a collection of pids that are recipients of data streams</li>
+<li>web handlers open and register with this server to receive those data streams</li>
+</ul>
+<p>In this case <em>sometimes</em></p>
+<ul>
+<li>It&#39;s useful for the internal server to monitor the subscribers and remove the pids when they become invalid</li>
+<li>It&#39;s useful for the web handler to monitor the server, so it can close the connection if that goes away</li>
+</ul>
+<p>This isn&#39;t always the case, sometimes a static message bus is a better option, sometimes pids can be checked ad-hoc, but for the purpose of this example we&#39;ll assume that this is exactly what we want as it&#39;ll be a nice end-to-end example of message passing and monitoring in Purerl.</p>
+<h1 id="the-internal-server">The internal server</h1>
+<p>So we&#39;ll define a basic gen server that keeps a state that&#39;s a map of pids to functions that receive data <em>(Binary -&gt; Effect Unit)</em>, and set up a timer to send us a <em>Tick</em> message after 500ms - our message type will therefore just be either that <em>Tick</em> message, or a message telling us that a client has disconnected. We&#39;ll configure the gen server to use a <em>handleInfo</em> function when these come in (explored further below).</p>
+<pre><code class="language-haskell">
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">State</span> = {
+  <span class="hljs-title">handlers</span> :: <span class="hljs-type">Map</span>.<span class="hljs-type">Map</span> <span class="hljs-type">Pid</span> <span class="hljs-type">MessageHandler</span>
+}</span>
+
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">MessageHandler</span> = (<span class="hljs-type">Binary</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>)</span>
+
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">ClientDisconnected</span> <span class="hljs-type">Pid</span></span>
+         | <span class="hljs-type">Tick</span>
+
+<span class="hljs-title">startLink</span> :: <span class="hljs-type">BookWatchingStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
+<span class="hljs-title">startLink</span> args =
+  <span class="hljs-type">Gen</span>.buildStartLink serverName (init args) $ <span class="hljs-type">Gen</span>.defaultStartLink { handleInfo = handleInfo }
+
+<span class="hljs-title">init</span> :: <span class="hljs-type">BookWatchingStartArgs</span> -&gt; <span class="hljs-type">Gen</span>.<span class="hljs-type">Init</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
+<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
+  self &lt;- <span class="hljs-type">Gen</span>.self
+  void $ <span class="hljs-type">Gen</span>.lift $ <span class="hljs-type">Timer</span>.sendAfter <span class="hljs-number">500</span> <span class="hljs-type">Tick</span> self
+  pure $ {
+    handlers: <span class="hljs-type">Map</span>.empty
+  }
+</code></pre>
+<p>We can export a function <em>registerClient</em> for clients to invoke in order to start receiving data, while we&#39;re still in the process that called us we can get its pid by calling out to &#39;<em>Pinto.self</em>&#39;, and then in the context of the gen server, we&#39;ll get our own pid so we can add the monitor in the next function <em>addHandler</em>.</p>
+<p>As we have the pid of our calling process, we can invoke <em>Monitor.pid</em>, and pass in a callback that disregards the message given to us when the monitor pops and just sends a message with the handler pid back to our <em>handleInfo</em>. Once we&#39;re monitoring the handler, we can add it to our map using the pid as a key so we can easily remove it later when we get the message telling us it went down.</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">registerClient</span> :: <span class="hljs-type">MessageHandler</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">registerClient</span> handler = <span class="hljs-keyword">do</span>
+  handlerPid &lt;- <span class="hljs-type">Pinto</span>.self
+  <span class="hljs-type">Gen</span>.doCall serverName \state -&gt; <span class="hljs-keyword">do</span>
+     self &lt;- <span class="hljs-type">Gen</span>.self
+     newState &lt;- <span class="hljs-type">Gen</span>.lift $ addHandler handler self handlerPid state
+     pure $ <span class="hljs-type">CallReply</span> unit newState
+
+<span class="hljs-title">addHandler</span> :: <span class="hljs-type">MessageHandler</span> -&gt; <span class="hljs-type">Process</span> <span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">Pid</span> -&gt; <span class="hljs-type">State</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">State</span>
+<span class="hljs-title">addHandler</span> handler self handlerPid state@{ handlers } = <span class="hljs-keyword">do</span>
+  void $ <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">"Adding handler ~p as it has connected"</span> handlerPid
+  void $ <span class="hljs-type">Monitor</span>.pid handlerPid (\_ -&gt; self ! <span class="hljs-type">ClientDisconnected</span> handlerPid)
+  pure $ state { handlers = <span class="hljs-type">Map</span>.insert handlerPid handler handlers }
+</code></pre>
+<p>All that is left therefore, is to handle the messages we might receive into the handleInfo we configured earlier as part of startLink. </p>
+<ul>
+<li>If we get a ClientDisconnected, we simply remove the handler from our map so we no longer send any data to it</li>
+<li>If we get a Tick, we invoke sendData on the map of handlers, before scheduling another tick for 500ms time</li>
+</ul>
+<pre><code class="language-haskell">
+<span class="hljs-title">handleInfo</span> :: <span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">State</span> -&gt; <span class="hljs-type">Gen</span>.<span class="hljs-type">HandleInfo</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
+<span class="hljs-title">handleInfo</span> msg state@{ handlers  } = <span class="hljs-keyword">do</span>
+  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span>
+     <span class="hljs-type">ClientDisconnected</span> handlerPid -&gt; <span class="hljs-keyword">do</span>
+        void $ <span class="hljs-type">Gen</span>.lift $ <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">"Removing ~p as it disconnected"</span> handlerPid
+        pure $ <span class="hljs-type">CastNoReply</span> $ state { handlers = <span class="hljs-type">Map</span>.delete handlerPid handlers }
+     <span class="hljs-type">Tick</span> -&gt; <span class="hljs-keyword">do</span>
+        <span class="hljs-type">Gen</span>.lift $ sendData handlers
+        self &lt;- <span class="hljs-type">Gen</span>.self
+        void $ <span class="hljs-type">Gen</span>.lift $ <span class="hljs-type">Timer</span>.sendAfter <span class="hljs-number">500</span> <span class="hljs-type">Tick</span> self
+        pure $ <span class="hljs-type">CastNoReply</span> $ state 
+</code></pre>
+<p>Sending data is easy, seeing as the handlers are just a list of effectful callbacks of <em>(Binary -&gt; Effect Unit)</em></p>
+<pre><code class="language-haskell">
+<span class="hljs-title">sendData</span> :: <span class="hljs-type">Map</span>.<span class="hljs-type">Map</span> <span class="hljs-type">Pid</span> <span class="hljs-type">MessageHandler</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">sendData</span> handlers = <span class="hljs-keyword">do</span>
+  freshData &lt;- getDataFromSomeNativeCode
+  void $ traverse (\handler -&gt; <span class="hljs-keyword">do</span> handler freshData) $ <span class="hljs-type">Map</span>.values handlers 
+  pure unit
+</code></pre>
+<p>So that&#39;s an entire gen server, which </p>
+<ul>
+<li>Allows the registration of callbacks that&#39;ll accept data</li>
+<li>Monitors the pids of the calling process, and removes the callbacks when the monitor pops</li>
+<li>Ticks every 500ms and traverses over the callbacks to send the data</li>
+</ul>
+<p>Note: Because of the callback/pids there is nothing stopping us using this code from any other Purerl (or indeed Erlang). None of this is Pinto specific and this is very much by design.</p>
+<h1 id="subscribing-and-monitoring-from-stetson">Subscribing (and monitoring) from Stetson</h1>
+<p>Speaking of other Purerl, a lot of Purerl gets written using Stetson to support Rest/Websockets/Streams/etc; so that&#39;s where we&#39;ll subscribe to this data. We&#39;ll also then add a monitor to that streaming process that closes the connection when it goes away. (We could also just block while we wait for it to restart for example).</p>
+<p>So, we&#39;ll define a data type for our messages, we&#39;re either receiving data that needs to be streamed, our data source died, or our data source was already down when we tried to connect to it.</p>
+<pre><code class="language-haskell">
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">DataStreamMessage</span> = <span class="hljs-type">Data</span> <span class="hljs-type">Binary</span></span>
+                       | <span class="hljs-type">DataSourceDied</span>
+                       | <span class="hljs-type">DataSourceAlreadyDown</span>
+
+</code></pre>
+<p>We&#39;ll just kick off our handler with <em>Loop.handler</em>, start a streamed reply with a status code 200 and make sure that Stetson knows we&#39;re doing a Loop, we&#39;re typed as a <em>StetsonHandler DataStreamMessage Unit</em> because we receive <em>DataSteamMessage</em> and don&#39;t store any state of our own.</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">dataStream</span> :: <span class="hljs-type">StetsonHandler</span> <span class="hljs-type">DataStreamMessage</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">dataStream</span> =
+  <span class="hljs-type">Loop</span>.handler (\req -&gt; <span class="hljs-keyword">do</span>
+               req2 &lt;- streamReply (<span class="hljs-type">StatusCode</span> <span class="hljs-number">200</span>) <span class="hljs-type">Map</span>.empty req
+               <span class="hljs-type">Loop</span>.initResult req2 unit)
+</code></pre>
+<p>In our <em>Loop.init</em>, we&#39;ll get our own typed process <em>(Process DataStreamMessage)</em>, invoking &#39;<em>Process.send</em>&#39; on this gives us a function of type (Msg -&gt; Effect Unit) so we&#39;ll compose that with a constructor for our own data type (Data) giving us the correct function type of <em>(Binary -&gt; Effect Unit)</em></p>
+<p>Using <em>Gen.monitor</em> with the server name of <em>MonitorExample</em>, we can detect when that process dies - there are two effectful callbacks for this, one for when the process dies and one for if the process is already down (there is no pid to monitor). </p>
+<pre><code class="language-haskell">
+    # <span class="hljs-type">Loop</span>.init (\req state -&gt; <span class="hljs-keyword">do</span> 
+                      self &lt;- <span class="hljs-type">Loop</span>.self
+                      void $ <span class="hljs-type">Loop</span>.lift $ <span class="hljs-type">MonitorExample</span>.registerClient $ send self &lt;&lt;&lt; <span class="hljs-type">Data</span>
+                      void $ <span class="hljs-type">Loop</span>.lift $ <span class="hljs-type">Gen</span>.monitor <span class="hljs-type">MonitorExample</span>.serverName (\_ -&gt; send self <span class="hljs-type">DataSourceDied</span>) (send self <span class="hljs-type">DataSourceAlreadyDown</span>)
+                      pure unit)
+</code></pre>
+<p>We receive those messages in the <em>Loop.info</em> callback</p>
+<ul>
+<li>if we get data then we can stream that directly to the client and carry on looping</li>
+<li>if the data source died then we unceremoniously terminate the stream</li>
+<li>if the data source is already down then we unceremoniously terminate the stream</li>
+</ul>
+<pre><code class="language-haskell">    # <span class="hljs-type">Loop</span>.info (\msg req state -&gt;  <span class="hljs-keyword">do</span>
+                <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span>
+                     <span class="hljs-type">Data</span> binary -&gt; <span class="hljs-keyword">do</span>
+                        _ &lt;- <span class="hljs-type">Loop</span>.lift $ streamBody binary req
+                        pure $ <span class="hljs-type">LoopOk</span> req state
+
+                     <span class="hljs-type">DataSourceDied</span> -&gt;  <span class="hljs-keyword">do</span>
+                       pure $ <span class="hljs-type">LoopStop</span> req state
+
+                     <span class="hljs-type">DataSourceAlreadyDown</span> -&gt;  <span class="hljs-keyword">do</span>
+                       pure $ <span class="hljs-type">LoopStop</span> req state
+</code></pre>
+<p>And that&#39;s that, we have a gen server running which will send data to any subscribers and clean up when those subscribers terminate, and we have a loop handler that&#39;ll subcribe to that data source and clean up if that data source dies. There is a lot going on here but it&#39;s worth unpicking as there are a lot of useful concepts here neatly packaged into a single example.</p>
+<p>By sticking to plain ol&#39; pids and callbacks, all of this code remains portable and not tied to either of these libraries, which is handy because at some point somebody smarter than I will write something more Purerl idiomatic for web serving and OTP wrapping and we&#39;ll probably want to switch to those things..</p>
+]]></description><link>http://codeofrob.com/entries/purerl-updates---monitors-in-stetson-and-pinto.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purerl-updates---monitors-in-stetson-and-pinto.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 09 Jul 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purerl Updates - Arbitrary messages and Stetson handlers]]></title><description><![CDATA[<p>An extra post was required on this topic..</p>
+<h1 id="previous-purerl-posts">Previous Purerl posts</h1>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
+<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
+<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
+<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
+<li><a href="/entries/purescript-interop-with-native-erlang---interacting-with-redis.html">Purescript interop with native Erlang, interaction with Redis</a></li>
+</ul>
+<h1 id="updates">Updates</h1>
+<ul>
+<li><a href="/entries/updates-to-pinto+stetson---purerl-in-progress.html">Nix overlays for Purerl/etc</a></li>
+<li><a href="/entries/purerl-updates---typed-routes-in-stetson.html">Typed routing for Stetson</a></li>
+<li><a href="/entries/purerl-updates---arbitrary-messages-and-handle_info-in-gen-servers.html">Arbitrary messages and handle_info in gen_servers</a></li>
+<li>Arbitrary messages and Stetson handlers</li>
+<li>Monitors for arbitrary pids from Gen servers + Stetson handlers</li>
+<li>MessageRouting in Pinto to easily bind to legacy code that sends us messages</li>
+</ul>
+<h1 id="the-story-so-far">The story so far</h1>
+<p>Stetson was thrown together at the same time as Pinto to enable me to start building real products in Purerl and I didn&#39;t have a lot of use for websockets at that time. When the need occurred in a client project, I added a new handler (WebSocketHandler) to Stetson to deal with this with an &#39;emitter&#39; function as part of the &#39;init&#39; callback and got on with my life.</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">busEvents</span> :: <span class="hljs-type">ReceivingStetsonHandler</span> <span class="hljs-type">ExternalMessage</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">busEvents</span> =
+
+  <span class="hljs-type">WebSocket</span>.handler (\req -&gt; <span class="hljs-type">WebSocket</span>.initResult req unit)
+  # <span class="hljs-type">WebSocket</span>.init (\emitter s -&gt;  <span class="hljs-keyword">do</span>
+                             <span class="hljs-type">Bus</span>.callback msg <span class="hljs-type">ExternalMessages</span>.bus $ emitter &lt;&lt;&lt; <span class="hljs-type">ExternalMsg</span>
+                             pure $ <span class="hljs-type">NoReply</span> s
+                             )
+  # <span class="hljs-type">WebSocket</span>.handle (\msg state -&gt; pure $ <span class="hljs-type">NoReply</span> state)
+  # <span class="hljs-type">WebSocket</span>.info (\msg state -&gt; pure $ <span class="hljs-type">Reply</span> ((<span class="hljs-type">TextFrame</span> $ writeJSON msg) : nil) state)
+  # <span class="hljs-type">WebSocket</span>.yeeha
+</code></pre>
+<p>While I was &quot;getting on with my life&quot;, people were writing code on top of this, and a pull request came into Stetson to add a mapper for arbitrary messages being received into the process that I accepted without a second thought. </p>
+<pre><code class="language-haskell">
+
+<span class="hljs-title">nativeMapper</span> :: <span class="hljs-keyword">forall</span> msg. msg -&gt; <span class="hljs-type">ExternalMessage</span>
+
+<span class="hljs-title">_</span> &lt;- (<span class="hljs-type">Stetson</span>.registerMapper $ nativeMapper <span class="hljs-type">SomeConstructor</span> <span class="hljs-type">SomeOtherConstructor</span>)
+<span class="hljs-title">_</span> &lt;- subscribeToNativeEvents
+</code></pre>
+<p>At some point a month ago, I was asked about the Loop handler and streaming in Stetson by a colleague, I gazed apon the abomination that was external mapping and realised that it was time to do a proper job of unifying these handlers (a single type for all of them, meaning the death of &#39;yeeha&#39; sadly), deleting the ability to register external mappers and providing the ability to switch from a Rest handler into a Loop handler as part of content negotiation.  The actual means of doing this isn&#39;t worth covering in this post, but the end result is that we now had three namespaces for building handlers over the top of a single record and a standard pattern of being supplied an &#39;emitter&#39; function in the init callback for Loop and WebSocket for sending typed messages into the handler.</p>
+<h1 id="straight-rest">Straight Rest</h1>
+<pre><code class="language-haskell">
+<span class="hljs-title">rest</span> :: <span class="hljs-type">StetsonHandler</span> {}
+<span class="hljs-type">Rest</span>.handler (\req -&gt; <span class="hljs-type">Rest</span>.initResult req {})
+  # <span class="hljs-type">Rest</span>.serviceAvailable (\req s -&gt; <span class="hljs-type">Rest</span>.result true req s)
+    # <span class="hljs-type">Rest</span>.allowedMethods (\req url -&gt; <span class="hljs-type">Rest</span>.result (<span class="hljs-type">Stetson</span>.<span class="hljs-type">HEAD</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">GET</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">OPTIONS</span> : nil) req s)
+    # <span class="hljs-type">Rest</span>.contentTypesProvided (\s url -&gt; <span class="hljs-type">Rest</span>.result (jsonWriter : nil) req s)
+</code></pre>
+<h1 id="rest-into-loop">Rest into Loop</h1>
+<pre><code class="language-haskell">
+<span class="hljs-title">eventsFirehoseRest</span> :: <span class="hljs-type">StetsonHandler</span> <span class="hljs-type">EventsWsMsg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">eventsFirehoseRest</span> =
+  <span class="hljs-type">Rest</span>.handler (\req -&gt; <span class="hljs-type">Rest</span>.initResult req unit)
+    # <span class="hljs-type">Rest</span>.allowedMethods (\req state -&gt; <span class="hljs-type">Rest</span>.result (<span class="hljs-type">Stetson</span>.<span class="hljs-type">HEAD</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">GET</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">OPTIONS</span> : nil) req state)
+    # <span class="hljs-type">Rest</span>.contentTypesProvided (\req state -&gt; <span class="hljs-type">Rest</span>.result (streamEvents : nil) req state)
+    # <span class="hljs-type">Loop</span>.init (\emitter req state -&gt; <span class="hljs-keyword">do</span>
+                              _ &lt;- <span class="hljs-type">SimpleBus</span>.subscribe <span class="hljs-type">BookLibrary</span>.bus $ <span class="hljs-type">BookMsg</span> &gt;&gt;&gt; emitter
+                              pure state)
+    # <span class="hljs-type">Loop</span>.info (\(<span class="hljs-type">BookMsg</span> msg) req state -&gt;  <span class="hljs-keyword">do</span>
+          _ &lt;- streamBody (stringToBinary $ writeJSON msg) req
+          pure $ <span class="hljs-type">LoopOk</span> req state)
+    <span class="hljs-keyword">where</span>
+          streamEvents = tuple2 <span class="hljs-string">"application/json"</span> (\req state -&gt; <span class="hljs-keyword">do</span>
+                         req2 &lt;- streamReply (<span class="hljs-type">StatusCode</span> <span class="hljs-number">200</span>) <span class="hljs-type">Map</span>.empty req
+                         <span class="hljs-type">Rest</span>.switchHandler <span class="hljs-type">LoopHandler</span> req2 state)
+</code></pre>
+<h1 id="straight-loop">Straight Loop</h1>
+<pre><code class="language-haskell">
+<span class="hljs-title">eventsFirehoseLoop</span> :: <span class="hljs-type">StetsonHandler</span> <span class="hljs-type">EventsWsMsg</span> {}
+<span class="hljs-title">eventsFirehoseLoop</span> =
+   <span class="hljs-type">Loop</span>.handler (\req -&gt; <span class="hljs-type">Loop</span>.initResult req {})
+    # <span class="hljs-type">Loop</span>.init (\emitter req state -&gt; <span class="hljs-keyword">do</span>
+                              _ &lt;- <span class="hljs-type">SimpleBus</span>.subscribe <span class="hljs-type">BookLibrary</span>.bus $ <span class="hljs-type">BookMsg</span> &gt;&gt;&gt; emitter
+                              pure s{})
+    # <span class="hljs-type">Loop</span>.info (\(<span class="hljs-type">BookMsg</span> msg) req s -&gt; <span class="hljs-keyword">do</span>
+          _ &lt;- streamBody (stringToBinary $ writeJSON msg) req
+          pure $ <span class="hljs-type">LoopOk</span> req s)
+</code></pre>
+<h1 id="websocket">WebSocket</h1>
+<pre><code class="language-haskell">
+<span class="hljs-title">eventsWs</span> :: <span class="hljs-type">StetsonHandler</span> <span class="hljs-type">EventsWsMsg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">eventsWs</span> =
+  <span class="hljs-type">WebSocket</span>.handler (\req -&gt; <span class="hljs-type">WebSocket</span>.initResult req unit)
+  # <span class="hljs-type">WebSocket</span>.init (\emitter req s -&gt;  <span class="hljs-keyword">do</span>
+                              _ &lt;- <span class="hljs-type">SimpleBus</span>.subscribe <span class="hljs-type">BookLibrary</span>.bus $ <span class="hljs-type">BookMsg</span> &gt;&gt;&gt; emitter
+                              pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">NoReply</span> s
+                             )
+  # <span class="hljs-type">WebSocket</span>.handle (\frame state -&gt; pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">NoReply</span> state)
+  # <span class="hljs-type">WebSocket</span>.info (\(<span class="hljs-type">BookMsg</span> msg) state -&gt; pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">Reply</span> ((<span class="hljs-type">TextFrame</span> $ writeJSON msg) : nil) state)
+</code></pre>
+<p>Similarly to the <a href="/entries/purerl-updates---arbitrary-messages-and-handle_info-in-gen-servers.html">last post</a>, doing this as an emitter function made sense on first pass, but this was swiftly replaced with a plain ol&#39; pid because it played nicer with monitors, existing APIs, etc.</p>
+<h1 id="passing-in-a-pid-instead">Passing in a Pid instead</h1>
+<pre><code class="language-haskell">
+<span class="hljs-title">eventsWs</span> :: <span class="hljs-type">StetsonHandler</span> <span class="hljs-type">EventsWsMsg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">eventsWs</span> =
+  <span class="hljs-type">WebSocket</span>.handler (\req -&gt; <span class="hljs-type">WebSocket</span>.initResult req unit)
+  # <span class="hljs-type">WebSocket</span>.init (\self s -&gt;  <span class="hljs-keyword">do</span>
+                              _ &lt;- <span class="hljs-type">SimpleBus</span>.subscribe <span class="hljs-type">BookLibrary</span>.bus $ <span class="hljs-type">BookMsg</span> &gt;&gt;&gt; send self
+                              pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">NoReply</span> s
+                             )
+  # <span class="hljs-type">WebSocket</span>.handle (\frame state -&gt; pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">NoReply</span> state)
+  # <span class="hljs-type">WebSocket</span>.info (\(<span class="hljs-type">BookMsg</span> msg) state -&gt; pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">Reply</span> ((<span class="hljs-type">TextFrame</span> $ writeJSON msg) : nil) state)
+</code></pre>
+<p>This all said, requiring this pid to be passed in as an argument is quite awkward, having to stash it in state if we want to access it from outside of our init function etc, once again StateT was employed so that the API for Stetson and Pinto would be aligned.</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">eventsWs</span> :: <span class="hljs-type">StetsonHandler</span> <span class="hljs-type">EventsWsMsg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">eventsWs</span> =
+  <span class="hljs-type">WebSocket</span>.handler (\req -&gt; <span class="hljs-type">WebSocket</span>.initResult req unit)
+  # <span class="hljs-type">WebSocket</span>.init (\req s -&gt;  <span class="hljs-keyword">do</span>
+                              self &lt;- <span class="hljs-type">WebSocket</span>.self
+                              _ &lt;- <span class="hljs-type">WebSocket</span>.lift $ <span class="hljs-type">SimpleBus</span>.subscribe <span class="hljs-type">BookLibrary</span>.bus $ <span class="hljs-type">BookMsg</span> &gt;&gt;&gt; send emitter
+                              pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">NoReply</span> s
+                             )
+  # <span class="hljs-type">WebSocket</span>.handle (\frame state -&gt; pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">NoReply</span> state)
+  # <span class="hljs-type">WebSocket</span>.info (\(<span class="hljs-type">BookMsg</span> msg) state -&gt; pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">Reply</span> ((<span class="hljs-type">TextFrame</span> $ writeJSON msg) : nil) state)
+</code></pre>
+<p>This then allows Stetson to stash internal state in the underlying implementation and surface an API over this; indeed there is no way of accidentally calling the wrong &#39;self&#39; and sending messages to the wrong process much like in Pinto. Every callback takes place within a typed  context that enforces what &#39;state&#39; and &#39;msg&#39; are - pretty neat.</p>
+]]></description><link>http://codeofrob.com/entries/purerl-updates---arbitrary-messages-and-stetson-handlers.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purerl-updates---arbitrary-messages-and-stetson-handlers.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 07 Jul 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purerl Updates - Arbitrary messages and handle_info in gen servers]]></title><description><![CDATA[<p>A continuation of progress updates on Pinto/Stetson then..  </p>
+<h1 id="previous-purerl-posts">Previous Purerl posts</h1>
+<ul>
+<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
+<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
+<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
+<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
+<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
+<li><a href="/entries/purescript-interop-with-native-erlang---interacting-with-redis.html">Purescript interop with native Erlang, interaction with Redis</a></li>
+</ul>
+<h1 id="updates">Updates</h1>
+<ul>
+<li><a href="/entries/updates-to-pinto+stetson---purerl-in-progress.html">Nix overlays for Purerl/etc</a></li>
+<li><a href="/entries/purerl-updates---typed-routes-in-stetson.html">Typed routing for Stetson</a></li>
+<li>Arbitrary messages and handle_info in gen_servers</li>
+<li>Monitors for arbitrary pids from Gen servers + Stetson handlers</li>
+<li>WebSocket handlers in Stetson</li>
+<li>Streaming handlers in Stetson</li>
+<li>MessageRouting in Pinto to easily bind to legacy code that sends us messages</li>
+</ul>
+<h1 id="the-story-so-far">The story so far</h1>
+<p>The code for dealing with handle_info was very hand-wavey and involved the creation and registration of mappers and receivers within the gen server itself. This also ended up abusing gen_server:cast in order to function correctly and it wasn&#39;t really obvious where messages were coming from. It was a ticking time bomb as far as supporting the increasing amounts of code we are writing in Purescript goes.</p>
+<p>There was <em>some</em> good in this approach, in that the type of the Gen Server specified both the State of the Gen Server and the type of the Msg it would receive, and the handleInfo function could  be supplied  in Gen.init, forcibly typed with this server name.</p>
+<pre><code class="language-haskell">
+  <span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">Tick</span> | <span class="hljs-type">SomethingHappened</span> <span class="hljs-type">String</span></span>
+
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">State</span> = { 
+      <span class="hljs-comment">-- some stuff </span>
+  }</span>
+
+  serverName :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
+  serverName = <span class="hljs-type">Local</span> $ atom <span class="hljs-string">"my_server"</span>
+
+  startLink :: <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
+  startLink = <span class="hljs-type">Gen</span>.startLink init handleInfo
+
+  init :: <span class="hljs-type">Effect</span> <span class="hljs-type">State</span> 
+  init = <span class="hljs-keyword">do</span>
+    <span class="hljs-type">SomethingElse</span>.registerForEvents serverName <span class="hljs-type">SomethingHappened</span>
+    pure {}
+
+
+  handleInfo :: <span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">CastResult</span> <span class="hljs-type">State</span>)
+  handleInfo msg = <span class="hljs-keyword">do</span>
+    <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span>
+      <span class="hljs-type">Tick</span> -&gt; doTIck
+      <span class="hljs-type">SomethingHappened</span> id -&gt; handleSomething id
+
+</code></pre>
+<p>Having to provide serverName as part of the registration function is clunky AF, under the hood this places the responsibility of mapping messages to the external module and  there is a disconnect between <em>that</em> and the handleInfo we supplied  as part of startLink. </p>
+<h1 id="a-first-pass-emitter-functions">A first pass, emitter functions</h1>
+<p>The code was changed so that an emitter function would be extractable from within a gen server, this would be typed around ServerName automatically and only the right type of messages would be capable of being passed into it.</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">init</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">State</span> = <span class="hljs-keyword">do</span>
+<span class="hljs-title">init</span> = <span class="hljs-keyword">do</span>
+    emitter &lt;- <span class="hljs-type">Gen</span>.emitter serverName
+    <span class="hljs-type">SomethingElse</span>.registerForEvents $ emitter &lt;&lt;&lt; <span class="hljs-type">SomethingHappened</span>
+    pure {}
+</code></pre>
+<p>This is somewhat an improvement, as it could at this point be assumed that anything passed into that function would automatically be the right type for handle_info and the mapping code from inside the gen server could be removed entirely. It requires the use of proxy processes to intercept messages, and I spent a day or two upgrading nearly all of our company Purescript over to this new model because it felt good.</p>
+<p>It didn&#39;t feel <em>great</em> after doing that though, once again we&#39;re relying on convention to create that emitter with the right &#39;serverName&#39; and it&#39;s not very &#39;Erlang&#39;, in theory it also means that code could be written to send messages to arbitrary gen servers providing you have access to the serverName and thats a bit naff.</p>
+<h1 id="second-pass-making-it-more-erlang">Second pass, making it more Erlang</h1>
+<p>The type of &#39;emitter&#39; was changed to <em>Process Msg</em> (A welcome suggestion from <a href="@louispilfold">http://twitter.com/louispilfold</a> when I was putting code samples out for feedback). This maps under the hood to a new type of a plain ol&#39; pid and is therefore compatible automatically with classic Erlang APIs. (Specifically erlang monitors and such being a useful end-goal here).</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">init</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">State</span> = <span class="hljs-keyword">do</span>
+<span class="hljs-title">init</span> = <span class="hljs-keyword">do</span>
+    self &lt;- <span class="hljs-type">Gen</span>.self serverName
+    self ! <span class="hljs-type">DoSomeStuffAfterStartup</span>
+    <span class="hljs-type">SomethingElse</span>.registerForEvents $ send self &lt;&lt;&lt; <span class="hljs-type">SomethingHappened</span>
+    pure {}
+</code></pre>
+<p>This was still not ideal however, the call to Gen.self included a runtime check (below) to ensure that the caller was indeed the &quot;self&quot; we were looking at to prevent external clients from abusing the API (if you provide an API, it <em>will</em> be abused and I&#39;d already seen some &quot;interesting&quot; code already written around these APIs while I was upgrading just our own code!)</p>
+<pre><code class="language-erlang">
+<span class="hljs-function"><span class="hljs-title">selfImpl</span><span class="hljs-params">(Name)</span> -&gt;</span>
+  <span class="hljs-keyword">fun</span>() -&gt;
+    Pid  = where_is_name(Name),
+    Self = erlang:self(),
+    <span class="hljs-keyword">if</span>
+      Self =:= Pid -&gt; Self;
+      <span class="hljs-literal">true</span> -&gt;
+        exit(Self, {error, &lt;&lt;<span class="hljs-string">"Gen.self was called from an external process, this is not allowed"</span>&gt;&gt;})
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>.
+
+</code></pre>
+<h1 id="third-pass-making-it-more-purescript">Third pass, making it more Purescript</h1>
+<p>Sod it, StateT it is. We&#39;d been discussing moving the Gen callbacks into a state monad since I first wrote Pinto, the only obstacle being that I didn&#39;t understand state monads, which sounds stupid on retrospect but it&#39;s the truth <em>shrug</em>. I read a few tutorials, had a mild &quot;aha&quot; moment and things became a bit clearer.</p>
+<p>What we really want is that all the callbacks to automatically</p>
+<ul>
+<li>Be typed around ServerName, so that all calls to Pinto APIs automatically assume this type</li>
+<li>have access to the &#39;internal&#39; state in the Pinto gen_server implementation, so no casts ever have to be made again</li>
+</ul>
+<p>We had quite a bit of code in Gen.purs (our gen server wrapper) that relied on making casts to modify its state, monitors and such - removing all of this was just a sensible idea -  the idea being that if the callbacks to client coded operated within the context of that state, it could be retrieved and modified (optionally) as part of those callbacks.</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">startLink</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
+<span class="hljs-title">startLink</span> = <span class="hljs-type">Gen</span>.startLink init handleInfo
+
+<span class="hljs-title">init</span> :: <span class="hljs-type">Gen</span>.<span class="hljs-type">Init</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
+<span class="hljs-title">init</span> = 
+  self &lt;- <span class="hljs-type">Gen</span>.self
+  <span class="hljs-type">Gen</span>.lift $ <span class="hljs-type">SomethingElse</span>.registerForEvents $ send self  &lt;&lt;&lt; <span class="hljs-type">SomethingHappened</span>
+  pure {}
+
+<span class="hljs-title">handleInfo</span> :: <span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">State</span> -&gt; <span class="hljs-type">Gen</span>.<span class="hljs-type">HandleInfo</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
+<span class="hljs-title">handleInfo</span> msg state =
+  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span>
+    <span class="hljs-type">Tick</span> -&gt; <span class="hljs-type">CastNoReply</span> &lt;$&gt; handleTick state
+    <span class="hljs-type">SomethingHappened</span> ev -&gt; <span class="hljs-type">CastNoReply</span> &lt;$&gt; handleSomethingHappened ev state
+
+</code></pre>
+<p>On the surface of this it isn&#39;t that different, but we&#39;ve done away with the need to constantly refer to &#39;serverName&#39; because we&#39;re operating in the context of a state monad (Gen.Init and Gen.HandleInfo are type aliass to help refer to the fairly wordy type used behind the scenes in Pinto).</p>
+<p>Gen.self doesn&#39;t need to do anything other than pull state out of that state monad and return it to the client code (implementation below), this means that unless your code is being executed in the context of the state monad (IE: the gen server) you can&#39;t call it and the runtime checks and side effects can go away.</p>
+<pre><code class="language-haskell">
+  self :: <span class="hljs-keyword">forall</span> state msg. <span class="hljs-type">StateT</span> (<span class="hljs-type">GenContext</span> state msg) <span class="hljs-type">Effect</span> (<span class="hljs-type">Process</span> msg)
+  self = <span class="hljs-keyword">do</span>
+    <span class="hljs-type">GenContext</span> { pid } &lt;- <span class="hljs-type">State</span>.get
+    pure pid
+</code></pre>
+<p>Similarly, Gen.Cast and Gen.Call are provided for <em>those</em> callbacks too, and all code executed  within the context of a Pinto Genserver has access to the internal state via the API so in theory things like trapExit/handleInfo/config can be modified safely from within that context without doing weird things around async casts back to that gen server.</p>
+<p>That&#39;s a lot of words to say that Gen Servers and arbitrary messages are now very pretty indeed in Purerl. Example below of a gen server subscribing to a message bus from the <a href="https://github.com/id3as/demo-ps/blob/master/server/src/HandleInfoExample.purs">demo_ps</a> web project. You&#39;ll note that the actual API used in startLink has evolved to include a builder for setting the initial handlers/etc - there are a number of optional things to tweak about a gen server and it made sense to do this rather than accept an endlessly growing list of arguments.</p>
+<pre><code class="language-haskell">
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">BookWatchingStartArgs</span> = {}</span>
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">State</span> = {}</span>
+
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">BookMsg</span> <span class="hljs-type">BookEvent</span> </span>
+
+<span class="hljs-title">serverName</span> :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
+<span class="hljs-title">serverName</span> = <span class="hljs-type">Local</span> $ atom <span class="hljs-string">"handle_info_example"</span>
+
+<span class="hljs-title">startLink</span> :: <span class="hljs-type">BookWatchingStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
+<span class="hljs-title">startLink</span> args =
+  <span class="hljs-type">Gen</span>.buildStartLink serverName (init args) $ <span class="hljs-type">Gen</span>.defaultStartLink { handleInfo = handleInfo }
+
+<span class="hljs-title">init</span> :: <span class="hljs-type">BookWatchingStartArgs</span> -&gt; <span class="hljs-type">Gen</span>.<span class="hljs-type">Init</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
+<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
+  self &lt;- <span class="hljs-type">Gen</span>.self
+  _ &lt;- <span class="hljs-type">Gen</span>.lift $ <span class="hljs-type">SimpleBus</span>.subscribe <span class="hljs-type">BookLibrary</span>.bus $ <span class="hljs-type">BookMsg</span> &gt;&gt;&gt; send self
+  pure $ {}
+
+<span class="hljs-title">handleInfo</span> :: <span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">State</span> -&gt; <span class="hljs-type">Gen</span>.<span class="hljs-type">HandleInfo</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
+<span class="hljs-title">handleInfo</span> msg state = <span class="hljs-keyword">do</span>
+  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span>
+    <span class="hljs-type">BookMsg</span> bookEvent -&gt; 
+      <span class="hljs-type">Gen</span>.lift $ handleBookEvent bookEvent state
+
+<span class="hljs-title">handleBookEvent</span> :: <span class="hljs-type">BookEvent</span> -&gt; <span class="hljs-type">State</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">CastResult</span> <span class="hljs-type">State</span>)
+<span class="hljs-title">handleBookEvent</span> ev state =
+  <span class="hljs-keyword">case</span> ev <span class="hljs-keyword">of</span>
+    <span class="hljs-type">BookCreated</span> isbn -&gt; <span class="hljs-keyword">do</span>
+      _ &lt;- <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">"Book created ~p"</span> isbn
+      pure $ <span class="hljs-type">CastNoReply</span> state
+    <span class="hljs-type">BookDeleted</span> isbn -&gt; <span class="hljs-keyword">do</span>
+      _ &lt;- <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">"Book deleted ~p"</span> isbn
+      pure $ <span class="hljs-type">CastNoReply</span> state
+    <span class="hljs-type">BookUpdated</span> isbn -&gt; <span class="hljs-keyword">do</span>
+      _ &lt;- <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">"Book updated ~p"</span> isbn
+      pure $ <span class="hljs-type">CastNoReply</span> state
+</code></pre>
+<p>I&#39;ll insert another item to the list of &#39;new things&#39; to the bullet points currently being traversed as my next post will be about the corresponding message handling implementation in <a href="https://github.com/id3as/purescript-erl-stetson">Stetson</a>, which unsurprisingly uses the State monad to improve our lives there as well. Once you learn how to use a hammer, everything looks like a nail I guess.</p>
+]]></description><link>http://codeofrob.com/entries/purerl-updates---arbitrary-messages-and-handle_info-in-gen-servers.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purerl-updates---arbitrary-messages-and-handle_info-in-gen-servers.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 02 Jul 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purerl updates - Typed routes in Stetson]]></title><description><![CDATA[<p>A continuation of progress updates on Pinto/Stetson then..</p>
 <h1 id="previous-purerl-posts">Previous Purerl posts</h1>
 <ul>
 <li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
@@ -706,340 +1272,4 @@ unit</code></pre>
 <p>Obviously sharing code between both client and server is something that should be entered into with caution, typically sharing a lot of business logic is the sign of a problem - but I can easily see us ending up in a world where we can start using Halogen on the server-side to pre-render HTML for serving to the client much in the same way that the ReactJS community have started doing similar with NodeJS.</p>
 <h1 id="next-up">Next up</h1>
 <p>We&#39;ll look at our bindings to Redis, to get a feel for what interop with &quot;native&quot; Erlang with FFI looks like.</p>
-]]></description><link>http://codeofrob.com/entries/shared-code-twixt-purescript-server-and-client.html</link><guid isPermaLink="true">http://codeofrob.com/entries/shared-code-twixt-purescript-server-and-client.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 27 Aug 2019 09:30:00 GMT</pubDate></item><item><title><![CDATA[Building a Purescript web server with Stetson and Pinto]]></title><description><![CDATA[<p>All the posts so far..</p>
-<ul>
-<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
-<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
-<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
-</ul>
-<p>Useful links</p>
-<ul>
-<li><a href="https://github.com/id3as/demo-ps">demo-ps</a> The demo codebase we&#39;re talking about here</li>
-<li><a href="https://github.com/id3as/purescript-erl-pinto">erl-pinto</a> (the opinionated bindings to OTP we&#39;re using)</li>
-<li><a href="https://github.com/id3as/purescript-erl-stetson">erl-stetson</a> (the opinionated bindings to Cowboy we&#39;re using)</li>
-</ul>
-<p>Having now gotten a basic OTP application up and running, it&#39;d be nice to get some data out to the world.</p>
-<h1 id="cowboy">Cowboy</h1>
-<p>Cowboy is the defacto web server in the Erlang world, each route loosely maps to a module which has callbacks defined in it to handle various stages of the decisioning process.</p>
-<pre><code class="language-erlang">
-<span class="hljs-keyword">-module</span><span class="hljs-params">(my_handler)</span>.
-
-<span class="hljs-keyword">-export</span><span class="hljs-params">([init/<span class="hljs-number">2</span>,
-         get_text/<span class="hljs-number">2</span>,
-         content_types_provided/<span class="hljs-number">2</span>
-        ])</span>.
-
-<span class="hljs-function"><span class="hljs-title">init</span><span class="hljs-params">(Req, _Opts)</span> -&gt;</span>
-  { cowboy_rest, Req, #state{} }.
-
-<span class="hljs-function"><span class="hljs-title">content_types_provided</span><span class="hljs-params">(Req, State)</span> -&gt;</span>
-  {[{ &lt;&lt;<span class="hljs-string">"text/plain"</span>&gt;&gt;, get_text}], Req, State}.
-
-<span class="hljs-function"><span class="hljs-title">get_json</span><span class="hljs-params">(Req, State)</span> -&gt;</span>
-  { &lt;&lt;<span class="hljs-string">"Hello World"</span>&gt;&gt;, Req, State }.
-</code></pre>
-<p>This is directly representable in Purescript, using <a href="https://github.com/purerl/purescript-erl-cowboy">erl-cowboy</a>.</p>
-<pre><code class="language-haskell"><span class="hljs-keyword">module</span> MyHandler <span class="hljs-keyword">where</span>
-
-<span class="hljs-title">init</span> :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">InitHandler</span> a a
-<span class="hljs-title">init</span> = mkEffectFn2 \req c -&gt; pure (initResult c req)
-
-<span class="hljs-title">content_types_provided</span> :: <span class="hljs-keyword">forall</span> s. <span class="hljs-type">ContentTypesProvidedHandler</span> s
-<span class="hljs-title">content_types_provided</span> =  mkEffectFn2 \req s -&gt; pure $
-  restResult
-    (contentTypesProvidedResult $ fromFoldable
-      [ tuple2 (<span class="hljs-type">ContentType</span> <span class="hljs-string">"text"</span> <span class="hljs-string">"plain"</span> <span class="hljs-type">AnyParams</span>) (<span class="hljs-type">ProvideCallback</span> $ atom <span class="hljs-string">"asText"</span>) ]
-    )
-    s req
-
-
-<span class="hljs-title">asText</span> :: <span class="hljs-keyword">forall</span> s. <span class="hljs-type">EffectFn2</span> <span class="hljs-type">Req</span> s (<span class="hljs-type">Tuple3</span> <span class="hljs-type">String</span> <span class="hljs-type">Req</span> s)
-<span class="hljs-title">asText</span> = mkEffectFn2 \req s -&gt; pure $ tuple3 <span class="hljs-string">"Hello World"</span> req s
-</code></pre>
-<p>However, this doesn&#39;t make the best use of Purescript itself - and writing out a few dozen handlers like this would soon get a bit tedious, which is why I went away and wrote <a href="https://github.com/id3as/purescript-erl-stetson">Stetson</a>. Purescript is a functional programming language and it makes sense that rather than provide a bunch of loosely typed callbacks referred to by name using strings, that we built an API that took functions to do all the heavy lifting.</p>
-<pre><code class="language-haskell">
-<span class="hljs-title">helloWorld</span> :: <span class="hljs-type">StetsonHandler</span> <span class="hljs-type">Unit</span>
-<span class="hljs-title">helloWorld</span> =
-  <span class="hljs-type">Rest</span>.handler (\req -&gt; <span class="hljs-type">Rest</span>.initResult req unit)
-    # <span class="hljs-type">Rest</span>.contentTypesProvided (\req state -&gt; <span class="hljs-type">Rest</span>.result (tuple2 <span class="hljs-string">"text/html"</span> asText) req state)
-    # <span class="hljs-type">Rest</span>.yeeha
-    <span class="hljs-keyword">where</span> 
-      asText req state = <span class="hljs-keyword">do</span>
-        <span class="hljs-type">Rest</span>.result <span class="hljs-string">"Hello World"</span> req state)
-</code></pre>
-<p>The idea of course being that we can configure Stetson/Cowboy at the top level by providing a pile of functions and abstract over the common bits like &quot;This is an accept handler that turns state into JSON because State has the typeclass &quot;WriteForeign&quot;, and start to get rid of a lot of duplication across our routes.</p>
-<pre><code class="language-haskell">
-<span class="hljs-title">init</span> :: <span class="hljs-type">BookWebStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">State</span>
-<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
-  <span class="hljs-type">Stetson</span>.configure
-    # <span class="hljs-type">Stetson</span>.route <span class="hljs-string">"/api/books"</span> books
-    # <span class="hljs-type">Stetson</span>.route <span class="hljs-string">"/api/books/:isbn"</span> book
-    # <span class="hljs-type">Stetson</span>.static <span class="hljs-string">"/assets/[...]"</span> (<span class="hljs-type">PrivDir</span> <span class="hljs-string">"demo_ps"</span> <span class="hljs-string">"www/assets"</span>)
-    # <span class="hljs-type">Stetson</span>.static <span class="hljs-string">"/[...]"</span> (<span class="hljs-type">PrivFile</span> <span class="hljs-string">"demo_ps"</span> <span class="hljs-string">"www/index.html"</span>)
-    # <span class="hljs-type">Stetson</span>.port args.webPort
-    # <span class="hljs-type">Stetson</span>.bindTo <span class="hljs-number">0</span> <span class="hljs-number">0</span> <span class="hljs-number">0</span> <span class="hljs-number">0</span>
-    # <span class="hljs-type">Stetson</span>.startClear <span class="hljs-string">"http_listener"</span>
-  pure $ <span class="hljs-type">State</span> {}
-</code></pre>
-<p>where books and book are handlers as described above. In our own applications, we have ended up with pretty much the entire web server and all routes in a single file - which is in stark contrast to our usual Erlang apps where we have a folder containing dozens of separate erlang modules.</p>
-<pre><code class="language-haskell"><span class="hljs-title">books</span> :: <span class="hljs-type">StetsonHandler</span> (<span class="hljs-type">List</span> <span class="hljs-type">Book</span>)
-<span class="hljs-title">books</span> =
-  <span class="hljs-type">Rest</span>.handler (\req -&gt; <span class="hljs-keyword">do</span>
-                        state &lt;- <span class="hljs-type">BookLibrary</span>.findAll
-                        <span class="hljs-type">Rest</span>.initResult req state)
-    # <span class="hljs-type">Rest</span>.allowedMethods (\req state -&gt; <span class="hljs-type">Rest</span>.result (<span class="hljs-type">Stetson</span>.<span class="hljs-type">POST</span> :  <span class="hljs-type">Stetson</span>.<span class="hljs-type">HEAD</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">GET</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">OPTIONS</span> : nil) req state)
-    # <span class="hljs-type">Rest</span>.contentTypesProvided (\req state -&gt; <span class="hljs-type">Rest</span>.result (jsonWriter : nil) req state)
-    # <span class="hljs-type">Rest</span>.contentTypesAccepted (\req state -&gt; <span class="hljs-type">Rest</span>.result ((tuple2 <span class="hljs-string">"application/json"</span> acceptJson) : nil)
-                                req state)
-    # <span class="hljs-type">Rest</span>.yeeha
-    <span class="hljs-keyword">where</span> 
-          acceptJson req state = <span class="hljs-keyword">do</span>
-            body &lt;- allBody req mempty
-            result &lt;- either (pure &lt;&lt;&lt; <span class="hljs-type">Left</span> &lt;&lt;&lt; show) <span class="hljs-type">BookLibrary</span>.create $ readJSON $ unsafeCoerce body
-            <span class="hljs-keyword">case</span> result <span class="hljs-keyword">of</span>
-                 <span class="hljs-type">Left</span> err -&gt; <span class="hljs-type">Rest</span>.result false (setBody err req) state
-                 <span class="hljs-type">Right</span> c -&gt; <span class="hljs-type">Rest</span>.result true req state
-
-<span class="hljs-title">jsonWriter</span> :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">WriteForeign</span> a =&gt; <span class="hljs-type">Tuple2</span> <span class="hljs-type">String</span> (<span class="hljs-type">Req</span> -&gt; a -&gt; (<span class="hljs-type">Effect</span> (<span class="hljs-type">RestResult</span> <span class="hljs-type">String</span> a)))
-<span class="hljs-title">jsonWriter</span> = tuple2 <span class="hljs-string">"application/json"</span> (\req state -&gt; <span class="hljs-type">Rest</span>.result (writeJSON state) req state)
-</code></pre>
-<p>So that&#39;s a handler that has a state of type <em>&#39;List Book&#39;</em>, which it gets from our <em>BookLibrary</em> via a call (as in the previous blog entry), jsonWriter being a function as decscribed above - simply taking that model and spitting it out as JSON, leveraging our model which happens to implement that type class.</p>
-<p>We&#39;ll look more into that in the next entry, where we talk about that model and how we&#39;re using it on both client and server.</p>
-]]></description><link>http://codeofrob.com/entries/building-a-purescript-web-server-with-stetson-and-pinto.html</link><guid isPermaLink="true">http://codeofrob.com/entries/building-a-purescript-web-server-with-stetson-and-pinto.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 22 Aug 2019 09:30:00 GMT</pubDate></item><item><title><![CDATA[Building on top of OTP with Purescript with Pinto]]></title><description><![CDATA[<p>All the posts so far..</p>
-<ul>
-<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
-<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
-</ul>
-<p>Useful links</p>
-<ul>
-<li><a href="https://github.com/id3as/demo-ps">demo-ps</a> The demo codebase we&#39;re talking about here</li>
-<li><a href="https://github.com/id3as/purescript-erl-pinto">erl-pinto</a> (the opinionated bindings to OTP we&#39;re using)</li>
-<li><a href="https://github.com/id3as/purescript-erl-stetson">erl-stetson</a> (the opinionated bindings to Cowbou we&#39;re using)</li>
-</ul>
-<p>We left the last post demonstrating that an end-to-end Purescript project was essentially a pile of Purescript written in the right place, in order that the usual Erlang application/rebar3/etc can just work with it.</p>
-<h1 id="that-entry-point-again-then">That entry point again then</h1>
-<p>We looked at <em>BookApp.purs</em>, which compiled into an Erlang module called <em>bookApp@ps</em>. which ends up in <em>src/compiled_ps</em> and gets picked up with the usual Erlang structure. Let&#39;s look at that file and see what we see:</p>
-<pre><code class="language-haskell"><span class="hljs-keyword">module</span> BookApp <span class="hljs-keyword">where</span>
-
-<span class="hljs-keyword">import</span> Prelude
-<span class="hljs-keyword">import</span> BookSup <span class="hljs-keyword">as</span> BookSup
-
-<span class="hljs-keyword">import</span> Pinto.App <span class="hljs-keyword">as</span> App
-
-<span class="hljs-title">start</span> = <span class="hljs-type">App</span>.simpleStart <span class="hljs-type">BookSup</span>.startLink</code></pre>
-<p>That <em>simpleStart</em> function is just a Pinto helper that describes an entry point that doesn&#39;t worry about inputs, and provided a Supervisor will start that Supervisor when the application is started.</p>
-<p>This gets compiled into the following Erlang</p>
-<pre><code class="language-erlang"><span class="hljs-comment">% Generated by purs version 0.12.3</span>
-<span class="hljs-keyword">-module</span><span class="hljs-params">(bookApp@ps)</span>.
-<span class="hljs-keyword">-export</span><span class="hljs-params">([start/<span class="hljs-number">0</span>, start/<span class="hljs-number">2</span>])</span>.
-<span class="hljs-keyword">-compile</span><span class="hljs-params">(nowarn_shadow_vars)</span>.
-<span class="hljs-keyword">-compile</span><span class="hljs-params">(nowarn_unused_vars)</span>.
-<span class="hljs-keyword">-compile</span><span class="hljs-params">(no_auto_import)</span>.
-<span class="hljs-keyword">-file</span><span class="hljs-params">(<span class="hljs-string">"src/BookApp.purs"</span>, <span class="hljs-number">8</span>)</span>.
-<span class="hljs-function"><span class="hljs-title">start</span><span class="hljs-params">()</span> -&gt;</span> (pinto_app@ps:simpleStart((bookSup@ps:startLink()))).
-<span class="hljs-keyword">-file</span><span class="hljs-params">(<span class="hljs-string">"src/BookApp.purs"</span>, <span class="hljs-number">8</span>)</span>.
-<span class="hljs-function"><span class="hljs-title">start</span><span class="hljs-params">(_@<span class="hljs-number">0</span>,_@<span class="hljs-number">1</span>)</span> -&gt;</span> ((pinto_app@ps:simpleStart((bookSup@ps:startLink())))(_@<span class="hljs-number">0</span>, _@<span class="hljs-number">1</span>)).</code></pre>
-<p>If get rid of the cruft, that&#39;s essentially just</p>
-<pre><code class="language-erlang"><span class="hljs-keyword">-module</span><span class="hljs-params">(bookApp@ps)</span>.
-<span class="hljs-keyword">-export</span><span class="hljs-params">([start/<span class="hljs-number">0</span>, start/<span class="hljs-number">2</span>])</span>.
-<span class="hljs-function"><span class="hljs-title">start</span><span class="hljs-params">()</span> -&gt;</span> (pinto_app@ps:simpleStart((bookSup@ps:startLink()))).
-<span class="hljs-function"><span class="hljs-title">start</span><span class="hljs-params">(_@<span class="hljs-number">0</span>,_@<span class="hljs-number">1</span>)</span> -&gt;</span> ((pinto_app@ps:simpleStart((bookSup@ps:startLink())))(_@<span class="hljs-number">0</span>, _@<span class="hljs-number">1</span>)).</code></pre>
-<p>This is just a standard application module that you&#39;d find in an Erlang application, exporting the usual start function that calls into a supervisor to start it. This is the only time I&#39;ll be loading up the compiled Purescript as it&#39;s the simplest example - but nearly all of the Pinto helpers are about making sure we can end up exposing a module that looks like the equivalent OTP erlang module.</p>
-<p>The supervisor? More of the same</p>
-<pre><code class="language-haskell"><span class="hljs-keyword">module</span> BookSup <span class="hljs-keyword">where</span>
-
-<span class="hljs-comment">-- [[ imports redacted ]]</span>
-
-<span class="hljs-title">startLink</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Pinto</span>.<span class="hljs-type">StartLinkResult</span>
-<span class="hljs-title">startLink</span> = <span class="hljs-type">Sup</span>.startLink <span class="hljs-string">"book_sup"</span> init
-
-<span class="hljs-title">init</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">SupervisorSpec</span>
-<span class="hljs-title">init</span> = <span class="hljs-keyword">do</span>
-  connectionString &lt;- <span class="hljs-type">BookConfig</span>.connectionString
-  webPort &lt;- <span class="hljs-type">BookConfig</span>.webPort
-  pure $ buildSupervisor
-                # supervisorStrategy <span class="hljs-type">OneForOne</span>
-                # supervisorChildren ( ( buildChild
-                                       # childType <span class="hljs-type">Worker</span>
-                                       # childId <span class="hljs-string">"book_web"</span>
-                                       # childStart <span class="hljs-type">BookWeb</span>.startLink  { webPort } )
-                                       : 
-                                       ( buildChild
-                                       # childType <span class="hljs-type">Worker</span>
-                                       # childId <span class="hljs-string">"book_library"</span>
-                                       # childStart <span class="hljs-type">BookLibrary</span>.startLink { connectionString } )
-                                        : nil)</code></pre>
-<p><em>Sup.startLink</em> is a Pinto helper that&#39;ll end up calling our usual <em>supervisor:start_link</em> under the hood, with our <em>init</em> function being invoked within the context of that created supervisor and returning a supervisor spec when invoked. </p>
-<p>The supervisor spec structure is quite a complicated tangle of maps in Erlang, and while possible to directly represent these in Purescript with records, there are convenience builders/etc provided by Pinto to describe these specs in a more Purescripty and type safe manner - all of these values are pretty much relatable right back to the OTP documentation which is handy and intentional.</p>
-<p>Now, let&#39;s break down one of these gen servers to see what we can see - we&#39;ll have to do this piece-meal as there is a lot to uncover. We&#39;ll be looking at <em>BookLibrary.purs</em>, invoked above in the second child of the supervision tree with BookLibrary.startLink and the code for which is shown below..</p>
-<pre><code class="language-haskell">
-<span class="hljs-title">serverName</span> :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span>
-<span class="hljs-title">serverName</span> = <span class="hljs-type">ServerName</span> <span class="hljs-string">"book_library"</span>
-
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">BookLibraryStartArgs</span> = {
-  <span class="hljs-title">connectionString</span> :: <span class="hljs-type">ConnectionString</span>
-}</span>
-
-<span class="hljs-title">startLink</span> :: <span class="hljs-type">BookLibraryStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
-<span class="hljs-title">startLink</span> args =
-  <span class="hljs-type">Gen</span>.startLink serverName $ init args
-</code></pre>
-<p>So there is nothing too special about this, we&#39;re exporting a function called startLink that takes some configuration from the supervisor, and that calls into the Pinto function <em>Gen.startLink</em> with the serverName, and an init function to invoke within the context of the started GenServer along with those args. This isn&#39;t disimilar to how this looks in the Erlang world so far. </p>
-<p>That serverName construct represents both the unique identifier for this started process, and also encapsulates the type of the &#39;state&#39; that is held by the GenServer, and will be used in all interactions with the <em>Gen</em> module.</p>
-<p>That init function?</p>
-<pre><code class="language-haskell">
-<span class="hljs-title">init</span> :: <span class="hljs-type">BookLibraryStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">State</span>
-<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
-  connection &lt;- <span class="hljs-type">Redis</span>.open args.connectionString
-  pure $ { connection }
-</code></pre>
-<p>Takes place inside the context of the newly started GenServer, and is responsible for effectfully creating the initial state of the GenServer, which is just a Redis connection (We&#39;ll talk about that later). This is actually all we need to create a running GenServer as everything else is entirely optonal.</p>
-<p>Obviously that&#39;s useless, so let&#39;s look at how we can externally call into this GenServer to do something useful</p>
-<pre><code class="language-haskell">
-<span class="hljs-title">findAll</span> :: <span class="hljs-type">Effect</span> (<span class="hljs-type">List</span> <span class="hljs-type">Book</span>)
-<span class="hljs-title">findAll</span> = 
-  <span class="hljs-type">Gen</span>.doCall serverName \state@{ connection } -&gt; <span class="hljs-keyword">do</span>
-    books &lt;- <span class="hljs-type">Redis</span>.findAll dbPrefix connection
-    pure $ <span class="hljs-type">CallReply</span> books state
-</code></pre>
-<p>We can export a plain ol&#39; Purescript function called findAll that returns a plain ol&#39; Effect producing a List of Book, and we can do the rest of the work by invoking a &#39;call&#39; with the <em>Gen</em> module, by giving <em>Gen.doCall</em> our <em>serverName</em> construct, we are able to then provide a typed callback that  will be invoked within the context of the gen-server as part of a <em>handle_call</em>, and therefore gain access to the state and return some books by calling into the Redis connection.</p>
-<p>The original Erlang would of course look a little like this.</p>
-<pre><code class="language-erlang">
-<span class="hljs-keyword">-export</span><span class="hljs-params">([start_link/<span class="hljs-number">1</span>, 
-         init/<span class="hljs-number">1</span>,
-         find_all/<span class="hljs-number">0</span>])</span>.
-
-<span class="hljs-keyword">-record</span><span class="hljs-params">(args, {
-    connection_string :: connection_string()
-    })</span>.
-
-<span class="hljs-keyword">-record</span><span class="hljs-params">(state, {
-    connection :: redis:connection()
-  })</span>.
-
-<span class="hljs-function"><span class="hljs-title">find_all</span><span class="hljs-params">()</span> -&gt;</span>
-  gen_server:call({via, gproc, {n, l, ?MODULE}}, find_all).
-
-<span class="hljs-function"><span class="hljs-title">start_link</span><span class="hljs-params">(Args)</span> -&gt;</span>
-  gen_server:start_link({via, gproc, {n, l, ?MODULE}}, ?MODULE, [Args], []).
-
-<span class="hljs-function"><span class="hljs-title">init</span><span class="hljs-params">([#args { connection_string = ConnectionString }])</span> -&gt;</span>
-  { ok, Connection } = redis:open(ConnectionString),
-  {ok, #state { connection = Connection }}.
-
-<span class="hljs-function"><span class="hljs-title">handle_call</span><span class="hljs-params">(find_all, _Sender, State = #state { connection = Connection })</span> -&gt;</span>
-  { ok, Result } = redis:find_prefix(dbPrefix, Connection),
-  { reply, Result, State }.
-
-</code></pre>
-<p>This is a bit unwieldy, lacks any notion of type safety across the calls being made, but is still pleasantly relatable to the Purescript variant.</p>
-<pre><code class="language-haskell">
-<span class="hljs-title">serverName</span> :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span>
-<span class="hljs-title">serverName</span> = <span class="hljs-type">ServerName</span> <span class="hljs-string">"book_library"</span>
-
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">BookLibraryStartArgs</span> = {
-  <span class="hljs-title">connectionString</span> :: <span class="hljs-type">ConnectionString</span>
-}</span>
-
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">State</span> = {
-  <span class="hljs-title">connection</span> :: <span class="hljs-type">RedisConnection</span>
-}</span>
-
-<span class="hljs-title">startLink</span> :: <span class="hljs-type">BookLibraryStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
-<span class="hljs-title">startLink</span> args =
-  <span class="hljs-type">Gen</span>.startLink serverName $ init args
-
-<span class="hljs-title">init</span> :: <span class="hljs-type">BookLibraryStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">State</span>
-<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
-  connection &lt;- <span class="hljs-type">Redis</span>.open args.connectionString
-  pure $ { connection }
-
-<span class="hljs-title">findAll</span> :: <span class="hljs-type">Effect</span> (<span class="hljs-type">List</span> <span class="hljs-type">Book</span>)
-<span class="hljs-title">findAll</span> = 
-  <span class="hljs-type">Gen</span>.doCall serverName \state@{ connection } -&gt; <span class="hljs-keyword">do</span>
-    books &lt;- <span class="hljs-type">Redis</span>.findAll dbPrefix connection
-    pure $ <span class="hljs-type">CallReply</span> books state
-</code></pre>
-<p>Note: Wrapping up a connection behind a genserver is nearly always not the thing you want to do (effectively it introduces a read/write lock), but sample code gonna sample code.</p>
-<p>Next up, we&#39;ll look at how we could use this GenServer from Stetson to provide a restful JSON API to our client.</p>
-]]></description><link>http://codeofrob.com/entries/building-on-top-of-otp-with-purescript-with-pinto.html</link><guid isPermaLink="true">http://codeofrob.com/entries/building-on-top-of-otp-with-purescript-with-pinto.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 20 Aug 2019 09:30:00 GMT</pubDate></item><item><title><![CDATA[The structure of an end-to-end Purescript OTP project]]></title><description><![CDATA[<p>All the posts so far..</p>
-<ul>
-<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
-</ul>
-<p>Useful links</p>
-<ul>
-<li><a href="https://github.com/id3as/demo-ps">demo-ps</a> The demo codebase we&#39;re talking about here</li>
-<li><a href="https://github.com/id3as/purescript-erl-pinto">erl-pinto</a> (the opinionated bindings to OTP we&#39;re using)</li>
-<li><a href="https://github.com/id3as/purescript-erl-stetson">erl-stetson</a> (the opinionated bindings to Cowbou we&#39;re using)</li>
-</ul>
-<h1 id="the-structure-of-an-end-to-end-purescript-otp-project">The structure of an end-to-end Purescript OTP project</h1>
-<p>Our <a href="https://github.com/id3as/demo-ps">demo-ps</a> can be viewed as two separate chunks of code, the base layer is just a plain old Erlang application built using rebar3 and such, and then on top of that we have a pile of Purescript that compiles into Erlang that can then be compiled and used by the usual development workflow.</p>
-<h1 id="the-erlangy-bits">The Erlangy bits</h1>
-<ul>
-<li><em>release-files</em>: Assets to be shipped during the release process</li>
-<li><em>src</em>: This is usually where the Erlang application lives, but there is no Erlang code<ul>
-<li><em>demo_ps.app.src</em>: The entry point, just points at a Purescript module, we&#39;ll talk about that</li>
-</ul>
-</li>
-<li><em>rebar.config</em>: Erlang dependencies and such</li>
-<li><em>priv</em>: Assets/files we want access to from code (static html/js/etc is covered here)</li>
-</ul>
-<h1 id="the-purescript-bits">The purescript bits</h1>
-<ul>
-<li><em><a href="https://github.com/id3as/demo-ps/tree/master/server">server</a></em>: The Purescript application that we want to compile into Erlang lives here</li>
-<li><em><a href="https://github.com/id3as/demo-ps/tree/master/client">client</a></em>: The Purescript application we want to compile into JS lives here</li>
-<li><em>Makefile</em>: Turns the Purescript into JS/Erlang</li>
-<li><em>shared</em>: Contains Purescript we&#39;ll share between JS/Erlang</li>
-</ul>
-<p>In an ideal world, we&#39;d just have a single Purescript entry point and forego our interaction with the Erlang world, but this would involve building out a lot more tooling - the result of this, is that sometimes you will be bringing Purescript dependencies down that require Erlang dependencies and then adding these to rebar.config and the entry point will be your responsibility.</p>
-<p>The purescript dependencies can be found in in <em>psc-package.json</em> inside the server and client directories, and the Erlang dependencies can be found in rebar.config at the top level.</p>
-<p>As a team already familiar with the Erlang ecosystem, this doesn&#39;t represent a hardship for us; but this definitely represents an area which could be improved by an enterprising developer or two, probably a plugin to the Purescript stack that stashes the rebar assets/etc in another build folder and allows us to just write PS/Erlang in the right place. (But this would then also involve modifying our editor plugins to know about this new structure, and as you can already see, it&#39;s a lot of work when we have something that is already functional..)</p>
-<h1 id="that-entry-point-then">That entry point then</h1>
-<pre><code class="language-erlang">{application, demo_ps,
- [{description, <span class="hljs-string">"An OTP application"</span>},
-  {vsn, <span class="hljs-string">"0.1.0"</span>},
-  {registered, []},
-  {mod, { bookApp@ps, []}},
-  {applications,
-   [kernel,
-    stdlib,
-    lager,
-    gproc,
-    recon,
-    cowboy,
-    jsx,
-    eredis
-   ]},
-  {env,[]},
-  {modules, []},
-  {maintainers, []},
-  {licenses, []},
-  {links, []}
- ]}.</code></pre>
-<p>One of the key things to note here, is that we have cowboy as a dependency, this is to support (as mentioned), the Purescript libraries that binds to it (<a href="https://github.com/id3as/purescript-erl-stetson">stetson</a> and <a href="https://github.com/purerl/purescript-erl-cowboy">erl-cowboy</a>. </p>
-<p>The other big note, is that entry point module is <em>&#39;bookApp@ps&#39;</em> - that module can be found in server/src/BookApp.purs, which defines a module <em>&#39;BookApp&#39;</em> - the Purescript compiler will compile Purescript modules into *<moduleName>@ps*, as this is unlikely to clash with anything else in the global application namespace. Beyond this entry point there is no Erlang code in the application itself - it&#39;s Purescript all the way down...</p>
-<p>The Makefile in <em>server/Makefile</em> does the work of compiling this Purescript into Erlang that can then be compiled by the usual rebar3 toolchain. The gist of the below Makefile being that we take all the .purs files lying around in the &#39;server&#39; folder, and compile them into .erl files that end up in ../../src/compiled_ps.</p>
-<p>We&#39;ll go into detail on the Purescript stuff in the next post, as that&#39;s the key; we put a pile of Erlang supporting files in the right location, and then write PS in the other location and everything &quot;just kinda works&quot;.</p>
-]]></description><link>http://codeofrob.com/entries/the-structure-of-an-end-to-end-purescript-otp-project.html</link><guid isPermaLink="true">http://codeofrob.com/entries/the-structure-of-an-end-to-end-purescript-otp-project.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 15 Aug 2019 09:30:00 GMT</pubDate></item><item><title><![CDATA[Introducing Pinto and Stetson - Opinionated Purescript bindings to OTP and Cowboy]]></title><description><![CDATA[<p>If you&#39;re reading this, you&#39;ve either been given the link to the posts ahead of time cos you&#39;ve asked to see what is going on, or I&#39;ve hit the publish button in which case hooray. Either way, this is a little series of posts going through some of the Purescript/Purerl code that we&#39;ve quietly open sourced on Github under the Apache 2.0 license. Hopefully betwen these posts, the published markdown docs and the sample application there will be enough to get started with.</p>
-<p>Over the last year or so, we&#39;ve been gradually building out our capacity to create applications end-to-end in Purescript, compiled to JS on the front-end and compiled to Erlang on the back, building on top of both OTP and our existing libraries from nearly a decade of company history doing business on top of the Erlang stack.</p>
-<p>The repositories we&#39;re looking at are:</p>
-<ul>
-<li><a href="https://github.com/purerl/">Purerl</a> itself</li>
-<li>The <a href="https://github.com/purerl/package-sets">purerl-package-sets</a></li>
-<li><a href="https://github.com/id3as/purescript-erl-stetson">Stetson</a> (Opinionated Cowboy bindings)</li>
-<li><a href="git@github.com:id3as/purescript-erl-pinto.git">Pinto</a> (Opinionated OTP bindings)</li>
-<li><a href="https://github.com/id3as/demo-ps">demo-ps</a> (end-to-end sample code)</li>
-</ul>
-<p>The best place to start if you want to dive right in, is probably the demo-ps project as it demonstrates the usage of most of the above, and that is indeed where we&#39;ll be starting in this series.</p>
-<h1 id="purerl">Purerl</h1>
-<p>The Purerl organisation contains the core sets of bindings to much of Erlang&#39;s base libraries, as well as the fork of the Purescript compiler that can generate Erlang as a backend. </p>
-<h1 id="purerl-package-sets">Purerl-package-sets</h1>
-<p>Essentially a pile of Dhall that generates a package.json containing a list of versions of the various Purerl libraries that work together, you&#39;ll not need to touch this directly unless you end up using Purerl internally in an organisation and you want to fork it and add your own internal/private Purerl dependencies.</p>
-<h1 id="stetson">Stetson</h1>
-<p><a href="https://github.com/ninenines/cowboy">Cowboy</a> is the de-facto webserver in the Erlang world, and <a href="https://github.com/purerl/purescript-erl-cowboy">direct bindings</a> exist for the project already, however when it came time to start building applications on top of this, it was clear that there was little gain to be had by directly using them over simply writing Erlang in the first place. Stetson was my attempt to mirror the experience I&#39;ve had in other functional languages using libraries such as <a href="https://github.com/weavejester/compojure">Compojure</a> and <a href="https://github.com/scotty-web/scotty">Scotty</a>. It isn&#39;t by any means complete, and merely serves as a statement of intent around the kind of interaction I&#39;d personally like to have around routing/etc in a Purerl world. I fully hope/expect that somebody will write a native http server in time rather than simply wrapping Cowboy as I have done here.</p>
-<h1 id="pinto">Pinto</h1>
-<p>There have been a <a href="https://github.com/purerl/purerl_otp_sandbox">few examples</a> written demonstrating how to interact with OTP from Purerl, but again at the point of building a real application, direct bindings don&#39;t offer a good user experience once you start building out functionality and repeating yourself a whole ton. I cheated a lot when putting together Pinto and skipped the direct bindings step, going straight to the &quot;desired usage&quot; step and doing a pile of cheats around types and such. It seeks to largely mirror the existing OTP interactions, but in a more functional manner. Much like with Stetson, I fully expect/hope that in time somebody (maybe even us) will want a more idiomatic Purescript experience and choose to build something even more opinionated outside the familiar comfort of the OTP vocabulary. For now, we have Pinto.. :)</p>
-<h1 id="demo-ps">Demo-ps</h1>
-<p>This is a completely pointless web app that uses <a href="https://github.com/id3as/purescript-erl-stetson">purescript-erl-stetson</a>, <a href="https://github.com/id3as/purescript-erl-pinto">purescript-erl-pinto</a>, <a href="https://github.com/purerl/purescript-simple-json">purescript-simple-json</a> and <a href="https://github.com/slamdata/purescript-halogen">purescript-halogen</a> to store data in Redis using some FFI and display it in a single page application, sharing the view models between the server and client components. It seeks to demonstrate rough usages of all of these without cluttering up the interactions with &quot;real code&quot; (read: business logic).</p>
-<p>Next post, we&#39;ll look at the structure of the demo-ps project, as understanding this is essential if you wish to build your own.</p>
-]]></description><link>http://codeofrob.com/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html</link><guid isPermaLink="true">http://codeofrob.com/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 13 Aug 2019 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/shared-code-twixt-purescript-server-and-client.html</link><guid isPermaLink="true">http://codeofrob.com/entries/shared-code-twixt-purescript-server-and-client.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 27 Aug 2019 09:30:00 GMT</pubDate></item></channel></rss>

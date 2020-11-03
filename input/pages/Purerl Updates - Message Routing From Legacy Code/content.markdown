@@ -113,6 +113,7 @@ type Msg = CoolApiMsg Atom
 So we're going to need some way to map this. 
 
 *The old way*: We'd register a mapping function with the gen server that would recognise the cool_api messages and convert them into the right type for us, this was janky AF and has been deleted in the latest Pinto
+
 *the new way*: Proxy process that receives the message, translates it and then sends it on to the main process
 
 That proxy process is a burden to create because if we start spawning processes in Erlang, we need to make sure we monitor the parent so we terminate when it does, yada yada yada what a mess. Thankfully this is what *MessageRouter* in Pinto is for, it neatly wraps up this common pattern safely so we don't have to.
