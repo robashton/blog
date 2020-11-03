@@ -1,4 +1,22 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Wed, 28 Oct 2020 10:14:50 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Purerl Updates - Message Routing From Legacy Code]]></title><description><![CDATA[<p>We&#39;ve covered the essential upgrades to Pinto and Stetson, so now we&#39;ll cover a quick bonus topic which is one of the concepts thrown into Pinto to help with all of this work.</p>
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Tue, 03 Nov 2020 11:41:31 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Blogging the mundane]]></title><description><![CDATA[<p>I was having a chat with a few friends over a glass or two of whisky the other evening (over Google Hangouts or whatever it is called these days) and the subject turned to whether any of us had become lazy about our online output as time had gone on and as we were getting old. (All of us really).</p>
+<p><strong>&quot;Why don&#39;t you blog any more?&quot;</strong></p>
+<p>My own personal answer is quite simply that I don&#39;t think anybody actually cares about anything I do these days, a vanishingly small number of people want to hear about anything to do with Erlang, an even smaller number of people have any interest in Purescript and the intersection of those two subjects doesn&#39;t do very much to increase the number of people willing to click a link with any of this content behind it. It&#39;s somewhat disheartening to write pages upon pages of documentation that nobody is going to care about until it&#39;s gotten so stale it&#39;s now useless. (See also: <a href="https://purerl-cookbook.readthedocs.io/en/latest/">The Purerl Cookbook</a>).</p>
+<p>Conversations with folk at conferences on these subjects doesn&#39;t do much to boost my interest in sharing, you can literally see people glaze over the moment you mention anything that isn&#39;t</p>
+<ul>
+<li>A) YAML</li>
+<li>B) Kubernetes</li>
+<li>C) YAML and Kubernetes</li>
+</ul>
+<p>Outside of that, anything I might do tends to be pretty niche, have a high ramp-up cost (for me) and be quite specific to my day to day job of moving bytes from one place to another with some sort of transform in the way making the whole process a lot slower than it could be (Yes, that&#39;s literally all of our jobs). </p>
+<p>Once I have invested days learning about something new (to me) I seldom feel the inclination of trying to write about it - even if I found it a challenge to learn myself in the first place because </p>
+<ul>
+<li>A) Nobody cares </li>
+<li>B) I doubt anything I can write on the subject will help anybody further than existing materials have helped me </li>
+</ul>
+<p><em>A challenge then</em></p>
+<p>Ignoring all of the above, I&#39;ll try to (between now and the end of the year) blog about some of the day to day mundane things &quot;wot I have done&quot;, even if the only person it helps is me in a year&#39;s time when I open code long since untouched and can&#39;t remember how any of it works. In the absence of conferences (these online replacements don&#39;t count because they don&#39;t have beanbags to chat to people on) this will perhaps be half a replacement for that experience (In that I get to talk, but not to listen, unless somebody wants to tweet me something interesting in response).</p>
+<p>Have at you - the next blog post(s) will be about NVIDIA GPU based transcoding and such cos I recently wrote a driver for our own proprietary workflows to integrate with the GPU on my laptop and the documentation wasn&#39;t great but the results were pretty nifty indeed.</p>
+]]></description><link>http://codeofrob.com/entries/blogging-the-mundane.html</link><guid isPermaLink="true">http://codeofrob.com/entries/blogging-the-mundane.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 03 Nov 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purerl Updates - Message Routing From Legacy Code]]></title><description><![CDATA[<p>We&#39;ve covered the essential upgrades to Pinto and Stetson, so now we&#39;ll cover a quick bonus topic which is one of the concepts thrown into Pinto to help with all of this work.</p>
 <h1 id="previous-purerl-posts">Previous Purerl posts</h1>
 <ul>
 <li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
@@ -633,11 +651,11 @@ cool_api:do_something().
 <p><em>How the routes map to paths</em></p>
 <p>Using the type RouteDuplex&#39; with this ADT, we are required  to fill out each of the options with a path with the args expected  in the ADT. None  of these  are optional and we&#39;ll get type errors (more on this in a bit) if we don&#39;t supply all of the args or routes expected.</p>
 <pre><code>
--- | This combinator transforms <span class="hljs-literal">a</span> codec over `String` into one that operates on the `Isbn` type.
-<span class="hljs-symbol">isbn ::</span> RouteDuplex' String -&gt; RouteDuplex' Isbn
+-- | This combinator transforms a codec over `String` into one that operates on the `Isbn` type.
+<span class="hljs-title">isbn ::</span> RouteDuplex' String -&gt; RouteDuplex' Isbn
 isbn = asNewtype
 
-<span class="hljs-symbol">apiRoute ::</span> RouteDuplex' Route
+<span class="hljs-title">apiRoute ::</span> RouteDuplex' Route
 apiRoute = path <span class="hljs-string">""</span> $ sum
   { <span class="hljs-string">"Books"</span>: <span class="hljs-string">"api"</span> / <span class="hljs-string">"books"</span> / noArgs
   , <span class="hljs-string">"Book"</span>: <span class="hljs-string">"api"</span> / <span class="hljs-string">"books"</span> / isbn segment
@@ -1222,54 +1240,4 @@ unit</code></pre>
 <p>This is the approach that erl-cowboy and Stetson took, whereas erl-pinto takes the direct approach to &quot;desired API&quot;, making the concession that it&#39;ll be easier to build without 1-1 FFI in existence. Either way, it&#39;s pretty easy to call into existing code in Erlang.</p>
 <h1 id="next-up">Next up</h1>
 <p>We&#39;ve pretty much covered the surface area of the demo project, so I&#39;ll be going off on a little journey talking about some of the common things that we like to do in Erlang and how to get that behaviour into Purerl, if I get any questions about these posts I&#39;ll follow up with answers in blog format also.</p>
-]]></description><link>http://codeofrob.com/entries/purescript-interop-with-native-erlang---interacting-with-redis.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purescript-interop-with-native-erlang---interacting-with-redis.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 29 Aug 2019 09:30:00 GMT</pubDate></item><item><title><![CDATA[Shared code twixt Purescript server and client]]></title><description><![CDATA[<p>All the posts so far..</p>
-<ul>
-<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
-<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
-<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
-<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
-</ul>
-<p>Useful links</p>
-<ul>
-<li><a href="https://github.com/id3as/demo-ps">demo-ps</a> The demo codebase we&#39;re talking about here</li>
-<li><a href="https://github.com/id3as/purescript-erl-pinto">erl-pinto</a> (the opinionated bindings to OTP we&#39;re using)</li>
-<li><a href="https://github.com/id3as/purescript-erl-stetson">erl-stetson</a> (the opinionated bindings to Cowboy we&#39;re using)</li>
-</ul>
-<p>We&#39;ve got a basic model representing our &#39;book&#39;</p>
-<pre><code class="language-haskell">
-<span class="hljs-keyword">module</span> Books <span class="hljs-keyword">where</span>
-
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Book</span> = { <span class="hljs-title">isbn</span> :: <span class="hljs-type">String</span>
-            , <span class="hljs-title">title</span> :: <span class="hljs-type">String</span>
-            , <span class="hljs-title">author</span> :: <span class="hljs-type">String</span>
-            }</span>
-</code></pre>
-<p>Which is pretty terribly exciting - the key thing to note here is that this is a plain ol&#39; record containing primitive types - this makes it pretty shareable as far as view models go (Let&#39;s ignore that we&#39;re using it for persistence here, demo code gonna demo code).</p>
-<p>We&#39;ve shoved Books.purs into a folder called &#39;shared&#39; which has been softlinked from both the client and server directories, which means it will be separately compiled into JS And Purescript respectively.</p>
-<p>There is a great library over in Purescript world called <a href="https://github.com/justinwoo/purescript-simple-json">simple-json</a> which defines a <em>ReadForeign</em> and <em>WriteForeign</em> for these basic types, which means that the functions readJSON and writeJSON will do the back and forth between JSON and the Purescript types.</p>
-<p>There is also (thanks to the efforts of <a href="https://github.com/purerl/purescript-simple-json">@nwolverson</a>, a port of this library exists on the Purerl side of things which works in exactly the same way, using <a href="https://github.com/talentdeficit/jsx">JSX</a> under the hood. This is a fairly common pattern across the Purerl world, and you&#39;ll see when browsing the org repos that a lot of the code from the JS Purescript world has been ported across with minimal changes so that the two worlds look as alike as possible.</p>
-<p>So, in the previous post we loaded a list of Books out of our genserver in Cowboy and simply called writeJSON on it.</p>
-<pre><code class="language-haskell">
-<span class="hljs-meta"># Rest.contentTypesProvided (\req state -&gt; Rest.result (jsonWriter : nil) req state)</span>
-
-<span class="hljs-title">jsonWriter</span> :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">WriteForeign</span> a =&gt; <span class="hljs-type">Tuple2</span> <span class="hljs-type">String</span> (<span class="hljs-type">Req</span> -&gt; a -&gt; (<span class="hljs-type">Effect</span> (<span class="hljs-type">RestResult</span> <span class="hljs-type">String</span> a)))
-<span class="hljs-title">jsonWriter</span> = tuple2 <span class="hljs-string">"application/json"</span> (\req state -&gt; <span class="hljs-type">Rest</span>.result (writeJSON state) req state)
-</code></pre>
-<p>If we open up the client code, we can see</p>
-<pre><code class="language-haskell">
-<span class="hljs-title">maybeBook</span> &lt;- <span class="hljs-type">H</span>.liftAff $ loadItem $ <span class="hljs-string">"/api/books/"</span> &lt;&gt; isbn
-
-<span class="hljs-comment">-- where</span>
-
-<span class="hljs-title">loadItem</span> :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">ReadForeign</span> a =&gt; <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Aff</span> (<span class="hljs-type">Either</span> <span class="hljs-type">String</span> a)
-<span class="hljs-title">loadItem</span> uri = <span class="hljs-keyword">do</span>
-  response &lt;- <span class="hljs-type">AX</span>.get <span class="hljs-type">AXResponse</span>.string uri
-  <span class="hljs-keyword">case</span> response.body <span class="hljs-keyword">of</span>
-     <span class="hljs-type">Left</span> err -&gt; pure $ <span class="hljs-type">Left</span> <span class="hljs-string">"No"</span>
-     <span class="hljs-type">Right</span> json -&gt; pure $ bimap show identity $ readJSON json
-</code></pre>
-<p>That is all that is required to shift data between the server Purescript and the client Purescript which is pretty tidy indeed! Because we&#39;re using the same library, any custom implementations of <em>ReadForeign</em> and <em>WriteForeign</em> we might choose to write can then also be shared between the two.</p>
-<p>Obviously sharing code between both client and server is something that should be entered into with caution, typically sharing a lot of business logic is the sign of a problem - but I can easily see us ending up in a world where we can start using Halogen on the server-side to pre-render HTML for serving to the client much in the same way that the ReactJS community have started doing similar with NodeJS.</p>
-<h1 id="next-up">Next up</h1>
-<p>We&#39;ll look at our bindings to Redis, to get a feel for what interop with &quot;native&quot; Erlang with FFI looks like.</p>
-]]></description><link>http://codeofrob.com/entries/shared-code-twixt-purescript-server-and-client.html</link><guid isPermaLink="true">http://codeofrob.com/entries/shared-code-twixt-purescript-server-and-client.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 27 Aug 2019 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/purescript-interop-with-native-erlang---interacting-with-redis.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purescript-interop-with-native-erlang---interacting-with-redis.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 29 Aug 2019 09:30:00 GMT</pubDate></item></channel></rss>

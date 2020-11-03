@@ -116,7 +116,7 @@
   <span class="hljs-keyword">return</span> value * <span class="hljs-number">2</span>
 }
 
-<span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">applyAndPrint</span><span class="hljs-params">(values: <span class="hljs-type">Array</span>&lt;<span class="hljs-type">Int</span>&gt;, modifier: (<span class="hljs-type">value</span>: <span class="hljs-type">Int</span>)</span></span> -&gt; <span class="hljs-built_in">Int</span>) {
+<span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">applyAndPrint</span><span class="hljs-params">(values: <span class="hljs-type">Array</span>&lt;<span class="hljs-type">Int</span>&gt;, modifier: (<span class="hljs-type">value</span>: <span class="hljs-type">Int</span>) -&gt; <span class="hljs-type">Int</span>)</span></span> {
   <span class="hljs-keyword">for</span>(i <span class="hljs-keyword">in</span> values)
     println(modifier(i))
 }</code></pre><p>My first thought would be </p>
@@ -127,7 +127,7 @@
 <p>Understand that? Well done, I don&#39;t - but here&#39;s an example</p>
 <pre><code><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Builder</span> </span>(<span class="hljs-keyword">val</span> multiplier: <span class="hljs-built_in">Int</span>) {
 
-    <span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">invokeStuff</span><span class="hljs-params">(action: (<span class="hljs-type">Builder</span>.()</span></span> -&gt; <span class="hljs-built_in">Unit</span>)) {
+    <span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">invokeStuff</span><span class="hljs-params">(action: (<span class="hljs-type">Builder</span>.() -&gt; <span class="hljs-type">Unit</span>))</span></span> {
         <span class="hljs-keyword">this</span>.action()
     }
 
@@ -138,14 +138,14 @@
 <pre><code>action: <span class="hljs-function"><span class="hljs-params">(Builder.() -&gt; Unit)</span></span></code></pre><p>This is a function that returns nothing, takes in nothing but is invoked on an object of type &quot;Builder&quot;.</p>
 <p>This means when we use this builder like so</p>
 <pre><code><span class="hljs-variable">var</span> <span class="hljs-variable">builder</span> = <span class="hljs-function"><span class="hljs-title">Builder</span>(<span class="hljs-number">10</span>)</span>
-<span class="hljs-variable">builder</span>.invokeStuff({
+<span class="hljs-variable">builder.invokeStuff</span>({
   <span class="hljs-variable">var</span> <span class="hljs-variable"><span class="hljs-class">result</span></span> = <span class="hljs-function"><span class="hljs-title">multiply</span>(<span class="hljs-number">1</span>)</span>
   <span class="hljs-function"><span class="hljs-title">println</span>(<span class="hljs-variable"><span class="hljs-class">result</span></span>)</span>
 })</code></pre><p>The context of &#39;this&#39; has been set to the builder object and we can invoke functions declared within the builder.</p>
 <p>Thing is, this context can be played with - consider that we can also create extension methods on types, let&#39;s say the Int type.</p>
 <pre><code><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Builder</span> </span>(<span class="hljs-keyword">val</span> multiplier: <span class="hljs-built_in">Int</span>) {
 
-    <span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">invokeStuff</span><span class="hljs-params">(action: (<span class="hljs-type">Builder</span>.()</span></span> -&gt; <span class="hljs-built_in">Unit</span>)) {
+    <span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">invokeStuff</span><span class="hljs-params">(action: (<span class="hljs-type">Builder</span>.() -&gt; <span class="hljs-type">Unit</span>))</span></span> {
         <span class="hljs-keyword">this</span>.action()
     }
 
@@ -159,7 +159,7 @@
 
 }</code></pre><p>I can use this with</p>
 <pre><code><span class="hljs-variable">var</span> <span class="hljs-variable">builder</span> = <span class="hljs-function"><span class="hljs-title">Builder</span>(<span class="hljs-number">10</span>)</span>
-<span class="hljs-variable">builder</span>.invokeStuff({
+<span class="hljs-variable">builder.invokeStuff</span>({
   <span class="hljs-variable">var</span> <span class="hljs-variable"><span class="hljs-class">result</span></span> = <span class="hljs-number">1</span>.doStuff(<span class="hljs-number">50</span>)
   <span class="hljs-function"><span class="hljs-title">println</span>(<span class="hljs-variable"><span class="hljs-class">result</span></span>)</span>
 })</code></pre><p><em>The scoping of extension functions</em></p>
@@ -192,7 +192,7 @@
 <p><em>Infix calls</em></p>
 <p>And here is another feature, we have infix calls for functions with only one argument so..</p>
 <pre><code><span class="hljs-variable">var</span> <span class="hljs-variable">builder</span> = <span class="hljs-function"><span class="hljs-title">Builder</span>(<span class="hljs-number">10</span>)</span>
-<span class="hljs-variable">builder</span>.invokeStuff({
+<span class="hljs-variable">builder.invokeStuff</span>({
   <span class="hljs-variable">var</span> <span class="hljs-variable"><span class="hljs-class">result</span></span> = <span class="hljs-number">1</span> <span class="hljs-variable">doStuff</span> <span class="hljs-number">50</span>
   <span class="hljs-function"><span class="hljs-title">println</span>(<span class="hljs-variable"><span class="hljs-class">result</span></span>)</span>
 })</code></pre><p><strong>My feedback</strong></p>
