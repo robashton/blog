@@ -1,0 +1,215 @@
+<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
+<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
+<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
+<!--[if !ie]><!-->
+<html lang="en"> <!--<![endif]-->
+<head>
+    <title id="title">CUDA Context Management with NvEnc</title>
+    <meta charset="utf-8">
+    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="Description" content="Rob Ashton's blog, Purescript, Erlang, Purerl, Javascript, Software Design, etc"/> 
+    <meta name="author" content="Rob Ashton">
+    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
+    <link rel="stylesheet" href="/assets/css/style_responsive.css">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
+    <link rel="stylesheet" href="/assets/css/themes/default.css">
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
+    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="header">
+        <div class="container">
+            <div class="logo">
+             <h2><a href="/index.html">Rob Ashton</a></h2>
+            </div>
+            <div class="navbar">
+                <div class="navbar-inner">
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </a>
+                    <div class="nav-collapse collapse">
+                        <ul class="nav top-2">
+                          <li>
+                                <a href="/">Home</a>
+                            </li>
+                            <li>
+                                <a href="/blog.html">Blog</a>
+                            </li>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <body>
+    <div id="blog-entry">
+      <h1 id="post-title">CUDA Context Management with NvEnc</h1>
+      <h6>Published on <span class="date">2020-11-17</span></h6>
+      <div id="post"><p>In the <a href="/entries/decoding-h264-with-nvidia.html">previous blog entry</a> I touched on context management in CUDA being a set of choices with conflicting information from documentation to popular code samples and such.</p>
+<h1 id="what-is-the-problem">What is the &quot;problem&quot;?</h1>
+<p>Most operations with CUDA expect there to be a CUDA context bound to the current thread. All operations against that CUDA context are serialized (unless those operations are bound to a specific stream, in which case they are serialized against that stream). That&#39;s it, that&#39;s the whole goal of &quot;context&quot; in CUDA, and we have more than one way of realising this in the API].</p>
+<h1 id="the-api">The API</h1>
+<p>I suspect this API has been subject to a bit of churn since CUDA was first realised and this would go some way to expaining the various ways of dealing with the context, starting off with the method that the samples tend to use..</p>
+<pre><code>  <span class="hljs-comment">//</span>
+  <span class="hljs-comment">// On startup</span>
+  <span class="hljs-comment">//</span>
+
+  cu<span class="hljs-constructor">CtxCreate(&amp;<span class="hljs-params">ctx</span>, <span class="hljs-params">flags</span>, <span class="hljs-params">dev</span>)</span>;
+
+  <span class="hljs-comment">//</span>
+  <span class="hljs-comment">// Repeat below until finished</span>
+  <span class="hljs-comment">//</span>
+
+  cu<span class="hljs-constructor">CtxPushCurrent(<span class="hljs-params">ctx</span>)</span>;
+
+  <span class="hljs-comment">// <span class="hljs-doctag">TODO:</span> some operation </span>
+
+  cu<span class="hljs-constructor">CtxPopCurrent(NULL)</span>;
+
+  <span class="hljs-comment">//</span>
+  <span class="hljs-comment">//  When finished</span>
+  <span class="hljs-comment">//</span>
+
+  cu<span class="hljs-constructor">CtxDestroy(<span class="hljs-params">ctx</span>)</span>;
+
+</code></pre><p>If we look at the API documentation for <a href="https://docs.nvidia.com/cuda/cuda-driver-api/group__CUDA__CTX.html#group__CUDA__CTX_1g65dc0012348bc84810e2103a40d8e2cf">cuCtxCreate</a>, the very firist sentence we see is &quot;In most cases it is recommended to use cuDevicePrimaryCtxRetain.&quot;</p>
+<p>So immediately on looking up the documentation for the API that the code samples use, we are told to use something else. Now - the way I understand this, is that you can create contexts within a section of your code and use <em>Push</em> and <em>Pop</em> when using that context, and then code being invoked whilst this context is valid can do the same and you can end up with a stack of contexts that works happily together. Some searching around this reveals that there are performance penalties or even limitations over the number of active contexts in an application at the same time (operations are serialized anyway) and what we <em>can</em> do is simply get hold of the primary context with</p>
+<pre><code>  <span class="hljs-comment">//</span>
+  <span class="hljs-comment">// On startup</span>
+  <span class="hljs-comment">//</span>
+
+
+  cu<span class="hljs-constructor">DevicePrimaryCtxRetain(&amp;<span class="hljs-params">ctx</span>, <span class="hljs-params">dev</span>)</span>;
+
+  <span class="hljs-comment">//</span>
+  <span class="hljs-comment">// Repeat below until finished</span>
+  <span class="hljs-comment">//</span>
+
+  cu<span class="hljs-constructor">CtxSetCurrent(&amp;<span class="hljs-params">ctx</span>)</span>;
+
+  <span class="hljs-comment">// <span class="hljs-doctag">TODO:</span> some operation</span>
+
+  cu<span class="hljs-constructor">CtxSetCurrent(NULL)</span>;
+
+  <span class="hljs-comment">//</span>
+  <span class="hljs-comment">//  When finished</span>
+  <span class="hljs-comment">//</span>
+
+  cu<span class="hljs-constructor">DevicePrimaryCtxRelease(<span class="hljs-params">ctx</span>)</span>;
+
+</code></pre><p>Now some more disparate info found in the recesses of Google/Stackoverflow/Nvidia forms</p>
+<ul>
+<li>Originally contexts weren&#39;t bindable to multiple threads at the same time</li>
+<li>Decode sessions cannot share contexts across threads by default</li>
+<li>Contexts take up a chunk of ram, buffers are not sharable across contexts</li>
+<li>A primary context is analogous to the device itself</li>
+<li>A failure on the primary context is going to cascade  into all users of that context</li>
+<li>contexts can be defined as &#39;floating&#39; if they&#39;re not bound to a thread by default</li>
+<li>most operations against a context are async, and not complete until you call &#39;synchronise&#39;</li>
+</ul>
+<p>It turns out that the nvidia decode/encode API provides another mechanism on top of contexts - the <em>lock</em>, which actually means we can share the same context across multiple decode sessions without too much issue. These are the choices I made with the above information given the needs of our encode/decode work:</p>
+<ul>
+<li>We will be running multiple encode/decode <em>processes</em> that should be completely isolated, this implies that context <em>needs</em> creating per process.</li>
+<li>We can share the context throughout that process so long as we use locks</li>
+<li>Locks perform the same job as Push/Set/Pop, but with a mutex involved to make sure all work is serialized across threads</li>
+</ul>
+<pre><code>  <span class="hljs-comment">//</span>
+  <span class="hljs-comment">// On startup</span>
+  <span class="hljs-comment">//</span>
+
+
+  cu<span class="hljs-constructor">CtxCreate(&amp;<span class="hljs-params">ctx</span>, <span class="hljs-params">flags</span>, <span class="hljs-params">dev</span>)</span>;
+  cuvid<span class="hljs-constructor">CtxLockCreate(&amp;<span class="hljs-params">lock</span>, <span class="hljs-params">ctx</span>)</span>;
+
+
+  <span class="hljs-comment">//</span>
+  <span class="hljs-comment">// Repeat below until finished</span>
+  <span class="hljs-comment">//</span>
+
+  cuvid<span class="hljs-constructor">CtxLock(<span class="hljs-params">lock</span>, 0)</span>;
+
+  <span class="hljs-comment">// <span class="hljs-doctag">TODO:</span> some operation</span>
+
+  cuvid<span class="hljs-constructor">CtxUnlock(<span class="hljs-params">lock</span>, 0)</span>;
+
+  <span class="hljs-comment">//</span>
+  <span class="hljs-comment">//  When finished</span>
+  <span class="hljs-comment">//</span>
+
+  cuvid<span class="hljs-constructor">CtxLockDestroy(<span class="hljs-params">lock</span>)</span>;
+  cu<span class="hljs-constructor">CtxDestroy(<span class="hljs-params">ctx</span>)</span>;
+
+</code></pre><p>In my tests (spinning up multiple processes/tests), this seemed to be the route to getting a lowish resource usage, a good throughput and most importantly a lack of errors. If more throughput is required, then the concept of &#39;streams&#39; can be utilised against this same context management (that seems to be a case of creating streams per ... well... stream of work and just passing that reference around as a synchronisation point).</p>
+<p>Because the cuvidCtxLock is a cuvid concept and not a CUDA concept, there are mechanisms we can add to decoder mentioned in the last blog entry so it will automatically use that lock when performing operations against the bound context and play nicely with our code.</p>
+<p>We can replace every instance of Push and Pop in that blog entry with Lock and Unlock, and add the lock to the decoder creation params to take advantage of this</p>
+<pre><code>  decode_create_info.vidLock = session-&gt;lock;
+  cuvid<span class="hljs-constructor">CtxLock(<span class="hljs-params">session</span>-&gt;<span class="hljs-params">lock</span>, 0)</span>;
+  cr = cuvid<span class="hljs-constructor">CreateDecoder(&amp;<span class="hljs-params">session</span>-&gt;<span class="hljs-params">decoder</span>, &amp;<span class="hljs-params">decode_create_info</span>)</span>;
+  cuvid<span class="hljs-constructor">CtxUnlock(<span class="hljs-params">session</span>-&gt;<span class="hljs-params">lock</span>, 0)</span>;
+</code></pre><p>I couldn&#39;t work out if we actually wanted to use Lock/Unlock around creation at that point, but it didn&#39;t hurt so in it went.</p>
+<p>I <em>think</em> that this is how these APIs should be used, I give no claims to actual correctness - the documentation is vague and contradictory in places with samples/such but I have stress tested this and I&#39;ve also demonstrated the failure cases to myself (multiple threads, no locks) to hilarity so it&#39;s probably close enough to be right.</p>
+</div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="mailto:robashton@codeofrob.com">Respond</a>
+      </div>
+
+        <!--=== Copyright ===-->
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span6">
+                <p class="terms">2020 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
+    });
+        </script>
+        <!--[if lt IE 9]>
+    <script src="assets/js/respond.js"></script>
+<![endif]-->
+        </body>
+        </html>
+
