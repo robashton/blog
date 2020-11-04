@@ -1,9 +1,9 @@
-<p>Mundane blog posts here we go! I recently got asked about adding NVIDIA capability to our stack and that is a process I went through and completed with only moderate frustration. I don&#39;t tend to write very much C in my day to day job (This is by design, nobody wants me writing C and I don&#39;t want to be writing C) but here we are writing C because that&#39;s the easiest way to integrate native stuff with Erlang.</p>
+<p>Mundane blog posts here we go! I recently got asked about adding NVIDIA capability to our stack and that is a process I went through and completed with only moderate frustration. I don&#39;t tend to write very much C in my day to day job (This is by design, nobody wants me writing C and I don&#39;t want to be writing C) but here we are writing C because that&#39;s the easiest way to integrate native stuff with Erlang and I&#39;m not about to go and learn Rust just to play with an SDK that we may not end up using in production. I will go and learn Rust in 2021 though, Rust is where our native stuff is heading but I digress - thisis the life of a developer working in this sort of environment - putting off learning new things until it becomes strictly necessary or we&#39;d  never get any bloody work done.</p>
 <p>We&#39;ll ignore the Erlang bit for the most part, because I could probably write several blog posts on my experience of writing NIFs (badly) alone, and we&#39;ll just take a quick overview of how the NVIDIA stuff fits together because coming to this task entirely from scratch with no knowledge of how the various bits fit together made set up that little bit more interesting.</p>
 <h1 id="my-os">My OS</h1>
 <p>I run Nixos, my entire system including drivers, software packages, configuration and such exist on Github in a <a href="https://github.com/robashton/nixos-install">repository</a> and it makes set up on new hardware or re-paving from scratch on existing hardware a very simply task of cloning a repo and running it against that hardware.</p>
-<p>The hardest thing about the setup of this laptop with the Nvidia GPU on it was disabling the GPU in the first place entirely so to squeeze as much battery life out of it as possible while sitting in bars at conferences and such. There is a perfectly good integrated Intel GPU (that also does hardware accelerated encodes/decodes too!) that I&#39;ve been using for the lifetime of his hardware.</p>
-<p>The first thing I needed to was update the kernel to latest and survey what the state of Nvidia drivers/etc is in this world. The answer is &#39;in a state of flux&#39; (<em>when isn&#39;t it?</em>), but it looks like we&#39;ve finally got sensible offloading of the GPU built in and in theory we can run an X session off-screen for doing rendering and such on that GPU without draining the battery just because I was silly enough to open vim inside a terminal emulator. </p>
+<p>The hardest thing about the setup of this laptop with the Nvidia chip on it was disabling the GPU in the first place entirely so to squeeze as much battery life out of it as possible whilst sitting in bars at conferences and such and writing code until somebody wants to chat to me. (I actually did this whilst sat at a conference in Lithuania, that seems a different world now..). There is a perfectly good integrated Intel GPU (that also does hardware accelerated encodes/decodes too!) that I&#39;ve been using for the lifetime of his hardware (and we use this stuff in production so it makes sense to use it locally).</p>
+<p>The first thing I needed to do was update the kernel to latest and survey what the state of Nvidia drivers/etc is in this world having not looked at it for a couple of years. The answer is &#39;in a state of flux&#39; (<em>when isn&#39;t it?</em>), but it looks like we&#39;ve finally got sensible offloading of the GPU built in and in theory we can run an X session off-screen for doing rendering and such on that GPU without draining the battery just because I was silly enough to open vim inside a terminal emulator. </p>
 <p>The support for the encode/decode functionality is built into these drivers in the form of dynamically loaded libraries and they need to be set up properly before anything will work. On Windows this probably just means running an EXE, on MacOS it probably means dragging an icon onto another icon and on Nixos I need configure the drivers with the information of where to find the hardware and how I want it to operate.</p>
 <p>I had been lying to ACPI to get my touchpad working with Nvidia disabled, but now comes the time to tell the truth once more..</p>
 <pre><code>    <span class="hljs-keyword">boot.kernelParams </span>= [ <span class="hljs-string">"acpi_osi=Linux"</span> ]<span class="hljs-comment">;</span></code></pre><p>Hey NVIDIA, this is where my hardware is (located using lspci)</p>
@@ -18,7 +18,7 @@
   boot.<span class="hljs-attr">blacklistedKernelModules</span> = [ <span class="hljs-string">"nouveau"</span> ];</code></pre><p>And also the X11 packages for this stuff</p>
 <pre><code>  environment.systemPackages = with pkgs<span class="hljs-comment">; [</span>
     linuxPackages.nvidia_x11
-  ]<span class="hljs-comment">;</span></code></pre><p>And may as well get the opengl stuff set up while we&#39;re here, although it&#39;s not strictly useful for the encodes it&#39;s good for testing</p>
+  ]<span class="hljs-comment">;</span></code></pre><p>And may as well get the opengl stuff set up while we&#39;re here, although it&#39;s not strictly useful for the encodes it&#39;s good for testing the hardware itself.</p>
 <pre><code>  hardware.<span class="hljs-attr">opengl</span> = {
     <span class="hljs-attr">enable</span> = <span class="hljs-literal">true</span>;
     <span class="hljs-attr">driSupport</span> = <span class="hljs-literal">true</span>;
@@ -26,7 +26,7 @@
 <p>Having a Nixos setup is quite nice, a quick rebuild and I have a new boot option to start up with all of this enabled (and the old option is still there in case I got anything wrong, which I definitely did in my first few passes here).</p>
 <p>Anyway, this gives me a few things..</p>
 <ul>
-<li><em>glxgears</em>:  Woo, spinny gears on my laptop</li>
+<li><em>glxgears</em>:  Woo, spinny gears on my laptop powered by Intel</li>
 <li><em>nvidia-offload glxgears</em>: Woo, spinny gears powered by Nvidia</li>
 <li><em>/run/opengl-driver/lib/libnvidia-encode.so</em>: Library for doing encode stuff</li>
 <li><em>/run/opengl-driver/lib/dri/nvidia_drv_video.so</em>: The actual video driver</li>
@@ -34,7 +34,7 @@
 <p>Happy this is all setup, I need to look next at the tools required to write code that uses these things...</p>
 <h1 id="the-project-stuff">The project stuff</h1>
 <p>I don&#39;t tend to install SDKs or even development tools and such in my global environment, it nearly always ends up being the case that I need a different version of something for one project or another and because I&#39;m on Nixos I just use Nix shells for the individual projects and their development requirements <a href="https://purerl-cookbook.readthedocs.io/en/latest/devenv/nix.html">(Something I have written a bit about)</a></p>
-<p>It turns out I just need to add these packages to my environment and I&#39;m good to go, I already have nvidia_x11, but I add it again here so I can use it to generate some environment variables later on in the shell.nix.</p>
+<p>It turns out I just need to add these packages to my environment and I&#39;m good to go, I already have nvidia_x11, but I &#39;add&#39; it again here so I can use it to generate some environment variables later on in the shell.nix so everything lines up.</p>
 <pre><code>
   cudatoolkit
   nvidia-video-sdk
@@ -45,7 +45,7 @@
     gcc8
     ffmpeg-full
 </code></pre><p>As a further bonus, I go and add <em>gdb</em> to this list because I literally don&#39;t have any development tools on my host OS and I&#39;m bound to cause a few SIGSEGVs over the next couple of weeks that need debugging.</p>
-<p>The cuda toolkit doesn&#39;t (at time of writing) work with the modern version of GCC on my OS so I need to explicitly pull GCC8 and set that in the environment so the samples and such will build, how about that.</p>
+<p>The cuda toolkit doesn&#39;t (at time of writing) work with the modern version of GCC on my OS so I needed to explicitly pull GCC8 and set that in the environment so that when I&#39;m building code with our standard makefiles we&#39;ll do the right thing.</p>
 <pre><code>  shellHook = <span class="hljs-string">''</span>
     <span class="hljs-built_in">export</span> CUDA_PATH=<span class="hljs-variable">${pkgs.cudatoolkit}</span>
     <span class="hljs-built_in">export</span> LD_LIBRARY_PATH=<span class="hljs-variable">${pkgs.linuxPackages.nvidia_x11}</span>/lib
@@ -53,4 +53,4 @@
     <span class="hljs-built_in">export</span> EXTRA_CCFLAGS=<span class="hljs-string">"-I/usr/include"</span>
     <span class="hljs-built_in">export</span> CC=<span class="hljs-variable">${pkgs.gcc8}</span>/bin/gcc
     <span class="hljs-built_in">export</span> CXX=<span class="hljs-variable">${pkgs.gcc8}</span>/bin/g++
-  <span class="hljs-string">''</span>;</code></pre><p>Anyway, that&#39;s my setup - seeing as I&#39;ve made it to 1000 words already I&#39;ll leave the next post of &quot;exploring the samples, SDK surface area, documentation, etc&quot; to the next one. Mundane <em>and</em> wordy, everybody&#39;s favourite.</p>
+  <span class="hljs-string">''</span>;</code></pre><p>Anyway, that&#39;s my setup - seeing as I&#39;ve made it to 1000 words already I&#39;ll leave the next post of &quot;exploring the samples, SDK surface area, documentation, etc&quot; to the next one. mundane <em>and</em> wordy, everybody&#39;s favourite.</p>

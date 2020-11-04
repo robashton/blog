@@ -1,0 +1,226 @@
+<p>The first task for me will be to attempt to decode one of my &#39;known good&#39; h264 sources. Now - my sources are nearly all transport streams with audio (often multiple) and such, so I&#39;ll need to parse those files, pull the streams out of them, filter the video stream from a single pid and send the h264 frame data into the API for decode. This is quite a lot of work and there is no way of testing whether the results are good short of either dumping them to disk and telling ffmpeg what it&#39;s looking at (raw frames), or piping that data into an encoder in code and writing out a fresh transport stream with the round-tripped h264.</p>
+<p>I&#39;ll take that second option because I already have all the code required to do this in Erlang in our proprietary workflow engine - a simplified example of the code I&#39;ll write to test my decoder appears below. (Working inside of a mature codebase has its advantages)</p>
+<pre><code class="language-erlang">
+#workflow {
+  generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">"foo.ts"</span>&gt;&gt; },
+  processors = [
+    #nvidia_decoder { name = decode, from = { source, ?video_frames_with_stream_id(<span class="hljs-number">256</span>) } },
+    #x264_encoder { name = encode, from = decode },
+    #ts_writer { name = write, from = encode, filename  = &lt;&lt;<span class="hljs-string">"out.ts"</span>&gt;&gt; }
+  ]
+}
+
+</code></pre>
+<p>Now to get to this point, the &#39;best&#39; way to achieve this is to try to mirror the underlying API as best as possible in Erlang and write as direct a NIF as possible under this. We can assume that&#39;s what I&#39;m then using in the Erlang, that allows me to write a test Erlang file and simply calls one or two of the methods with minimum config and build that up as I go. So we&#39;ll say that that&#39;s what I&#39;m doing with an <em>nvidia_test.erl</em> calling into an <em>nvidia_api.erl</em> which my <em>nvidia_decoder.erl</em> will eventually leverage.</p>
+<p>We can therefore jump straight into the C and write some functions that we can assume are being called from Erlang with the appropriate arguments.</p>
+<h1 id="parsing-the-h264">Parsing the h264</h1>
+<p>Each frame has a blob of &#39;data&#39;, which is essentially a sequence of NAL units, some of which are metadata describing the video content and some of which are the data itself. We can parse this ourselves in Erlang and pass just the data into the decoder, or we can just pass the whole lot into Nvidia&#39;s parser and use the callbacks provided by that parser to then feed a decoder.</p>
+<p>We do actually have code lying around for parsing h264, which is why we even have the concept of a &#39;frame&#39; at all in the above code, but by far the easiest way to use the Nvidia decoder to use that parser as it then ends up providing the exact structures required <em>for</em> that decoder.</p>
+<p>Creating a parser is quite easy, we populate a CUVIDPARSERPARAMS with appropriate config and init the darned thing - this is all host code for execution on the CPU and is not remotely specific to nvidia and doesn&#39;t require any hardware setup. In my code, the parser parameters are passed in from Erlang, but hard coded below. <em>decode_session</em> is a pointer to a struct containing both the parser and a pile of information also passed in by the Erlang.</p>
+<pre><code class="language-c">
+  CUVIDPARSERPARAMS videoParserParameters = {}
+  videoParserParameters.CodecType = cudaVideoCodec_H264;
+  videoParserParameters.ulMaxNumDecodeSurfaces = <span class="hljs-number">1</span>;
+  videoParserParameters.ulClockRate = <span class="hljs-number">90000</span>;
+  videoParserParameters.ulMaxDisplayDelay = <span class="hljs-number">0</span>;
+  videoParserParameters.pUserData = decode_session;
+
+  videoParserParameters.pfnSequenceCallback = decode_session_handle_video_sequence;
+  videoParserParameters.pfnDecodePicture = decode_session_handle_picture_decode;
+  videoParserParameters.pfnDisplayPicture = decode_session_handle_picture_display;
+
+
+ cuvidCreateVideoParser(&amp;decode_session-&gt;parser, &amp;videoParserParameters);
+</code></pre>
+<p>There are three callbacks on this struct, which are very much designed to work around the decode itself. </p>
+<ul>
+<li><em>pfnSequenceCallback</em>: Stream information, create the decoder if you want / Stream has changed and decoder needs reconfiguring</li>
+<li><em>pfnDecodePicture</em>: Here is data and information about that data, stick it into the decoder</li>
+<li><em>pfnDisplayPicture</em>: You should pulling a frame out of the decoder here cos it&#39;s ready</li>
+</ul>
+<p>If the reader is unfamiliar with video streams, the reason we have two callbacks for decode/display is that frames in the incoming h264 stream are not necessarily in display order because you can have references to previous/future frames in encoded h264 data. It&#39;s not simply &#39;one in, one out&#39;.</p>
+<p>The form of the data going in therefore is &#39;packets&#39; with timestamps which we can use for correlation coming back out again, calling the code from Erlang (but removing all the NIF mess) looks like this, simply throwing data at the parser and letting it do its job.</p>
+<pre><code class="language-c">
+<span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title">decode_frame</span><span class="hljs-params">(decode_session* session, <span class="hljs-keyword">void</span>* data, <span class="hljs-keyword">int</span> size, <span class="hljs-keyword">int64_t</span> timestamp)</span>
+</span>{
+  CUVIDSOURCEDATAPACKET packet = { <span class="hljs-number">0</span> };
+  packet.payload = data;
+  packet.payload_size = size;
+  packet.flags = CUVID_PKT_TIMESTAMP;
+  packet.timestamp = timestamp;
+
+  <span class="hljs-keyword">if</span> (size == <span class="hljs-number">0</span>) {
+    packet.flags |= CUVID_PKT_ENDOFSTREAM;
+  }
+
+  cuCtxPushCurrent(session-&gt;ctx);
+  cr = cuvidParseVideoData(session-&gt;parser, &amp;packet);
+  cuCtxPopCurrent(session-&gt;ctx);
+
+}
+
+</code></pre>
+<p>My first test effectively boiled down to calling this parser with a couple of frames with empty callbacks and printfs just to make sure that things were initialising as expected and the callbacks were being invoked.</p>
+<pre><code class="language-c">
+  <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> CUDAAPI <span class="hljs-title">decode_session_handle_video_sequence</span><span class="hljs-params">(<span class="hljs-keyword">void</span> *obj, CUVIDEOFORMAT* pVideoFormat)</span>
+  </span>{
+    TRACE(<span class="hljs-string">"handle_video_sequence  \r\n"</span>);
+  }
+</code></pre>
+<p>Each of these callbacks present us with a <em>void\</em> obj<em>, which is the *pUserData</em> passed into the parser parameters on creation, we&#39;re using a struct here containing the parser and parameters, and it makes sense to stash the decoder in this struct too.</p>
+<h1 id="initialising-the-hardware">Initialising the hardware</h1>
+<p>We can&#39;t create a decoder until we&#39;ve parsed some h264, but the decoder API is built directly on top of some CUDA constructs and those constructs will need creating up front if we are to create that decoder. </p>
+<p>All CUDA operations revolve around having a CUDA context created around the device we want to use for the CUDA operations, ignoring the return results (not something I&#39;m doing in the real code), a basic setup looks thus. (I&#39;ve also stripped the Erlang comms from these implementations, as messaging code and binary reference counting is outside the scope of this blog entry).</p>
+<pre><code class="language-c">
+ CUdevice cuDevice = <span class="hljs-number">0</span>;
+ CUcontext ctx = <span class="hljs-number">0</span>;
+
+
+ cuInit(<span class="hljs-number">0</span>);
+ cuDeviceGet(&amp;cuDevice, <span class="hljs-number">0</span>);
+ cuCtxCreate(&amp;ctx, <span class="hljs-number">0</span>, cuDevice);
+</code></pre>
+<p>Now, for all operations involving CUDA, this context will need binding to the current thread (except where in cases where various Nvidia APIs helpfully do this for us) and there are multiple ways of managing that context, the documentation tells us to do it one way whilst saying that another way is the default and the samples go on to do it in a whole other manner. I&#39;ll actually try and cover this in the next entry because it might save somebody some time in the future (or somebody might e-mail me to tell me I&#39;ve completely missed the point, that&#39;d be quite nice).</p>
+<p>We stash this context on the struct being used in the parser above so I can then use it in calls later, but that&#39;s the extent of the setup we can do until we&#39;ve parsed some of the stream.</p>
+<h1 id="creating-the-decoder">Creating the decoder</h1>
+<p>In the callback for <em>pfnSequenceCallback</em>, we get told about the video format in the struct <em>CUVIDEOFORMAT</em>, and get passed our struct as a <em>void\</em> <em>, so the first thing to do here is grab that struct because it has some config on it, and then create a *CUVIDDECODECREATEINFO</em> and populate it from both the config and the information about the video given to us by the parser.</p>
+<pre><code class="language-c">  <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> CUDAAPI <span class="hljs-title">decode_session_handle_video_sequence</span><span class="hljs-params">(<span class="hljs-keyword">void</span> *obj, CUVIDEOFORMAT* pVideoFormat)</span> </span>{
+    CUresult cr;
+    decode_session *session = (decode_session *) obj;
+    CUVIDDECODECREATEINFO decode_create_info = { <span class="hljs-number">0</span> };
+
+    decode_create_info.ulWidth = pVideoFormat-&gt;coded_width;
+    decode_create_info.ulHeight = pVideoFormat-&gt;coded_height;
+    decode_create_info.CodecType = pVideoFormat-&gt;codec;
+    decode_create_info.ChromaFormat = pVideoFormat-&gt;chroma_format;
+    decode_create_info.bitDepthMinus8 = pVideoFormat-&gt;bit_depth_luma_minus8;
+    decode_create_info.ulTargetWidth = pVideoFormat-&gt;coded_width;
+    decode_create_info.ulTargetHeight = pVideoFormat-&gt;coded_height;
+    decode_create_info.ulNumDecodeSurfaces = pVideoFormat-&gt;min_num_decode_surfaces;
+    decode_create_info.ulNumOutputSurfaces = <span class="hljs-number">2</span>;
+    decode_create_info.ulIntraDecodeOnly = <span class="hljs-number">0</span>;
+    decode_create_info.Reserved1 = <span class="hljs-number">0</span>;
+    decode_create_info.ulCreationFlags = cudaVideoCreate_PreferCUVID;
+
+    decode_create_info.ulMaxWidth = session-&gt;max_width;
+    decode_create_info.ulMaxHeight = session-&gt;max_height;
+    decode_create_info.OutputFormat = session-&gt;output_format;
+    decode_create_info.DeinterlaceMode = session-&gt;deinterlace_mode;
+  }
+</code></pre>
+<p>Creating the decoder itself is just a case of binding the CUDA context to the current thread and invoking the relevant API.</p>
+<pre><code class="language-c">
+  cuCtxPushCurrent(session-&gt;ctx);
+  cr = cuvidCreateDecoder(&amp;session-&gt;decoder, &amp;decode_create_info);
+  cuCtxPopCurrent(<span class="hljs-literal">NULL</span>);
+</code></pre>
+<p>The callback expects a return value of *&lt; 0* if there is a failure, or  <em>min_num_decode_surfaces</em> if there is a success, so...</p>
+<pre><code class="language-c">
+  <span class="hljs-keyword">if</span> ( CUDA_SUCCESS == cr ) {
+    <span class="hljs-keyword">return</span> pVideoFormat-&gt;min_num_decode_surfaces;
+  } <span class="hljs-keyword">else</span>  {
+    <span class="hljs-keyword">return</span> <span class="hljs-number">-1</span>;
+  }
+</code></pre>
+<p>Bit of a faff, but fairly linear at least, with these steps completed we&#39;ll start receiving parsed frame data into <em>pfnDecodePicture</em> which we can feed directly into the decoder.</p>
+<pre><code class="language-c">
+  <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> CUDAAPI <span class="hljs-title">decode_session_handle_picture_decode</span><span class="hljs-params">(<span class="hljs-keyword">void</span>* obj, CUVIDPICPARAMS* pPicParams)</span>
+  </span>{
+    decode_session *session = (decode_session *) obj;
+    CUresult cr;
+
+    cuCtxPushCurrent(session-&gt;ctx);
+    cr = cuvidDecodePicture(session-&gt;decoder, pPicParams);
+    cuCtxPopCurrent(<span class="hljs-literal">NULL</span>);
+
+    <span class="hljs-keyword">if</span> ( CUDA_SUCCESS == cr ) {
+      <span class="hljs-keyword">return</span> <span class="hljs-number">1</span>;
+    } <span class="hljs-keyword">else</span> {
+      <span class="hljs-keyword">return</span> <span class="hljs-number">-1</span>;
+    }
+}
+</code></pre>
+<p><em>pPicParams</em> contains the data as well as information about this frame (such as whether it&#39;s an iframe or not) and conveniently the parser gives the exact data that the decoder expects in order to do its job. With this, we&#39;ll start getting invocations of <em>pfnDisplayPicture</em> with raw frame data which we can send back into our application for further processing. This is actually a bit more complicated, as up until now the memory management has been taken care of us by the APIs we are using.</p>
+<p>The parser is accepting our host memory buffers, and then creating buffers in host memory for its own data which are being copied into device memory by the decoder, and in order to get the data out we&#39;ll need to copy it out of these decoder managed buffers into either host or device memory.</p>
+<p>Copying data out of device memory into host memory is expensive because of limited bandwidth and proximity but is necessary at <em>some</em> point if we are to output that data to anywhere useful. It is however not always desirable to immediately do this if we are then to do an encode or transform on the GPU, we probably want to create buffers on the device itself and perform a copy from the decoder-managed buffers onto our own managed buffers.</p>
+<p>Our code will assume that we want the memory copied into more device memory and we&#39;ll incur another copy if we want to subsequently copy it out onto the host; this is for convenience as in the real world we&#39;ll almost certainly be doing further operations on the GPU and only moving data to the host for testing (as in the above workflow) or for very specific operations (such as some sort of fingerprinting or overlay scenario).</p>
+<p>So, the first thing we need to do here is call cuvidMapVideoFrame, which will block until the frame specified by <em>picture_index</em> has been decoded and is ready for copying out. MapVideoFrame <em>effectively</em> locks that decoder-owned buffer and readies it for use in further calls (copying it into something we own). Once  we&#39;ve called Map, we check the decode status to make sure that the data is worth copying out in the first place. I&#39;ve left us a <em>...</em> as a placeholder for the next steps.</p>
+<pre><code class="language-c">
+<span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> CUDAAPI <span class="hljs-title">decode_session_handle_picture_display</span><span class="hljs-params">(<span class="hljs-keyword">void</span>* obj, CUVIDPARSERDISPINFO* pDispInfo)</span>
+</span>{
+  decode_session *session = (decode_session *) obj;
+  CUresult cr = <span class="hljs-number">0</span>;
+  CUdeviceptr srcFrame = <span class="hljs-number">0</span>;
+  <span class="hljs-keyword">unsigned</span> <span class="hljs-keyword">int</span> srcPitch = <span class="hljs-number">0</span>;
+  CUVIDGETDECODESTATUS status = {<span class="hljs-number">0</span>};
+
+  CUVIDPROCPARAMS vpp = {<span class="hljs-number">0</span>};
+  vpp.progressive_frame = pDispInfo-&gt;progressive_frame;
+  vpp.second_field = pDispInfo-&gt;repeat_first_field + <span class="hljs-number">1</span>;
+  vpp.top_field_first = pDispInfo-&gt;top_field_first;
+  vpp.unpaired_field = pDispInfo-&gt;repeat_first_field &lt; <span class="hljs-number">0</span>;
+
+  cuCtxPushCurrent(session-&gt;ctx);
+
+  <span class="hljs-keyword">if</span>((cr = cuvidMapVideoFrame(session-&gt;decoder, pDispInfo-&gt;picture_index, &amp;srcFrame, &amp;srcPitch, &amp;vpp)) != CUDA_SUCCESS) {
+    <span class="hljs-keyword">return</span> <span class="hljs-number">-1</span>;
+  }
+
+  cr = cuvidGetDecodeStatus(session-&gt;decoder, pDispInfo-&gt;picture_index, &amp;status);
+
+  <span class="hljs-keyword">if</span> (cr == CUDA_SUCCESS &amp;&amp; (status.decodeStatus == cuvidDecodeStatus_Error || status.decodeStatus == cuvidDecodeStatus_Error_Concealed))
+  {
+    <span class="hljs-keyword">return</span> <span class="hljs-number">-1</span>;
+  }
+
+  <span class="hljs-comment">// ... </span>
+
+  cuCtxPopCurrent(<span class="hljs-literal">NULL</span>);
+
+</code></pre>
+<p>And now we&#39;re at the meat of it, we&#39;ve locked the decoded frame and need somewhere to put it. In the real world we operate a pool of surfaces which can be passed into Erlang and reference counted before being returned to the pool when Erlang has finished using that surface. In this example we&#39;ll just create a surface on demand and assume that somebody will destroy it (or re-use it) at some point - obviously creation is expensive so it is best not to be doing this on demand in reality.</p>
+<p>We have to calculate the sizes for this surface based on the <em>CUVIDEOFORMAT</em> that we received in the pfnSequenceCallback, <em>bpp</em> will change depending on the bit depth of the source, but the only output format the decoder actually supports is NV12 so I&#39;ve hard coded byte height to (Chroma = 1 * height) + (Luma  = 0.5 * height), as those are the planes  that we&#39;ll expect in this format. If you don&#39;t know about planar formats then go and <a href="https://wiki.videolan.org/YUV">read about them</a> if you&#39;re writing this code haha, you&#39;ll need to understand it.</p>
+<pre><code class="language-c">
+  <span class="hljs-keyword">void</span>* dstFrame;
+  <span class="hljs-keyword">int</span> dstPitch;
+  <span class="hljs-keyword">int</span> bpp = pVideoFormat-&gt;bit_depth_luma_minus8 &gt; <span class="hljs-number">0</span> ? <span class="hljs-number">2</span> : <span class="hljs-number">1</span>;
+  <span class="hljs-keyword">int</span> frame_width = pVideoFormat-&gt;display_area.right - pVideoFormat-&gt;display_area.left;
+  <span class="hljs-keyword">int</span> byte_width = frame_width * bpp;
+  <span class="hljs-keyword">int</span> byte_height = (pVideoFormat-&gt;display_area.right - pVideoFormat-&gt;display_area.left) * <span class="hljs-number">1.5</span>;
+
+  cuMemAllocPitch((CUdeviceptr *)&amp;dstFrame, &amp;dstPitch, frameWidth  * bpp, byte_height, <span class="hljs-number">16</span>);
+</code></pre>
+<p>We allocate pitched memory (also known as byte-aligned where the pitch is the stride..), essentially we want our buffer to be a be a nice round number, usually a power of 2 because  it makes for efficient read/writes. The pitch is output into &#39;dstPitch&#39; which we&#39;ll need to use later on when using this buffer because maths.</p>
+<p>Assuming we have a buffer created as above, we can copy from our mapped video frame into our new device memory with</p>
+<pre><code class="language-c">
+  CUDA_MEMCPY2D m = { <span class="hljs-number">0</span> };
+  CUresult cr;
+
+  m.srcMemoryType = CU_MEMORYTYPE_DEVICE;
+  m.srcDevice = (CUdeviceptr)srcFrame;
+  m.srcPitch = srcPitch;
+  m.dstMemoryType = CU_MEMORYTYPE_DEVICE;
+  m.dstDevice = (CUdeviceptr)dstFrame;
+  m.dstPitch = dstPitch;
+  m.WidthInBytes = byte_width;
+  m.Height = byte_height;
+
+  cuMemcpy2D(&amp;m);
+</code></pre>
+<p>If we wanted this in host memory, we&#39;d do a straight up malloc of (byte_width * byte_height) with a pitch of byte_width, and copy it out this way</p>
+<pre><code>
+  CUDA_MEMCPY2D m = { <span class="hljs-number">0</span> }<span class="hljs-comment">;</span>
+  CUresult cr<span class="hljs-comment">;</span>
+
+  m.srcMemoryType = CU_MEMORYTYPE_DEVICE<span class="hljs-comment">;</span>
+  m.srcDevice = (CUdeviceptr)srcFrame<span class="hljs-comment">;</span>
+  m.srcPitch = srcPitch<span class="hljs-comment">;</span>
+  m.dstMemoryType = CU_MEMORYTYPE_HOST<span class="hljs-comment">;</span>
+  m.dstHost = (CUdeviceptr)dstFrame<span class="hljs-comment">;</span>
+  m.dstPitch = <span class="hljs-keyword">byte_width;
+</span>  m.WidthInBytes = <span class="hljs-keyword">byte_width;
+</span>  m.Height = <span class="hljs-keyword">byte_height;
+</span>
+  cuMemcpy2D(&amp;m)<span class="hljs-comment">;</span>
+</code></pre><p>That data can then be fired into libx264 along with <em>pDispInfo-&gt;timestamp</em>, encoded and viewed with pleasure. I guess the next post I should  probably talk about CUDA context management before I get to the job of encoding or transforming this data and  maybe it&#39;s worth talking a little about how I&#39;m managing reference counted surfaces between Erlang and C as well as that&#39;s a whole world of fun after this.</p>
+<p>Mundane, but hopefully useful to me or somebody else in the future.</p>
