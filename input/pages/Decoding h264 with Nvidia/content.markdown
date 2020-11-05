@@ -1,24 +1,41 @@
+This blog entry is part of my "[blog about mundane stuff](/entries/blogging-the-mundane.html)" series.
+
+The scene is set and I've [set my laptop up to do Nvidia work](/entries/exploring-the-nvidia-code-samples-and-docs.html),so now to look at the decode process in isolation.
+
 The first task for me will be to attempt to decode one of my 'known good' h264 sources. Now - my sources are nearly all transport streams with audio (often multiple) and such, so I'll need to parse those files, pull the streams out of them, filter the video stream from a single pid and send the h264 frame data into the API for decode. This is quite a lot of work and there is no way of testing whether the results are good short of either dumping them to disk and telling ffmpeg what it's looking at (raw frames), or piping that data into an encoder in code and writing out a fresh transport stream with the round-tripped h264.
 
 I'll take that second option because I already have all the code required to do this in Erlang in our proprietary workflow engine - a simplified example of the code I'll write to test my decoder appears below. (Working inside of a mature codebase has its advantages)
 
 ```erlang
 
-#workflow {
-  generator = #read_from_ts { name = source, filename  = <<"foo.ts">> },
-  processors = [
-    #nvidia_decoder { name = decode, from = { source, ?video_frames_with_stream_id(256) } },
-    #x264_encoder { name = encode, from = decode },
-    #ts_writer { name = write, from = encode, filename  = <<"out.ts">> }
-  ]
-}
-
+  #workflow {
+    generator = #read_from_ts { name = source, filename  = <<"foo.ts">> },
+    processors = [
+      #nvidia_decoder { name = decode, from = { source, ?video_frames_with_stream_id(256) } },
+      #x264_encoder { name = encode, from = decode },
+      #ts_writer { name = write, from = encode, filename  = <<"out.ts">> }
+    ]
+  }
 
 ```
 
 Now to get to this point, the 'best' way to achieve this is to try to mirror the underlying API as best as possible in Erlang and write as direct a NIF as possible under this. We can assume that's what I'm then using in the Erlang, that allows me to write a test Erlang file and simply calls one or two of the methods with minimum config and build that up as I go. So we'll say that that's what I'm doing with an *nvidia_test.erl* calling into an *nvidia_api.erl* which my *nvidia_decoder.erl* will eventually leverage.
 
 We can therefore jump straight into the C and write some functions that we can assume are being called from Erlang with the appropriate arguments.
+
+The API
+==
+
+The Decode API is contained in a couple of header files in the SDK tarfile
+
+- *Interface/cuviddec.h* all the enums and functions
+- *Interface/nvcuvid.h*  some  high level helpers (includes the above)
+
+These are intended to just be copied into the project using the Nvidia API, and then statically linked to
+
+- *Lib/[os]/[arch]/libnvcuvid.so*
+
+This is a bit different to the encode API where it's all dynamically loaded from installed libraries at runtime - I suspect/guess that's because the decode API is built on top of CUDA and the encode API is shipped as part of the Nvidia drivers. (I stress this is a guess and I could be wrong).
 
 Parsing the h264
 ==

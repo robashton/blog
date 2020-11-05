@@ -1,3 +1,5 @@
+This blog entry is part of my "[blog about mundane stuff](/entries/blogging-the-mundane.html)" series.
+
 The SDK
 ==
 

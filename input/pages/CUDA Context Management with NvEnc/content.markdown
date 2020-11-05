@@ -1,3 +1,5 @@
+This blog entry is part of my "[blog about mundane stuff](/entries/blogging-the-mundane.html)" series.
+
 In the [previous blog entry](/entries/decoding-h264-with-nvidia.html) I touched on context management in CUDA being a set of choices with conflicting information from documentation to popular code samples and such.
 
 What is the "problem"?
