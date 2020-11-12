@@ -31,11 +31,14 @@ The Decode API is contained in a couple of header files in the SDK tarfile
 - *Interface/cuviddec.h* all the enums and functions
 - *Interface/nvcuvid.h*  some  high level helpers (includes the above)
 
-These are intended to just be copied into the project using the Nvidia API, and then statically linked to
+A pre-built library for this exists in
 
 - *Lib/[os]/[arch]/libnvcuvid.so*
 
-This is a bit different to the encode API where it's all dynamically loaded from installed libraries at runtime - I suspect/guess that's because the decode API is built on top of CUDA and the encode API is shipped as part of the Nvidia drivers. (I stress this is a guess and I could be wrong).
+but on my OS this library is shipped with nvidia-x11 and that's the package I am loading it from at runtime, but it is also shipped with the opengl-drivers package. Googling around this I can see confusion over whether this is supposed to be vendored or not (why would we need to have X libs installed in order to run a decode process for example).
+
+I suspect that we'd just vendor this in production rather than install packages we don't need.
+
 
 Parsing the h264
 ==
