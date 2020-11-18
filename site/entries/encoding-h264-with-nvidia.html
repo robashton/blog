@@ -1,0 +1,223 @@
+<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
+<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
+<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
+<!--[if !ie]><!-->
+<html lang="en"> <!--<![endif]-->
+<head>
+    <title id="title">Encoding h264 with Nvidia</title>
+    <meta charset="utf-8">
+    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="Description" content="Rob Ashton's blog, Purescript, Erlang, Purerl, Javascript, Software Design, etc"/> 
+    <meta name="author" content="Rob Ashton">
+    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
+    <link rel="stylesheet" href="/assets/css/style_responsive.css">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
+    <link rel="stylesheet" href="/assets/css/themes/default.css">
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
+    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="header">
+        <div class="container">
+            <div class="logo">
+             <h2><a href="/index.html">Rob Ashton</a></h2>
+            </div>
+            <div class="navbar">
+                <div class="navbar-inner">
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </a>
+                    <div class="nav-collapse collapse">
+                        <ul class="nav top-2">
+                          <li>
+                                <a href="/">Home</a>
+                            </li>
+                            <li>
+                                <a href="/blog.html">Blog</a>
+                            </li>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <body>
+    <div id="blog-entry">
+      <h1 id="post-title">Encoding h264 with Nvidia</h1>
+      <h6>Published on <span class="date">2020-11-19</span></h6>
+      <div id="post"><p>This blog entry is part of my &quot;<a href="/entries/blogging-the-mundane.html">blog about mundane stuff</a>&quot; series.</p>
+<p>I covered my <a href="/entries/decoding-h264-with-nvidia.html">decoding</a> test before having a look at <a href="/entries/cuda-context-management-with-nvenc.html">context management</a>, so now it&#39;s time to look at re-encoding the h264 and demonstrating a round trip through the nvidia hardware.</p>
+<h1 id="what-we-have-already">What we have already</h1>
+<p>We had this workflow for testing</p>
+<pre><code>
+  #workflow {
+    generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">"foo.ts"</span>&gt;&gt; },
+    processors = [
+      #nvidia_decoder { name = decode, <span class="hljs-keyword">from</span> = { source, ?video_frames_with_stream_id(<span class="hljs-number">256</span>) } },
+      #x264_encoder { name = encode, <span class="hljs-keyword">from</span> = decode },
+      #ts_writer { name = write, <span class="hljs-keyword">from</span> = encode, filename  = &lt;&lt;<span class="hljs-string">"out.ts"</span>&gt;&gt; }
+    ]
+  }
+
+</code></pre><p>and what I want is</p>
+<pre><code>  #workflow {
+    generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">"foo.ts"</span>&gt;&gt; },
+    processors = [
+      #nvidia_decoder { name = decode, <span class="hljs-keyword">from</span> = { source, ?video_frames_with_stream_id(<span class="hljs-number">256</span>) } },
+      #nvidia_encoder { name = encode, <span class="hljs-keyword">from</span> = decode },
+      #ts_writer { name = write, <span class="hljs-keyword">from</span> = encode, filename  = &lt;&lt;<span class="hljs-string">"out.ts"</span>&gt;&gt; }
+    ]
+  }
+</code></pre><p>In the decode entry we had a series of pointers to surfaces that we&#39;d pulled out of the decoder along with the corresponding timestamps, these are in NV12 planar format and byte-aligned (and I&#39;m storing all that information alongside the pointer to that surface in a struct so now we just need to see what the API looks like to turn this surface into h264 once again...)</p>
+<p>This looks something like this (It actually looks nothing like this as most of this info is stored in a linked list tied to a central pool which contains the shared information), but this is at least representative of what we have.</p>
+<pre><code>
+  <span class="hljs-keyword">typedef</span> <span class="hljs-class"><span class="hljs-keyword">struct</span> _<span class="hljs-title">nvidia_allocated_surface</span>  {</span>
+    <span class="hljs-keyword">uint8_t</span>* data;
+    <span class="hljs-keyword">int</span> bpp;
+    <span class="hljs-keyword">int</span> byte_width;
+    <span class="hljs-keyword">int</span> byte_height;
+    <span class="hljs-keyword">size_t</span> pitch;
+  } nvidia_allocated_surface;
+</code></pre><p>This surface is allocated <em>on the GPU</em> via CUDA, and the GPU is where we want to do our encode so hopefully we can pretty much use this data directly.</p>
+<h1 id="the-api">The API</h1>
+<p>The encode API looks nothing like the decode API in that it&#39;s sat in its own header file (which is again expected to be included as part of the repo, but the library we&#39;re going to be loading is <em>definitely</em>  expected to exist on the runtime as part of the driver install.</p>
+<ul>
+<li><em>Include/nvEncodeAPI.h</em> contains all definitions/enums/functions/etc</li>
+</ul>
+<p>and somewhere on the host OS installed as part of the driver package (for me, /run/opengl-driver/lib/)</p>
+<ul>
+<li><em>libnvidia-encode.so</em></li>
+</ul>
+<h1 id="creating-the-api">Creating the API</h1>
+<p>The functions that we end up using are loaded as a struct of function pointers and we actually only link a single function directly from that library to get hold of that struct. As a consequence of this, every struct being passed into a function in this API tends to be versioned indepedendently, such is life.</p>
+<pre><code class="language-c">
+  <span class="hljs-keyword">uint32_t</span> version = <span class="hljs-number">0</span>;
+  <span class="hljs-keyword">uint32_t</span> currentVersion = (NVENCAPI_MAJOR_VERSION &lt;&lt; <span class="hljs-number">4</span>) | NVENCAPI_MINOR_VERSION;
+  NV_ENCODE_API_FUNCTION_LIST nvenc = {NV_ENCODE_API_FUNCTION_LIST_VER};
+
+  NvEncodeAPIGetMaxSupportedVersion(&amp;version);
+  <span class="hljs-keyword">if</span> (currentVersion &gt; version)
+  {
+    <span class="hljs-keyword">return</span> <span class="hljs-number">-1</span>; <span class="hljs-comment">// or whatever</span>
+  }
+
+  NvEncodeAPICreateInstance(&amp;nvenc);
+
+  <span class="hljs-comment">// use the functions on nvenc</span>
+</code></pre>
+<p>This doesn&#39;t do anything other than a <em>dlopen</em> of the library exporting the functions and copy the pointers to those functions onto the nvenc struct so they can be called. Invoke it once, cache the results somewhere and then we can get to the business of talking to the GPU.</p>
+<h1 id="creating-an-encoder">Creating an encoder</h1>
+<p>Unlike the decode stack, the encoder doesn&#39;t seem to be built <em>directly</em> on top of CUDA, it having the capability of instantiating on top of OpenGL/DirectX/Cuda as options (and then utilise surfaces from those systems). Because we&#39;re using the decoder (and planning on using CUDA to run upscaling algorithms and such), it makes sense to use CUDA for the encoder too.</p>
+<p>Because of this, we&#39;ll want to use our already-created CUDA context and pass this into the open session call.</p>
+<pre><code>
+  NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS encodeSessionExParams = { NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS_VER }<span class="hljs-comment">;</span>
+  encodeSessionExParams.device = ctx<span class="hljs-comment">;</span>
+  encodeSessionExParams.deviceType = NV_ENC_DEVICE_TYPE_CUDA<span class="hljs-comment">;</span>
+  encodeSessionExParams.apiVersion = NVENCAPI_VERSION<span class="hljs-comment">;</span>
+  void* encoder = NULL<span class="hljs-comment">;</span>
+
+  nvenc.nvEncOpenEncodeSessionEx(&amp;encodeSessionExParams, &amp;encoder)<span class="hljs-comment">;</span>
+</code></pre><p>Now, this doesn&#39;t do very much other than give us an encode session that isn&#39;t initialise - and to initialise it we need to tell it what form our desired output needs to take. It is entirely possible to spend a day or two wondering why this call gives you back &#39;NV_ENC_ERR_INVALID_PARAM&#39; if it&#39;s not set up correctly (and reading the sample code doesn&#39;t help because the configuration of the encoder happens across multiple files because of the way that the samples are written), the below seems to be the the minimum required..</p>
+<p>In the Real World (tm) we have an input surface with a known width/height from the decoder, here we&#39;ll hard code it along with the frame rate (I know my source is 25fps). In the Real World a load of these args will be passed in from Erlang, not C.</p>
+<pre><code class="language-c">
+  NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
+  NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
+  NV_ENC_PRESET_CONFIG presetConfig = { NV_ENC_PRESET_CONFIG_VER, { NV_ENC_CONFIG_VER } };
+
+  initializeParams.encodeConfig = &amp;encodeConfig;
+
+  <span class="hljs-comment">// The essentials</span>
+  initializeParams-&gt;encodeGUID = NV_ENC_CODEC_H264_GUID;
+  initializeParams-&gt;presetGUID = NV_ENC_PRESET_P4_GUID;
+
+  <span class="hljs-comment">// These need to line up with the input surface dimensions</span>
+  initializeParams-&gt;encodeWidth = <span class="hljs-number">576</span>;
+  initializeParams-&gt;encodeHeight = <span class="hljs-number">720</span>;
+
+  <span class="hljs-comment">// Ditto these</span>
+  initializeParams-&gt;frameRateNum = <span class="hljs-number">25</span>;
+  initializeParams-&gt;frameRateDen = <span class="hljs-number">1</span>;
+
+  <span class="hljs-comment">// I seemed to need these as well</span>
+  initializeParams.enablePTD = <span class="hljs-number">1</span>;
+  initializeParams.encodeConfig-&gt;frameIntervalP = <span class="hljs-number">3</span>;
+  initializeParams.encodeConfig-&gt;gopLength = <span class="hljs-number">50</span>;
+  initializeParams.tuningInfo = NV_ENC_TUNING_INFO_HIGH_QUALITY;
+
+</code></pre>
+<p>Once this initialize params basics is set up, we can ask the encoder to populate the actual details for us based on the preset and codec specified in the &#39;essentials&#39;</p>
+<pre><code class="language-c">
+  nvenc.nvEncGetEncodePresetConfigEx(encode_session-&gt;encoder, initializeParams.encodeGUID, initializeParams.presetGUID, tuningInfo, &amp;presetConfig);
+  <span class="hljs-built_in">memcpy</span>(initializeParams.encodeConfig, &amp;presetConfig.presetCfg, <span class="hljs-keyword">sizeof</span>(NV_ENC_CONFIG));
+</code></pre>
+<p>I&#39;m not entirely sure why we don&#39;t just invoke nvEncGetEncoderPresetConfigEx on the struct already contained on the initializeParams, but the samples all end up doing this and the above code is precarious enough already (honestly, the number of ways this can go wrong with a single error is infuriating!). So we stick with the samples way of doing stuff!</p>
+<p>I also needed to then go and set up the IDR frequency to match our requested gop length (the samples do this too) and not doing this resulted in NV_ENC_ERR_INVALID_PARAM so..</p>
+<pre><code class="language-c">
+    initializeParams.encodeConfig-&gt;encodeCodecConfig.h264Config.idrPeriod = initializeParams.encodeConfig-&gt;gopLength;
+</code></pre>
+<p>With all of the above done correctly, a call to the init fn will return a success and if not I&#39;m really sorry you&#39;re on your own because I&#39;ve served my time already.</p>
+</div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="mailto:robashton@codeofrob.com">Respond</a>
+      </div>
+
+        <!--=== Copyright ===-->
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span6">
+                <p class="terms">2020 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
+    });
+        </script>
+        <!--[if lt IE 9]>
+    <script src="assets/js/respond.js"></script>
+<![endif]-->
+        </body>
+        </html>
+

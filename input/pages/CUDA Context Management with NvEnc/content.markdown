@@ -71,7 +71,7 @@ So immediately on looking up the documentation for the API that the code samples
 ```
 
 
-Now some more disparate info found in the recesses of Google/Stackoverflow/Nvidia forms
+Now some more disparate info found in the recesses of Google/Stackoverflow/Nvidia forums
 
 - Originally contexts weren't bindable to multiple threads at the same time
 - Decode sessions cannot share contexts across threads by default
@@ -121,7 +121,7 @@ It turns out that the nvidia decode/encode API provides another mechanism on top
 
 In my tests (spinning up multiple processes/tests), this seemed to be the route to getting a lowish resource usage, a good throughput and most importantly a lack of errors. If more throughput is required, then the concept of 'streams' can be utilised against this same context for further parallelisation (that seems to be a case of creating streams per ... well... stream of work and just passing that reference around as a synchronisation point into the various API calls).
 
-Because the cuvidCtxLock is a cuvid concept and not a CUDA concept, there are mechanisms we can add to decoder mentioned in the last blog entry so it will automatically use that lock when performing operations against the bound context and play nicely with our code.
+Because the cuvidCtxLock is a cuvid concept and not a CUDA concept, we we can pass a pointer to this lock into the decoder instantiated in the last blog entry so it will automatically use that lock when performing operations against the bound context and play nicely with our code.
 
 We can replace every instance of Push and Pop in that blog entry with Lock and Unlock, and add the lock to the decoder creation params to take advantage of this
 
@@ -134,8 +134,8 @@ We can replace every instance of Push and Pop in that blog entry with Lock and U
 
 ```
 
-I couldn't work out if we actually wanted to use Lock/Unlock around creation at that point, but it didn't hurt so in it went.
+I couldn't work out if we actually wanted to use Lock/Unlock around decoder creation, but it didn't hurt so in it went.
 
 I *think* that this is how these APIs should be used, I give no claims to actual correctness - the documentation is vague and contradictory in places with samples/such but I have stress tested this and I've also demonstrated the failure cases to myself (multiple threads, no locks) to hilarity so it's probably close enough to be right.
 
-Note: The transform/encode side of the API doesn't provide config to use the locking mechanism and that feels a little bit like the left hand not knowing what the right hand is doing, but hey ho - use what we can, when we can.
+Note: The transform/encode side of the API doesn't provide config to use this locking mechanism and that feels a little bit like the left hand not knowing what the right hand is doing, but hey ho - use what we can, when we can.

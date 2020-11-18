@@ -72,18 +72,29 @@
 <p>The first task for me will be to attempt to decode one of my &#39;known good&#39; h264 sources. Now - my sources are nearly all transport streams with audio (often multiple) and such, so I&#39;ll need to parse those files, pull the streams out of them, filter the video stream from a single pid and send the h264 frame data into the API for decode. This is quite a lot of work and there is no way of testing whether the results are good short of either dumping them to disk and telling ffmpeg what it&#39;s looking at (raw frames), or piping that data into an encoder in code and writing out a fresh transport stream with the round-tripped h264.</p>
 <p>I&#39;ll take that second option because I already have all the code required to do this in Erlang in our proprietary workflow engine - a simplified example of the code I&#39;ll write to test my decoder appears below. (Working inside of a mature codebase has its advantages)</p>
 <pre><code class="language-erlang">
-#workflow {
-  generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">"foo.ts"</span>&gt;&gt; },
-  processors = [
-    #nvidia_decoder { name = decode, from = { source, ?video_frames_with_stream_id(<span class="hljs-number">256</span>) } },
-    #x264_encoder { name = encode, from = decode },
-    #ts_writer { name = write, from = encode, filename  = &lt;&lt;<span class="hljs-string">"out.ts"</span>&gt;&gt; }
-  ]
-}
-
+  #workflow {
+    generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">"foo.ts"</span>&gt;&gt; },
+    processors = [
+      #nvidia_decoder { name = decode, from = { source, ?video_frames_with_stream_id(<span class="hljs-number">256</span>) } },
+      #x264_encoder { name = encode, from = decode },
+      #ts_writer { name = write, from = encode, filename  = &lt;&lt;<span class="hljs-string">"out.ts"</span>&gt;&gt; }
+    ]
+  }
 </code></pre>
 <p>Now to get to this point, the &#39;best&#39; way to achieve this is to try to mirror the underlying API as best as possible in Erlang and write as direct a NIF as possible under this. We can assume that&#39;s what I&#39;m then using in the Erlang, that allows me to write a test Erlang file and simply calls one or two of the methods with minimum config and build that up as I go. So we&#39;ll say that that&#39;s what I&#39;m doing with an <em>nvidia_test.erl</em> calling into an <em>nvidia_api.erl</em> which my <em>nvidia_decoder.erl</em> will eventually leverage.</p>
 <p>We can therefore jump straight into the C and write some functions that we can assume are being called from Erlang with the appropriate arguments.</p>
+<h1 id="the-api">The API</h1>
+<p>The Decode API is contained in a couple of header files in the SDK tarfile</p>
+<ul>
+<li><em>Interface/cuviddec.h</em> all the enums and functions</li>
+<li><em>Interface/nvcuvid.h</em>  some  high level helpers (includes the above)</li>
+</ul>
+<p>A pre-built library for this exists in</p>
+<ul>
+<li><em>Lib/[os]/[arch]/libnvcuvid.so</em></li>
+</ul>
+<p>but on my OS this library is shipped with nvidia-x11 and that&#39;s the package I am loading it from at runtime, but it is also shipped with the opengl-drivers package. Googling around this I can see confusion over whether this is supposed to be vendored or not (why would we need to have X libs installed in order to run a decode process for example).</p>
+<p>I suspect that we&#39;d just vendor this in production rather than install packages we don&#39;t need.</p>
 <h1 id="parsing-the-h264">Parsing the h264</h1>
 <p>Each frame has a blob of &#39;data&#39;, which is essentially a sequence of NAL units, some of which are metadata describing the video content and some of which are the data itself. We can parse this ourselves in Erlang and pass just the data into the decoder, or we can just pass the whole lot into Nvidia&#39;s parser and use the callbacks provided by that parser to then feed a decoder.</p>
 <p>We do actually have code lying around for parsing h264, which is why we even have the concept of a &#39;frame&#39; at all in the above code, but by far the easiest way to use the Nvidia decoder to use that parser as it then ends up providing the exact structures required <em>for</em> that decoder.</p>

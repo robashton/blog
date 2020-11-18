@@ -1,4 +1,467 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Wed, 04 Nov 2020 17:25:42 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Blogging the mundane]]></title><description><![CDATA[<p>I was having a chat with a few friends over a glass or two of whisky the other evening (over Google Hangouts or whatever it is called these days) and the subject turned to whether any of us had become lazy about our online output as time had gone on and as we were getting old. (All of us really).</p>
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Wed, 18 Nov 2020 10:23:10 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[CUDA Context Management with NvEnc]]></title><description><![CDATA[<p>This blog entry is part of my &quot;<a href="/entries/blogging-the-mundane.html">blog about mundane stuff</a>&quot; series.</p>
+<p>In the <a href="/entries/decoding-h264-with-nvidia.html">previous blog entry</a> I touched on context management in CUDA being a set of choices with conflicting information from documentation to popular code samples and such.</p>
+<h1 id="what-is-the-problem">What is the &quot;problem&quot;?</h1>
+<p>Most operations with CUDA expect there to be a CUDA context bound to the current thread. All operations against that CUDA context are serialized (unless those operations are bound to a specific stream, in which case they are serialized against that stream). That&#39;s it, that&#39;s the whole goal of &quot;context&quot; in CUDA, and we have more than one way of realising this in the API].</p>
+<h1 id="the-api">The API</h1>
+<p>I suspect this API has been subject to a bit of churn since CUDA was first realised and this would go some way to expaining the various ways of dealing with the context, starting off with the method that the samples tend to use..</p>
+<pre><code>  <span class="hljs-comment">//</span>
+  <span class="hljs-comment">// On startup</span>
+  <span class="hljs-comment">//</span>
+
+  cu<span class="hljs-constructor">CtxCreate(&amp;<span class="hljs-params">ctx</span>, <span class="hljs-params">flags</span>, <span class="hljs-params">dev</span>)</span>;
+
+  <span class="hljs-comment">//</span>
+  <span class="hljs-comment">// Repeat below until finished</span>
+  <span class="hljs-comment">//</span>
+
+  cu<span class="hljs-constructor">CtxPushCurrent(<span class="hljs-params">ctx</span>)</span>;
+
+  <span class="hljs-comment">// <span class="hljs-doctag">TODO:</span> some operation </span>
+
+  cu<span class="hljs-constructor">CtxPopCurrent(NULL)</span>;
+
+  <span class="hljs-comment">//</span>
+  <span class="hljs-comment">//  When finished</span>
+  <span class="hljs-comment">//</span>
+
+  cu<span class="hljs-constructor">CtxDestroy(<span class="hljs-params">ctx</span>)</span>;
+
+</code></pre><p>If we look at the API documentation for <a href="https://docs.nvidia.com/cuda/cuda-driver-api/group__CUDA__CTX.html#group__CUDA__CTX_1g65dc0012348bc84810e2103a40d8e2cf">cuCtxCreate</a>, the very firist sentence we see is &quot;In most cases it is recommended to use cuDevicePrimaryCtxRetain.&quot;</p>
+<p>So immediately on looking up the documentation for the API that the code samples use, we are told to use something else. Now - the way I understand this, is that you can create contexts within a section of your code and use <em>Push</em> and <em>Pop</em> when using that context, and then code being invoked whilst this context is valid can do the same and you can end up with a stack of contexts that works happily together. Some searching around this reveals that there are performance penalties or even limitations over the number of active contexts in an application at the same time (operations are serialized anyway) and what we <em>can</em> do is simply get hold of the primary context with</p>
+<pre><code>  <span class="hljs-comment">//</span>
+  <span class="hljs-comment">// On startup</span>
+  <span class="hljs-comment">//</span>
+
+
+  cu<span class="hljs-constructor">DevicePrimaryCtxRetain(&amp;<span class="hljs-params">ctx</span>, <span class="hljs-params">dev</span>)</span>;
+
+  <span class="hljs-comment">//</span>
+  <span class="hljs-comment">// Repeat below until finished</span>
+  <span class="hljs-comment">//</span>
+
+  cu<span class="hljs-constructor">CtxSetCurrent(&amp;<span class="hljs-params">ctx</span>)</span>;
+
+  <span class="hljs-comment">// <span class="hljs-doctag">TODO:</span> some operation</span>
+
+  cu<span class="hljs-constructor">CtxSetCurrent(NULL)</span>;
+
+  <span class="hljs-comment">//</span>
+  <span class="hljs-comment">//  When finished</span>
+  <span class="hljs-comment">//</span>
+
+  cu<span class="hljs-constructor">DevicePrimaryCtxRelease(<span class="hljs-params">ctx</span>)</span>;
+
+</code></pre><p>Now some more disparate info found in the recesses of Google/Stackoverflow/Nvidia forms</p>
+<ul>
+<li>Originally contexts weren&#39;t bindable to multiple threads at the same time</li>
+<li>Decode sessions cannot share contexts across threads by default</li>
+<li>Contexts take up a chunk of ram, buffers are not sharable across contexts</li>
+<li>A primary context is analogous to the device itself</li>
+<li>A failure on the primary context is going to cascade  into all users of that context</li>
+<li>contexts can be defined as &#39;floating&#39; if they&#39;re not bound to a thread by default</li>
+<li>most operations against a context are async, and not complete until you call &#39;synchronise&#39;</li>
+</ul>
+<p>It turns out that the nvidia decode/encode API provides another mechanism on top of contexts - the <em>lock</em>, which actually means we can share the same context across multiple decode sessions without too much issue. These are the choices I made with the above information given the needs of our encode/decode work:</p>
+<ul>
+<li>We will be running multiple encode/decode <em>processes</em> that should be completely isolated, this implies that context <em>needs</em> creating per process.</li>
+<li>We can share the context throughout that process so long as we use locks</li>
+<li>Locks perform the same job as Push/Set/Pop, but with a mutex involved to make sure all work is serialized across threads</li>
+</ul>
+<pre><code>  <span class="hljs-comment">//</span>
+  <span class="hljs-comment">// On startup</span>
+  <span class="hljs-comment">//</span>
+
+
+  cu<span class="hljs-constructor">CtxCreate(&amp;<span class="hljs-params">ctx</span>, <span class="hljs-params">flags</span>, <span class="hljs-params">dev</span>)</span>;
+  cuvid<span class="hljs-constructor">CtxLockCreate(&amp;<span class="hljs-params">lock</span>, <span class="hljs-params">ctx</span>)</span>;
+
+
+  <span class="hljs-comment">//</span>
+  <span class="hljs-comment">// Repeat below until finished</span>
+  <span class="hljs-comment">//</span>
+
+  cuvid<span class="hljs-constructor">CtxLock(<span class="hljs-params">lock</span>, 0)</span>;
+
+  <span class="hljs-comment">// <span class="hljs-doctag">TODO:</span> some operation</span>
+
+  cuvid<span class="hljs-constructor">CtxUnlock(<span class="hljs-params">lock</span>, 0)</span>;
+
+  <span class="hljs-comment">//</span>
+  <span class="hljs-comment">//  When finished</span>
+  <span class="hljs-comment">//</span>
+
+  cuvid<span class="hljs-constructor">CtxLockDestroy(<span class="hljs-params">lock</span>)</span>;
+  cu<span class="hljs-constructor">CtxDestroy(<span class="hljs-params">ctx</span>)</span>;
+
+</code></pre><p>In my tests (spinning up multiple processes/tests), this seemed to be the route to getting a lowish resource usage, a good throughput and most importantly a lack of errors. If more throughput is required, then the concept of &#39;streams&#39; can be utilised against this same context for further parallelisation (that seems to be a case of creating streams per ... well... stream of work and just passing that reference around as a synchronisation point into the various API calls).</p>
+<p>Because the cuvidCtxLock is a cuvid concept and not a CUDA concept, there are mechanisms we can add to decoder mentioned in the last blog entry so it will automatically use that lock when performing operations against the bound context and play nicely with our code.</p>
+<p>We can replace every instance of Push and Pop in that blog entry with Lock and Unlock, and add the lock to the decoder creation params to take advantage of this</p>
+<pre><code>  decode_create_info.vidLock = session-&gt;lock;
+  cuvid<span class="hljs-constructor">CtxLock(<span class="hljs-params">session</span>-&gt;<span class="hljs-params">lock</span>, 0)</span>;
+  cr = cuvid<span class="hljs-constructor">CreateDecoder(&amp;<span class="hljs-params">session</span>-&gt;<span class="hljs-params">decoder</span>, &amp;<span class="hljs-params">decode_create_info</span>)</span>;
+  cuvid<span class="hljs-constructor">CtxUnlock(<span class="hljs-params">session</span>-&gt;<span class="hljs-params">lock</span>, 0)</span>;
+</code></pre><p>I couldn&#39;t work out if we actually wanted to use Lock/Unlock around creation at that point, but it didn&#39;t hurt so in it went.</p>
+<p>I <em>think</em> that this is how these APIs should be used, I give no claims to actual correctness - the documentation is vague and contradictory in places with samples/such but I have stress tested this and I&#39;ve also demonstrated the failure cases to myself (multiple threads, no locks) to hilarity so it&#39;s probably close enough to be right.</p>
+<p>Note: The transform/encode side of the API doesn&#39;t provide config to use the locking mechanism and that feels a little bit like the left hand not knowing what the right hand is doing, but hey ho - use what we can, when we can.</p>
+]]></description><link>http://codeofrob.com/entries/cuda-context-management-with-nvenc.html</link><guid isPermaLink="true">http://codeofrob.com/entries/cuda-context-management-with-nvenc.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 17 Nov 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Decoding h264 with Nvidia]]></title><description><![CDATA[<p>This blog entry is part of my &quot;<a href="/entries/blogging-the-mundane.html">blog about mundane stuff</a>&quot; series.</p>
+<p>The scene is set and I&#39;ve <a href="/entries/exploring-the-nvidia-code-samples-and-docs.html">set my laptop up to do Nvidia work</a>,so now to look at the decode process in isolation.</p>
+<p>The first task for me will be to attempt to decode one of my &#39;known good&#39; h264 sources. Now - my sources are nearly all transport streams with audio (often multiple) and such, so I&#39;ll need to parse those files, pull the streams out of them, filter the video stream from a single pid and send the h264 frame data into the API for decode. This is quite a lot of work and there is no way of testing whether the results are good short of either dumping them to disk and telling ffmpeg what it&#39;s looking at (raw frames), or piping that data into an encoder in code and writing out a fresh transport stream with the round-tripped h264.</p>
+<p>I&#39;ll take that second option because I already have all the code required to do this in Erlang in our proprietary workflow engine - a simplified example of the code I&#39;ll write to test my decoder appears below. (Working inside of a mature codebase has its advantages)</p>
+<pre><code class="language-erlang">
+  #workflow {
+    generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">"foo.ts"</span>&gt;&gt; },
+    processors = [
+      #nvidia_decoder { name = decode, from = { source, ?video_frames_with_stream_id(<span class="hljs-number">256</span>) } },
+      #x264_encoder { name = encode, from = decode },
+      #ts_writer { name = write, from = encode, filename  = &lt;&lt;<span class="hljs-string">"out.ts"</span>&gt;&gt; }
+    ]
+  }
+</code></pre>
+<p>Now to get to this point, the &#39;best&#39; way to achieve this is to try to mirror the underlying API as best as possible in Erlang and write as direct a NIF as possible under this. We can assume that&#39;s what I&#39;m then using in the Erlang, that allows me to write a test Erlang file and simply calls one or two of the methods with minimum config and build that up as I go. So we&#39;ll say that that&#39;s what I&#39;m doing with an <em>nvidia_test.erl</em> calling into an <em>nvidia_api.erl</em> which my <em>nvidia_decoder.erl</em> will eventually leverage.</p>
+<p>We can therefore jump straight into the C and write some functions that we can assume are being called from Erlang with the appropriate arguments.</p>
+<h1 id="the-api">The API</h1>
+<p>The Decode API is contained in a couple of header files in the SDK tarfile</p>
+<ul>
+<li><em>Interface/cuviddec.h</em> all the enums and functions</li>
+<li><em>Interface/nvcuvid.h</em>  some  high level helpers (includes the above)</li>
+</ul>
+<p>A pre-built library for this exists in</p>
+<ul>
+<li><em>Lib/[os]/[arch]/libnvcuvid.so</em></li>
+</ul>
+<p>but on my OS this library is shipped with nvidia-x11 and that&#39;s the package I am loading it from at runtime, but it is also shipped with the opengl-drivers package. Googling around this I can see confusion over whether this is supposed to be vendored or not (why would we need to have X libs installed in order to run a decode process for example).</p>
+<p>I suspect that we&#39;d just vendor this in production rather than install packages we don&#39;t need.</p>
+<h1 id="parsing-the-h264">Parsing the h264</h1>
+<p>Each frame has a blob of &#39;data&#39;, which is essentially a sequence of NAL units, some of which are metadata describing the video content and some of which are the data itself. We can parse this ourselves in Erlang and pass just the data into the decoder, or we can just pass the whole lot into Nvidia&#39;s parser and use the callbacks provided by that parser to then feed a decoder.</p>
+<p>We do actually have code lying around for parsing h264, which is why we even have the concept of a &#39;frame&#39; at all in the above code, but by far the easiest way to use the Nvidia decoder to use that parser as it then ends up providing the exact structures required <em>for</em> that decoder.</p>
+<p>Creating a parser is quite easy, we populate a CUVIDPARSERPARAMS with appropriate config and init the darned thing - this is all host code for execution on the CPU and is not remotely specific to nvidia and doesn&#39;t require any hardware setup. In my code, the parser parameters are passed in from Erlang, but hard coded below. <em>decode_session</em> is a pointer to a struct containing both the parser and a pile of information also passed in by the Erlang.</p>
+<pre><code class="language-c">
+  CUVIDPARSERPARAMS videoParserParameters = {}
+  videoParserParameters.CodecType = cudaVideoCodec_H264;
+  videoParserParameters.ulMaxNumDecodeSurfaces = <span class="hljs-number">1</span>;
+  videoParserParameters.ulClockRate = <span class="hljs-number">90000</span>;
+  videoParserParameters.ulMaxDisplayDelay = <span class="hljs-number">0</span>;
+  videoParserParameters.pUserData = decode_session;
+
+  videoParserParameters.pfnSequenceCallback = decode_session_handle_video_sequence;
+  videoParserParameters.pfnDecodePicture = decode_session_handle_picture_decode;
+  videoParserParameters.pfnDisplayPicture = decode_session_handle_picture_display;
+
+
+ cuvidCreateVideoParser(&amp;decode_session-&gt;parser, &amp;videoParserParameters);
+</code></pre>
+<p>There are three callbacks on this struct, which are very much designed to work around the decode itself. </p>
+<ul>
+<li><em>pfnSequenceCallback</em>: Stream information, create the decoder if you want / Stream has changed and decoder needs reconfiguring</li>
+<li><em>pfnDecodePicture</em>: Here is data and information about that data, stick it into the decoder</li>
+<li><em>pfnDisplayPicture</em>: You should pulling a frame out of the decoder here cos it&#39;s ready</li>
+</ul>
+<p>If the reader is unfamiliar with video streams, the reason we have two callbacks for decode/display is that frames in the incoming h264 stream are not necessarily in display order because you can have references to previous/future frames in encoded h264 data. It&#39;s not simply &#39;one in, one out&#39;.</p>
+<p>The form of the data going in therefore is &#39;packets&#39; with timestamps which we can use for correlation coming back out again, calling the code from Erlang (but removing all the NIF mess) looks like this, simply throwing data at the parser and letting it do its job.</p>
+<pre><code class="language-c">
+<span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title">decode_frame</span><span class="hljs-params">(decode_session* session, <span class="hljs-keyword">void</span>* data, <span class="hljs-keyword">int</span> size, <span class="hljs-keyword">int64_t</span> timestamp)</span>
+</span>{
+  CUVIDSOURCEDATAPACKET packet = { <span class="hljs-number">0</span> };
+  packet.payload = data;
+  packet.payload_size = size;
+  packet.flags = CUVID_PKT_TIMESTAMP;
+  packet.timestamp = timestamp;
+
+  <span class="hljs-keyword">if</span> (size == <span class="hljs-number">0</span>) {
+    packet.flags |= CUVID_PKT_ENDOFSTREAM;
+  }
+
+  cuCtxPushCurrent(session-&gt;ctx);
+  cr = cuvidParseVideoData(session-&gt;parser, &amp;packet);
+  cuCtxPopCurrent(session-&gt;ctx);
+
+}
+
+</code></pre>
+<p>My first test effectively boiled down to calling this parser with a couple of frames with empty callbacks and printfs just to make sure that things were initialising as expected and the callbacks were being invoked.</p>
+<pre><code class="language-c">
+  <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> CUDAAPI <span class="hljs-title">decode_session_handle_video_sequence</span><span class="hljs-params">(<span class="hljs-keyword">void</span> *obj, CUVIDEOFORMAT* pVideoFormat)</span>
+  </span>{
+    TRACE(<span class="hljs-string">"handle_video_sequence  \r\n"</span>);
+  }
+</code></pre>
+<p>Each of these callbacks present us with a <em>void\</em> obj<em>, which is the *pUserData</em> passed into the parser parameters on creation, we&#39;re using a struct here containing the parser and parameters, and it makes sense to stash the decoder in this struct too.</p>
+<h1 id="initialising-the-hardware">Initialising the hardware</h1>
+<p>We can&#39;t create a decoder until we&#39;ve parsed some h264, but the decoder API is built directly on top of some CUDA constructs and those constructs will need creating up front if we are to create that decoder. </p>
+<p>All CUDA operations revolve around having a CUDA context created around the device we want to use for the CUDA operations, ignoring the return results (not something I&#39;m doing in the real code), a basic setup looks thus. (I&#39;ve also stripped the Erlang comms from these implementations, as messaging code and binary reference counting is outside the scope of this blog entry).</p>
+<pre><code class="language-c">
+ CUdevice cuDevice = <span class="hljs-number">0</span>;
+ CUcontext ctx = <span class="hljs-number">0</span>;
+
+
+ cuInit(<span class="hljs-number">0</span>);
+ cuDeviceGet(&amp;cuDevice, <span class="hljs-number">0</span>);
+ cuCtxCreate(&amp;ctx, <span class="hljs-number">0</span>, cuDevice);
+</code></pre>
+<p>Now, for all operations involving CUDA, this context will need binding to the current thread (except where in cases where various Nvidia APIs helpfully do this for us) and there are multiple ways of managing that context, the documentation tells us to do it one way whilst saying that another way is the default and the samples go on to do it in a whole other manner. I&#39;ll actually try and cover this in the next entry because it might save somebody some time in the future (or somebody might e-mail me to tell me I&#39;ve completely missed the point, that&#39;d be quite nice).</p>
+<p>We stash this context on the struct being used in the parser above so I can then use it in calls later, but that&#39;s the extent of the setup we can do until we&#39;ve parsed some of the stream.</p>
+<h1 id="creating-the-decoder">Creating the decoder</h1>
+<p>In the callback for <em>pfnSequenceCallback</em>, we get told about the video format in the struct <em>CUVIDEOFORMAT</em>, and get passed our struct as a <em>void\</em> <em>, so the first thing to do here is grab that struct because it has some config on it, and then create a *CUVIDDECODECREATEINFO</em> and populate it from both the config and the information about the video given to us by the parser.</p>
+<pre><code class="language-c">  <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> CUDAAPI <span class="hljs-title">decode_session_handle_video_sequence</span><span class="hljs-params">(<span class="hljs-keyword">void</span> *obj, CUVIDEOFORMAT* pVideoFormat)</span> </span>{
+    CUresult cr;
+    decode_session *session = (decode_session *) obj;
+    CUVIDDECODECREATEINFO decode_create_info = { <span class="hljs-number">0</span> };
+
+    decode_create_info.ulWidth = pVideoFormat-&gt;coded_width;
+    decode_create_info.ulHeight = pVideoFormat-&gt;coded_height;
+    decode_create_info.CodecType = pVideoFormat-&gt;codec;
+    decode_create_info.ChromaFormat = pVideoFormat-&gt;chroma_format;
+    decode_create_info.bitDepthMinus8 = pVideoFormat-&gt;bit_depth_luma_minus8;
+    decode_create_info.ulTargetWidth = pVideoFormat-&gt;coded_width;
+    decode_create_info.ulTargetHeight = pVideoFormat-&gt;coded_height;
+    decode_create_info.ulNumDecodeSurfaces = pVideoFormat-&gt;min_num_decode_surfaces;
+    decode_create_info.ulNumOutputSurfaces = <span class="hljs-number">2</span>;
+    decode_create_info.ulIntraDecodeOnly = <span class="hljs-number">0</span>;
+    decode_create_info.Reserved1 = <span class="hljs-number">0</span>;
+    decode_create_info.ulCreationFlags = cudaVideoCreate_PreferCUVID;
+
+    decode_create_info.ulMaxWidth = session-&gt;max_width;
+    decode_create_info.ulMaxHeight = session-&gt;max_height;
+    decode_create_info.OutputFormat = session-&gt;output_format;
+    decode_create_info.DeinterlaceMode = session-&gt;deinterlace_mode;
+  }
+</code></pre>
+<p>Creating the decoder itself is just a case of binding the CUDA context to the current thread and invoking the relevant API.</p>
+<pre><code class="language-c">
+  cuCtxPushCurrent(session-&gt;ctx);
+  cr = cuvidCreateDecoder(&amp;session-&gt;decoder, &amp;decode_create_info);
+  cuCtxPopCurrent(<span class="hljs-literal">NULL</span>);
+</code></pre>
+<p>The callback expects a return value of *&lt; 0* if there is a failure, or  <em>min_num_decode_surfaces</em> if there is a success, so...</p>
+<pre><code class="language-c">
+  <span class="hljs-keyword">if</span> ( CUDA_SUCCESS == cr ) {
+    <span class="hljs-keyword">return</span> pVideoFormat-&gt;min_num_decode_surfaces;
+  } <span class="hljs-keyword">else</span>  {
+    <span class="hljs-keyword">return</span> <span class="hljs-number">-1</span>;
+  }
+</code></pre>
+<p>Bit of a faff, but fairly linear at least, with these steps completed we&#39;ll start receiving parsed frame data into <em>pfnDecodePicture</em> which we can feed directly into the decoder.</p>
+<pre><code class="language-c">
+  <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> CUDAAPI <span class="hljs-title">decode_session_handle_picture_decode</span><span class="hljs-params">(<span class="hljs-keyword">void</span>* obj, CUVIDPICPARAMS* pPicParams)</span>
+  </span>{
+    decode_session *session = (decode_session *) obj;
+    CUresult cr;
+
+    cuCtxPushCurrent(session-&gt;ctx);
+    cr = cuvidDecodePicture(session-&gt;decoder, pPicParams);
+    cuCtxPopCurrent(<span class="hljs-literal">NULL</span>);
+
+    <span class="hljs-keyword">if</span> ( CUDA_SUCCESS == cr ) {
+      <span class="hljs-keyword">return</span> <span class="hljs-number">1</span>;
+    } <span class="hljs-keyword">else</span> {
+      <span class="hljs-keyword">return</span> <span class="hljs-number">-1</span>;
+    }
+}
+</code></pre>
+<p><em>pPicParams</em> contains the data as well as information about this frame (such as whether it&#39;s an iframe or not) and conveniently the parser gives the exact data that the decoder expects in order to do its job. With this, we&#39;ll start getting invocations of <em>pfnDisplayPicture</em> with raw frame data which we can send back into our application for further processing. This is actually a bit more complicated, as up until now the memory management has been taken care of us by the APIs we are using.</p>
+<p>The parser is accepting our host memory buffers, and then creating buffers in host memory for its own data which are being copied into device memory by the decoder, and in order to get the data out we&#39;ll need to copy it out of these decoder managed buffers into either host or device memory.</p>
+<p>Copying data out of device memory into host memory is expensive because of limited bandwidth and proximity but is necessary at <em>some</em> point if we are to output that data to anywhere useful. It is however not always desirable to immediately do this if we are then to do an encode or transform on the GPU, we probably want to create buffers on the device itself and perform a copy from the decoder-managed buffers onto our own managed buffers.</p>
+<p>Our code will assume that we want the memory copied into more device memory and we&#39;ll incur another copy if we want to subsequently copy it out onto the host; this is for convenience as in the real world we&#39;ll almost certainly be doing further operations on the GPU and only moving data to the host for testing (as in the above workflow) or for very specific operations (such as some sort of fingerprinting or overlay scenario).</p>
+<p>So, the first thing we need to do here is call cuvidMapVideoFrame, which will block until the frame specified by <em>picture_index</em> has been decoded and is ready for copying out. MapVideoFrame <em>effectively</em> locks that decoder-owned buffer and readies it for use in further calls (copying it into something we own). Once  we&#39;ve called Map, we check the decode status to make sure that the data is worth copying out in the first place. I&#39;ve left us a <em>...</em> as a placeholder for the next steps.</p>
+<pre><code class="language-c">
+<span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> CUDAAPI <span class="hljs-title">decode_session_handle_picture_display</span><span class="hljs-params">(<span class="hljs-keyword">void</span>* obj, CUVIDPARSERDISPINFO* pDispInfo)</span>
+</span>{
+  decode_session *session = (decode_session *) obj;
+  CUresult cr = <span class="hljs-number">0</span>;
+  CUdeviceptr srcFrame = <span class="hljs-number">0</span>;
+  <span class="hljs-keyword">unsigned</span> <span class="hljs-keyword">int</span> srcPitch = <span class="hljs-number">0</span>;
+  CUVIDGETDECODESTATUS status = {<span class="hljs-number">0</span>};
+
+  CUVIDPROCPARAMS vpp = {<span class="hljs-number">0</span>};
+  vpp.progressive_frame = pDispInfo-&gt;progressive_frame;
+  vpp.second_field = pDispInfo-&gt;repeat_first_field + <span class="hljs-number">1</span>;
+  vpp.top_field_first = pDispInfo-&gt;top_field_first;
+  vpp.unpaired_field = pDispInfo-&gt;repeat_first_field &lt; <span class="hljs-number">0</span>;
+
+  cuCtxPushCurrent(session-&gt;ctx);
+
+  <span class="hljs-keyword">if</span>((cr = cuvidMapVideoFrame(session-&gt;decoder, pDispInfo-&gt;picture_index, &amp;srcFrame, &amp;srcPitch, &amp;vpp)) != CUDA_SUCCESS) {
+    <span class="hljs-keyword">return</span> <span class="hljs-number">-1</span>;
+  }
+
+  cr = cuvidGetDecodeStatus(session-&gt;decoder, pDispInfo-&gt;picture_index, &amp;status);
+
+  <span class="hljs-keyword">if</span> (cr == CUDA_SUCCESS &amp;&amp; (status.decodeStatus == cuvidDecodeStatus_Error || status.decodeStatus == cuvidDecodeStatus_Error_Concealed))
+  {
+    <span class="hljs-keyword">return</span> <span class="hljs-number">-1</span>;
+  }
+
+  <span class="hljs-comment">// ... </span>
+
+  cuCtxPopCurrent(<span class="hljs-literal">NULL</span>);
+
+</code></pre>
+<p>And now we&#39;re at the meat of it, we&#39;ve locked the decoded frame and need somewhere to put it. In the real world we operate a pool of surfaces which can be passed into Erlang and reference counted before being returned to the pool when Erlang has finished using that surface. In this example we&#39;ll just create a surface on demand and assume that somebody will destroy it (or re-use it) at some point - obviously creation is expensive so it is best not to be doing this on demand in reality.</p>
+<p>We have to calculate the sizes for this surface based on the <em>CUVIDEOFORMAT</em> that we received in the pfnSequenceCallback, <em>bpp</em> will change depending on the bit depth of the source, but the only output format the decoder actually supports is NV12 so I&#39;ve hard coded byte height to (Chroma = 1 * height) + (Luma  = 0.5 * height), as those are the planes  that we&#39;ll expect in this format. If you don&#39;t know about planar formats then go and <a href="https://wiki.videolan.org/YUV">read about them</a> if you&#39;re writing this code haha, you&#39;ll need to understand it.</p>
+<pre><code class="language-c">
+  <span class="hljs-keyword">void</span>* dstFrame;
+  <span class="hljs-keyword">int</span> dstPitch;
+  <span class="hljs-keyword">int</span> bpp = pVideoFormat-&gt;bit_depth_luma_minus8 &gt; <span class="hljs-number">0</span> ? <span class="hljs-number">2</span> : <span class="hljs-number">1</span>;
+  <span class="hljs-keyword">int</span> frame_width = pVideoFormat-&gt;display_area.right - pVideoFormat-&gt;display_area.left;
+  <span class="hljs-keyword">int</span> byte_width = frame_width * bpp;
+  <span class="hljs-keyword">int</span> byte_height = (pVideoFormat-&gt;display_area.right - pVideoFormat-&gt;display_area.left) * <span class="hljs-number">1.5</span>;
+
+  cuMemAllocPitch((CUdeviceptr *)&amp;dstFrame, &amp;dstPitch, frameWidth  * bpp, byte_height, <span class="hljs-number">16</span>);
+</code></pre>
+<p>We allocate pitched memory (also known as byte-aligned where the pitch is the stride..), essentially we want our buffer to be a be a nice round number, usually a power of 2 because  it makes for efficient read/writes. The pitch is output into &#39;dstPitch&#39; which we&#39;ll need to use later on when using this buffer because maths.</p>
+<p>Assuming we have a buffer created as above, we can copy from our mapped video frame into our new device memory with</p>
+<pre><code class="language-c">
+  CUDA_MEMCPY2D m = { <span class="hljs-number">0</span> };
+  CUresult cr;
+
+  m.srcMemoryType = CU_MEMORYTYPE_DEVICE;
+  m.srcDevice = (CUdeviceptr)srcFrame;
+  m.srcPitch = srcPitch;
+  m.dstMemoryType = CU_MEMORYTYPE_DEVICE;
+  m.dstDevice = (CUdeviceptr)dstFrame;
+  m.dstPitch = dstPitch;
+  m.WidthInBytes = byte_width;
+  m.Height = byte_height;
+
+  cuMemcpy2D(&amp;m);
+</code></pre>
+<p>If we wanted this in host memory, we&#39;d do a straight up malloc of (byte_width * byte_height) with a pitch of byte_width, and copy it out this way</p>
+<pre><code>
+  CUDA_MEMCPY2D m = { <span class="hljs-number">0</span> }<span class="hljs-comment">;</span>
+  CUresult cr<span class="hljs-comment">;</span>
+
+  m.srcMemoryType = CU_MEMORYTYPE_DEVICE<span class="hljs-comment">;</span>
+  m.srcDevice = (CUdeviceptr)srcFrame<span class="hljs-comment">;</span>
+  m.srcPitch = srcPitch<span class="hljs-comment">;</span>
+  m.dstMemoryType = CU_MEMORYTYPE_HOST<span class="hljs-comment">;</span>
+  m.dstHost = (CUdeviceptr)dstFrame<span class="hljs-comment">;</span>
+  m.dstPitch = <span class="hljs-keyword">byte_width;
+</span>  m.WidthInBytes = <span class="hljs-keyword">byte_width;
+</span>  m.Height = <span class="hljs-keyword">byte_height;
+</span>
+  cuMemcpy2D(&amp;m)<span class="hljs-comment">;</span>
+</code></pre><p>That data can then be fired into libx264 along with <em>pDispInfo-&gt;timestamp</em>, encoded and viewed with pleasure. I guess the next post I should  probably talk about CUDA context management before I get to the job of encoding or transforming this data and  maybe it&#39;s worth talking a little about how I&#39;m managing reference counted surfaces between Erlang and C as well as that&#39;s a whole world of fun after this.</p>
+<p>Mundane, but hopefully useful to me or somebody else in the future.</p>
+]]></description><link>http://codeofrob.com/entries/decoding-h264-with-nvidia.html</link><guid isPermaLink="true">http://codeofrob.com/entries/decoding-h264-with-nvidia.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 12 Nov 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Exploring the NVIDIA code samples and docs]]></title><description><![CDATA[<p>This blog entry is part of my &quot;<a href="/entries/blogging-the-mundane.html">blog about mundane stuff</a>&quot; series.</p>
+<h1 id="the-sdk">The SDK</h1>
+<p>There seems to be a single tar file available for the NVEnc/Dec stuff containing the headers, sample code and some PDFs that are semi-useful for learning how all this stuff ties together, so I unpacked that locally to the project I was working in and set up paths so I could include the header files from it. </p>
+<p>Step one in learning a new SDK or whatever is usually to</p>
+<ul>
+<li>A) RTFM</li>
+<li>B) Look at the samples</li>
+<li>C) Look at how others do it</li>
+</ul>
+<p>For <em>A</em> we have some PDFs lying about with 101 instructions on how to tie stuff together (not sufficient by itself), in theory there are some full SDK references available (found via Google for older versions but not for latest, must only be for the the upper class developers signed into some portal or another that I don&#39;t have access to - or I&#39;m terrible at Google), and we have the various header files with reasonably well documented functions lying about.</p>
+<p>They do provide some good &#39;you will need to do these things in order to get a context with which to do...&#39;, but they&#39;re best read alongside the sample code to get some understanding of why it does what it does.</p>
+<p>For <em>B</em> there is a full suite of samples, doing anything we pretty much might want to do with the SDK - but sadly (as is unfortunately common with SDKs such as this) rather than write samples directly against the APIs as would be convenient for the learner, they&#39;ve built a whole abstraction in C++ and then used <em>that</em> for all the samples because it&#39;s  convenient for the author - that&#39;s <em>obviously</em> easier to learn from than just some sample code that does the bare minimum in a linear fashion - <em>rolleyes</em>.</p>
+<p>For <em>C</em> we look towards <a href="https://github.com/FFmpeg/FFmpeg/">ffmpeg</a>, (<a href="https://github.com/FFmpeg/FFmpeg/blob/master/libavcodec/nvenc.c">nvenc</a>/<a href="https://github.com/FFmpeg/FFmpeg/blob/master/libavcodec/nvdec.c">nvdec</a>) because that <em>works</em> but acknowledge that usually when they implement various pipelines/codecs that they&#39;re often not done in the most efficient manner because it&#39;s a big pluggable abstract system and that&#39;s not the stated goal or necessarily even compatible with their architecture.</p>
+<p>Irregardless of the quality of the samples (That&#39;s a real word as of 2020, sorry I don&#39;t make the rules), they are where I found the most value for learning how the NV stuff works, even if it meant tracing through step by step and pulling the relevant function calls and the order they&#39;re invoked in into my own test code.</p>
+<p>From any perspective, it&#39;s pretty obvious from looking at the header files/pdfs that encode and decode are very much their own things done in their own way with their own enums and own flags and own API design, it makes sense from a hardware perspective that these are dedicated processes but that it bubbles up to the API itself so dramatically is amusing - I imagine this is the result of separate teams working largely in isolation and <a href="https://en.wikipedia.org/wiki/Conway%27s_law">Conway&#39;s Law</a> holding steady...</p>
+<h1 id="building-the-samples">Building the samples</h1>
+<p>This was a bit of a dance for me, having the wrong versions of GCC about for the purposes of building the rest of our stack initially, but essentially I found out where the right versions of GCC had ended up from my shell.nix and manually told cmake about them..</p>
+<pre><code>
+mkdir build &amp;&amp; cd build
+
+cmake -DCMAKE_LIBRARY_PATH=/run/opengl-driver/lib/ -DCMAKE_C_COMPILER=/nix/store/l2abq8hpgdjc4x7dwdps7zqcnxmjmjp4-gcc-<span class="hljs-keyword">wrapper</span><span class="hljs-number">-8.3</span><span class="hljs-number">.0</span>/bin/gcc -DCMAKE_CXX_COMPILER=/nix/store/l2abq8hpgdjc4x7dwdps7zqcnxmjmjp4-gcc-<span class="hljs-keyword">wrapper</span><span class="hljs-number">-8.3</span><span class="hljs-number">.0</span>/bin/g++ ..
+make
+make install
+</code></pre><p>Not ideal but hey ho, this gave me a pile of binaries in my &#39;build&#39; directory which I can invoke to find out what my hardware is capable of (in the case of decode)</p>
+<pre><code>~/nvidia/Samples/build]$ ./AppDec -h
+
+Options:
+-i             Input file path
+-o             Output file path
+-outplanar     Convert output to planar format
+-gpu           Ordinal of GPU to use
+-crop l,t,r,b  Crop rectangle <span class="hljs-keyword">in</span> left,top,right,bottom (ignored <span class="hljs-keyword">for</span> <span class="hljs-keyword">case</span> <span class="hljs-number">0</span>)
+-resize WxH    Resize to dimension W times H (ignored <span class="hljs-keyword">for</span> <span class="hljs-keyword">case</span> <span class="hljs-number">0</span>)
+
+Decoder Capability
+
+GPU <span class="hljs-keyword">in</span> use: GeForce GTX <span class="hljs-number">1050</span>
+Codec  JPEG   BitDepth  <span class="hljs-number">8</span>   ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">32768</span>  MaxHeight  <span class="hljs-number">16384</span>  MaxMBCount  <span class="hljs-number">67108864</span>  MinWidth  <span class="hljs-number">64</span>   MinHeight  <span class="hljs-number">64</span>   SurfaceFormat  NV12
+Codec  MPEG1  BitDepth  <span class="hljs-number">8</span>   ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">4080</span>   MaxHeight  <span class="hljs-number">4080</span>   MaxMBCount  <span class="hljs-number">65280</span>     MinWidth  <span class="hljs-number">48</span>   MinHeight  <span class="hljs-number">16</span>   SurfaceFormat  NV12
+Codec  MPEG2  BitDepth  <span class="hljs-number">8</span>   ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">4080</span>   MaxHeight  <span class="hljs-number">4080</span>   MaxMBCount  <span class="hljs-number">65280</span>     MinWidth  <span class="hljs-number">48</span>   MinHeight  <span class="hljs-number">16</span>   SurfaceFormat  NV12
+Codec  MPEG4  BitDepth  <span class="hljs-number">8</span>   ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">2032</span>   MaxHeight  <span class="hljs-number">2032</span>   MaxMBCount  <span class="hljs-number">8192</span>      MinWidth  <span class="hljs-number">48</span>   MinHeight  <span class="hljs-number">16</span>   SurfaceFormat  NV12
+Codec  H264   BitDepth  <span class="hljs-number">8</span>   ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">4096</span>   MaxHeight  <span class="hljs-number">4096</span>   MaxMBCount  <span class="hljs-number">65536</span>     MinWidth  <span class="hljs-number">48</span>   MinHeight  <span class="hljs-number">16</span>   SurfaceFormat  NV12
+Codec  HEVC   BitDepth  <span class="hljs-number">8</span>   ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">8192</span>   MaxHeight  <span class="hljs-number">8192</span>   MaxMBCount  <span class="hljs-number">262144</span>    MinWidth  <span class="hljs-number">144</span>  MinHeight  <span class="hljs-number">144</span>  SurfaceFormat  NV12
+Codec  HEVC   BitDepth  <span class="hljs-number">10</span>  ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">8192</span>   MaxHeight  <span class="hljs-number">8192</span>   MaxMBCount  <span class="hljs-number">262144</span>    MinWidth  <span class="hljs-number">144</span>  MinHeight  <span class="hljs-number">144</span>  SurfaceFormat  NV12 P016
+Codec  HEVC   BitDepth  <span class="hljs-number">12</span>  ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">8192</span>   MaxHeight  <span class="hljs-number">8192</span>   MaxMBCount  <span class="hljs-number">262144</span>    MinWidth  <span class="hljs-number">144</span>  MinHeight  <span class="hljs-number">144</span>  SurfaceFormat  NV12 P016
+Codec  HEVC   BitDepth  <span class="hljs-number">8</span>   ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">4</span>:<span class="hljs-number">4</span>  Supported  <span class="hljs-number">0</span>  MaxWidth  <span class="hljs-number">0</span>      MaxHeight  <span class="hljs-number">0</span>      MaxMBCount  <span class="hljs-number">0</span>         MinWidth  <span class="hljs-number">0</span>    MinHeight  <span class="hljs-number">0</span>    SurfaceFormat  N/A
+Codec  HEVC   BitDepth  <span class="hljs-number">10</span>  ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">4</span>:<span class="hljs-number">4</span>  Supported  <span class="hljs-number">0</span>  MaxWidth  <span class="hljs-number">0</span>      MaxHeight  <span class="hljs-number">0</span>      MaxMBCount  <span class="hljs-number">0</span>         MinWidth  <span class="hljs-number">0</span>    MinHeight  <span class="hljs-number">0</span>    SurfaceFormat  N/A
+Codec  HEVC   BitDepth  <span class="hljs-number">12</span>  ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">4</span>:<span class="hljs-number">4</span>  Supported  <span class="hljs-number">0</span>  MaxWidth  <span class="hljs-number">0</span>      MaxHeight  <span class="hljs-number">0</span>      MaxMBCount  <span class="hljs-number">0</span>         MinWidth  <span class="hljs-number">0</span>    MinHeight  <span class="hljs-number">0</span>    SurfaceFormat  N/A
+Codec  VC1    BitDepth  <span class="hljs-number">8</span>   ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">2032</span>   MaxHeight  <span class="hljs-number">2032</span>   MaxMBCount  <span class="hljs-number">8192</span>      MinWidth  <span class="hljs-number">48</span>   MinHeight  <span class="hljs-number">16</span>   SurfaceFormat  NV12
+Codec  VP8    BitDepth  <span class="hljs-number">8</span>   ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">0</span>  MaxWidth  <span class="hljs-number">0</span>      MaxHeight  <span class="hljs-number">0</span>      MaxMBCount  <span class="hljs-number">0</span>         MinWidth  <span class="hljs-number">0</span>    MinHeight  <span class="hljs-number">0</span>    SurfaceFormat  N/A
+Codec  VP9    BitDepth  <span class="hljs-number">8</span>   ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">8192</span>   MaxHeight  <span class="hljs-number">8192</span>   MaxMBCount  <span class="hljs-number">262144</span>    MinWidth  <span class="hljs-number">128</span>  MinHeight  <span class="hljs-number">128</span>  SurfaceFormat  NV12
+Codec  VP9    BitDepth  <span class="hljs-number">10</span>  ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">8192</span>   MaxHeight  <span class="hljs-number">8192</span>   MaxMBCount  <span class="hljs-number">262144</span>    MinWidth  <span class="hljs-number">128</span>  MinHeight  <span class="hljs-number">128</span>  SurfaceFormat  NV12 P016
+Codec  VP9    BitDepth  <span class="hljs-number">12</span>  ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">8192</span>   MaxHeight  <span class="hljs-number">8192</span>   MaxMBCount  <span class="hljs-number">262144</span>    MinWidth  <span class="hljs-number">128</span>  MinHeight  <span class="hljs-number">128</span>  SurfaceFormat  NV12 P016
+</code></pre><p>Honestly it&#39;s kinda impressive how much my nearly three year old laptop is capable of, dedicated hardware decode of 4k HEVC? Sure thing... </p>
+<h1 id="the-sample-code-then">The sample code then</h1>
+<p>The sample code is essentially boils down to a pile of projects under &#39;AppEncode&#39;, &#39;AppDecode&#39;, and &#39;AppTranscode&#39; directories - in theory demonstrating in isolation how to do those tasks, I say in theory because all of the examples are effectively a main(int argc, char** arg) that parse the command line and then spin up the shared code in the NvDecoder/NvEncoder directories.</p>
+<p>That&#39;s super annoying, as it means the useful code is sat inside two C++ classes plus a pile of inheritance to change the behaviour at times and if you want to work out what one of these &#39;isolated&#39; examples are actually doing you have to traipse up and down a pile of abstracted mess to work out how the API is actually being invoked. This is a masterclass in how <em>not</em> to write useful example code for an SDK in case anybody is still unclear as to how I feel about this.</p>
+<p>The useful code for decoding exists in a single class, <em>NvDecoder</em>, with most of the interesting code taking place in <em>Decode</em> and <em>GetFrame</em>. There is a lot of work happening under the covers which will need looking at in a following blog post, but what is interesting here is that Nvidia provide the means not only to decode the video bitstream, but also to parse the codec around that bitstream. That&#39;s kinda cool because this isn&#39;t a small feat - it&#39;s quite common for video decoder APIs to only deal with the bitstream which makes the cost of entry quite high unless you&#39;ve already got all of that code lying about. Of course if you&#39;re already parsing the nals and such in your pipeline you can skip that aspect of the Nvidia API (this being what is recommended) but because their parser is built to work with their decoder that&#39;s clearly what I&#39;m going to start with.</p>
+<p>The useful code for encoding exists in a single class, <em>NvEncoder</em>, but with various overrides in things like <em>NvEncoderCuda</em>, <em>NvEncoderD3D11</em>, etc. So that&#39;s a pain in the arse, not to mention the heap of boolean decisions around #IFDEFs, if(m_bSomeFlag) making it difficult to work out what one of the isolated examples is doing.  It is safe to say that understanding the encoding process is going to be frustrating.</p>
+<h1 id="next-steps">Next steps</h1>
+<p>Honestly getting this far was a faff in itself, some of it was harder because of my Nixos setup and some of it was easier (Side by side GCC installations and such are never that much fun), and my driver set up whilst easy on paper took me a few attempts to get correct because of my previous efforts in entirely disabling the GPU...</p>
+<p>Having the samples building and working though, we can be confident that if I write the right code in the next steps that the rest of it will work...</p>
+]]></description><link>http://codeofrob.com/entries/exploring-the-nvidia-code-samples-and-docs.html</link><guid isPermaLink="true">http://codeofrob.com/entries/exploring-the-nvidia-code-samples-and-docs.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 10 Nov 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Getting started with NVEnc]]></title><description><![CDATA[<p>This blog entry is part of my &quot;<a href="/entries/blogging-the-mundane.html">blog about mundane stuff</a>&quot; series.</p>
+<p>Mundane blog posts here we go! I recently got asked about adding NVIDIA capability to our stack and that is a process I went through and completed with only moderate frustration. I don&#39;t tend to write very much C in my day to day job (This is by design, nobody wants me writing C and I don&#39;t want to be writing C) but here we are writing C because that&#39;s the easiest way to integrate native stuff with Erlang and I&#39;m not about to go and learn Rust just to play with an SDK that we may not end up using in production. I will go and learn Rust in 2021 though, Rust is where our native stuff is heading but I digress - thisis the life of a developer working in this sort of environment - putting off learning new things until it becomes strictly necessary or we&#39;d  never get any bloody work done.</p>
+<p>We&#39;ll ignore the Erlang bit for the most part, because I could probably write several blog posts on my experience of writing NIFs (badly) alone, and we&#39;ll just take a quick overview of how the NVIDIA stuff fits together because coming to this task entirely from scratch with no knowledge of how the various bits fit together made set up that little bit more interesting.</p>
+<h1 id="my-os">My OS</h1>
+<p>I run Nixos, my entire system including drivers, software packages, configuration and such exist on Github in a <a href="https://github.com/robashton/nixos-install">repository</a> and it makes set up on new hardware or re-paving from scratch on existing hardware a very simply task of cloning a repo and running it against that hardware.</p>
+<p>The hardest thing about the setup of this laptop with the Nvidia chip on it was disabling the GPU in the first place entirely so to squeeze as much battery life out of it as possible whilst sitting in bars at conferences and such and writing code until somebody wants to chat to me. (I actually paved this laptop whilst sat at a conference in Lithuania, that seems a different world now..). There is a perfectly good integrated Intel GPU (that also does hardware accelerated encodes/decodes too!) that I&#39;ve been using for the lifetime of his hardware (and we use this stuff in production so it makes sense to use it locally).</p>
+<p>The first thing I needed to do was update the kernel to latest and survey what the state of Nvidia drivers/etc is in this world having not looked at it for a couple of years. The answer is &#39;in a state of flux&#39; (<em>when isn&#39;t it?</em>), but it looks like we&#39;ve finally got sensible offloading of the GPU built in and in theory we can run an X session off-screen for doing rendering and such on that GPU without draining the battery just because I was silly enough to open vim inside a terminal emulator. </p>
+<p>The support for the encode/decode functionality is built into these drivers in the form of dynamically loaded libraries and they need to be set up properly before anything will work. On Windows this probably just means running an EXE, on MacOS it probably means dragging an icon onto another icon and on Nixos I need configure the drivers with the information of where to find the hardware and how I want it to operate.</p>
+<p>I had been lying to ACPI to get my touchpad working with Nvidia disabled, but now comes the time to tell the truth once more..</p>
+<pre><code>    <span class="hljs-keyword">boot.kernelParams </span>= [ <span class="hljs-string">"acpi_osi=Linux"</span> ]<span class="hljs-comment">;</span></code></pre><p>Hey NVIDIA, this is where my hardware is (located using lspci)</p>
+<pre><code>  hardware.nvidia.prime.nvidiaBusId = <span class="hljs-string">"PCI:1:0:0"</span><span class="hljs-comment">;</span>
+  hardware.nvidia.prime.intelBusId = <span class="hljs-string">"PCI:0:2:0"</span><span class="hljs-comment">;</span></code></pre><p>And I want the official drivers pls, blacklist nouveau - don&#39;t even think about it pal.</p>
+<pre><code>  hardware.nvidia.modesetting.<span class="hljs-attr">enable</span> = <span class="hljs-literal">true</span>;
+  hardware.nvidia.prime.offload.<span class="hljs-attr">enable</span> = <span class="hljs-literal">true</span>;
+  hardware.nvidia.<span class="hljs-attr">nvidiaPersistenced</span> = <span class="hljs-literal">true</span>;
+
+  services.xserver.<span class="hljs-attr">videoDrivers</span> = [ <span class="hljs-string">"nvidia"</span> ];
+  boot.<span class="hljs-attr">kernelModules</span> = [ <span class="hljs-string">"nvidia-uvm"</span> <span class="hljs-string">"nvidia-drm"</span> ];
+  boot.<span class="hljs-attr">blacklistedKernelModules</span> = [ <span class="hljs-string">"nouveau"</span> ];</code></pre><p>And also the X11 packages for this stuff</p>
+<pre><code>  environment.systemPackages = with pkgs<span class="hljs-comment">; [</span>
+    linuxPackages.nvidia_x11
+  ]<span class="hljs-comment">;</span></code></pre><p>And may as well get the opengl stuff set up while we&#39;re here, although it&#39;s not strictly useful for the encodes it&#39;s good for testing the hardware itself.</p>
+<pre><code>  hardware.<span class="hljs-attr">opengl</span> = {
+    <span class="hljs-attr">enable</span> = <span class="hljs-literal">true</span>;
+    <span class="hljs-attr">driSupport</span> = <span class="hljs-literal">true</span>;
+  }</code></pre><p>I also follow the official guidance in setting up a quick bash script to run things with the Nvidia GPU instead of the default Intel one.</p>
+<p>Having a Nixos setup is quite nice, a quick rebuild and I have a new boot option to start up with all of this enabled (and the old option is still there in case I got anything wrong, which I definitely did in my first few passes here).</p>
+<p>Anyway, this gives me a few things..</p>
+<ul>
+<li><em>glxgears</em>:  Woo, spinny gears on my laptop powered by Intel</li>
+<li><em>nvidia-offload glxgears</em>: Woo, spinny gears powered by Nvidia</li>
+<li><em>/run/opengl-driver/lib/libnvidia-encode.so</em>: Library for doing encode stuff</li>
+<li><em>/run/opengl-driver/lib/dri/nvidia_drv_video.so</em>: The actual video driver</li>
+</ul>
+<p>Happy this is all setup, I need to look next at the tools required to write code that uses these things...</p>
+<h1 id="the-project-stuff">The project stuff</h1>
+<p>I don&#39;t tend to install SDKs or even development tools and such in my global environment, it nearly always ends up being the case that I need a different version of something for one project or another and because I&#39;m on Nixos I just use Nix shells for the individual projects and their development requirements <a href="https://purerl-cookbook.readthedocs.io/en/latest/devenv/nix.html">(Something I have written a bit about)</a></p>
+<p>It turns out I just need to add these packages to my environment and I&#39;m good to go, I already have nvidia_x11, but I &#39;add&#39; it again here so I can use it to generate some environment variables later on in the shell.nix so everything lines up.</p>
+<pre><code>
+  cudatoolkit
+  nvidia-video-sdk
+  linuxPackages<span class="hljs-selector-class">.nvidia_x11</span>
+</code></pre><p>As a bonus, I also go and add these because it&#39;ll make the code samples build and run properly (and as code samples typically seem to be the main entrance to SDKs like this that&#39;s a helpful thing.</p>
+<pre><code>    <span class="hljs-attribute">cmake</span>
+    pkgconfig
+    gcc8
+    ffmpeg-full
+</code></pre><p>As a further bonus, I go and add <em>gdb</em> to this list because I literally don&#39;t have any development tools on my host OS and I&#39;m bound to cause a few SIGSEGVs over the next couple of weeks that need debugging.</p>
+<p>The cuda toolkit doesn&#39;t (at time of writing) work with the modern version of GCC on my OS so I needed to explicitly pull GCC8 and set that in the environment so that when I&#39;m building code with our standard makefiles we&#39;ll do the right thing.</p>
+<pre><code>  shellHook = <span class="hljs-string">''</span>
+    <span class="hljs-built_in">export</span> CUDA_PATH=<span class="hljs-variable">${pkgs.cudatoolkit}</span>
+    <span class="hljs-built_in">export</span> LD_LIBRARY_PATH=<span class="hljs-variable">${pkgs.linuxPackages.nvidia_x11}</span>/lib
+    <span class="hljs-built_in">export</span> EXTRA_LDFLAGS=<span class="hljs-string">"-L/lib -L<span class="hljs-variable">${pkgs.linuxPackages.nvidia_x11}</span>/lib"</span>
+    <span class="hljs-built_in">export</span> EXTRA_CCFLAGS=<span class="hljs-string">"-I/usr/include"</span>
+    <span class="hljs-built_in">export</span> CC=<span class="hljs-variable">${pkgs.gcc8}</span>/bin/gcc
+    <span class="hljs-built_in">export</span> CXX=<span class="hljs-variable">${pkgs.gcc8}</span>/bin/g++
+  <span class="hljs-string">''</span>;</code></pre><p>Anyway, that&#39;s my setup - seeing as I&#39;ve made it to 1000 words already I&#39;ll leave the next post of &quot;exploring the samples, SDK surface area, documentation, etc&quot; to the next one. mundane <em>and</em> wordy, everybody&#39;s favourite.</p>
+]]></description><link>http://codeofrob.com/entries/getting-started-with-nvenc.html</link><guid isPermaLink="true">http://codeofrob.com/entries/getting-started-with-nvenc.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 05 Nov 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Blogging the mundane]]></title><description><![CDATA[<p>I was having a chat with a few friends over a glass or two of whisky the other evening (over Google Hangouts or whatever it is called these days) and the subject turned to whether any of us had become lazy about our online output as time had gone on and as we were getting old. (All of us really).</p>
 <p><strong>&quot;Why don&#39;t you blog any more?&quot;</strong></p>
 <p>My own personal answer is quite simply that I don&#39;t think anybody actually cares about anything I do these days, a vanishingly small number of people want to hear about anything to do with Erlang, an even smaller number of people have any interest in Purescript and the intersection of those two subjects doesn&#39;t do very much to increase the number of people willing to click a link with any of this content behind it. It&#39;s somewhat disheartening to write pages upon pages of documentation that nobody is going to care about until it&#39;s gotten so stale it&#39;s now useless. (See also: <a href="https://purerl-cookbook.readthedocs.io/en/latest/">The Purerl Cookbook</a>).</p>
 <p>Conversations with folk at conferences on these subjects doesn&#39;t do much to boost my interest in sharing, you can literally see people glaze over the moment you mention anything that isn&#39;t</p>
@@ -759,485 +1222,4 @@ at src/BookWeb.purs:122:58 - 122:60 (line 122, column 58 - line 122, column 60)
 <span class="hljs-title">getBook</span> id = fetchJson $ routeUrl (<span class="hljs-type">Book</span> id)
 </code></pre>
 <p>No more strings, no more guessing, thanks Nick!</p>
-]]></description><link>http://codeofrob.com/entries/purerl-updates---typed-routes-in-stetson.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purerl-updates---typed-routes-in-stetson.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 30 Jun 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Updates to Pinto+Stetson - Purerl In Progress]]></title><description><![CDATA[<p>Whew, a lot of things have happened over the last year and nearly all of it in private Github repos for work as we carry on doing &quot;everything&quot; in Purerl.</p>
-<p>These posts are a reminder of where we were last time we poked our heads over the parapet, although some of their content is now a tad out of date the demo code they link to is thankfully updated (I&#39;ve been busy).</p>
-<ul>
-<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
-<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
-<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
-<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
-<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
-<li><a href="/entries/purescript-interop-with-native-erlang---interacting-with-redis.html">Purescript interop with native Erlang, interaction with Redis</a></li>
-</ul>
-<p>So what has changed?  </p>
-<ul>
-<li>Nix overlays for Purerl/etc</li>
-<li>Typed routing for Stetson</li>
-<li>Emitter based messages for handle_info in Gen Server</li>
-<li>Monitors for arbitrary pids from Gen servers + Stetson handlers</li>
-<li>WebSocket handlers in Stetson</li>
-<li>Streaming handlers in Stetson</li>
-<li>MessageRouting in Pinto to easily bind to legacy code that sends us messages</li>
-</ul>
-<p>Some of these things existed in one form or another last year, indeed it is hard to write a substantial amount of Erlang without requiring them, however as we started building more and more critical functionality on top of Purerl, the warts in the existing implementations started becoming apparent and eventually needed dealing with.</p>
-<p>The advantage to eating our own dog food is that we have a lot of mouths to feed and the dog food needs to taste good if we&#39;re to keep on going with it.</p>
-<p>For those that are super keen, the updated demo code can be found <a href="https://github.com/id3as/demo-ps">here</a> for perusal, for those who want an explanation, the following blog posts will cover them, for now  I&#39;ll quickly cover the various nix packages that are available for us about the place and the tools we are currently using to do our builds.</p>
-<h1 id="nix-packages--development-stack">Nix Packages + Development Stack</h1>
-<p>The demo-ps project has been &#39;nixified&#39;, with a <a href="https://nixos.org/download.html">nix-shell</a> and <a href="https://direnv.net/">direnv</a> or similar, a fully operational development environment will appear (and yes it works on MacOS).</p>
-<p>Our entry point can be found <a href="https://github.com/id3as/demo-ps/blob/master/env/common/shell.nix">here</a>, dumped below for convenience.</p>
-<pre><code><span class="hljs-keyword">let</span>
-  <span class="hljs-attr">erlangReleases</span> = <span class="hljs-built_in">builtins</span>.fetchTarball https://github.com/nixerl/nixpkgs-nixerl/archive/v1.<span class="hljs-number">0.4</span>-devel.tar.gz;
-
-  <span class="hljs-attr">pinnedNix</span> =
-    <span class="hljs-built_in">builtins</span>.fetchGit {
-      <span class="hljs-attr">name</span> = <span class="hljs-string">"nixpkgs-pinned"</span>;
-      <span class="hljs-attr">url</span> = <span class="hljs-string">"https://github.com/NixOS/nixpkgs.git"</span>;
-      <span class="hljs-attr">rev</span> = <span class="hljs-string">"cc6cf0a96a627e678ffc996a8f9d1416200d6c81"</span>;
-    };
-
-  <span class="hljs-attr">pursPackages</span> =
-    <span class="hljs-built_in">builtins</span>.fetchGit {
-      <span class="hljs-attr">name</span> = <span class="hljs-string">"purerl-packages"</span>;
-      <span class="hljs-attr">url</span> = <span class="hljs-string">"git@github.com:purerl/nixpkgs-purerl.git"</span>;
-      <span class="hljs-attr">rev</span> = <span class="hljs-string">"5da0a433bcefe607e0bd182b79b220af980a4c78"</span>;
-    };
-
-
-  <span class="hljs-attr">nixpkgs</span> =
-    <span class="hljs-built_in">import</span> pinnedNix {
-      <span class="hljs-attr">overlays</span> = [
-        (<span class="hljs-built_in">import</span> erlangReleases)
-        (<span class="hljs-built_in">import</span> pursPackages)
-        (<span class="hljs-built_in">import</span> ./.)
-      ];
-    };
-
-  <span class="hljs-keyword">inherit</span> (nixpkgs.stdenv.lib) optionals;
-  <span class="hljs-keyword">inherit</span> (nixpkgs)stdenv;
-<span class="hljs-keyword">in</span>
-
-<span class="hljs-keyword">with</span> nixpkgs;
-
-mkShell {
-  <span class="hljs-attr">buildInputs</span> = <span class="hljs-keyword">with</span> pkgs; [
-
-    nixerl.erlang-<span class="hljs-number">22</span>-<span class="hljs-number">3</span>.erlang
-    nixerl.erlang-<span class="hljs-number">22</span>-<span class="hljs-number">3</span>.rebar3
-
-    purerl.purerl-<span class="hljs-number">0</span>-<span class="hljs-number">0</span>-<span class="hljs-number">5</span>
-
-    demo_ps.purescript-<span class="hljs-number">0</span>-<span class="hljs-number">13</span>-<span class="hljs-number">6</span>
-    demo_ps.spago-<span class="hljs-number">0</span>-<span class="hljs-number">12</span>-<span class="hljs-number">1</span>-<span class="hljs-number">0</span>
-    demo_ps.dhall-json-<span class="hljs-number">1</span>-<span class="hljs-number">5</span>-<span class="hljs-number">0</span>
-   ];
-}</code></pre><p><a href="https://github.com/nixerl/nixpkgs-nixerl">nixerl/nixpkgs-nixerl</a> is maintained  by <a href="http://twitter.com/philipstears">@philipstears</a>, <a href="https://github.com/purerl/nixpkgs-purerl">purerl/nixpkgs-purerl</a> is maintained by the purerl org (<a href="http://twitter.com/nwolverson">nick</a>) - the demo-ps project itself  provides some  overlays for purescript/spago/dhall because we want specific versions of them.</p>
-<p>I strongly recommend investigating Nix for development workflows based on the last year or so of using it in earnest as a team, we have built our own internal packages for native/shared dependencies across our projects and have started  looking into using it to aid in our deployment as well. It is not without its pain points (it&#39;s a lot easier if you just run Nixos like half the team), but it has made managing our dependencies a lot easier. As a way of getting a sensible Purerl development environment up and running it&#39;s probably the easiest avenue.</p>
-<p>We&#39;ve pretty much set ourselves on using</p>
-<ul>
-<li>dhall-json for our package sets</li>
-<li>Spago for building</li>
-<li>Purescript is the main compiler</li>
-<li>Purerl is the backend for the compiler</li>
-<li>Rebar3 is the build engine for our Erlang projects</li>
-<li>Erlang is the compiler/VM for... well, Erlang</li>
-</ul>
-<p>Getting all of these installed is probably a journey that is going to be differ wildly depending on the host OS and Nix at least gets that solved for us.</p>
-<h1 id="dhall">Dhall</h1>
-<p>There are two dhall files per Purescript project at the moment, there is packages.dhall which describes the package set we are using to pull packages, and then spago.dhall which describes which packaages from that package set we want to use.</p>
-<p>At the time of writing, our package set looks like this</p>
-<pre><code><span class="hljs-keyword">let</span> <span class="hljs-attr">upstream</span> = https://github.com/purerl/package-sets/releases/download/erl-<span class="hljs-number">0.13</span>.<span class="hljs-number">6</span>-<span class="hljs-number">20200402</span>/packages.dhall sha256:<span class="hljs-number">5442</span>e50aa76c20bd60b2770ab41c68bae80f6ec96f2df1cfaea310673de567d1
-
-<span class="hljs-keyword">let</span> <span class="hljs-attr">overrides</span> =
-      { <span class="hljs-attr">erl-cowboy</span> =
-          { <span class="hljs-attr">dependencies</span> = [ <span class="hljs-string">"erl-modules"</span> ]
-          , <span class="hljs-attr">repo</span> = <span class="hljs-string">"https://github.com/id3as/purescript-erl-cowboy.git"</span>
-          , <span class="hljs-attr">version</span> = <span class="hljs-string">"4ee391f0349c00d92f68e4331425174eb8bdff9e"</span>
-          },
-
-      <span class="hljs-attr">erl-pinto</span> =
-          { <span class="hljs-attr">dependencies</span> = [ <span class="hljs-string">"erl-process"</span> ]
-          , <span class="hljs-attr">repo</span> = <span class="hljs-string">"ssh://git@github.com/id3as/purescript-erl-pinto.git"</span>
-          , <span class="hljs-attr">version</span> = <span class="hljs-string">"59fd04bb0215f532b984909b3cd52bbaf1c10e6a"</span>
-          },
-
-      <span class="hljs-attr">erl-stetson</span> =
-          { <span class="hljs-attr">dependencies</span> = [<span class="hljs-string">"erl-atom"</span> , <span class="hljs-string">"erl-binary"</span> , <span class="hljs-string">"erl-lists"</span> , <span class="hljs-string">"erl-maps"</span> , <span class="hljs-string">"erl-tuples"</span> , <span class="hljs-string">"erl-modules"</span> , <span class="hljs-string">"foreign"</span> , <span class="hljs-string">"maybe"</span> , <span class="hljs-string">"prelude"</span> , <span class="hljs-string">"transformers"</span> , <span class="hljs-string">"routing-duplex"</span>]
-          , <span class="hljs-attr">repo</span> = <span class="hljs-string">"ssh://git@github.com/id3as/purescript-erl-stetson.git"</span>
-          , <span class="hljs-attr">version</span> = <span class="hljs-string">"2244181d4905c16f7a62ead62a12a2056eb0c975"</span>
-          }
-      }
-
-<span class="hljs-keyword">let</span> <span class="hljs-attr">extras</span> = {
-       <span class="hljs-attr">erl-simplebus</span> =
-          { <span class="hljs-attr">dependencies</span> =
-              [ <span class="hljs-string">"erl-process"</span>
-              , <span class="hljs-string">"effect"</span>
-              ]
-          , <span class="hljs-attr">repo</span> = <span class="hljs-string">"ssh://git@github.com/id3as/purescript-erl-simplebus.git"</span>
-          , <span class="hljs-attr">version</span> = <span class="hljs-string">"14b5bd5971e7f2eeba99b51f1c6d4f43761b5376"</span>
-          }
-  }
-
-<span class="hljs-keyword">in</span>  upstream ⫽ overrides⫽ extras
-</code></pre><p><a href="https://github.com/id3as/purescript-erl-simplebus">erl-simplebus</a> is a new package not yet added to the <a href="https://github.com/purerl/package-sets">purerl package-sets</a> so that&#39;s been defined as an &#39;extra&#39;, and our cowboy/pinto/stetson repos are a moving target so we&#39;re using git commit hashes for them as the versions in the package set are out of date. In general our packages.dhall breath a little as we work on core libraries, stabilise changes and then get official releases pushed into the official package set.</p>
-<p>With all of this defined, we can define our build package spago.dhall</p>
-<pre><code>{-
--}
-{ <span class="hljs-attr">name</span> = <span class="hljs-string">"demo"</span>
-, <span class="hljs-attr">dependencies</span> =
-    [ <span class="hljs-string">"console"</span>
-    , <span class="hljs-string">"effect"</span>
-    , <span class="hljs-string">"erl-cowboy"</span>
-    , <span class="hljs-string">"erl-pinto"</span>
-    , <span class="hljs-string">"erl-stetson"</span>
-    , <span class="hljs-string">"psci-support"</span>
-    , <span class="hljs-string">"simple-json"</span>
-    , <span class="hljs-string">"erl-simplebus"</span>
-    ]
-, <span class="hljs-attr">packages</span> = ./packages.dhall
-, <span class="hljs-attr">sources</span> = [ <span class="hljs-string">"src/**/*.purs"</span>, <span class="hljs-string">"test/**/*.purs"</span> ]
-, <span class="hljs-attr">backend</span> = <span class="hljs-string">"purerl"</span>
-}</code></pre><p>This allows us to use spago build on the CLI, which will pull down all of our packages and build them and our Erlang. Note the presence of &#39;backend&#39; for compiling to Erlang rather than JavaScript - this is a fairly recent change to the Purescript env and definitely differs from my previous blog posts on the subject (We&#39;ve done away with psc-package for starters).</p>
-<h1 id="anyway">Anyway</h1>
-<p>Look into Nix or install all the dependencies manually, I know which I&#39;d pick these days. Presumably it could be done in a docker container too, but docker is old hat, don&#39;t be old hat.</p>
-]]></description><link>http://codeofrob.com/entries/updates-to-pinto+stetson---purerl-in-progress.html</link><guid isPermaLink="true">http://codeofrob.com/entries/updates-to-pinto+stetson---purerl-in-progress.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 25 Jun 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purerl - Some questions from #CodeMeshLdn]]></title><description><![CDATA[<p>Talk at CodeMesh now given, because of a demo god intervention (I discovered a Purerl compiler bug mid-demo, how&#39;s that for luck?) I didn&#39;t have time to receive questions during my actual session, but I kept a note of questions asked afterwards and will cover them here for those not present during their discussion.</p>
-<p>I&#39;ll carry on linking these Purerl posts from each other before that however, &#39;cos it serves as a handy indexing mechanism in lieu of having a real blog engine..</p>
-<ul>
-<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
-<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
-<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
-<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
-<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
-<li><a href="/entries/purescript-interop-with-native-erlang---interacting-with-redis.html">Purescript interop with native Erlang, interaction with Redis</a></li>
-<li><a href="/entries/codemesh-2019---purerl-and-otp-talk.html">Codemesh 2019 - Purerl and OTP</a></li>
-</ul>
-<h1 id="useful-links">Useful links</h1>
-<ul>
-<li><a href="https://github.com/id3as/demo-ps">demo-ps</a> The demo codebase we&#39;re talking about here</li>
-<li><a href="https://github.com/id3as/purescript-erl-pinto">erl-pinto</a> (the opinionated bindings to OTP we&#39;re using)</li>
-<li><a href="https://github.com/id3as/purescript-erl-stetson">erl-stetson</a> (the opinionated bindings to Cowboy we&#39;re using)</li>
-</ul>
-<h1 id="some-questions-then">Some questions then.</h1>
-<ul>
-<li>What if I use the wrong types in my FFI</li>
-<li>What if I don&#39;t use Effect in my FFI</li>
-<li>How do you map complex union types back into Purerl when doing FFI (specifically, errors)</li>
-<li>Are there any situations where you feel the types in Purescript would get in the way and you&#39;d just write Erlang instead?</li>
-</ul>
-<h1 id="wrong-types">Wrong types</h1>
-<p>In one demo I did a very simple import of the base64 module from base Erlang:</p>
-<pre><code class="language-erlang"><span class="hljs-keyword">-module</span><span class="hljs-params">(cool@foreign)</span>.
-
-<span class="hljs-keyword">-export</span><span class="hljs-params">([base64/<span class="hljs-number">1</span>])</span>.
-
-<span class="hljs-function"><span class="hljs-title">base64</span><span class="hljs-params">(String)</span> -&gt;</span> base64:encode(String).
-</code></pre>
-<p>Consumed in purescript with the following import</p>
-<pre><code class="language-haskell">
-<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> base64 :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">String</span>
-</code></pre>
-<p>And all is right and proper, from the erlang shell, I can call this function</p>
-<pre><code class="language-bash">Eshell V10.5  (abort with ^G)
-1&gt; l(cool@ps).
-{module,cool@ps}
-2&gt; cool@ps:base64(&lt;&lt;<span class="hljs-string">"foo"</span>&gt;&gt;).
-&lt;&lt;<span class="hljs-string">"Zm9v"</span>&gt;&gt;
-3&gt;</code></pre>
-<p>So.. what if we lie about the types at play here?</p>
-<pre><code class="language-haskell">
-<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> base64 :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Int</span>
-</code></pre>
-<p>Well, the result of calling the purescript function from Erlang isn&#39;t going to change because it doesn&#39;t care about types</p>
-<pre><code class="language-bash">Eshell V10.5  (abort with ^G)
-1&gt; l(cool@ps).
-{module,cool@ps}
-2&gt; cool@ps:base64(&lt;&lt;<span class="hljs-string">"foo"</span>&gt;&gt;).
-&lt;&lt;<span class="hljs-string">"Zm9v"</span>&gt;&gt;
-3&gt;</code></pre>
-<p>How about using it in a purescript application?</p>
-<pre><code class="language-haskell">
-<span class="hljs-title">doSomething</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
-<span class="hljs-title">doSomething</span> = <span class="hljs-keyword">do</span>
-  <span class="hljs-keyword">let</span> result = base64 <span class="hljs-string">"wow"</span>
-  _ &lt;- <span class="hljs-type">Console</span>.log $ show result
-  pure unit
-</code></pre>
-<pre><code class="language-bash">
-&gt; (cool@ps:doSomething())().
-** exception error: bad argument
-     <span class="hljs-keyword">in</span> <span class="hljs-keyword">function</span>  integer_to_binary/1
-        called as integer_to_binary(&lt;&lt;<span class="hljs-string">"d293"</span>&gt;&gt;)
-     <span class="hljs-keyword">in</span> call from data_show@foreign:showIntImpl/1 (output/Data.Show/data_show@foreign.erl, line 4)
-     <span class="hljs-keyword">in</span> call from main@ps:<span class="hljs-string">'-doSomething/0-fun-0-'</span>/1 (/home/robashton/talks/purescript_beam/demo_2/src/Main.purs, line 19)
-</code></pre>
-<p>Passing the variable around in Purescript land, nothing cares - it is assumed that if you&#39;ve said something is a certain type, that it is that type and all type checking will be done on that basis - sooner or later, every bit of data will end up getting somewhere where it needs to be serialized whether for display, storage or transmission and that will involve passing the data into code that makes assumptions based on the type being passed in and you&#39;ll get a runtime crash.</p>
-<p>So obviously the answer is &quot;don&#39;t do it&quot; - when building FFI, getting types correct is essential - definitely something worth testing.</p>
-<h1 id="what-if-i-dont-use-effect-in-my-ffi">What if I don&#39;t use Effect in my FFI</h1>
-<p>You maniac, why would you want to lie about side effects??! Well it turns out to not actually be a big deal, the main reason you&#39;re telling the type system about side effects is for your own benefit and if you choose to lie then at some point you will be hoisted on your own petard and we will all laugh at you. An example of places where this could happen is with legacy code and logging, I guess, probably, maybe.</p>
-<pre><code class="language-erlang">
-<span class="hljs-keyword">-module</span><span class="hljs-params">(cool@foreign)</span>.
-<span class="hljs-keyword">-export</span><span class="hljs-params">([ add/<span class="hljs-number">2</span> ])</span>.
-
-<span class="hljs-function"><span class="hljs-title">add</span><span class="hljs-params">(X,Y)</span> -&gt;</span>
-  io:format(user, <span class="hljs-string">"WOW, I AM ADDING ~p and ~p"</span>, [ X, Y ]),
-  X + Y.
-</code></pre>
-<pre><code class="language-haskell">
-<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> add :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">Int</span>
-
-<span class="hljs-title">doSomething</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
-<span class="hljs-title">doSomething</span> = <span class="hljs-keyword">do</span>
-  <span class="hljs-keyword">let</span> result = add <span class="hljs-number">5</span> <span class="hljs-number">6</span>
-  _ &lt;- <span class="hljs-type">Console</span>.log $ show result
-  pure unit
-</code></pre>
-<pre><code class="language-bash">8&gt; (main@ps:doSomething())().
-WOW, I AM ADDING 5 and 611
-unit</code></pre>
-<p>Is this the future you want to be a part of? No I didn&#39;t think so - friends don&#39;t let friends write effectful code without declaring it as effectful.</p>
-<h1 id="how-do-you-map-complex-union-types-back-into-purerl">How do you map complex union types back into Purerl </h1>
-<p>Consider the <a href="http://erlang.org/documentation/doc-6.2/lib/kernel-3.0.3/doc/html/file.html#list_dir-1">read_dir API</a> in classic Erlang: </p>
-<pre><code class="language-erlang">  list_dir(Dir) -&gt; {ok, Filenames} | {error, Reason}
-
-  Types:
-
-  Dir = name_all()
-  Filenames = [filename()]
-  Reason = posix()
-         | badarg
-         | {no_translation, Filename :: unicode:latin1_binary()}
-</code></pre>
-<p>There are some decisions to be made when writing code that exposes this API to the Purerl world, and none of them are <em>wrong</em> per se. The default position is usually &quot;Map the exact API across as it is, and if you don&#39;t like it then fix it by writing a somewhat more Purescripty wrapper&quot;.</p>
-<p>So that would be.</p>
-<pre><code class="language-haskell">
-<span class="hljs-keyword">module</span> Erl.File <span class="hljs-keyword">where</span>
-
-<span class="hljs-type">ListDir</span>  :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Either</span> <span class="hljs-type">ListDirFailure</span> (<span class="hljs-type">List</span> <span class="hljs-type">String</span>))
-
-<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">ListDirFailure</span> = <span class="hljs-type">ListDirPosixFailure</span> <span class="hljs-type">Atom</span></span>
-                    | <span class="hljs-type">ListDirBadArg</span>
-                    | <span class="hljs-type">ListDirNoTranslation</span> <span class="hljs-type">Binary</span>
-</code></pre>
-<p>Which means then passing in the constructors to the FFI so this can be constructed in Erlang without knowing about these types at the top level.</p>
-<pre><code class="language-haskell">
-<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> <span class="hljs-type">ListDir_</span> :: (<span class="hljs-type">Atom</span> -&gt; <span class="hljs-type">ListDirFailure</span>)  
-                            -&gt; <span class="hljs-type">ListDirFailure</span> 
-                            -&gt; (<span class="hljs-type">Binary</span> -&gt; <span class="hljs-type">ListDirFailure</span>) 
-                            -&gt; <span class="hljs-type">ListDirFailure</span> -&gt; (<span class="hljs-type">Either</span> <span class="hljs-type">ListDirFailure</span> (<span class="hljs-type">List</span> <span class="hljs-type">String</span>))
-                            -&gt; (<span class="hljs-type">List</span> <span class="hljs-type">String</span> -&gt; (<span class="hljs-type">Either</span> <span class="hljs-type">ListDirFailure</span> (<span class="hljs-type">List</span> <span class="hljs-type">String</span>)))
-                            -&gt; <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Either</span> <span class="hljs-type">ListDirFailure</span> (<span class="hljs-type">List</span> <span class="hljs-type">String</span>))
-
-<span class="hljs-type">ListDir</span>  :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Either</span> <span class="hljs-type">ListDirFailure</span> (<span class="hljs-type">List</span> <span class="hljs-type">String</span>))
-<span class="hljs-title">listDir</span> = listDir_ <span class="hljs-type">ListDirPosixFailure</span> <span class="hljs-type">ListDirBadArg</span> <span class="hljs-type">ListDirNoTranslation</span> <span class="hljs-type">Left</span> <span class="hljs-type">Right</span>
-
-<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">ListDirFailure</span> = <span class="hljs-type">ListDirPosixFailure</span> <span class="hljs-type">Atom</span></span>
-                    | <span class="hljs-type">ListDirBadArg</span>
-                    | <span class="hljs-type">ListDirNoTranslation</span> <span class="hljs-type">Binary</span>
-</code></pre>
-<p>Youch that&#39;s a mouthful, obviously we can make that a bit more legible with</p>
-<pre><code class="language-haskell">
-<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> <span class="hljs-type">ListDir_</span> :: (<span class="hljs-type">Atom</span> -&gt; <span class="hljs-type">ListDirFailure</span>)  
-                            -&gt; <span class="hljs-type">ListDirFailure</span> 
-                            -&gt; (<span class="hljs-type">Binary</span> -&gt; <span class="hljs-type">ListDirFailure</span>) 
-                            -&gt; <span class="hljs-type">ListDirFailure</span> -&gt; <span class="hljs-type">ListDirResult</span>
-                            -&gt; (<span class="hljs-type">List</span> <span class="hljs-type">String</span> -&gt; <span class="hljs-type">ListDirResult</span>
-                            -&gt; <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">ListDirResult</span>
-
-<span class="hljs-type">ListDir</span>  :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Either</span> <span class="hljs-type">ListDirFailure</span> (<span class="hljs-type">List</span> <span class="hljs-type">String</span>))
-<span class="hljs-type">ListDir</span> = listDir_ <span class="hljs-type">ListDirPosixFailure</span> <span class="hljs-type">ListDirBadArg</span> <span class="hljs-type">ListDirNoTranslation</span> <span class="hljs-type">Left</span> <span class="hljs-type">Right</span>
-
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">ListDirResult</span> = <span class="hljs-type">Either</span> <span class="hljs-type">ListDirResult</span> (<span class="hljs-type">List</span> <span class="hljs-type">String</span>)</span>
-<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">ListDirFailure</span> = <span class="hljs-type">ListDirPosixFailure</span> <span class="hljs-type">Atom</span></span>
-                    | <span class="hljs-type">ListDirBadArg</span>
-                    | <span class="hljs-type">ListDirNoTranslation</span> <span class="hljs-type">Binary</span>
-</code></pre>
-<p>And the FFI then looks like</p>
-<pre><code class="language-erlang">
-<span class="hljs-function"><span class="hljs-title">listDir_</span><span class="hljs-params">(ListDirPosixFailure, ListDirBadArg, NoTranslationError, Failure, Success, Dir)</span> -&gt;</span>
-  <span class="hljs-keyword">fun</span>() -&gt;
-    <span class="hljs-keyword">case</span> file:list_dir(Dir) <span class="hljs-keyword">of</span>
-      { ok, Filenames } -&gt; Success(Filenames);
-      { error, { no_translation, Encoded } } -&gt; Failure(NoTranslationError(Encoded));
-      { error, badarg } -&gt; Failure(ListDirBadArg);
-      { error, Posix } -&gt; Failure(ListDirPosixFailure(Posix));
-  <span class="hljs-keyword">end</span>.
-</code></pre>
-<p>If you wanted a nicer API on top of this, let&#39;s call it &quot;CoolFileApi&quot; for example, you&#39;d then wrap <em>that</em> binding with something nicer - having at least type-safe-ified the original API in all of its glory, and then you&#39;re doing the work in Purescript rather than Erlang, I haven&#39;t ran this through a compiler so I probably got it a bit wrong but you&#39;ll get picture..</p>
-<pre><code class="language-haskell"><span class="hljs-keyword">module</span> CoolFileApi <span class="hljs-keyword">where</span>
-
-<span class="hljs-keyword">import</span> Erl.File <span class="hljs-keyword">as</span> File
-<span class="hljs-keyword">import</span> Data.Newtype (<span class="hljs-title">unwrap</span>, <span class="hljs-title">wrap</span>)
-
-<span class="hljs-class"><span class="hljs-keyword">newtype</span> <span class="hljs-type">Filepath</span> = <span class="hljs-type">Filepath</span> <span class="hljs-type">String</span></span>
-<span class="hljs-title">derive</span> <span class="hljs-keyword">instance</span> ntFilepath :: <span class="hljs-type">Newtype</span> <span class="hljs-type">Filepath</span> _
-
-<span class="hljs-type">ListDir</span> :: <span class="hljs-type">Filepath</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Either</span> <span class="hljs-type">CoolListDirFailureReason</span> (<span class="hljs-type">List</span> <span class="hljs-type">Filepath</span>))
-<span class="hljs-type">ListDir</span> <span class="hljs-type">Filepath</span> = <span class="hljs-keyword">do</span>
-  result &lt;- <span class="hljs-type">File</span>.<span class="hljs-type">ListDir</span> $ unwrap <span class="hljs-type">Filepath</span>
-  pure $ either (<span class="hljs-type">Left</span> &lt;&lt;&lt; nativeFailureToShinyFailure) (<span class="hljs-type">Right</span> &lt;&lt;&lt; wrap)
-
-
-<span class="hljs-title">nativeFailureToShinyFailure</span> :: <span class="hljs-type">File</span>.<span class="hljs-type">ListDirFailure</span> -&gt; <span class="hljs-type">CoolListDirFailureReason</span>
-<span class="hljs-title">nativeFailureToShinyFailure</span> reason =
-  <span class="hljs-keyword">case</span> reason <span class="hljs-keyword">of</span>
-    <span class="hljs-type">ListDirBadArg</span> -&gt; <span class="hljs-type">CoolListDirBadArg</span>
-    <span class="hljs-type">ListDirNoTranslation</span> filename -&gt; <span class="hljs-type">CoolListDirNoTranslation</span> filename
-    <span class="hljs-type">ListDirPosixFailure</span> a -&gt; <span class="hljs-type">CoolListDirPosixFailure</span> (atomToCool a)
-
-<span class="hljs-title">atomToCool</span>  :: <span class="hljs-type">Erl</span>.<span class="hljs-type">Atom</span> -&gt; <span class="hljs-type">CoolListDirPosixFailure</span>
-<span class="hljs-title">atomToCool</span> a = 
-  <span class="hljs-keyword">case</span> a <span class="hljs-keyword">of</span>
-    (atom <span class="hljs-string">"eacces"</span>) -&gt; <span class="hljs-type">Eaccess</span>
-    (atom <span class="hljs-string">"enoent"</span>) -&gt; <span class="hljs-type">Enoent</span>
-    <span class="hljs-comment">--- etc</span>
-</code></pre>
-<p>Essentially getting rid of those arbitary atoms and Erlang data types and representing them as native Purerl data types. You <em>could</em> just write your binding directly in this way from the get-go, but it&#39;s considered polite to write the low level bindings as directly as possible to the original API because it saves on mental load (and doing as little work as possible in the Erlang code), the documentation for the original API is then applicable to the low level bindings too.</p>
-<h1 id="arent-types-a-huge-pain-in-the-ass">Aren&#39;t types a huge pain in the ass?</h1>
-<p>I mean that&#39;s what I heard for this question, and it&#39;s a bit of a loaded one - people that aren&#39;t used to working in a sensibly typed environment tend to look at the typed environment as being a form of burden, instead of an aid to help you write better code. Some of the conversation around this was about whether we&#39;d be re-writing some of our core functionality in Purescript, and whether that would even be desirable as the types might get in the way of productivity.</p>
-<p>I think that actually there is a lot of desire internally for us to do our next re-write of our orchestration logic in Purerl for example, but because  we&#39;re in a different language with a different way of looking at the world, the API and even the design of that would probably not look anything like the original (and the same goes for our media workflow engine too). We&#39;re not afraid of re-writes, we write code  to be thrown away after all - but usually when doing a re-write of a module, you get to learn from the previous iterations and Do It Better this time - the pendulum of compensation from past mistakes slowly zeroes in around an ideal design and by version 3 or 4 you&#39;re laughing.</p>
-<p>The main pain of having to do things differently is while there will be some lessons that can be passed into the rewrites into Purescript, a lot of the design decisions don&#39;t come through to the new world and you&#39;re essentially going back to version 1/2 again for that component. That&#39;ll be the pain that we&#39;ll go through but we&#39;ll come out the other side as better Purescript developers so we&#39;re not afraid of that.</p>
-<p>I really can&#39;t see a point where I&#39;d say that types are going to get in the way of Just Getting Stuff Done, in my experience so far, the type system is just a more honest way of looking at effort, when you&#39;re working in a sloppy-typed environment you can pretend that it&#39;s really easy and fun and you&#39;re dead smart so it&#39;s okay, but you end up paying the cost in bugs and mistakes eventually - the upfront cost might not be there but you&#39;ve just shifted it elsewhere. Types also typically enable you to write better abstractions to lessen the load of repeated operations - you can be a lot more clever when the compiler has your back.</p>
-<p>It&#39;s very hard to currently view what a typed version of some of our core IP would look like, but that&#39;s down to our inexperience rather than it being an impossible task; it&#39;ll come in time.</p>
-<h1 id="anyway">Anyway</h1>
-<p>That&#39;s some answers, if you have more questions about Purerl/Stetson/Pinto <a href="http://twitter.com/robashton">hit me up on Twitter</a> and I&#39;ll do my best to help..</p>
-]]></description><link>http://codeofrob.com/entries/purerl---some-questions-from-codemeshldn.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purerl---some-questions-from-codemeshldn.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 07 Nov 2019 09:30:00 GMT</pubDate></item><item><title><![CDATA[Codemesh 2019 - Purerl and OTP talk]]></title><description><![CDATA[<p>Just a note that I&#39;ll be appearing at <a href="https://www.codemesh.io/conferences/code-mesh-ldn/">Codemesh</a> on Thursday (11:25) to give a talk where I go over some of the stuff we&#39;ve been working on at <a href="https://www.id3as.com/home">Work</a>(tm) this year - with a focus on some of the implementation details and nitty gritty/etc.</p>
-<p>I silently blogged some of this recently, basically showing off how we&#39;ve now got the ability to write OTP applications in Purescript these days, and indeed are. The posts are all linked below for the majority of folk who are sensible enough not to not subscribe to this sorry excuse for a blog.</p>
-<p>Here is a sneaky peek as to what a gen server looks like in this world, tasty no?</p>
-<pre><code class="language-haskell">
-<span class="hljs-title">findByIsbn</span> :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Maybe</span> <span class="hljs-type">Book</span>)
-<span class="hljs-title">findByIsbn</span> isbn = 
-  <span class="hljs-type">Gen</span>.doCall serverName \state@{ connection } -&gt; <span class="hljs-keyword">do</span>
-    result &lt;- <span class="hljs-type">Redis</span>.get (dbId isbn) connection
-    pure $ <span class="hljs-type">CallReply</span> result state
-
-<span class="hljs-title">findAll</span> :: <span class="hljs-type">Effect</span> (<span class="hljs-type">List</span> <span class="hljs-type">Book</span>)
-<span class="hljs-title">findAll</span> = 
-  <span class="hljs-type">Gen</span>.doCall serverName \state@{ connection } -&gt; <span class="hljs-keyword">do</span>
-    books &lt;- <span class="hljs-type">Redis</span>.findAll dbPrefix connection
-    pure $ <span class="hljs-type">CallReply</span> books state
-
-<span class="hljs-comment">-- Nothing special about this, just a function that returns a certain type</span>
-<span class="hljs-comment">-- We can supply arbitrary arguments to this via the gensup</span>
-<span class="hljs-title">startLink</span> :: <span class="hljs-type">BookLibraryStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
-<span class="hljs-title">startLink</span> args =
-  <span class="hljs-type">Gen</span>.startLink serverName $ init args
-
-<span class="hljs-comment">-- And those arguments can then end up in here, which just needs to return an effect of our State type</span>
-<span class="hljs-title">init</span> :: <span class="hljs-type">BookLibraryStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">State</span>
-<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
-  connection &lt;- <span class="hljs-type">Redis</span>.open args.connectionString
-  pure $ { connection }
-</code></pre>
-<h1 id="the-blog-entries">The blog entries</h1>
-<ul>
-<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
-<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
-<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
-<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
-<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
-<li><a href="/entries/purescript-interop-with-native-erlang---interacting-with-redis.html">Purescript interop with native Erlang, interaction with Redis</a></li>
-</ul>
-<h1 id="useful-links">Useful links</h1>
-<ul>
-<li><a href="https://github.com/id3as/demo-ps">demo-ps</a> The demo codebase we&#39;re talking about here</li>
-<li><a href="https://github.com/id3as/purescript-erl-pinto">erl-pinto</a> (the opinionated bindings to OTP we&#39;re using)</li>
-<li><a href="https://github.com/id3as/purescript-erl-stetson">erl-stetson</a> (the opinionated bindings to Cowboy we&#39;re using)</li>
-</ul>
-]]></description><link>http://codeofrob.com/entries/codemesh-2019---purerl-and-otp-talk.html</link><guid isPermaLink="true">http://codeofrob.com/entries/codemesh-2019---purerl-and-otp-talk.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 05 Nov 2019 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purescript interop with native Erlang - Interacting with Redis]]></title><description><![CDATA[<p>All the posts so far..</p>
-<ul>
-<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
-<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
-<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
-<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
-<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
-</ul>
-<p>Useful links</p>
-<ul>
-<li><a href="https://github.com/id3as/demo-ps">demo-ps</a> The demo codebase we&#39;re talking about here</li>
-<li><a href="https://github.com/id3as/purescript-erl-pinto">erl-pinto</a> (the opinionated bindings to OTP we&#39;re using)</li>
-<li><a href="https://github.com/id3as/purescript-erl-stetson">erl-stetson</a> (the opinionated bindings to Cowboy we&#39;re using)</li>
-</ul>
-<p>We&#39;ve handwaved over the contents of the <a href="https://github.com/id3as/demo-ps/blob/master/server/src/Native/Redis.purs">Redis</a> module so far in the demo app, showing only that we can use it from our <a href="https://github.com/id3as/demo-ps/blob/master/server/src/BookLibrary.purs">BookLibrary.purs</a> like any other module as follows.</p>
-<pre><code class="language-haskell">
-<span class="hljs-title">update</span> :: <span class="hljs-type">Book</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Either</span> <span class="hljs-type">String</span> <span class="hljs-type">Book</span>)
-<span class="hljs-title">update</span> book =
-  <span class="hljs-type">Gen</span>.doCall serverName \state@{ connection } -&gt; <span class="hljs-keyword">do</span>
-    <span class="hljs-type">Redis</span>.put (dbId book.isbn) book connection
-    pure $ <span class="hljs-type">CallReply</span> (<span class="hljs-type">Right</span> book) state
-</code></pre>
-<p>That&#39;s pretty tidy, so let&#39;s look at the type of that function so we understand the Purescript side of things first and foremost</p>
-<pre><code class="language-haskell">
-<span class="hljs-title">put</span> :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">WriteForeign</span> a =&gt; <span class="hljs-type">DbId</span> -&gt; a -&gt; <span class="hljs-type">RedisConnection</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
-</code></pre>
-<p>For any type &#39;a&#39; that implements WriteForeign, we&#39;re a function that takes a DbId, an A and a RedisConnection to produce an Effect of type Unit - this pretty much makes sense on the surface, DbId is just a newtype around String, and given a Key and a Value (which we can get from calling writeJSON on our type &#39;a&#39;), we can dump stuff in Redis - but how?</p>
-<p>Let&#39;s take a step back a moment and approach this from the <em>other</em> end.</p>
-<p>There is an application for accessing Redis in Erlang, called <a href="https://github.com/wooga/eredis">eredis</a> imaginatively enough, the usage of which looks a little like this.</p>
-<pre><code class="language-erlang">
-   { ok, C } = eredis:start_link(ConnectionString),
-
-   eredis:q(C, [ &lt;&lt;<span class="hljs-string">"SET"</span>&gt;&gt;, &lt;&lt;<span class="hljs-string">"key"</span>&gt;&gt;, &lt;&lt;<span class="hljs-string">"value"</span>&gt;&gt; ]).
-</code></pre>
-<p>So what we want to do is surface this meaningfully to Purescript is define some foreign imports in our <em>Redis.purs</em>, which map onto their native counterparts in our <em>Redis.erl.</em></p>
-<pre><code class="language-haskell">
-<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> data <span class="hljs-type">ConnectionString</span> :: <span class="hljs-type">Type</span>
-<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> data <span class="hljs-type">RedisConnection</span> :: <span class="hljs-type">Type</span>
-<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> open :: <span class="hljs-type">ConnectionString</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">RedisConnection</span>
-</code></pre>
-<p>By importing a foreign type, we&#39;re saying to Purescript &quot;Hey, this thing exists in Erlang but we don&#39;t know what is inside it, but we want to model it as something we can pass around thanks&quot;, the ConnectionString comes from sys.config and the RedisConnection is actually a Pid but we don&#39;t need to know that.</p>
-<p>By importing a foreign function, we&#39;re saying that there is a function in Erlang with this name and signature and we&#39;d like to call it from Purescript. The &quot;open&quot; function we&#39;re importing from Erlang takes one of those ConnectionStrings and produces an Effect of type RedisConnection.</p>
-<pre><code class="language-erlang">
-<span class="hljs-function"><span class="hljs-title">open</span><span class="hljs-params">(ConnectionString)</span> -&gt;</span>
-  <span class="hljs-keyword">fun</span>() -&gt;
-      { ok, C } = eredis:start_link(ConnectionString),
-      C
-  <span class="hljs-keyword">end</span>.
-</code></pre>
-<p>We wrap our actual functionality in a function, because that&#39;s how an Effect is modelled in Purerl, and we can return our &#39;Connection&#39; as an opaque type to Purescript when this Effect is processed. I&#39;ve made the decision here to match directly on <em>{ ok, C }</em> which means we&#39;ll crash at runtime if we can&#39;t open a connection - an alternative API could look like this.</p>
-<pre><code class="language-erlang">
-<span class="hljs-function"><span class="hljs-title">open_</span><span class="hljs-params">(ConnectionString, Just, Nothing)</span> -&gt;</span>
-  <span class="hljs-keyword">fun</span>() -&gt;
-      { ok, C } = <span class="hljs-keyword">case</span> eredis:start_link(ConnectionString) <span class="hljs-keyword">of</span>
-                    { ok, C } -&gt; Just(C);
-                    _ -&gt; Nothing
-                    <span class="hljs-keyword">end</span>
-  <span class="hljs-keyword">end</span>.
-</code></pre>
-<p>where</p>
-<pre><code class="language-haskell">
-<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> open_ :: <span class="hljs-type">ConnectionString</span> -&gt; (<span class="hljs-type">RedisConnection</span> -&gt; <span class="hljs-type">Maybe</span> <span class="hljs-type">RedisConnection</span>) -&gt; <span class="hljs-type">Maybe</span> <span class="hljs-type">RedisConnection</span>  -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Maybe</span> <span class="hljs-type">RedisConnection</span>)
-
-<span class="hljs-title">open</span> :: <span class="hljs-type">ConnectionString</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">RedisConnection</span>
-<span class="hljs-title">open</span> connectionString = open_ connectionString <span class="hljs-type">Just</span> <span class="hljs-type">Nothing</span>
-</code></pre>
-<p>I&#39;ve chosen to &quot;let it crash&quot;, as that fits with how I&#39;d build the supervsion tree in Erlang around this (Restart periodically every 30s until the connection works please), but either approach is valid and not one I have strong opinions on at this time. (an Either with the failure reason would also be an option).</p>
-<p>Anyway, going back to that <em>put</em> function with all of this in mind, we want to keep the Erlang pretty minimal, so some transformation on the Purescript side will be required. </p>
-<pre><code class="language-haskell">
-<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> put_ :: <span class="hljs-type">DbId</span> -&gt; <span class="hljs-type">String</span> -&gt; <span class="hljs-type">RedisConnection</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
-
-<span class="hljs-title">put</span> :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">WriteForeign</span> a =&gt; <span class="hljs-type">DbId</span> -&gt; a -&gt; <span class="hljs-type">RedisConnection</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
-<span class="hljs-title">put</span> id obj conn =
-  put_ id (writeJSON obj) conn
-</code></pre>
-<p>Purescript knows how to turn our obj into JSON so we&#39;ll do that there, and then use a foreign function that takes just the primitive objects for use within Erlang with eredis.</p>
-<pre><code class="language-erlang">
-<span class="hljs-keyword">-define</span><span class="hljs-params">(SET(Key, Value)</span>, [ &lt;&lt;"SET"&gt;&gt;, Key, Value ]).
-
-<span class="hljs-function"><span class="hljs-title">put_</span><span class="hljs-params">(Id, Data, Pid)</span> -&gt;</span>
-  <span class="hljs-keyword">fun</span>() -&gt;
-      { ok, &lt;&lt;<span class="hljs-string">"OK"</span>&gt;&gt;} = eredis:q(Pid, ?SET(Id, Data)),
-      ok
-  <span class="hljs-keyword">end</span>.
-</code></pre>
-<p>Now, this is not necessarily how we should approach building an FFI for a native library, as we&#39;re making some decisions in Erlang that could be made in Purescript, a more traditional FFI would look like this.</p>
-<pre><code class="language-erlang">
-<span class="hljs-function"><span class="hljs-title">q</span><span class="hljs-params">(Pid, Operation)</span> -&gt;</span>
-  eredis:q(Pid, Operation).
-</code></pre>
-<pre><code class="language-haskell">
-<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> q :: <span class="hljs-type">RedisConnection</span> -&gt; <span class="hljs-type">List</span> <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Tuple2</span> <span class="hljs-type">Atom</span> <span class="hljs-type">Binary</span>)
-</code></pre>
-<p>And then we could build the API we <em>actually</em> want on top of <em>that</em> instead - I&#39;ve rather skipped that step in my demo for clarity, but if I was producing a library wrapper for publication that&#39;s probably the approach I&#39;d take, as unwieldy as it is to actually use it means we end up writing more Purescript and less Erlang.</p>
-<p>This is the approach that erl-cowboy and Stetson took, whereas erl-pinto takes the direct approach to &quot;desired API&quot;, making the concession that it&#39;ll be easier to build without 1-1 FFI in existence. Either way, it&#39;s pretty easy to call into existing code in Erlang.</p>
-<h1 id="next-up">Next up</h1>
-<p>We&#39;ve pretty much covered the surface area of the demo project, so I&#39;ll be going off on a little journey talking about some of the common things that we like to do in Erlang and how to get that behaviour into Purerl, if I get any questions about these posts I&#39;ll follow up with answers in blog format also.</p>
-]]></description><link>http://codeofrob.com/entries/purescript-interop-with-native-erlang---interacting-with-redis.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purescript-interop-with-native-erlang---interacting-with-redis.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 29 Aug 2019 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/purerl-updates---typed-routes-in-stetson.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purerl-updates---typed-routes-in-stetson.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 30 Jun 2020 09:30:00 GMT</pubDate></item></channel></rss>
