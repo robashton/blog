@@ -1,4 +1,534 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Wed, 18 Nov 2020 10:23:10 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[CUDA Context Management with NvEnc]]></title><description><![CDATA[<p>This blog entry is part of my &quot;<a href="/entries/blogging-the-mundane.html">blog about mundane stuff</a>&quot; series.</p>
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Wed, 20 Jan 2021 14:09:39 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Escaping an ADT explosion with Data.Variant and row types in Purescript]]></title><description><![CDATA[<p>At work we are in the middle of a wholescale re-imagining of how we build our software, after writing a heap of control/management plane logic in <a href="https://www.purescript.org/">Purescript</a> over the last couple of years (<a href="https://purerl-cookbook.readthedocs.io/en/latest/">Compiled to Erlang</a> of course), using <a href="https://github.com/id3as/purescript-erl-stetson">Stetson</a> and <a href="https://github.com/id3as/purescript-erl-pinto/">Pinto</a> we&#39;re stepping back to consider next steps. Some team members are <a href="https://github.com/id3as/purescript-erl-pinto/pull/15">dusting off</a> Pinto and fixing some of the niggles we&#39;ve put off because we&#39;ve been too busy building actual software and others are deep into a re-think of our more core technologies. Principally that is the capturing of video/audio sources, the transformation of this content into other versions of that content and the swift dispatch of that aforementioned video/audio content (yes, like all software it can be boiled down to moving bytes from one place to another..).</p>
+<p>All in all it&#39;s good fun and I&#39;m discovering things about programming in Purescript that I never thought I&#39;d be capable of learning, never mind having the time to spend learning - one of the biggest &#39;<em>woah hang on</em>&#39; moments has to have been some of the things we&#39;re managing to push into the type system via what was our initial use of Data.Variant and then the rabbit-hole we fell down as we started bashing typeclasses out to validate even more at compile time and avoid some of the potential runtime issues we would usually devote our valuable time/money avoiding by adding complexity to the runtime code itelf.</p>
+<h1 id="a-common-issue">A common issue</h1>
+<p>A standard hilarity in what we do is that there are not only multiple flavours of media content floating around out there, but within those multitude of flavours there are almost infinite sub-variations of those flavours and a large part of our efforts can be summarised as getting those flavours into a common format internally so we can process them with a lot of the same code. Even once we&#39;ve converted data into its raw format there are still plenty of different colour spaces, pixel formats, various means of laying out bytes in memory so that they can be processed one way or another by various libraries and boy do we have a lot of code to do those things and therefore end up still needing to convert between them as a workflow does its job.</p>
+<p>One of the interesting findings when pulling old code into our new workspace was how much of that code was duplicated about the place becaue you could never really trust the content you were getting was indeed one thing or another, while we have <em>incredibly</em> rich metadata attached to each and every frame of data we process that we can use to decision on, all of that decision is at runtime and it&#39;s often easier to just shuffle some bytes about than insist up front that everything be one thing or another.</p>
+<p>Wouldn&#39;t it be nice if we could just not do that any more? Express in the type system based on metadata within the content itself that certain code is only meant to be invoked with content that fits a certain structure.</p>
+<p><em>I only want that thing... or that thing</em></p>
+<p>It&#39;s entirely possible using plain ol&#39; records and ADTs to express nearly all of the concepts in the world and this is definitely the first place we&#39;d go to when modelling within a problem space. Let&#39;s exit our own domain for the rest of this blog post because it&#39;s too vast and also I don&#39;t want to be copying and pasting code from our codebase in order to explain it. Let&#39;s find something new to talk about.</p>
+<p>Imagine if you will, <del>a burrito</del> a childrens puzzle toy. Square pegs, round holes - you know how it goes, and a factory that produces these things in a pipeline, and let&#39;s model that with ADTs and functions the easiest way we can think of - if we can allow a certain amount of leeway here for the rest of the blog post because this domain is a lot simpler than the one we have at in the office and falls into the classic &#39;<em>making up a contrived problem in order to explain a solution that doesn&#39;t exactly fit the old problem</em>&#39; trap that is common for this sort of blog post.</p>
+<p>We might start off with something that looks like this.</p>
+<pre><code class="language-haskell">
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">PuzzlePiece</span> </span>
+    = { maxWidth :: <span class="hljs-type">Int</span>
+      , maxHeight :: <span class="hljs-type">Int</span>
+      , shape :: <span class="hljs-type">PuzzleShape</span>
+      , colour :: <span class="hljs-type">PuzzlePaintJob</span>
+      }
+
+  <span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">PuzzleShape</span> = <span class="hljs-type">Square</span> { <span class="hljs-title">size</span> :: <span class="hljs-type">Int</span> }</span>
+                   | <span class="hljs-type">Circle</span> { radius :: <span class="hljs-type">Int</span> }
+                   | <span class="hljs-type">Rectangle</span> { width :: <span class="hljs-type">Int</span>, height :: <span class="hljs-type">Int</span> }
+                   | <span class="hljs-type">Crescent</span> { radius :: <span class="hljs-type">Int</span>, arc :: <span class="hljs-type">Int</span> }
+                   | <span class="hljs-type">Triangle</span> { length :: <span class="hljs-type">Int</span> }
+
+  <span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">PuzzlePaintJob</span> = <span class="hljs-type">Unpainted</span></span>
+                      | <span class="hljs-type">Painted</span> <span class="hljs-type">Colour</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Colour</span> = <span class="hljs-type">Red</span> | <span class="hljs-type">Green</span> | <span class="hljs-type">Blue</span> | <span class="hljs-type">Yellow</span></span>
+
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Box</span> = <span class="hljs-type">List</span> <span class="hljs-type">PuzzlePiece</span></span>
+</code></pre>
+<p>Hopefully this is a sufficiently simple example of some code where we have attributes that are common to all objects, and then attributes that only exist when the objects are in one state or another. Now let&#39;s imagine that we want to construct a workflow out of the following functions. </p>
+<pre><code class="language-haskell">
+  buildSquare :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span>
+  buildSquare size = { maxWidth: size 
+                     , maxHeight: size 
+                     , shape: <span class="hljs-type">Square</span> { size }
+                     , colour: <span class="hljs-type">Unpainted</span>
+                     }
+
+  buildCircle :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span>
+  buildCircle radius = { maxWidth: radius*<span class="hljs-number">2</span> 
+                       , maxHeight: radius*<span class="hljs-number">2</span>
+                       , shape: <span class="hljs-type">Circle</span> { radius }
+                       , colour: <span class="hljs-type">Unpainted</span>
+                       }
+
+  buildRectangle :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span>
+  buildRectangle width height = { maxWidth: width 
+                                , maxHeight: height 
+                                , shape: <span class="hljs-type">Rectangle</span> { width, height }
+                                , colour: <span class="hljs-type">Unpainted</span> 
+                                }
+
+  buildCrescent ::  <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span>
+  buildCrescent radius arc = { maxWidth: radius*<span class="hljs-number">2</span> 
+                             , maxHeight: radius 
+                             , shape: <span class="hljs-type">Crescent</span> { radius, arc }
+                             , colour: <span class="hljs-type">Unpainted</span> 
+                             }
+
+  buildTriangle :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span>
+  buildTriangle length = { maxWidth: length
+                         , maxHeight: floor $ ((toNumber length) * <span class="hljs-number">1.7</span>) / <span class="hljs-number">2.0</span>
+                         , shape: <span class="hljs-type">Triangle</span> { length }
+                         , colour: <span class="hljs-type">Unpainted</span> 
+                         }
+
+  paintQuad :: <span class="hljs-type">Colour</span> -&gt; <span class="hljs-type">PuzzlePiece</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">PuzzlePiece</span>
+  paintQuad = throw <span class="hljs-string">"calculate how much paint we need here and take it"</span>
+
+  paintRound :: <span class="hljs-type">Colour</span> -&gt; <span class="hljs-type">PuzzlePiece</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">PuzzlePiece</span>
+  paintRound = throw <span class="hljs-string">"calculate how much paint we need here and take it"</span>
+
+  paintTriangle :: <span class="hljs-type">Colour</span> -&gt; <span class="hljs-type">PuzzlePiece</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">PuzzlePiece</span>
+  paintTriangle = throw <span class="hljs-string">"calculate how much paint we need here and take it"</span>
+
+  pack :: <span class="hljs-type">PuzzlePiece</span> -&gt; <span class="hljs-type">Box</span> -&gt; <span class="hljs-type">Box</span>
+  pack = (:)
+
+  emptyBox :: <span class="hljs-type">Box</span>
+  emptyBox = <span class="hljs-type">Nil</span>
+</code></pre>
+<p>Our workflow needs to (for some reason), construct a puzzle box from a sequence of these functions, consuming paint from some sort of central system as it goes..</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">buildPuzzleBox</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Box</span> 
+<span class="hljs-title">buildPuzzleBox</span> = <span class="hljs-keyword">do</span>
+  redSquare &lt;- paintQuad <span class="hljs-type">Red</span> $ buildSquare <span class="hljs-number">100</span>
+  yellowRectangle &lt;- paintQuad <span class="hljs-type">Yellow</span> $ buildRectangle <span class="hljs-number">25</span> <span class="hljs-number">50</span>
+  greenCircle &lt;- paintRound <span class="hljs-type">Green</span> $ buildCircle <span class="hljs-number">50</span>
+  blueTriangle &lt;- paintTriangle <span class="hljs-type">Blue</span> $ buildTriangle <span class="hljs-number">23</span>
+  pure $ pack redSquare 
+        $ pack yellowRectangle
+        $ pack greenCircle 
+        $ pack blueTriangle
+        $ emptyBox
+
+</code></pre>
+<p>So for the purposes of this post, we&#39;ve got a variety of different types of shape, and a smaller number of functions to go and do &#39;some work&#39; with those shapes, and some of those functions support more than one of the shapes.</p>
+<p>A wise and learned person might look at this and say &quot;<em>hey what</em>, you&#39;re losing what the actual shape of the puzzle piece is when you contruct that puzzle piece, how on earth are you going to validate that you are indeed passing in the appropriate shape to the appropriate function and not trying to write code that paints a triangle as if it&#39;s a rectangle&quot; and yes that is indeed a bit of an issue when you&#39;re working with concrete types and ADTs - at some point you&#39;ll want to only operate on a subset of the ADT and then you&#39;ve got a problem.</p>
+<pre><code class="language-haskell">
+  <span class="hljs-comment">-- "TODO": Calculate paint amount based on rect..</span>
+  paintQuad :: <span class="hljs-type">Colour</span> -&gt; <span class="hljs-type">PuzzlePiece</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">PuzzlePiece</span>
+  paintQuad colour p@{ shape: (<span class="hljs-type">Rectangle</span> rect) } = pure $ p { colour = <span class="hljs-type">Painted</span> colour }
+  paintQuad colour p@{ shape: (<span class="hljs-type">Square</span> square) } = pure $ p { colour = <span class="hljs-type">Painted</span> colour }
+  paintQuad _ _ =  unsafeCrashWith <span class="hljs-string">"Bad argument: expected one of the rectangles!"</span>
+
+  <span class="hljs-comment">-- "TODO": Calculate paint amount based on arc/radius..</span>
+  paintRound :: <span class="hljs-type">Colour</span> -&gt; <span class="hljs-type">PuzzlePiece</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">PuzzlePiece</span>
+  paintRound colour p@{ shape: (<span class="hljs-type">Crescent</span> crescent) } = pure $ p { colour = <span class="hljs-type">Painted</span> colour }
+  paintRound colour p@{ shape: (<span class="hljs-type">Circle</span> circle) } = pure $ p { colour = <span class="hljs-type">Painted</span> colour }
+  paintRound _ _ =  unsafeCrashWith <span class="hljs-string">"Bad argument: expected one of the round pieces!"</span>
+
+  <span class="hljs-comment">-- <span class="hljs-doctag">TODO:</span> Calculate paint amount based on triangle area..</span>
+  paintTriangle :: <span class="hljs-type">Colour</span> -&gt; <span class="hljs-type">PuzzlePiece</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">PuzzlePiece</span>
+  paintTriangle colour p@{ shape: (<span class="hljs-type">Triangle</span> triangle) } = pure $ p { colour = <span class="hljs-type">Painted</span> colour }
+  paintTriangle _ _ =  unsafeCrashWith <span class="hljs-string">"Bad argument: expected one of the triangle pieces!"</span>
+</code></pre>
+<p>So there&#39;s our imagined problem in a nutshell, by allowing the stuffing of square pegs into round holes we&#39;re going to end up with runtime errors if we aren&#39;t careful. We should at this point look at what the common solutions to this are in our codebases...</p>
+<p><em>Just have a single &#39;paint&#39; method that knows how to paint all the things</em></p>
+<p>Yup, definitely - if the domain is fixed and small then this is the real solution to this problem, thanks blog post over, let&#39;s get back to work, thanks for reading!</p>
+<p><em>Have a typeclass for Paintable and make have things implement it</em></p>
+<p>Not a bad idea, but the issue then becomes &#39;what if I want to write <em>other</em> code that just does things with these structures?&#39; I either need to declare the instances for the typeclases next to the definitions or I need to declare them alongside the typeclass definition; this again doesn&#39;t scale beyond the initial example once we start writing real code where we don&#39;t know all of our types.. You also can&#39;t have heterogenous lists containing implementors of a typeclass so this is not typically a good solution for this sort of imagined scenario (And isn&#39;t, as far as I can tell, what typeclasses are for anyway).</p>
+<p><em>Sub modules, sub types</em></p>
+<p>This is probably the most common approach to ensuring safety of sorts across a larger project where certain modules only take a subset of the overall model - re-expressing parts of that model to make their inputs and outputs concrete and obvious. If you force code consumers to create or transform/select aspects of a model. There is a benefit that further code can always be written without impinging on those sub modules because the addition of new types doesn&#39;t automatically mean having to add clauses to the functions of those sub modules..</p>
+<pre><code class="language-haskell">
+<span class="hljs-keyword">module</span> Quad <span class="hljs-keyword">where</span>
+
+  paint :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">Colour</span> -&gt; { colour :: <span class="hljs-type">PuzzlePaintJob</span> | a } -&gt; { width :: <span class="hljs-type">Int</span>, height :: <span class="hljs-type">Int</span> } -&gt; <span class="hljs-type">Effect</span> { colour :: <span class="hljs-type">PuzzlePaintJob</span> | a }
+  paint colour i { width, height } = <span class="hljs-keyword">do</span>
+    _ &lt;- drainPaint colour (width * height)
+    pure $ i { colour = <span class="hljs-type">Painted</span> colour }
+
+</code></pre>
+<p>Of course this then means that whilst some records can remain intact, a certain amount of mapping is required to contract the concrete types down into the right input shape required by these sub modules.. and then indeed using case statements or functions to expand the types so we can do that in the first place.</p>
+<pre><code class="language-haskell">
+  <span class="hljs-keyword">case</span> obj.shape <span class="hljs-keyword">of</span>
+    <span class="hljs-type">Square</span> s -&gt; <span class="hljs-type">Quad</span>.paint <span class="hljs-type">Yellow</span> obj { width: s.size, height: s.size }
+    <span class="hljs-type">Rect</span> r -&gt; <span class="hljs-type">Quad</span>.paint <span class="hljs-type">Yellow</span> obj r
+    <span class="hljs-type">Triangle</span> t -&gt; <span class="hljs-type">Triangle</span>.paint <span class="hljs-type">Yellow</span> obj { o: t.length, a: t.length, h: t.length }
+    _ -&gt; etc
+</code></pre>
+<p>Typically the easier understood solutions tend towards the &#39;make things more concrete&#39; side of things which is a <em>good thing</em> for a lot of code and most of the time is the right thing to do.</p>
+<p>Once you&#39;ve firmly placed your boots in the realm of &#39;<em>we have thousands of these, and they all take different subsets of these few dozen dimensions</em>&#39; then this still might be the right approach as burdensome as it is, it is at least simple and &#39;just code&#39; - but we know better and we know that there is a concept floating around out there, a solution in search of a problem to solve and that solution looks like <a href="https://github.com/natefaubion/purescript-variant">Data.Variant</a>.</p>
+<h1 id="datavariant-101">Data.Variant 101</h1>
+<p>Now it&#39;s not immediately apparent (unless you&#39;re already way ahead of me) how this ties into our problem here, but we&#39;ll continue to work towards that...</p>
+<pre><code class="language-haskell">
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">KnownShapes</span> = ( <span class="hljs-title">rect</span> :: { <span class="hljs-title">width</span> :: <span class="hljs-type">Int</span>, <span class="hljs-title">height</span> :: <span class="hljs-type">Int</span> }
+                     , <span class="hljs-title">circle</span> :: { <span class="hljs-title">radius</span> :: <span class="hljs-type">Int</span> }
+                     , <span class="hljs-title">square</span> :: { <span class="hljs-title">size</span> :: <span class="hljs-type">Int</span> }
+                     , <span class="hljs-title">triangle</span> :: { <span class="hljs-title">length</span> :: <span class="hljs-type">Int</span> }
+                     )</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">PuzzlePiece</span> </span>
+    = { maxWidth :: <span class="hljs-type">Int</span>
+      , maxHeight :: <span class="hljs-type">Int</span>
+      , shape :: <span class="hljs-type">Variant</span> <span class="hljs-type">KnownShapes</span>
+      , colour :: <span class="hljs-type">PuzzlePaintJob</span>
+      }
+</code></pre>
+<p>To support the use of this variant, we&#39;ll need to define a bunch of helper functions using SProxy (don&#39;t worry about it, it just lets you do compile time stuff with strings)</p>
+<pre><code class="language-haskell">
+  _rect = (<span class="hljs-type">SProxy</span> :: <span class="hljs-type">SProxy</span> <span class="hljs-string">"rect"</span>)
+  _circle = (<span class="hljs-type">SProxy</span> :: <span class="hljs-type">SProxy</span> <span class="hljs-string">"circle"</span>)
+  _square = (<span class="hljs-type">SProxy</span> :: <span class="hljs-type">SProxy</span> <span class="hljs-string">"square"</span>)
+  _triangle = (<span class="hljs-type">SProxy</span> :: <span class="hljs-type">SProxy</span> <span class="hljs-string">"triangle"</span>)
+
+  rect :: { width :: <span class="hljs-type">Int</span>, height :: <span class="hljs-type">Int</span> } -&gt; <span class="hljs-type">Variant</span> <span class="hljs-type">KnownShapes</span>
+  rect = inj _rect
+
+  circle :: { radius :: <span class="hljs-type">Int</span> } -&gt; <span class="hljs-type">Variant</span> <span class="hljs-type">KnownShapes</span>
+  circle = inj _circle
+
+  square :: { size :: <span class="hljs-type">Int</span> } -&gt; <span class="hljs-type">Variant</span> <span class="hljs-type">KnownShapes</span>
+  square = inj _square
+
+  triangle :: { length :: <span class="hljs-type">Int</span> } -&gt; <span class="hljs-type">Variant</span> <span class="hljs-type">KnownShapes</span>
+  triangle = inj _triangle
+
+</code></pre>
+<p>So what we&#39;ve got is a row type with the symbols &#39;rect/circle/square/triangle&#39; and the means of constructing instances of that variant via our helper functions, that mean we can re-write our construction functions using these building blocks</p>
+<pre><code class="language-haskell">
+  buildSquare :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span>
+  buildSquare size = { maxWidth: size 
+                     , maxHeight: size 
+                     , shape: square { size }
+                     , colour: <span class="hljs-type">Unpainted</span>
+                     }
+
+  buildCircle :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span>
+  buildCircle radius = { maxWidth: radius*<span class="hljs-number">2</span> 
+                       , maxHeight: radius*<span class="hljs-number">2</span>
+                       , shape: circle { radius }
+                       , colour: <span class="hljs-type">Unpainted</span>
+                       }
+
+  buildRectangle :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span>
+  buildRectangle width height = { maxWidth: width 
+                                , maxHeight: height 
+                                , shape: rect { width, height }
+                                , colour: <span class="hljs-type">Unpainted</span> 
+                                }
+
+  buildTriangle :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span>
+  buildTriangle length = { maxWidth: length
+                         , maxHeight: floor $ ((toNumber length) * <span class="hljs-number">1.7</span>) / <span class="hljs-number">2.0</span>
+                         , shape: triangle { length }
+                         , colour: <span class="hljs-type">Unpainted</span> 
+</code></pre>
+<p>Now those &#39;paint&#39; functions... oh sadness! We still need an unsafe crash because our PuzzlePiece defines a &#39;Shape&#39; as <em>anything</em> in the List of &#39;<em>KnownShapes</em>&#39;</p>
+<pre><code class="language-haskell">
+  paintQuad :: Colour -&gt; PuzzlePiece -&gt; Effect PuzzlePiece
+  paintQuad colour p@{ shape } = do
+    let selector = default (unsafeCrashWith "Not supported" :: Int)
+                      # on _rect (\r -&gt; r.width * r.height)
+                      # on _square (\s -&gt; s.size * s.size)
+    _ &lt;- drainPaint colour $ selector shape
+    pure $ p { colour = Painted colour }
+</code></pre>
+<p>Data.Variant <em>allows</em> us to express that an object could be one of several things at runtime, using row types and symbols to get the compiler to tell us if we&#39;re not exhaustively checking all options at compile time. The crux of it being that if a function can take a <em>superset</em> of of the values you <em>know</em> you could have, then it&#39;s always going to be safe to call that function. In our example above defining every puzzle piece as being possibly &#39;one of these items from this superset&#39; isn&#39;t buying us anything over just using an ADT.</p>
+<p>Well in order to do this, we&#39;re going to have to allow the parameterisation of the Variant being held to represent <em>shape</em> and flow that through to the existing types.</p>
+<pre><code class="language-haskell">
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">PuzzlePiece</span> knownShapes</span>
+    = { maxWidth :: <span class="hljs-type">Int</span>
+      , maxHeight :: <span class="hljs-type">Int</span>
+      , shape :: <span class="hljs-type">Variant</span> knownShapes
+      , colour :: <span class="hljs-type">PuzzlePaintJob</span>
+      }
+
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Box</span> knownShapes = <span class="hljs-type">List</span> (<span class="hljs-type">PuzzlePiece</span> <span class="hljs-title">knownShapes</span>)</span>
+</code></pre>
+<p>In this example, we&#39;re not locking down our known shapes to anything at all (!!), but if were to parameterise this PuzzlePiece with a concrete type (KnownShapes) then we&#39;d be saying &quot;This could be any of the values in KnownShapes&quot;. </p>
+<pre><code class="language-haskell">
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">APuzzlePieceOfAnyKnownShape</span> = <span class="hljs-type">PuzzlePiece</span> <span class="hljs-type">KnownShapes</span></span>
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">ABoxOfPuzzlePiecesOfAnyKnownShape</span> = <span class="hljs-type">Box</span> <span class="hljs-type">KnownShapes</span> </span>
+</code></pre>
+<p>Similarly, if we were to define a type for &#39;only things that are quadrilaterals&#39; and parameterise with that..? The list can <em>only</em> contain values that are contained within that variant.</p>
+<pre><code class="language-haskell">
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Quadrilaterals</span> = ( <span class="hljs-title">rect</span> :: { <span class="hljs-title">width</span> :: <span class="hljs-type">Int</span>, <span class="hljs-title">height</span> :: <span class="hljs-type">Int</span> }
+                        , <span class="hljs-title">square</span> :: { <span class="hljs-title">size</span> :: <span class="hljs-type">Int</span> }
+                        )</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">OnlyQuads</span> = <span class="hljs-type">PuzzlePiece</span> <span class="hljs-type">Quadrilaterals</span></span>
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">ListOfOnlyQuads</span> = <span class="hljs-type">Box</span> <span class="hljs-type">Quadrilaterals</span></span>
+</code></pre>
+<p>Absolutely <em>crucially</em> here, if we have functions that can take a superset of this list then they are <em>absolutely safe</em> to call.</p>
+<p>Before we proceed let&#39;s tidy the definitions up of what our shapes are as we&#39;re about to write the same type definition over and over again repeatedly unless we do! Instead of inline record syntax, we define some type aliases and use them in our row definition for &#39;possible values of KnownShapes&#39;</p>
+<pre><code class="language-haskell">
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Rect</span> = { <span class="hljs-title">width</span> :: <span class="hljs-type">Int</span>, <span class="hljs-title">height</span> :: <span class="hljs-type">Int</span> }</span>
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Circle</span> = { <span class="hljs-title">radius</span> :: <span class="hljs-type">Int</span> }</span>
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Square</span> = { <span class="hljs-title">size</span> :: <span class="hljs-type">Int</span> }</span>
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Triangle</span> = { <span class="hljs-title">length</span> :: <span class="hljs-type">Int</span> }</span>
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Crescent</span> = { <span class="hljs-title">radius</span> :: <span class="hljs-type">Int</span>, <span class="hljs-title">arc</span> :: <span class="hljs-type">Number</span> }</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">KnownShapes</span> = ( <span class="hljs-title">rect</span> :: <span class="hljs-type">Rect</span>
+                     , <span class="hljs-title">circle</span> :: <span class="hljs-type">Circle</span>
+                     , <span class="hljs-title">square</span> :: <span class="hljs-type">Square</span> 
+                     , <span class="hljs-title">triangle</span> :: <span class="hljs-type">Triangle</span>
+                     , <span class="hljs-title">crescent</span> :: <span class="hljs-type">Crescent</span>
+                     )</span></code></pre>
+<p>With this done, we can make some super concrete definitions for the code responsible for constructing shapes for our puzzle box...</p>
+<pre><code class="language-haskell">
+  _rect = (<span class="hljs-type">SProxy</span> :: <span class="hljs-type">SProxy</span> <span class="hljs-string">"rect"</span>)
+  _circle = (<span class="hljs-type">SProxy</span> :: <span class="hljs-type">SProxy</span> <span class="hljs-string">"circle"</span>)
+  _square = (<span class="hljs-type">SProxy</span> :: <span class="hljs-type">SProxy</span> <span class="hljs-string">"square"</span>)
+  _triangle = (<span class="hljs-type">SProxy</span> :: <span class="hljs-type">SProxy</span> <span class="hljs-string">"triangle"</span>)
+  _triangle = (<span class="hljs-type">SProxy</span> :: <span class="hljs-type">SProxy</span> <span class="hljs-string">"crescent"</span>)
+
+  rect :: <span class="hljs-type">Rect</span> -&gt; <span class="hljs-type">Variant</span> ( rect :: <span class="hljs-type">Rect</span> )
+  rect = inj _rect
+
+  circle :: <span class="hljs-type">Circle</span> -&gt; <span class="hljs-type">Variant</span> ( circle :: <span class="hljs-type">Circle</span> )
+  circle = inj _circle
+
+  square :: <span class="hljs-type">Square</span> -&gt; <span class="hljs-type">Variant</span> ( square :: <span class="hljs-type">Square</span> )
+  square = inj _square
+
+  triangle :: <span class="hljs-type">Triangle</span> -&gt; <span class="hljs-type">Variant</span> ( triangle :: <span class="hljs-type">Triangle</span> )
+  triangle = inj _triangle
+
+  crescent :: <span class="hljs-type">Crescent</span> -&gt; <span class="hljs-type">Variant</span> ( crescent :: <span class="hljs-type">Crescent</span> )
+  crescent inj _crescent
+</code></pre>
+<p>So now if we want to talk about creating a variant that can be a rect... that&#39;s all it can be, it can&#39;t be anything else, this can follow all the way down into our factory functions for creating our container shapes.</p>
+<pre><code class="language-haskell">
+  buildSquare :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span> ( square :: <span class="hljs-type">Square</span> )
+  buildSquare size = { maxWidth: size 
+                     , maxHeight: size 
+                     , shape: square { size }
+                     , colour: <span class="hljs-type">Unpainted</span>
+                     }
+
+  buildCircle :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span> ( circle :: <span class="hljs-type">Circle</span> )
+  buildCircle radius = { maxWidth: radius*<span class="hljs-number">2</span> 
+                       , maxHeight: radius*<span class="hljs-number">2</span>
+                       , shape: circle { radius }
+                       , colour: <span class="hljs-type">Unpainted</span>
+                       }
+
+  buildRectangle :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span> ( rect :: <span class="hljs-type">Rect</span> )
+  buildRectangle width height = { maxWidth: width 
+                                , maxHeight: height 
+                                , shape: rect { width, height }
+                                , colour: <span class="hljs-type">Unpainted</span> 
+                                }
+
+  buildTriangle :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span> ( triangle :: <span class="hljs-type">Triangle</span> )
+  buildTriangle length = { maxWidth: length
+                         , maxHeight: floor $ ((toNumber length) * <span class="hljs-number">1.7</span>) / <span class="hljs-number">2.0</span>
+                         , shape: triangle { length }
+                         , colour: <span class="hljs-type">Unpainted</span> 
+                         }
+</code></pre>
+<p>So holy moly, what we now have is a pile of functions that tell you <em>exactly</em> what they create and if you&#39;re working with these specific types there can be no ambiguity. So how on earth do we use them? Well as mentioned already, being &quot;correct&quot; in thi world is all about ensuring you only ever pass objects into functions that take a superset of the possible values for that object. Being incredibly specific as above, each of the functions that build our puzzle pieces are all a subset of the total set of &quot;KnownShapes&quot;, but it&#39;s equally possible for them to be a subset of other subsets of that superset.</p>
+<p>How about re-defining our paintQuads function to only take the shapes that are quads..</p>
+<pre><code class="language-haskell">
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">QuadShapes</span> = ( <span class="hljs-title">rect</span> :: <span class="hljs-type">Rect</span>
+                    , <span class="hljs-title">square</span> :: <span class="hljs-type">Square</span> 
+                    )</span>
+
+  paintQuad :: <span class="hljs-type">Colour</span> -&gt; <span class="hljs-type">PuzzlePiece</span> <span class="hljs-type">QuadShapes</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">PuzzlePiece</span> <span class="hljs-type">QuadShapes</span>)
+  paintQuad colour p@{ shape } = <span class="hljs-keyword">do</span>
+    <span class="hljs-keyword">let</span> selector = case_ 
+                    # on _rect (\r -&gt; r.width * r.height)
+                    # on _square (\s -&gt; s.size * s.size)
+    _ &lt;- drainPaint colour $ selector shape
+    pure $ p { colour = <span class="hljs-type">Painted</span> colour }
+</code></pre>
+<p>Wahey, gone is the unsafe crash, it is no longer possible to pass in variants containing the wrong type of data because at compile time the build will stop you. Now we have a whole other bit of fun on our hands, how do we go and call this function?</p>
+<p>We have a <em>&#39;PuzzlePiece ( square :: Square )&#39;</em>, and the function accepts <em>&#39;PuzzlePiece ( rect :: Rect, square :: Square )&#39;</em>. These are not the same thing and attempting to call this function directly will result in the following compiler error..</p>
+<pre><code class="language-haskell">  redSquare &lt;- paintQuad <span class="hljs-type">Red</span> $ buildSquare <span class="hljs-number">100</span></code></pre>
+<pre><code>
+  Could <span class="hljs-keyword">not</span> match<span class="hljs-built_in"> type
+</span>
+    ( <span class="hljs-built_in">..</span>. )
+
+  with<span class="hljs-built_in"> type
+</span>
+    ( rect :: { height :: Int
+              , width :: Int
+              }
+    <span class="hljs-built_in">..</span>.
+    )
+</code></pre><p>Rude but somewhat understandable, the types don&#39;t match - and even though <em>we</em> know we&#39;ll never have a value of &#39;rect :: Rect&#39; in our variant, the function <em>accepts</em> something that might and therefore we need to <em>expand</em> our type in order to say &quot;This <em>could</em> be a rect or a square, even though we totally know it&#39;s a square&quot;... Thankfully this is a common problem and one with a solution inside of Data.Variant itself.</p>
+<pre><code class="language-haskell">  <span class="hljs-comment">-- | Every `Variant lt` can be cast to some `Variant gt` as long as `lt` is a</span>
+  <span class="hljs-comment">-- | subset of `gt`.</span>
+  expand
+    ∷ <span class="hljs-keyword">forall</span> lt a gt
+    . <span class="hljs-type">R</span>.<span class="hljs-type">Union</span> lt a gt
+    =&gt; <span class="hljs-type">Variant</span> lt
+    -&gt; <span class="hljs-type">Variant</span> gt
+  expand = unsafeCoerce</code></pre>
+<p>What in the.. is this even? Well - it turns out that you can use typeclass constraints to do more than simply check if something has &quot;implemented Eq&quot; (who knew?!), in this case we&#39;re checking that an instance of the typeclass R.Union exists for our two variants, where R.Union is checking if the rows in &#39;lt&#39; are a subset of the rows in &#39;gt&#39;. Read that a couple of times if you don&#39;t get it, it took me a couple of goes too even though to anybody who already understands it it&#39;s incredibly &#39;simple&#39;.</p>
+<p>Now, we don&#39;t have a <em>Variant of lt</em> exactly, we have a <em>Record of lt</em>, that itself contains a <em>Variant of lt</em>, this is somewhat dull as it means we can&#39;t just go ahead and call &#39;expand&#39; in our broken function. Naively we might attempt something like this for this is <em>spiritually</em> what we are <em>trying</em> to do..</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">expandPuzzlePiece</span> :: <span class="hljs-keyword">forall</span> lt gt. <span class="hljs-type">PuzzlePiece</span> lt -&gt; <span class="hljs-type">PuzzlePiece</span> gt
+<span class="hljs-title">expandPuzzlePiece</span> = p = p { shape = expand p.shape }
+</code></pre>
+<p>But this won&#39;t work, trying to change the type of something that&#39;s paramterised by the type of the containing record... doesn&#39;t <em>actually</em> make any sense. <em>expand</em> doesn&#39;t actually <em>do</em> anything, the data is exactly the same.. no, all we really want to achieve here is to tell the compiler &quot;I know I said that it was a PuzzlePiece of lt, but actually it&#39;s a PuzzlePiece of gt and that is a safe assertion to make because lt is a subset of gt&quot;, we could therefore just go and write...</p>
+<pre><code class="language-haskell">  expandPP
+    ∷ <span class="hljs-keyword">forall</span> lt a gt
+    . <span class="hljs-type">R</span>.<span class="hljs-type">Union</span> lt a gt
+    =&gt; <span class="hljs-type">PuzzlePiece</span> lt
+    -&gt; <span class="hljs-type">PuzzlePiece</span> gt
+  expandPP = unsafeCoerce
+</code></pre>
+<p>This will certainly work and allow me to do</p>
+<pre><code class="language-haskell">  redSquare &lt;- paintQuad <span class="hljs-type">Red</span> $ expandPP $ buildSquare <span class="hljs-number">100</span></code></pre>
+<p>That&#39;s kinda neat, and allows us to go off and write even more of our painting pipeline..</p>
+<pre><code class="language-haskell">  redSquare &lt;- paintQuad <span class="hljs-type">Red</span> $ expandPP $ buildSquare <span class="hljs-number">100</span>
+  yellowRectangle &lt;- paintQuad <span class="hljs-type">Yellow</span> $ expandPP $ (buildRectangle <span class="hljs-number">25</span> <span class="hljs-number">50</span>) 
+  greenCircle &lt;- paintRound <span class="hljs-type">Green</span> $ expandPP $ buildCircle <span class="hljs-number">50</span>
+  blueTriangle &lt;- paintTriangle <span class="hljs-type">Blue</span> $ buildTriangle <span class="hljs-number">23</span></code></pre>
+<p>But now we have <em>another</em> problem, our next line of code wants to stuff all these painted shapes into a single list of type &#39;PuzzlePiece KnownShapes&#39;, but what we have here is a collection of  PuzzlePiece (RoundShapes), PuzzlePiece (QuadShapes), etc.. All of those are <em>subsets</em> of that superset &quot;KnownShapes&quot;, so we could go ahead and write the code like this...</p>
+<pre><code class="language-haskell">
+  buildPuzzleBox ::<span class="hljs-type">Effect</span> (<span class="hljs-type">Box</span> <span class="hljs-type">KnownShapes</span>)
+  buildPuzzleBox = <span class="hljs-keyword">do</span>
+    redSquare &lt;- paintQuad <span class="hljs-type">Red</span> $ expandPP $ buildSquare <span class="hljs-number">100</span>
+    yellowRectangle &lt;- paintQuad <span class="hljs-type">Yellow</span> $ expandPP $ (buildRectangle <span class="hljs-number">25</span> <span class="hljs-number">50</span>) 
+    greenCircle &lt;- paintRound <span class="hljs-type">Green</span> $ expandPP $ buildCircle <span class="hljs-number">50</span>
+    blueTriangle &lt;- paintTriangle <span class="hljs-type">Blue</span> $ buildTriangle <span class="hljs-number">23</span>
+    pure $ pack (expandPP redSquare)
+          $ pack (expandPP yellowRectangle)
+          $ pack (expandPP greenCircle)
+          $ pack (expandPP blueTriangle)
+          $ emptyBox
+</code></pre>
+<p>The phrase we&#39;ve started using for code like this is &quot;that&#39;s absolutely honking&quot;. It turns out that if you use concrete types everywhere and rely on expansion to slowly widen the possible variants a type could hold then 50% of the code you write ends up being calls to various forms of &#39;expand&#39; (It&#39;s possible to write a generic expandRowTypes function that can take any (#Type -&gt; Type) and do the subset check so you can convert things like (List lt -&gt; List gt) without having to write an expandList function but it turns out that it&#39;s not a great way to build a codebase. No - a better (in our opinion) idea is to leave the types of the variants alone and use more typeclass constraints to make sure that calls to functions are safe and reduce the need to actually change the types of the objects.</p>
+<p>Take our <em>paintQuad</em> function for example, there isn&#39;t actually a good reason for us to be changing the type of <em>PuzzlePiece a</em> just to call this function. If I have a <em>PuzzlePiece ( square :: Square )</em> I should be able to just check that ( square :: Square ) is indeed a subset of QuadShapes in that function head itself and return exactly the same type I was given in the first place.</p>
+<p>The answer becomes &quot;Scrap the expands and add appropriate type constraints to the function being called and then parameterise <em>that</em>&quot;. In essence what we want is</p>
+<pre><code class="language-haskell">  paintQuad :: <span class="hljs-keyword">forall</span> quadShape. 
+               <span class="hljs-type">R</span>.<span class="hljs-type">Union</span> quadShape a <span class="hljs-type">QuadShapes</span> =&gt;
+               <span class="hljs-type">Colour</span> -&gt; <span class="hljs-type">PuzzlePiece</span> quadShape -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">PuzzlePiece</span> quadShape)</code></pre>
+<p>In this manner, we&#39;re not going to be changing the type of what we&#39;re given in this function, just doing the right thing based on the current value and then passing it on.</p>
+<p>We seeing as we don&#39;t need to do anything to the content of the variant itself, we can expand the type at the last moment before running it through Data.Variant&#39;s <em>case_</em> function and know this is safe because we have defined our union in the type signature.</p>
+<pre><code class="language-haskell">
+  paintQuad :: <span class="hljs-keyword">forall</span> shape a. 
+               <span class="hljs-type">R</span>.<span class="hljs-type">Union</span> shape a <span class="hljs-type">QuadShapes</span> =&gt;
+               <span class="hljs-type">Colour</span> -&gt; <span class="hljs-type">PuzzlePiece</span> shape -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">PuzzlePiece</span> shape)
+  paintQuad colour p@{ shape } = <span class="hljs-keyword">do</span>
+    <span class="hljs-keyword">let</span> selector = case_ 
+                    # on _rect (\r -&gt; r.width * r.height)
+                    # on _square (\s -&gt; s.size * s.size)
+    _ &lt;- drainPaint colour $ selector $ (expand shape :: <span class="hljs-type">Variant</span> <span class="hljs-type">QuadShapes</span>)
+    pure $ p { colour = <span class="hljs-type">Painted</span> colour }
+</code></pre>
+<p>Wahey, rewriting all of the paintXXX functions with this union suddenly means half of the expands can be removed from our workflow..</p>
+<pre><code class="language-haskell">  buildPuzzleBox ::<span class="hljs-type">Effect</span> (<span class="hljs-type">Box</span> <span class="hljs-type">KnownShapes</span>)
+  buildPuzzleBox = <span class="hljs-keyword">do</span>
+    redSquare &lt;- paintQuad <span class="hljs-type">Red</span> $ buildSquare <span class="hljs-number">100</span>
+    yellowRectangle &lt;- paintQuad <span class="hljs-type">Yellow</span> $ (buildRectangle <span class="hljs-number">25</span> <span class="hljs-number">50</span>) 
+    greenCircle &lt;- paintRound <span class="hljs-type">Green</span> $ buildCircle <span class="hljs-number">50</span>
+    blueTriangle &lt;- paintTriangle <span class="hljs-type">Blue</span> $ buildTriangle <span class="hljs-number">23</span>
+    pure $ pack (expandPP redSquare)
+          $ pack (expandPP yellowRectangle)
+          $ pack (expandPP greenCircle)
+          $ pack (expandPP blueTriangle)
+          $ emptyBox</code></pre>
+<p>The key learning here is that we should only be expanding when totally necessary (usually at the edges of the domain using these variants when things need to be concrete again). As soon as we widen a type, we can&#39;t contract it (safely) because there are no guarantees that it can&#39;t contain a value that doesn&#39;t exist in the contracted type.</p>
+]]></description><link>http://codeofrob.com/entries/escaping-an-adt-explosion-with-data.variant-and-row-types-in-purescript.html</link><guid isPermaLink="true">http://codeofrob.com/entries/escaping-an-adt-explosion-with-data.variant-and-row-types-in-purescript.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 24 Nov 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Encoding h264 with Nvidia]]></title><description><![CDATA[<p>This blog entry is part of my &quot;<a href="/entries/blogging-the-mundane.html">blog about mundane stuff</a>&quot; series.</p>
+<p>I covered my <a href="/entries/decoding-h264-with-nvidia.html">decoding</a> test before having a look at <a href="/entries/cuda-context-management-with-nvenc.html">context management</a>, so now it&#39;s time to look at re-encoding the h264 and demonstrating a round trip through the nvidia hardware.</p>
+<h1 id="what-we-have-already">What we have already</h1>
+<p>We had this workflow for testing</p>
+<pre><code>
+  #workflow {
+    generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">"foo.ts"</span>&gt;&gt; },
+    processors = [
+      #nvidia_decoder { name = decode, <span class="hljs-keyword">from</span> = { source, ?video_frames_with_stream_id(<span class="hljs-number">256</span>) } },
+      #x264_encoder { name = encode, <span class="hljs-keyword">from</span> = decode },
+      #ts_writer { name = write, <span class="hljs-keyword">from</span> = encode, filename  = &lt;&lt;<span class="hljs-string">"out.ts"</span>&gt;&gt; }
+    ]
+  }
+
+</code></pre><p>and what I want is</p>
+<pre><code>  #workflow {
+    generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">"foo.ts"</span>&gt;&gt; },
+    processors = [
+      #nvidia_decoder { name = decode, <span class="hljs-keyword">from</span> = { source, ?video_frames_with_stream_id(<span class="hljs-number">256</span>) } },
+      #nvidia_encoder { name = encode, <span class="hljs-keyword">from</span> = decode },
+      #ts_writer { name = write, <span class="hljs-keyword">from</span> = encode, filename  = &lt;&lt;<span class="hljs-string">"out.ts"</span>&gt;&gt; }
+    ]
+  }
+</code></pre><p>In the decode entry we had a series of pointers to surfaces that we&#39;d pulled out of the decoder along with the corresponding timestamps, these are in NV12 planar format and byte-aligned (and I&#39;m storing all that information alongside the pointer to that surface in a struct so now we just need to see what the API looks like to turn this surface into h264 once again...)</p>
+<p>This looks something like this (It actually looks nothing like this as most of this info is stored in a linked list tied to a central pool which contains the shared information), but this is at least representative of what we have.</p>
+<pre><code>
+  <span class="hljs-keyword">typedef</span> <span class="hljs-class"><span class="hljs-keyword">struct</span> _<span class="hljs-title">nvidia_allocated_surface</span>  {</span>
+    <span class="hljs-keyword">uint8_t</span>* data;
+    <span class="hljs-keyword">int</span> bpp;
+    <span class="hljs-keyword">int</span> byte_width;
+    <span class="hljs-keyword">int</span> byte_height;
+    <span class="hljs-keyword">size_t</span> pitch;
+  } nvidia_allocated_surface;
+</code></pre><p>This surface is allocated <em>on the GPU</em> via CUDA, and the GPU is where we want to do our encode so hopefully we can pretty much use this data directly.</p>
+<h1 id="the-api">The API</h1>
+<p>The encode API looks nothing like the decode API in that it&#39;s sat in its own header file (which is again expected to be included as part of the repo, but the library we&#39;re going to be loading is <em>definitely</em>  expected to exist on the runtime as part of the driver install.</p>
+<ul>
+<li><em>Include/nvEncodeAPI.h</em> contains all definitions/enums/functions/etc</li>
+</ul>
+<p>and somewhere on the host OS installed as part of the driver package (for me, /run/opengl-driver/lib/)</p>
+<ul>
+<li><em>libnvidia-encode.so</em></li>
+</ul>
+<h1 id="creating-the-api">Creating the API</h1>
+<p>The functions that we end up using are loaded as a struct of function pointers and we actually only link a single function directly from that library to get hold of that struct. As a consequence of this, every struct being passed into a function in this API tends to be versioned indepedendently, such is life.</p>
+<pre><code class="language-c">
+  <span class="hljs-keyword">uint32_t</span> version = <span class="hljs-number">0</span>;
+  <span class="hljs-keyword">uint32_t</span> currentVersion = (NVENCAPI_MAJOR_VERSION &lt;&lt; <span class="hljs-number">4</span>) | NVENCAPI_MINOR_VERSION;
+  NV_ENCODE_API_FUNCTION_LIST nvenc = {NV_ENCODE_API_FUNCTION_LIST_VER};
+
+  NvEncodeAPIGetMaxSupportedVersion(&amp;version);
+  <span class="hljs-keyword">if</span> (currentVersion &gt; version)
+  {
+    <span class="hljs-keyword">return</span> <span class="hljs-number">-1</span>; <span class="hljs-comment">// or whatever</span>
+  }
+
+  NvEncodeAPICreateInstance(&amp;nvenc);
+
+  <span class="hljs-comment">// use the functions on nvenc</span>
+</code></pre>
+<p>This doesn&#39;t do anything other than a <em>dlopen</em> of the library exporting the functions and copy the pointers to those functions onto the nvenc struct so they can be called. Invoke it once, cache the results somewhere and then we can get to the business of talking to the GPU.</p>
+<h1 id="creating-an-encoder">Creating an encoder</h1>
+<p>Unlike the decode stack, the encoder doesn&#39;t seem to be built <em>directly</em> on top of CUDA, it having the capability of instantiating on top of OpenGL/DirectX/Cuda as options (and then utilise surfaces from those systems). Because we&#39;re using the decoder (and planning on using CUDA to run upscaling algorithms and such), it makes sense to use CUDA for the encoder too.</p>
+<p>Because of this, we&#39;ll want to use our already-created CUDA context and pass this into the open session call.</p>
+<pre><code>
+  NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS encodeSessionExParams = { NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS_VER }<span class="hljs-comment">;</span>
+  encodeSessionExParams.device = ctx<span class="hljs-comment">;</span>
+  encodeSessionExParams.deviceType = NV_ENC_DEVICE_TYPE_CUDA<span class="hljs-comment">;</span>
+  encodeSessionExParams.apiVersion = NVENCAPI_VERSION<span class="hljs-comment">;</span>
+  void* encoder = NULL<span class="hljs-comment">;</span>
+
+  nvenc.nvEncOpenEncodeSessionEx(&amp;encodeSessionExParams, &amp;encoder)<span class="hljs-comment">;</span>
+</code></pre><p>Now, this doesn&#39;t do very much other than give us an encode session that isn&#39;t initialise - and to initialise it we need to tell it what form our desired output needs to take. It is entirely possible to spend a day or two wondering why this call gives you back &#39;NV_ENC_ERR_INVALID_PARAM&#39; if it&#39;s not set up correctly (and reading the sample code doesn&#39;t help because the configuration of the encoder happens across multiple files because of the way that the samples are written), the below seems to be the the minimum required..</p>
+<p>In the Real World (tm) we have an input surface with a known width/height from the decoder, here we&#39;ll hard code it along with the frame rate (I know my source is 25fps). In the Real World a load of these args will be passed in from Erlang, not C.</p>
+<pre><code class="language-c">
+  NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
+  NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
+  NV_ENC_PRESET_CONFIG presetConfig = { NV_ENC_PRESET_CONFIG_VER, { NV_ENC_CONFIG_VER } };
+
+  initializeParams.encodeConfig = &amp;encodeConfig;
+
+  <span class="hljs-comment">// The essentials</span>
+  initializeParams-&gt;encodeGUID = NV_ENC_CODEC_H264_GUID;
+  initializeParams-&gt;presetGUID = NV_ENC_PRESET_P4_GUID;
+
+  <span class="hljs-comment">// These need to line up with the input surface dimensions</span>
+  initializeParams-&gt;encodeWidth = <span class="hljs-number">576</span>;
+  initializeParams-&gt;encodeHeight = <span class="hljs-number">720</span>;
+
+  <span class="hljs-comment">// Ditto these</span>
+  initializeParams-&gt;frameRateNum = <span class="hljs-number">25</span>;
+  initializeParams-&gt;frameRateDen = <span class="hljs-number">1</span>;
+
+  <span class="hljs-comment">// I seemed to need these as well</span>
+  initializeParams.enablePTD = <span class="hljs-number">1</span>;
+  initializeParams.encodeConfig-&gt;frameIntervalP = <span class="hljs-number">3</span>;
+  initializeParams.encodeConfig-&gt;gopLength = <span class="hljs-number">50</span>;
+  initializeParams.tuningInfo = NV_ENC_TUNING_INFO_HIGH_QUALITY;
+
+</code></pre>
+<p>Once this initialize params basics is set up, we can ask the encoder to populate the actual details for us based on the preset and codec specified in the &#39;essentials&#39;</p>
+<pre><code class="language-c">
+  nvenc.nvEncGetEncodePresetConfigEx(encode_session-&gt;encoder, initializeParams.encodeGUID, initializeParams.presetGUID, tuningInfo, &amp;presetConfig);
+  <span class="hljs-built_in">memcpy</span>(initializeParams.encodeConfig, &amp;presetConfig.presetCfg, <span class="hljs-keyword">sizeof</span>(NV_ENC_CONFIG));
+</code></pre>
+<p>I&#39;m not entirely sure why we don&#39;t just invoke nvEncGetEncoderPresetConfigEx on the struct already contained on the initializeParams, but the samples all end up doing this and the above code is precarious enough already (honestly, the number of ways this can go wrong with a single error is infuriating!). So we stick with the samples way of doing stuff!</p>
+<p>I also needed to then go and set up the IDR frequency to match our requested gop length (the samples do this too) and not doing this resulted in NV_ENC_ERR_INVALID_PARAM so..</p>
+<pre><code class="language-c">
+    initializeParams.encodeConfig-&gt;encodeCodecConfig.h264Config.idrPeriod = initializeParams.encodeConfig-&gt;gopLength;
+</code></pre>
+<p>With all of the above done correctly, a call to the init fn will return a success and if not I&#39;m really sorry you&#39;re on your own because I&#39;ve served my time already.</p>
+]]></description><link>http://codeofrob.com/entries/encoding-h264-with-nvidia.html</link><guid isPermaLink="true">http://codeofrob.com/entries/encoding-h264-with-nvidia.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 19 Nov 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[CUDA Context Management with NvEnc]]></title><description><![CDATA[<p>This blog entry is part of my &quot;<a href="/entries/blogging-the-mundane.html">blog about mundane stuff</a>&quot; series.</p>
 <p>In the <a href="/entries/decoding-h264-with-nvidia.html">previous blog entry</a> I touched on context management in CUDA being a set of choices with conflicting information from documentation to popular code samples and such.</p>
 <h1 id="what-is-the-problem">What is the &quot;problem&quot;?</h1>
 <p>Most operations with CUDA expect there to be a CUDA context bound to the current thread. All operations against that CUDA context are serialized (unless those operations are bound to a specific stream, in which case they are serialized against that stream). That&#39;s it, that&#39;s the whole goal of &quot;context&quot; in CUDA, and we have more than one way of realising this in the API].</p>
@@ -51,7 +581,7 @@
 
   cu<span class="hljs-constructor">DevicePrimaryCtxRelease(<span class="hljs-params">ctx</span>)</span>;
 
-</code></pre><p>Now some more disparate info found in the recesses of Google/Stackoverflow/Nvidia forms</p>
+</code></pre><p>Now some more disparate info found in the recesses of Google/Stackoverflow/Nvidia forums</p>
 <ul>
 <li>Originally contexts weren&#39;t bindable to multiple threads at the same time</li>
 <li>Decode sessions cannot share contexts across threads by default</li>
@@ -94,15 +624,15 @@
   cu<span class="hljs-constructor">CtxDestroy(<span class="hljs-params">ctx</span>)</span>;
 
 </code></pre><p>In my tests (spinning up multiple processes/tests), this seemed to be the route to getting a lowish resource usage, a good throughput and most importantly a lack of errors. If more throughput is required, then the concept of &#39;streams&#39; can be utilised against this same context for further parallelisation (that seems to be a case of creating streams per ... well... stream of work and just passing that reference around as a synchronisation point into the various API calls).</p>
-<p>Because the cuvidCtxLock is a cuvid concept and not a CUDA concept, there are mechanisms we can add to decoder mentioned in the last blog entry so it will automatically use that lock when performing operations against the bound context and play nicely with our code.</p>
+<p>Because the cuvidCtxLock is a cuvid concept and not a CUDA concept, we we can pass a pointer to this lock into the decoder instantiated in the last blog entry so it will automatically use that lock when performing operations against the bound context and play nicely with our code.</p>
 <p>We can replace every instance of Push and Pop in that blog entry with Lock and Unlock, and add the lock to the decoder creation params to take advantage of this</p>
 <pre><code>  decode_create_info.vidLock = session-&gt;lock;
   cuvid<span class="hljs-constructor">CtxLock(<span class="hljs-params">session</span>-&gt;<span class="hljs-params">lock</span>, 0)</span>;
   cr = cuvid<span class="hljs-constructor">CreateDecoder(&amp;<span class="hljs-params">session</span>-&gt;<span class="hljs-params">decoder</span>, &amp;<span class="hljs-params">decode_create_info</span>)</span>;
   cuvid<span class="hljs-constructor">CtxUnlock(<span class="hljs-params">session</span>-&gt;<span class="hljs-params">lock</span>, 0)</span>;
-</code></pre><p>I couldn&#39;t work out if we actually wanted to use Lock/Unlock around creation at that point, but it didn&#39;t hurt so in it went.</p>
+</code></pre><p>I couldn&#39;t work out if we actually wanted to use Lock/Unlock around decoder creation, but it didn&#39;t hurt so in it went.</p>
 <p>I <em>think</em> that this is how these APIs should be used, I give no claims to actual correctness - the documentation is vague and contradictory in places with samples/such but I have stress tested this and I&#39;ve also demonstrated the failure cases to myself (multiple threads, no locks) to hilarity so it&#39;s probably close enough to be right.</p>
-<p>Note: The transform/encode side of the API doesn&#39;t provide config to use the locking mechanism and that feels a little bit like the left hand not knowing what the right hand is doing, but hey ho - use what we can, when we can.</p>
+<p>Note: The transform/encode side of the API doesn&#39;t provide config to use this locking mechanism and that feels a little bit like the left hand not knowing what the right hand is doing, but hey ho - use what we can, when we can.</p>
 ]]></description><link>http://codeofrob.com/entries/cuda-context-management-with-nvenc.html</link><guid isPermaLink="true">http://codeofrob.com/entries/cuda-context-management-with-nvenc.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 17 Nov 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Decoding h264 with Nvidia]]></title><description><![CDATA[<p>This blog entry is part of my &quot;<a href="/entries/blogging-the-mundane.html">blog about mundane stuff</a>&quot; series.</p>
 <p>The scene is set and I&#39;ve <a href="/entries/exploring-the-nvidia-code-samples-and-docs.html">set my laptop up to do Nvidia work</a>,so now to look at the decode process in isolation.</p>
 <p>The first task for me will be to attempt to decode one of my &#39;known good&#39; h264 sources. Now - my sources are nearly all transport streams with audio (often multiple) and such, so I&#39;ll need to parse those files, pull the streams out of them, filter the video stream from a single pid and send the h264 frame data into the API for decode. This is quite a lot of work and there is no way of testing whether the results are good short of either dumping them to disk and telling ffmpeg what it&#39;s looking at (raw frames), or piping that data into an encoder in code and writing out a fresh transport stream with the round-tripped h264.</p>
@@ -886,340 +1416,4 @@ cool_api:do_something().
   # <span class="hljs-type">WebSocket</span>.info (\(<span class="hljs-type">BookMsg</span> msg) state -&gt; pure $ <span class="hljs-type">Stetson</span>.<span class="hljs-type">Reply</span> ((<span class="hljs-type">TextFrame</span> $ writeJSON msg) : nil) state)
 </code></pre>
 <p>This then allows Stetson to stash internal state in the underlying implementation and surface an API over this; indeed there is no way of accidentally calling the wrong &#39;self&#39; and sending messages to the wrong process much like in Pinto. Every callback takes place within a typed  context that enforces what &#39;state&#39; and &#39;msg&#39; are - pretty neat.</p>
-]]></description><link>http://codeofrob.com/entries/purerl-updates---arbitrary-messages-and-stetson-handlers.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purerl-updates---arbitrary-messages-and-stetson-handlers.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 07 Jul 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purerl Updates - Arbitrary messages and handle_info in gen servers]]></title><description><![CDATA[<p>A continuation of progress updates on Pinto/Stetson then..  </p>
-<h1 id="previous-purerl-posts">Previous Purerl posts</h1>
-<ul>
-<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
-<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
-<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
-<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
-<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
-<li><a href="/entries/purescript-interop-with-native-erlang---interacting-with-redis.html">Purescript interop with native Erlang, interaction with Redis</a></li>
-</ul>
-<h1 id="updates">Updates</h1>
-<ul>
-<li><a href="/entries/updates-to-pinto+stetson---purerl-in-progress.html">Nix overlays for Purerl/etc</a></li>
-<li><a href="/entries/purerl-updates---typed-routes-in-stetson.html">Typed routing for Stetson</a></li>
-<li>Arbitrary messages and handle_info in gen_servers</li>
-<li>Monitors for arbitrary pids from Gen servers + Stetson handlers</li>
-<li>WebSocket handlers in Stetson</li>
-<li>Streaming handlers in Stetson</li>
-<li>MessageRouting in Pinto to easily bind to legacy code that sends us messages</li>
-</ul>
-<h1 id="the-story-so-far">The story so far</h1>
-<p>The code for dealing with handle_info was very hand-wavey and involved the creation and registration of mappers and receivers within the gen server itself. This also ended up abusing gen_server:cast in order to function correctly and it wasn&#39;t really obvious where messages were coming from. It was a ticking time bomb as far as supporting the increasing amounts of code we are writing in Purescript goes.</p>
-<p>There was <em>some</em> good in this approach, in that the type of the Gen Server specified both the State of the Gen Server and the type of the Msg it would receive, and the handleInfo function could  be supplied  in Gen.init, forcibly typed with this server name.</p>
-<pre><code class="language-haskell">
-  <span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">Tick</span> | <span class="hljs-type">SomethingHappened</span> <span class="hljs-type">String</span></span>
-
-  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">State</span> = { 
-      <span class="hljs-comment">-- some stuff </span>
-  }</span>
-
-  serverName :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
-  serverName = <span class="hljs-type">Local</span> $ atom <span class="hljs-string">"my_server"</span>
-
-  startLink :: <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
-  startLink = <span class="hljs-type">Gen</span>.startLink init handleInfo
-
-  init :: <span class="hljs-type">Effect</span> <span class="hljs-type">State</span> 
-  init = <span class="hljs-keyword">do</span>
-    <span class="hljs-type">SomethingElse</span>.registerForEvents serverName <span class="hljs-type">SomethingHappened</span>
-    pure {}
-
-
-  handleInfo :: <span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">CastResult</span> <span class="hljs-type">State</span>)
-  handleInfo msg = <span class="hljs-keyword">do</span>
-    <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span>
-      <span class="hljs-type">Tick</span> -&gt; doTIck
-      <span class="hljs-type">SomethingHappened</span> id -&gt; handleSomething id
-
-</code></pre>
-<p>Having to provide serverName as part of the registration function is clunky AF, under the hood this places the responsibility of mapping messages to the external module and  there is a disconnect between <em>that</em> and the handleInfo we supplied  as part of startLink. </p>
-<h1 id="a-first-pass-emitter-functions">A first pass, emitter functions</h1>
-<p>The code was changed so that an emitter function would be extractable from within a gen server, this would be typed around ServerName automatically and only the right type of messages would be capable of being passed into it.</p>
-<pre><code class="language-haskell">
-<span class="hljs-title">init</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">State</span> = <span class="hljs-keyword">do</span>
-<span class="hljs-title">init</span> = <span class="hljs-keyword">do</span>
-    emitter &lt;- <span class="hljs-type">Gen</span>.emitter serverName
-    <span class="hljs-type">SomethingElse</span>.registerForEvents $ emitter &lt;&lt;&lt; <span class="hljs-type">SomethingHappened</span>
-    pure {}
-</code></pre>
-<p>This is somewhat an improvement, as it could at this point be assumed that anything passed into that function would automatically be the right type for handle_info and the mapping code from inside the gen server could be removed entirely. It requires the use of proxy processes to intercept messages, and I spent a day or two upgrading nearly all of our company Purescript over to this new model because it felt good.</p>
-<p>It didn&#39;t feel <em>great</em> after doing that though, once again we&#39;re relying on convention to create that emitter with the right &#39;serverName&#39; and it&#39;s not very &#39;Erlang&#39;, in theory it also means that code could be written to send messages to arbitrary gen servers providing you have access to the serverName and thats a bit naff.</p>
-<h1 id="second-pass-making-it-more-erlang">Second pass, making it more Erlang</h1>
-<p>The type of &#39;emitter&#39; was changed to <em>Process Msg</em> (A welcome suggestion from <a href="@louispilfold">http://twitter.com/louispilfold</a> when I was putting code samples out for feedback). This maps under the hood to a new type of a plain ol&#39; pid and is therefore compatible automatically with classic Erlang APIs. (Specifically erlang monitors and such being a useful end-goal here).</p>
-<pre><code class="language-haskell">
-<span class="hljs-title">init</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">State</span> = <span class="hljs-keyword">do</span>
-<span class="hljs-title">init</span> = <span class="hljs-keyword">do</span>
-    self &lt;- <span class="hljs-type">Gen</span>.self serverName
-    self ! <span class="hljs-type">DoSomeStuffAfterStartup</span>
-    <span class="hljs-type">SomethingElse</span>.registerForEvents $ send self &lt;&lt;&lt; <span class="hljs-type">SomethingHappened</span>
-    pure {}
-</code></pre>
-<p>This was still not ideal however, the call to Gen.self included a runtime check (below) to ensure that the caller was indeed the &quot;self&quot; we were looking at to prevent external clients from abusing the API (if you provide an API, it <em>will</em> be abused and I&#39;d already seen some &quot;interesting&quot; code already written around these APIs while I was upgrading just our own code!)</p>
-<pre><code class="language-erlang">
-<span class="hljs-function"><span class="hljs-title">selfImpl</span><span class="hljs-params">(Name)</span> -&gt;</span>
-  <span class="hljs-keyword">fun</span>() -&gt;
-    Pid  = where_is_name(Name),
-    Self = erlang:self(),
-    <span class="hljs-keyword">if</span>
-      Self =:= Pid -&gt; Self;
-      <span class="hljs-literal">true</span> -&gt;
-        exit(Self, {error, &lt;&lt;<span class="hljs-string">"Gen.self was called from an external process, this is not allowed"</span>&gt;&gt;})
-    <span class="hljs-keyword">end</span>
-  <span class="hljs-keyword">end</span>.
-
-</code></pre>
-<h1 id="third-pass-making-it-more-purescript">Third pass, making it more Purescript</h1>
-<p>Sod it, StateT it is. We&#39;d been discussing moving the Gen callbacks into a state monad since I first wrote Pinto, the only obstacle being that I didn&#39;t understand state monads, which sounds stupid on retrospect but it&#39;s the truth <em>shrug</em>. I read a few tutorials, had a mild &quot;aha&quot; moment and things became a bit clearer.</p>
-<p>What we really want is that all the callbacks to automatically</p>
-<ul>
-<li>Be typed around ServerName, so that all calls to Pinto APIs automatically assume this type</li>
-<li>have access to the &#39;internal&#39; state in the Pinto gen_server implementation, so no casts ever have to be made again</li>
-</ul>
-<p>We had quite a bit of code in Gen.purs (our gen server wrapper) that relied on making casts to modify its state, monitors and such - removing all of this was just a sensible idea -  the idea being that if the callbacks to client coded operated within the context of that state, it could be retrieved and modified (optionally) as part of those callbacks.</p>
-<pre><code class="language-haskell">
-<span class="hljs-title">startLink</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
-<span class="hljs-title">startLink</span> = <span class="hljs-type">Gen</span>.startLink init handleInfo
-
-<span class="hljs-title">init</span> :: <span class="hljs-type">Gen</span>.<span class="hljs-type">Init</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
-<span class="hljs-title">init</span> = 
-  self &lt;- <span class="hljs-type">Gen</span>.self
-  <span class="hljs-type">Gen</span>.lift $ <span class="hljs-type">SomethingElse</span>.registerForEvents $ send self  &lt;&lt;&lt; <span class="hljs-type">SomethingHappened</span>
-  pure {}
-
-<span class="hljs-title">handleInfo</span> :: <span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">State</span> -&gt; <span class="hljs-type">Gen</span>.<span class="hljs-type">HandleInfo</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
-<span class="hljs-title">handleInfo</span> msg state =
-  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span>
-    <span class="hljs-type">Tick</span> -&gt; <span class="hljs-type">CastNoReply</span> &lt;$&gt; handleTick state
-    <span class="hljs-type">SomethingHappened</span> ev -&gt; <span class="hljs-type">CastNoReply</span> &lt;$&gt; handleSomethingHappened ev state
-
-</code></pre>
-<p>On the surface of this it isn&#39;t that different, but we&#39;ve done away with the need to constantly refer to &#39;serverName&#39; because we&#39;re operating in the context of a state monad (Gen.Init and Gen.HandleInfo are type aliass to help refer to the fairly wordy type used behind the scenes in Pinto).</p>
-<p>Gen.self doesn&#39;t need to do anything other than pull state out of that state monad and return it to the client code (implementation below), this means that unless your code is being executed in the context of the state monad (IE: the gen server) you can&#39;t call it and the runtime checks and side effects can go away.</p>
-<pre><code class="language-haskell">
-  self :: <span class="hljs-keyword">forall</span> state msg. <span class="hljs-type">StateT</span> (<span class="hljs-type">GenContext</span> state msg) <span class="hljs-type">Effect</span> (<span class="hljs-type">Process</span> msg)
-  self = <span class="hljs-keyword">do</span>
-    <span class="hljs-type">GenContext</span> { pid } &lt;- <span class="hljs-type">State</span>.get
-    pure pid
-</code></pre>
-<p>Similarly, Gen.Cast and Gen.Call are provided for <em>those</em> callbacks too, and all code executed  within the context of a Pinto Genserver has access to the internal state via the API so in theory things like trapExit/handleInfo/config can be modified safely from within that context without doing weird things around async casts back to that gen server.</p>
-<p>That&#39;s a lot of words to say that Gen Servers and arbitrary messages are now very pretty indeed in Purerl. Example below of a gen server subscribing to a message bus from the <a href="https://github.com/id3as/demo-ps/blob/master/server/src/HandleInfoExample.purs">demo_ps</a> web project. You&#39;ll note that the actual API used in startLink has evolved to include a builder for setting the initial handlers/etc - there are a number of optional things to tweak about a gen server and it made sense to do this rather than accept an endlessly growing list of arguments.</p>
-<pre><code class="language-haskell">
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">BookWatchingStartArgs</span> = {}</span>
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">State</span> = {}</span>
-
-<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">BookMsg</span> <span class="hljs-type">BookEvent</span> </span>
-
-<span class="hljs-title">serverName</span> :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
-<span class="hljs-title">serverName</span> = <span class="hljs-type">Local</span> $ atom <span class="hljs-string">"handle_info_example"</span>
-
-<span class="hljs-title">startLink</span> :: <span class="hljs-type">BookWatchingStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
-<span class="hljs-title">startLink</span> args =
-  <span class="hljs-type">Gen</span>.buildStartLink serverName (init args) $ <span class="hljs-type">Gen</span>.defaultStartLink { handleInfo = handleInfo }
-
-<span class="hljs-title">init</span> :: <span class="hljs-type">BookWatchingStartArgs</span> -&gt; <span class="hljs-type">Gen</span>.<span class="hljs-type">Init</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
-<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
-  self &lt;- <span class="hljs-type">Gen</span>.self
-  _ &lt;- <span class="hljs-type">Gen</span>.lift $ <span class="hljs-type">SimpleBus</span>.subscribe <span class="hljs-type">BookLibrary</span>.bus $ <span class="hljs-type">BookMsg</span> &gt;&gt;&gt; send self
-  pure $ {}
-
-<span class="hljs-title">handleInfo</span> :: <span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">State</span> -&gt; <span class="hljs-type">Gen</span>.<span class="hljs-type">HandleInfo</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
-<span class="hljs-title">handleInfo</span> msg state = <span class="hljs-keyword">do</span>
-  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span>
-    <span class="hljs-type">BookMsg</span> bookEvent -&gt; 
-      <span class="hljs-type">Gen</span>.lift $ handleBookEvent bookEvent state
-
-<span class="hljs-title">handleBookEvent</span> :: <span class="hljs-type">BookEvent</span> -&gt; <span class="hljs-type">State</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">CastResult</span> <span class="hljs-type">State</span>)
-<span class="hljs-title">handleBookEvent</span> ev state =
-  <span class="hljs-keyword">case</span> ev <span class="hljs-keyword">of</span>
-    <span class="hljs-type">BookCreated</span> isbn -&gt; <span class="hljs-keyword">do</span>
-      _ &lt;- <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">"Book created ~p"</span> isbn
-      pure $ <span class="hljs-type">CastNoReply</span> state
-    <span class="hljs-type">BookDeleted</span> isbn -&gt; <span class="hljs-keyword">do</span>
-      _ &lt;- <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">"Book deleted ~p"</span> isbn
-      pure $ <span class="hljs-type">CastNoReply</span> state
-    <span class="hljs-type">BookUpdated</span> isbn -&gt; <span class="hljs-keyword">do</span>
-      _ &lt;- <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">"Book updated ~p"</span> isbn
-      pure $ <span class="hljs-type">CastNoReply</span> state
-</code></pre>
-<p>I&#39;ll insert another item to the list of &#39;new things&#39; to the bullet points currently being traversed as my next post will be about the corresponding message handling implementation in <a href="https://github.com/id3as/purescript-erl-stetson">Stetson</a>, which unsurprisingly uses the State monad to improve our lives there as well. Once you learn how to use a hammer, everything looks like a nail I guess.</p>
-]]></description><link>http://codeofrob.com/entries/purerl-updates---arbitrary-messages-and-handle_info-in-gen-servers.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purerl-updates---arbitrary-messages-and-handle_info-in-gen-servers.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 02 Jul 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purerl updates - Typed routes in Stetson]]></title><description><![CDATA[<p>A continuation of progress updates on Pinto/Stetson then..</p>
-<h1 id="previous-purerl-posts">Previous Purerl posts</h1>
-<ul>
-<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
-<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
-<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
-<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
-<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
-<li><a href="/entries/purescript-interop-with-native-erlang---interacting-with-redis.html">Purescript interop with native Erlang, interaction with Redis</a></li>
-</ul>
-<h1 id="updates">Updates</h1>
-<ul>
-<li><a href="/entries/updates-to-pinto+stetson---purerl-in-progress.html">Nix overlays for Purerl/etc</a></li>
-<li>Typed routing for Stetson</li>
-<li>Emitter based messages for handle_info in Gen Server</li>
-<li>Monitors for arbitrary pids from Gen servers + Stetson handlers</li>
-<li>WebSocket handlers in Stetson</li>
-<li>Streaming handlers in Stetson</li>
-<li>MessageRouting in Pinto to easily bind to legacy code that sends us messages</li>
-</ul>
-<h1 id="how-it-was">How it was</h1>
-<p>The initial blast of <a href="https://github.com/id3as/purescript-erl-stetson">Stetson</a> was thrown up around <a href="https://github.com/ninenines/cowboy">Cowboy</a> with the express goal of &quot;getting me started on our first client project written in Purerl&quot;. As such it wasn&#39;t fancy and routing/dispatch looked like this.</p>
-<pre><code class="language-haskell">
-<span class="hljs-type">Stetson</span>.configure
-    # <span class="hljs-type">Stetson</span>.route <span class="hljs-string">"/api/books"</span> books
-    # <span class="hljs-type">Stetson</span>.route <span class="hljs-string">"/api/books/:isbn"</span> book
-    # <span class="hljs-type">Stetson</span>.static <span class="hljs-string">"/assets/[...]"</span> (<span class="hljs-type">PrivDir</span> <span class="hljs-string">"demo_ps"</span> <span class="hljs-string">"www/assets"</span>)
-    # <span class="hljs-type">Stetson</span>.static <span class="hljs-string">"/[...]"</span> (<span class="hljs-type">PrivFile</span> <span class="hljs-string">"demo_ps"</span> <span class="hljs-string">"www/index.html"</span>)
-</code></pre>
-<p>Where a handler operating over  &#39;id&#39; to get a specific item might look like this</p>
-<pre><code class="language-haskell">
-<span class="hljs-title">book</span> :: <span class="hljs-type">StetsonHandler</span> (<span class="hljs-type">Maybe</span> <span class="hljs-type">Book</span>)
-<span class="hljs-title">book</span> = 
-  <span class="hljs-type">Rest</span>.handler (\req -&gt; <span class="hljs-keyword">do</span>
-                          <span class="hljs-keyword">let</span> id = binding (atom <span class="hljs-string">"isbn"</span>) req
-                          book &lt;- maybe (pure <span class="hljs-type">Nothing</span>) <span class="hljs-type">BookLibrary</span>.findByIsbn id
-                          <span class="hljs-type">Rest</span>.initResult req book)
-    # <span class="hljs-type">Rest</span>.allowedMethods (\req state -&gt; <span class="hljs-type">Rest</span>.result (<span class="hljs-type">Stetson</span>.<span class="hljs-type">HEAD</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">PUT</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">DELETE</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">GET</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">OPTIONS</span> : nil) req state)
-    # <span class="hljs-type">Rest</span>.resourceExists (\req state -&gt; 
-                             <span class="hljs-type">Rest</span>.result (isJust state) 
-                             (maybe (setBody <span class="hljs-string">"This book does not exist"</span> req) (\_ -&gt; req) state)
-                             state)
-    # <span class="hljs-type">Rest</span>.deleteResource (\req state -&gt; <span class="hljs-keyword">do</span>
-                              _ &lt;- maybe (pure unit) (\book -&gt; <span class="hljs-type">BookLibrary</span>.delete book.isbn) state
-                              <span class="hljs-type">Rest</span>.result true req state)
-    # <span class="hljs-type">Rest</span>.contentTypesProvided (\req state -&gt; <span class="hljs-type">Rest</span>.result (jsonWriter : nil) req state)
-    # <span class="hljs-type">Rest</span>.contentTypesAccepted (\req state -&gt; <span class="hljs-type">Rest</span>.result ((tuple2 <span class="hljs-string">"application/json"</span> acceptJson) : nil) req state)
-</code></pre>
-<p>Urgh, so we&#39;ve got <em>:isbn</em> as a binding in our route, which we&#39;re pulling out as a <em>Maybe String</em> in our init handler, more hand waving here than at a Tory party conference. To compound matters, our client is building these urls like so</p>
-<pre><code class="language-haskell">
-<span class="hljs-title">getBook</span> :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Maybe</span> <span class="hljs-type">Book</span>
-<span class="hljs-title">getBook</span> id = fetchJson <span class="hljs-string">"/api/books/"</span> &lt;&gt; id
-</code></pre>
-<p>This was fine for a year or so, but once you&#39;ve got a few real applications running on top of this stuff and a great many URLs indeed you start running into issues where typos, incorrect types, etc start rearing their head - especially if you&#39;re making changes. (Quiet down at the back if you mention rest, url discovery and client independence to me I&#39;ll throw something at you, this isn&#39;t that).</p>
-<p>Thankfully, we have <a href="http://twitter.com/nwolverson">nwolverson</a> working with us and he&#39;s unafraid of the wonders of <a href="https://pursuit.purerl.fun/packages/typelevel-prelude/3.0.0/docs/Type.Data.Symbol">Data.Symbol.SProxy</a> and spent a chunk of time re-working <a href="https://github.com/natefaubion/purescript-routing-duplex">routing-duplex</a> from the client world so that it compiles/works/is-usable in the world of Purerl and Stetson.  Did I ever mention that the great thing about re-purposing an existing language/toolset for Erlang is that code already exists for most things you&#39;d want to do in that language? I&#39;ll mention it again here because it&#39;s pretty great.</p>
-<p>Gone is the hand-waving, for our apps now have a shared module twixt client and server describing the routes available and the types they accept and no mistakes will be accepted by the compiler.</p>
-<p><em>Our routes</em></p>
-<p>Our routes exist as an ADT describing the various  options and the typed parameters they expect.</p>
-<pre><code class="language-haskell">
-<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Route</span></span>
-  = <span class="hljs-type">Books</span>
-  | <span class="hljs-type">Book</span> <span class="hljs-type">Isbn</span>
-  | <span class="hljs-type">Assets</span> (<span class="hljs-type">Array</span> <span class="hljs-type">String</span>)
-  | <span class="hljs-type">Index</span>
-  | <span class="hljs-type">Index2</span> <span class="hljs-type">String</span> (<span class="hljs-type">Array</span> <span class="hljs-type">String</span>)
-</code></pre>
-<p><em>How the routes map to paths</em></p>
-<p>Using the type RouteDuplex&#39; with this ADT, we are required  to fill out each of the options with a path with the args expected  in the ADT. None  of these  are optional and we&#39;ll get type errors (more on this in a bit) if we don&#39;t supply all of the args or routes expected.</p>
-<pre><code>
--- | This combinator transforms a codec over `String` into one that operates on the `Isbn` type.
-<span class="hljs-title">isbn ::</span> RouteDuplex' String -&gt; RouteDuplex' Isbn
-isbn = asNewtype
-
-<span class="hljs-title">apiRoute ::</span> RouteDuplex' Route
-apiRoute = path <span class="hljs-string">""</span> $ sum
-  { <span class="hljs-string">"Books"</span>: <span class="hljs-string">"api"</span> / <span class="hljs-string">"books"</span> / noArgs
-  , <span class="hljs-string">"Book"</span>: <span class="hljs-string">"api"</span> / <span class="hljs-string">"books"</span> / isbn segment
-  , <span class="hljs-string">"EventsWs"</span>: <span class="hljs-string">"api"</span> / <span class="hljs-string">"events"</span> / <span class="hljs-string">"ws"</span>
-  , <span class="hljs-string">"EventsFirehose"</span>: <span class="hljs-string">"api"</span> / <span class="hljs-string">"events"</span> / <span class="hljs-string">"firehose"</span>
-  , <span class="hljs-string">"Assets"</span> : <span class="hljs-string">"assets"</span> / rest
-  , <span class="hljs-string">"Index"</span> : noArgs
-  , <span class="hljs-string">"Index2"</span> : segment / rest
-  }
-
-</code></pre><p>Note that our Newtype &#39;isbn&#39; is an integrated part of both of these APIs, <em>Book</em> is a route that is available over <em>api/books/:isbn</em> where <em>:isbn</em> is of type <em>Isbn</em>. No messing around; yes it&#39;s just a newtype in this case, but there is nothing stopping us doing more elaborate parsing here into more complicated types. We can&#39;t accidentally miss any routes off, those strings are checked against the record at compile type thanks to the magic of SProxy and such.</p>
-<p><em>On the server</em></p>
-<p>Rather than try and make this stuff optional in Stetson, we decided to just lump it in as core code - why would you choose strings with more strings and hand waving when you&#39;ve got types at your disposal? We&#39;re not Javascript programmers after all - this means that these routes are accepted as a first class citizen in this world.</p>
-<pre><code class="language-haskell">
-<span class="hljs-title">_</span> &lt;- <span class="hljs-type">Stetson</span>.configure
-    # <span class="hljs-type">Stetson</span>.routes
-      <span class="hljs-type">Routes</span>.apiRoute {
-          <span class="hljs-string">"Book"</span>: book
-        , <span class="hljs-string">"Books"</span>: books
-        , <span class="hljs-string">"EventsWs"</span>: eventsWs
-        , <span class="hljs-string">"EventsFirehose"</span>: eventsFirehose
-        , <span class="hljs-string">"Assets"</span>: <span class="hljs-type">PrivDir</span> <span class="hljs-string">"demo_ps"</span> <span class="hljs-string">"www/assets"</span>
-        , <span class="hljs-string">"Index"</span>: <span class="hljs-type">PrivFile</span> <span class="hljs-string">"demo_ps"</span> <span class="hljs-string">"www/index.html"</span>
-        , <span class="hljs-string">"Index2"</span>: (\(_ :: <span class="hljs-type">String</span>)  -&gt; <span class="hljs-type">PrivFile</span> <span class="hljs-string">"demo_ps"</span> <span class="hljs-string">"www/index.html"</span>)
-      }
-
-</code></pre>
-<p>We can see here that once again we are supplying a record with the names from the ADT and these are once again type-checked against that ADT so you can&#39;t miss any out or get the types wrong. What types you ask? Well this is the &#39;book&#39; handler from earlier. (If you&#39;re not familiar with Purescript you might see the strings in our record above and go &#39;whaaaaa??&#39;, don&#39;t worry about it; because of the ADT &#39;Route&#39; and the fact that our &#39;RoutingDuplex&#39; has that as a type parameter, these strings are checked at a compile time against that ADT - it&#39;s a neat feature that has great potential when API building.</p>
-<pre><code class="language-haskell">
-
-<span class="hljs-title">book</span> :: <span class="hljs-type">Isbn</span> -&gt; <span class="hljs-type">StetsonHandler</span> (<span class="hljs-type">Maybe</span> <span class="hljs-type">Book</span>)
-<span class="hljs-title">book</span> id =
-  <span class="hljs-type">Rest</span>.handler (\req -&gt; <span class="hljs-keyword">do</span>
-                          book &lt;- <span class="hljs-type">BookLibrary</span>.findByIsbn id
-                          <span class="hljs-type">Rest</span>.initResult req book)
-    # <span class="hljs-type">Rest</span>.allowedMethods (\req state -&gt; <span class="hljs-type">Rest</span>.result (<span class="hljs-type">Stetson</span>.<span class="hljs-type">HEAD</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">PUT</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">DELETE</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">GET</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">OPTIONS</span> : nil) req state)
-    # <span class="hljs-type">Rest</span>.resourceExists (\req state -&gt;
-                             <span class="hljs-type">Rest</span>.result (isJust state)
-                             (maybe (setBody <span class="hljs-string">"This book does not exist"</span> req) (\_ -&gt; req) state)
-                             state)
-    # <span class="hljs-type">Rest</span>.deleteResource (\req state -&gt; <span class="hljs-keyword">do</span>
-                              _ &lt;- maybe (pure unit) (\book -&gt; <span class="hljs-type">BookLibrary</span>.delete book.isbn) state
-                              <span class="hljs-type">Rest</span>.result true req state)
-    # <span class="hljs-type">Rest</span>.contentTypesProvided (\req state -&gt; <span class="hljs-type">Rest</span>.result (jsonWriter : nil) req state)
-    # <span class="hljs-type">Rest</span>.contentTypesAccepted (\req state -&gt; <span class="hljs-type">Rest</span>.result ((tuple2 <span class="hljs-string">"application/json"</span> acceptJson) : nil) req state)
-</code></pre>
-<p>Say what now? Because we define</p>
-<pre><code class="language-haskell">
-  | <span class="hljs-type">Book</span> <span class="hljs-type">Isbn</span>
-</code></pre>
-<p>in our Routes ADT, we have </p>
-<pre><code class="language-haskell">
-  , <span class="hljs-string">"Book"</span>: <span class="hljs-string">"api"</span> / <span class="hljs-string">"books"</span> / isbn segment
-</code></pre>
-<p>in our RouteDuplex definition, and we have</p>
-<pre><code class="language-haskell">
-  <span class="hljs-string">"Book"</span>: book
-</code></pre>
-<p>In our Stetson routes, the compiler knows that &#39;book&#39; needs to be a function that accepts an &#39;Isbn&#39; and returns a StetsonHandler. So what if I change the type of &#39;book&#39; to integer? to integer? to integer? to integer?</p>
-<pre><code class="language-haskell">  book :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">StetsonHandler</span> (<span class="hljs-type">Maybe</span> <span class="hljs-type">Book</span>)
-  book id =</code></pre>
-<pre><code><span class="hljs-builtin-name">Error</span> found:
-<span class="hljs-keyword">in</span> module BookWeb
-at src/BookWeb.purs:122:58 - 122:60 (line 122, column 58 - line 122, column 60)
-
-  Could <span class="hljs-keyword">not</span> match<span class="hljs-built_in"> type
-</span>
-    Int
-
-  with<span class="hljs-built_in"> type
-</span>
-    Isbn
-</code></pre><p>hot damn yes, and what if I do a typo in my handlers?</p>
-<pre><code class="language-haskell">
-      <span class="hljs-type">Routes</span>.apiRoute {
-          <span class="hljs-string">"B00k"</span>: book
-        , <span class="hljs-string">"Books"</span>: books
-        , <span class="hljs-string">"EventsWs"</span>: eventsWs
-</code></pre>
-<p>Well</p>
-<pre><code>
-  Could <span class="hljs-keyword">not</span> match<span class="hljs-built_in"> type
-</span>
-    ( <span class="hljs-string">"Book"</span> :: t0
-    <span class="hljs-built_in">..</span>.
-    | t1
-    )
-
-  with<span class="hljs-built_in"> type
-</span>
-    ( <span class="hljs-string">"Assets"</span> :: StaticAssetLocation
-    , <span class="hljs-string">"B00k"</span> :: Isbn -&gt; StetsonHandler Unit (Maybe <span class="hljs-built_in">..</span>.)
-</code></pre><p>You get the picture, by up-front defining the routes and the types they expect as input to the handler functions, we&#39;ve just done away with the handwaving and given ourselves a pile of safety.</p>
-<p><em>On the client</em></p>
-<p>Remember our <em>getBook :: String -&gt; Maybe Book</em>? </p>
-<pre><code class="language-haskell">
-<span class="hljs-title">routeUrl</span> :: <span class="hljs-type">Route</span> -&gt; <span class="hljs-type">String</span>
-<span class="hljs-title">routeUrl</span> = <span class="hljs-type">RouteDuplex</span>.print apiRoute
-
-<span class="hljs-title">getBook</span> :: <span class="hljs-type">Isbn</span> -&gt; <span class="hljs-type">Maybe</span> <span class="hljs-type">Book</span>
-<span class="hljs-title">getBook</span> id = fetchJson $ routeUrl (<span class="hljs-type">Book</span> id)
-</code></pre>
-<p>No more strings, no more guessing, thanks Nick!</p>
-]]></description><link>http://codeofrob.com/entries/purerl-updates---typed-routes-in-stetson.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purerl-updates---typed-routes-in-stetson.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 30 Jun 2020 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/purerl-updates---arbitrary-messages-and-stetson-handlers.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purerl-updates---arbitrary-messages-and-stetson-handlers.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 07 Jul 2020 09:30:00 GMT</pubDate></item></channel></rss>
