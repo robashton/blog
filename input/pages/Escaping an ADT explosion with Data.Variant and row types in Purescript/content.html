@@ -356,7 +356,7 @@
 <span class="hljs-title">expandPuzzlePiece</span> :: <span class="hljs-keyword">forall</span> lt gt. <span class="hljs-type">PuzzlePiece</span> lt -&gt; <span class="hljs-type">PuzzlePiece</span> gt
 <span class="hljs-title">expandPuzzlePiece</span> = p = p { shape = expand p.shape }
 </code></pre>
-<p>But this won&#39;t work, trying to change the type of something that&#39;s paramterised by the type of the containing record... doesn&#39;t <em>actually</em> make any sense. <em>expand</em> doesn&#39;t actually <em>do</em> anything, the data is exactly the same.. no, all we really want to achieve here is to tell the compiler &quot;I know I said that it was a PuzzlePiece of lt, but actually it&#39;s a PuzzlePiece of gt and that is a safe assertion to make because lt is a subset of gt&quot;, we could therefore just go and write...</p>
+<p>But this won&#39;t work, trying to change the type of something that&#39;s parameterised by the type of the containing record... doesn&#39;t <em>actually</em> make any sense. <em>expand</em> doesn&#39;t actually <em>do</em> anything, the data is exactly the same.. no, all we really want to achieve here is to tell the compiler &quot;I know I said that it was a PuzzlePiece of lt, but actually it&#39;s a PuzzlePiece of gt and that is a safe assertion to make because lt is a subset of gt&quot;, we could therefore just go and write...</p>
 <pre><code class="language-haskell">  expandPP
     ∷ <span class="hljs-keyword">forall</span> lt a gt
     . <span class="hljs-type">R</span>.<span class="hljs-type">Union</span> lt a gt
@@ -417,3 +417,151 @@
           $ pack (expandPP blueTriangle)
           $ emptyBox</code></pre>
 <p>The key learning here is that we should only be expanding when totally necessary (usually at the edges of the domain using these variants when things need to be concrete again). As soon as we widen a type, we can&#39;t contract it (safely) because there are no guarantees that it can&#39;t contain a value that doesn&#39;t exist in the contracted type.</p>
+<h2 id="adding-more-functionality-to-this-pipeline">Adding more functionality to this pipeline</h2>
+<p>In this simple example, we were constructing puzzle pieces of a certain shape and using this information to effect some change in an imagined external system. We did things this way because it kept the examples simple.</p>
+<p>Let&#39;s imagine a world where have a factory to produce our puzzle pieces, and each factory can be configured to create puzzle pieces of a certain shape and colour and from that point onwards only create puzzle pieces of that shape and colour. (We have stuff in our domain that looks like this so it isn&#39;t too contrived..)</p>
+<pre><code class="language-haskell">
+  <span class="hljs-keyword">module</span> QuadFactory <span class="hljs-keyword">where</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Config</span> shape = { <span class="hljs-title">colour</span> :: <span class="hljs-type">Colour</span>
+                      , <span class="hljs-title">template</span> :: <span class="hljs-type">Variant</span> <span class="hljs-title">shape</span>
+                      }</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">State</span> shape = { <span class="hljs-title">colour</span> :: <span class="hljs-type">Colour</span>
+                     , <span class="hljs-title">piecesProduced</span> :: <span class="hljs-type">Int</span>
+                     , <span class="hljs-title">template</span> :: <span class="hljs-type">Variant</span> <span class="hljs-title">shape</span>
+                     }</span>
+
+
+  create :: <span class="hljs-keyword">forall</span> shape.
+    <span class="hljs-type">Config</span> shape -&gt; <span class="hljs-type">State</span> shape
+  create { colour, template } = { colour, template, piecesProduced: <span class="hljs-number">0</span> }
+
+  build :: <span class="hljs-keyword">forall</span> shape. 
+    <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">State</span> shape -&gt; <span class="hljs-type">Tuple</span> (<span class="hljs-type">State</span> shape) (<span class="hljs-type">PuzzlePiece</span> shape)
+  build = unsafeCrashWith <span class="hljs-string">"Not implemented"</span>
+</code></pre>
+<p>Given a Config that is paramerised with a &#39;shape&#39;, <em>create</em> will give you back a state that will count how many pieces are produced, and also is parameterised by &#39;shape&#39;, calling <em>build</em> will yield tuple containing the new state and the created puzzle piece. We&#39;ve had to state that the shape in our records is a row type because PuzzlePiece needs that because PuzzlePiece has Variant in it and has that requirement. (I think this changes in Purescript 0.14, but we&#39;re not there yet...)</p>
+<p>First up, we&#39;ll need a constraint on these functions because we&#39;re not limiting what &#39;shape&#39; is by anything, so we have no hope in hell of actually being able to write &#39;build&#39;...</p>
+<pre><code class="language-haskell">
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">SupportedShapes</span> = ( <span class="hljs-title">square</span> :: <span class="hljs-type">Square</span>
+                         , <span class="hljs-title">rect</span> :: <span class="hljs-type">Rect</span>
+                         )</span>
+
+  create :: <span class="hljs-keyword">forall</span> shape t1.
+    <span class="hljs-type">R</span>.<span class="hljs-type">Union</span> shape t1 <span class="hljs-type">SupportedShapes</span> =&gt;
+    <span class="hljs-type">Config</span> shape -&gt; <span class="hljs-type">State</span> shape
+  create { colour, template } = { colour, template, piecesProduced: <span class="hljs-number">0</span> }
+
+  build :: <span class="hljs-keyword">forall</span> shape t1. 
+    <span class="hljs-type">R</span>.<span class="hljs-type">Union</span> shape t1 <span class="hljs-type">SupportedShapes</span> =&gt;
+    <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">State</span> shape -&gt; <span class="hljs-type">Tuple</span> (<span class="hljs-type">State</span> shape) (<span class="hljs-type">PuzzlePiece</span> shape)
+  build = unsafeCrashWith <span class="hljs-string">"Not implemented"</span>
+</code></pre>
+<p>That&#39;s pretty good, but this doesn&#39;t stop me calling the functions with something looking like this!</p>
+<pre><code class="language-haskell">
+  wrong :: <span class="hljs-type">State</span> ( square :: <span class="hljs-type">Square</span>, rect :: <span class="hljs-type">Rect</span> )
+  wrong = create { colour: <span class="hljs-type">Yellow</span>, template: inj _square { size: <span class="hljs-number">5</span> }} 
+</code></pre>
+<p>No.. no no, this will not do - a factory <em>cannot</em> be described as capable of creating more than the one shape it is created and configured for creating. We&#39;re going to need a new typeclass that enforces that a row type only has a single row in it - this is where it gets exciting! Suddenly (5000 words into this blog entry) we are starting to push constraints into the type system that prevent us from creating daft configuration whilst also avoiding having to write partial case statements...</p>
+<pre><code class="language-haskell"><span class="hljs-class">
+  <span class="hljs-keyword">class</span> <span class="hljs-type">HasSingleRowOnly</span> (<span class="hljs-title">row</span> :: # <span class="hljs-type">Type</span>)
+</span></code></pre>
+<p>So far so good, given a row type, can the compiler find an instance that satisfies it? Intended usage looks a bit like this..</p>
+<pre><code class="language-haskell">
+  create :: <span class="hljs-keyword">forall</span> shape t1.
+    <span class="hljs-type">R</span>.<span class="hljs-type">Union</span> shape t1 <span class="hljs-type">SupportedShapes</span> =&gt;
+    <span class="hljs-type">HasSingleRowOnly</span> shape =&gt;
+    <span class="hljs-type">Config</span> shape -&gt; <span class="hljs-type">State</span> shape
+  create { colour, template } = { colour, template, piecesProduced: <span class="hljs-number">0</span> }
+
+  build :: <span class="hljs-keyword">forall</span> shape t1. 
+    <span class="hljs-type">R</span>.<span class="hljs-type">Union</span> shape t1 <span class="hljs-type">SupportedShapes</span> =&gt;
+    <span class="hljs-type">HasSingleRowOnly</span> shape =&gt;
+    <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">State</span> shape -&gt; <span class="hljs-type">Tuple</span> (<span class="hljs-type">State</span> shape) (<span class="hljs-type">PuzzlePiece</span> shape)
+  build = unsafeCrashWith <span class="hljs-string">"Not implemented"</span>
+</code></pre>
+<p>Now we&#39;ve defined a typeclass, we&#39;ll need to go and define an instance to describe exactly what &#39;only having a single row&#39; actually means, this needs to take place in two steps really; a good unit of currency in Typeclass world is a &#39;RowList&#39; and what we have here is a row type, so we&#39;ll create an instance of the typeclass for <em>any</em> row type which has the predicates &#39;RowToList row RL&#39; (which will magic us up another type called RL which is the row list), and then pass that row list into another predicate which will check that <em>that</em> only has one row...</p>
+<pre><code>
+ <span class="hljs-built_in"> instance </span>hasSingleRowOnly ::
+    ( RowToList row rowL
+    , HasSingleRowOnlyRL rowL
+    )
+    =&gt; HasSingleRowOnly row
+</code></pre><p>So we need <em>another</em> typeclass, no big deal..</p>
+<pre><code class="language-haskell"><span class="hljs-class">  <span class="hljs-keyword">class</span> <span class="hljs-type">HasSingleRowOnlyRL</span> (<span class="hljs-title">rl</span> :: <span class="hljs-type">RL</span>.<span class="hljs-type">RowList</span>) </span></code></pre>
+<p>An instance of this is only valid if the row list contains a single item - that is to say, a single row consed with nil, we don&#39;t care what symbol is in the row list and we don&#39;t care about the type of the row..</p>
+<pre><code class="language-haskell"><span class="hljs-class">  <span class="hljs-keyword">instance</span> hasSingleRowOnlyRL :: <span class="hljs-type">HasSingleRowOnlyRL</span> (<span class="hljs-type">RL</span>.<span class="hljs-type">Cons</span> <span class="hljs-title">symbol</span> <span class="hljs-title">t</span> <span class="hljs-type">RL</span>.<span class="hljs-type">Nil</span>)</span></code></pre>
+<p>Voila, that&#39;s literally all it takes - what happens if we call the function with a row with more than possible value?</p>
+<pre><code class="language-haskell">  wrong :: <span class="hljs-type">State</span> ( square :: <span class="hljs-type">Square</span>, rect :: <span class="hljs-type">Rect</span> )
+  wrong = create { colour: <span class="hljs-type">Yellow</span>, template: inj _square { size: <span class="hljs-number">5</span> }} </code></pre>
+<p>A compile time error, because the compiler couldn&#39;t find an instance of HasSingleRowOnly that satisfies the type that we were trying to pass in. </p>
+<pre><code>
+  <span class="hljs-literal">No</span><span class="hljs-built_in"> type </span>class<span class="hljs-built_in"> instance </span>was found <span class="hljs-keyword">for</span>
+
+    QuadFactory.HasSingleRowOnlyRL (Cons <span class="hljs-string">"rect"</span>
+                                      { height :: Int
+                                      , width :: Int
+                                      }
+                                      (Cons <span class="hljs-string">"square"</span>
+                                         { size :: Int
+                                         }
+                                         <span class="hljs-literal">Nil</span>
+                                      )
+                                   )</code></pre><p><em>Cons sym1 a1 (Cons sym2 a2 Nil)</em> is not the same as <em>(Cons sym a Nil)</em> and there is no typeclass for something with two items in it, so the compiler barfs.</p>
+<p>Can our factory now do its job? Well... not quite. I want to write something a little like this..</p>
+<pre><code class="language-haskell">
+  build :: <span class="hljs-keyword">forall</span> shape t1. 
+    <span class="hljs-type">R</span>.<span class="hljs-type">Union</span> shape t1 <span class="hljs-type">SupportedShapes</span> =&gt;
+    <span class="hljs-type">HasSingleRowOnly</span> shape =&gt;
+    <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">State</span> shape -&gt; <span class="hljs-type">Tuple</span> (<span class="hljs-type">State</span> shape) (<span class="hljs-type">PuzzlePiece</span> shape)
+  build scale state = 
+    <span class="hljs-type">Tuple</span> (state { piecesProduced = state.piecesProduced + <span class="hljs-number">1</span> }) created 
+    <span class="hljs-keyword">where</span>
+      created = match { square: \t -&gt; { maxwidth: t.size * scale
+                                      , maxheight: t.size * scale
+                                      , shape: square { size: t.size * scale }
+                                      , colour: <span class="hljs-type">Painted</span> state.colour
+                                      }
+                      , rect: \t -&gt; { maxwidth: t.width * scale
+                                    , maxheight: t.height * scale                     
+                                    , shape: rect { width: t.width * scale, height: scale }
+                                    , colour: <span class="hljs-type">Painted</span> state.colour
+                                    }
+                      } state.template
+</code></pre>
+<p><em>match</em> is a function from Data.Variant that allows us to, given a <em>Variant rl</em>, call the function in a <em>Record r</em> that matches the symbol of the current value of the variant, passing that value in and then returning the result - and this works so long as those functions all return the same thing. In the above example, the handler for &#39;square&#39; returns a <em>Variant (square :: Square)</em>, and the handler for &#39;rect&#39; returns a <em>Variant (rect :: Rect)</em>. These are not the same thing - now we could fix this by expanding state.template to be of type &#39;SupportedShapes&#39; (giving us a <em>Variant (square :: Square, rect :: Rect)</em>) but what we want to return is a <em>(Variant shape)</em>. We <em>could</em> contract to this, but that would then give us a Maybe and there are no guarantees that our &#39;square&#39; handler didn&#39;t then return a &#39;rect&#39; so runtime problems ahoy...</p>
+<p>For example we could write this</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">build</span> scale state = 
+  <span class="hljs-keyword">let</span>
+    created = match { square: \t -&gt; { maxWidth: t.size * scale
+                                    , maxHeight: t.size * scale
+                                    , shape: (expand $ square { size: t.size * scale }) :: <span class="hljs-type">Variant</span> <span class="hljs-type">SupportedShapes</span>
+                                    , colour: <span class="hljs-type">Painted</span> state.colour
+                                    }
+                    , rect: \t -&gt; { maxWidth: t.width * scale
+                                  , maxHeight: t.height * scale                     
+                                  , shape: (expand $ rect { width: t.width * scale, height: scale }) :: <span class="hljs-type">Variant</span> <span class="hljs-type">SupportedShapes</span>
+                                  , colour: <span class="hljs-type">Painted</span> state.colour
+                                  }
+              } (expand state.template :: <span class="hljs-type">Variant</span> <span class="hljs-type">SupportedShapes</span>)
+   <span class="hljs-keyword">in</span> 
+   <span class="hljs-type">Tuple</span> (state { piecesProduced = state.piecesProduced + <span class="hljs-number">1</span> }) $ unsafePartial $ fromJust $ contractPP { maxWidth: <span class="hljs-number">0</span>, maxHeight: <span class="hljs-number">0</span>, shape: state.template, colour: <span class="hljs-type">Painted</span> state.colour}  
+</code></pre>
+<p>But this is (as previously mentioned) something we would consider to be &#39;honking&#39; and there is <em>no good reason</em> why we can&#39;t use the information we have to verify that the functions in the record, return something that is parameterised by the same row type that it is given. That is to say, don&#39;t allow the function to be called with any type that isn&#39;t supported, and verify that the type of the variant in play  <em>( sym :: a )</em></p>
+<ul>
+<li>Has a matching entry &#39;sym&#39; in the record of functions</li>
+<li>The type of the input to that Fn is the same as the &#39;a&#39;</li>
+<li>The output that Fn is a type that is parameterised by &#39;a&#39;</li>
+</ul>
+<p>For clarity, here is the list of functions that we want to look up, the symbols/inputs/outputs neatly line up and it&#39;s just a case of writing a typeclass that states the things above and is provable at compile time.</p>
+<pre><code class="language-haskell">
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">MatchFns</span> = { <span class="hljs-title">square</span> :: <span class="hljs-type">Square</span> -&gt; <span class="hljs-type">PuzzlePiece</span> (<span class="hljs-title">square</span> :: <span class="hljs-type">Square</span>)
+                  , <span class="hljs-title">rect</span> :: <span class="hljs-type">Rect</span> -&gt; <span class="hljs-type">PuzzlePiece</span> (<span class="hljs-title">rect</span> :: <span class="hljs-type">Rect</span>)
+                  }</span>
+</code></pre>
+<p>Let&#39;s first up define the function we&#39;re going to be using to do this work for us..</p>
+<pre><code class="language-haskell">  uniMatch :: <span class="hljs-keyword">forall</span> fns selector result.
+              <span class="hljs-type">Record</span> fns -&gt; <span class="hljs-type">Variant</span> selector -&gt; result (selector)</code></pre>
+<p>Our goal is, at compile time, verify that </p>

@@ -475,7 +475,7 @@ expandPuzzlePiece = p = p { shape = expand p.shape }
 
 ```
 
-But this won't work, trying to change the type of something that's paramterised by the type of the containing record... doesn't *actually* make any sense. *expand* doesn't actually *do* anything, the data is exactly the same.. no, all we really want to achieve here is to tell the compiler "I know I said that it was a PuzzlePiece of lt, but actually it's a PuzzlePiece of gt and that is a safe assertion to make because lt is a subset of gt", we could therefore just go and write...
+But this won't work, trying to change the type of something that's parameterised by the type of the containing record... doesn't *actually* make any sense. *expand* doesn't actually *do* anything, the data is exactly the same.. no, all we really want to achieve here is to tell the compiler "I know I said that it was a PuzzlePiece of lt, but actually it's a PuzzlePiece of gt and that is a safe assertion to make because lt is a subset of gt", we could therefore just go and write...
 
 
 ```haskell
@@ -573,9 +573,278 @@ Wahey, rewriting all of the paintXXX functions with this union suddenly means ha
 
 The key learning here is that we should only be expanding when totally necessary (usually at the edges of the domain using these variants when things need to be concrete again). As soon as we widen a type, we can't contract it (safely) because there are no guarantees that it can't contain a value that doesn't exist in the contracted type.
 
+Adding more functionality to this pipeline
+---
+
+In this simple example, we were constructing puzzle pieces of a certain shape and using this information to effect some change in an imagined external system. We did things this way because it kept the examples simple.
+
+Let's imagine a world where have a factory to produce our puzzle pieces, and each factory can be configured to create puzzle pieces of a certain shape and colour and from that point onwards only create puzzle pieces of that shape and colour. (We have stuff in our domain that looks like this so it isn't too contrived..)
+
+```haskell
+
+  module QuadFactory where
+
+  type Config shape = { colour :: Colour
+                      , template :: Variant shape
+                      }
+
+  type State shape = { colour :: Colour
+                     , piecesProduced :: Int
+                     , template :: Variant shape
+                     }
 
 
+  create :: forall shape.
+    Config shape -> State shape
+  create { colour, template } = { colour, template, piecesProduced: 0 }
+
+  build :: forall shape. 
+    Int -> State shape -> Tuple (State shape) (PuzzlePiece shape)
+  build = unsafeCrashWith "Not implemented"
+
+```
+
+Given a Config that is paramerised with a 'shape', *create* will give you back a state that will count how many pieces are produced, and also is parameterised by 'shape', calling *build* will yield tuple containing the new state and the created puzzle piece. We've had to state that the shape in our records is a row type because PuzzlePiece needs that because PuzzlePiece has Variant in it and has that requirement. (I think this changes in Purescript 0.14, but we're not there yet...)
+
+First up, we'll need a constraint on these functions because we're not limiting what 'shape' is by anything, so we have no hope in hell of actually being able to write 'build'...
 
 
+```haskell
+
+  type SupportedShapes = ( square :: Square
+                         , rect :: Rect
+                         )
+
+  create :: forall shape t1.
+    R.Union shape t1 SupportedShapes =>
+    Config shape -> State shape
+  create { colour, template } = { colour, template, piecesProduced: 0 }
+
+  build :: forall shape t1. 
+    R.Union shape t1 SupportedShapes =>
+    Int -> State shape -> Tuple (State shape) (PuzzlePiece shape)
+  build = unsafeCrashWith "Not implemented"
+
+```
+
+That's pretty good, but this doesn't stop me calling the functions with something looking like this!
+
+```haskell
+
+  wrong :: State ( square :: Square, rect :: Rect )
+  wrong = create { colour: Yellow, template: inj _square { size: 5 }} 
+
+```
+
+No.. no no, this will not do - a factory *cannot* be described as capable of creating more than the one shape it is created and configured for creating. We're going to need a new typeclass that enforces that a row type only has a single row in it - this is where it gets exciting! Suddenly (5000 words into this blog entry) we are starting to push constraints into the type system that prevent us from creating daft configuration whilst also avoiding having to write partial case statements...
+
+
+```haskell
+
+  class HasSingleRowOnly (row :: # Type)
+
+```
+
+So far so good, given a row type, can the compiler find an instance that satisfies it? Intended usage looks a bit like this..
+
+```haskell
+
+  create :: forall shape t1.
+    R.Union shape t1 SupportedShapes =>
+    HasSingleRowOnly shape =>
+    Config shape -> State shape
+  create { colour, template } = { colour, template, piecesProduced: 0 }
+
+  build :: forall shape t1. 
+    R.Union shape t1 SupportedShapes =>
+    HasSingleRowOnly shape =>
+    Int -> State shape -> Tuple (State shape) (PuzzlePiece shape)
+  build = unsafeCrashWith "Not implemented"
+
+```
+
+Now we've defined a typeclass, we'll need to go and define an instance to describe exactly what 'only having a single row' actually means, this needs to take place in two steps really; a good unit of currency in Typeclass world is a 'RowList' and what we have here is a row type, so we'll create an instance of the typeclass for *any* row type which has the predicates 'RowToList row RL' (which will magic us up another type called RL which is the row list), and then pass that row list into another predicate which will check that *that* only has one row...
+
+```
+
+  instance hasSingleRowOnly ::
+    ( RowToList row rowL
+    , HasSingleRowOnlyRL rowL
+    )
+    => HasSingleRowOnly row
+
+```
+
+So we need *another* typeclass, no big deal..
+
+```haskell
+  class HasSingleRowOnlyRL (rl :: RL.RowList) 
+```
+
+An instance of this is only valid if the row list contains a single item - that is to say, a single row consed with nil, we don't care what symbol is in the row list and we don't care about the type of the row..
+
+
+```haskell
+  instance hasSingleRowOnlyRL :: HasSingleRowOnlyRL (RL.Cons symbol t RL.Nil)
+```
+
+Voila, that's literally all it takes - what happens if we call the function with a row with more than possible value?
+
+
+```haskell
+  wrong :: State ( square :: Square, rect :: Rect )
+  wrong = create { colour: Yellow, template: inj _square { size: 5 }} 
+```
+
+A compile time error, because the compiler couldn't find an instance of HasSingleRowOnly that satisfies the type that we were trying to pass in. 
+
+```
+
+  No type class instance was found for
+
+    QuadFactory.HasSingleRowOnlyRL (Cons "rect"
+                                      { height :: Int
+                                      , width :: Int
+                                      }
+                                      (Cons "square"
+                                         { size :: Int
+                                         }
+                                         Nil
+                                      )
+                                   )
+```
+
+*Cons sym1 a1 (Cons sym2 a2 Nil)* is not the same as *(Cons sym a Nil)* and there is no typeclass for something with two items in it, so the compiler barfs.
+
+Can our factory now do its job? Well... not quite. I want to write something a little like this..
+
+
+```haskell
+
+  build :: forall shape t1. 
+    R.Union shape t1 SupportedShapes =>
+    HasSingleRowOnly shape =>
+    Int -> State shape -> Tuple (State shape) (PuzzlePiece shape)
+  build scale state = 
+    Tuple (state { piecesProduced = state.piecesProduced + 1 }) created 
+    where
+      created = match { square: \t -> { maxwidth: t.size * scale
+                                      , maxheight: t.size * scale
+                                      , shape: square { size: t.size * scale }
+                                      , colour: Painted state.colour
+                                      }
+                      , rect: \t -> { maxwidth: t.width * scale
+                                    , maxheight: t.height * scale                     
+                                    , shape: rect { width: t.width * scale, height: scale }
+                                    , colour: Painted state.colour
+                                    }
+                      } state.template
+
+```
+
+*match* is a function from Data.Variant that allows us to, given a *Variant rl*, call the function in a *Record r* that matches the symbol of the current value of the variant, passing that value in and then returning the result - and this works so long as those functions all return the same thing. In the above example, the handler for 'square' returns a *Variant (square :: Square)*, and the handler for 'rect' returns a *Variant (rect :: Rect)*. These are not the same thing - instead we probably want to expand each function's output types so that they're the same type (as well as expanding the template to be the known subset and then contracting the final result to our known subset).
+
+For example...
+
+
+```haskell
+
+build scale state = 
+  let
+    created = match { square: \t -> { maxWidth: t.size * scale
+                                    , maxHeight: t.size * scale
+                                    , shape: (expand $ square { size: t.size * scale }) :: Variant SupportedShapes
+                                    , colour: Painted state.colour
+                                    }
+                    , rect: \t -> { maxWidth: t.width * scale
+                                  , maxHeight: t.height * scale                     
+                                  , shape: (expand $ rect { width: t.width * scale, height: scale }) :: Variant SupportedShapes
+                                  , colour: Painted state.colour
+                                  }
+              } (expand state.template :: Variant SupportedShapes)
+   in 
+   Tuple (state { piecesProduced = state.piecesProduced + 1 }) $ unsafePartial $ fromJust $ contractPP { maxWidth: 0, maxHeight: 0, shape: state.template, colour: Painted state.colour}  
+
+```
+
+This is really isn't great - those expand and contract calls littered above the place are not only pretty ugly, but we're losing our parameterised type along the way and effectively doing an unsafe cast to get our return result. There is no real correlation between input and output and that's quite a big sad face.
+
+The thing is, we do *have* all the information available to us here to safely invoke a matching function from this record without having to expand to the full SupportedShapes Variant. We do *have* all the information to verify that the output types of each function are parameterised in the same way as the parent function - we just need to tell the compiler that these things are related and we can do that with another typeclass which will prove the following..
+
+- A function exists for all possible symbols in the variant
+- The input to each function is the same as the possible values in that variant
+- The output of each function is a type that is parameterised by that symbol and value type
+
+For clarity, here are the type definitions of our above functions - the symbols/inputs/outputs neatly line up and we just need to verify that that is the case.
+
+```haskell
+
+  type MatchFns = { square :: Square -> PuzzlePiece (square :: Square)
+                  , rect :: Rect -> PuzzlePiece (rect :: Rect)
+                  }
+
+```
+
+Let's first up define the function we're going to be using to do this work for us..
+
+
+```haskell
+  uniMatch :: forall fns selector result.
+              Record fns -> Variant selector -> result (selector)
+```
+
+Given a record containing *fns* and a Variant *selector*, give us some result that is parameterised by that same selector. Easy enough - now up front we can probably state a few things
+
+- Lists are the bread and butter of typeclasses so we probably want to convert our rows into them
+- selector needs to only have a single row
+
+```haskell
+
+uniMatch :: forall fns input (f :: #Type -> Type) fnsL inputL.
+          HasSingleRowOnly input =>
+          RowToList fns fnsL =>
+          RowToList input inputL =>
+          Record fns -> Variant input -> (f input)
+```
+
+And next up, we'll add our new typeclass that'll check the functions all line up as you'd expect
+
+
+```haskell
+
+class ValidUniMatchFunction ( functions :: RL.RowList ) (inputList :: RL.RowList) (output :: #Type -> Type)
+
+```
+
+And we'll write an instance of this that'll match anything with the shape we described above
+
+
+```haskell
+
+instance validUniMatchFunction ::
+  ValidUniMatchFunction 
+    (RL.Cons sym (rowValue -> f rowOutput) functionsTail) 
+    (RL.Cons sym rowValue RL.Nil) 
+    f
+
+```
+
+So if the 'first function in the list has the symbol *sym*, takes a *rowValue* and produces an *f rowOutput*, ignoring the tail *functionsTail*, and the selector we have has the same *sym*, and the *rowValue* matches that function, then we're good to go, this function is safe to invoke. Of course, the first function in the record is unlikely to be the function we're looking for, so the other ones need checking too, and for this can just chain our instances together and check the tail
+
+
+```haskell
+else instance validUniMatchFunctionRecurse ::
+  (
+    ValidUniMatchFunction functionsTail input f
+  ) => ValidUniMatchFunction (RL.Cons s a functionsTail) input f
+
+```
+
+Pretty simple, and ignoring the implementation of this function for a moment it looks like it might work in our original build function just fine...
+
+
+```haskell
+
+```
 
 
