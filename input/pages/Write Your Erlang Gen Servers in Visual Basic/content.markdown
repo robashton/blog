@@ -451,8 +451,8 @@ The resultant tree is along the lines of:
 
 - PrimarySup
   - c1 : WorkerGenServer1 (called genserver-one)
-  - c2 : WorkerGenServer1 (called generver-two)
-  - c3 : WorkerGenServer1 (called generver-three)
+  - c2 : WorkerGenServer1 (called genserver-two)
+  - c3 : WorkerGenServer1 (called genserver-three)
   - s1 : Supervisor (called secondary-sup)
     - sc1 : WorkerGenServer1 (called nested-one)
     - sc2 : WorkerGenServer1 (called nested-two)
