@@ -69,35 +69,36 @@
       <h6>Published on <span class="date">2021-4-1</span></h6>
       <div id="post"><p>TLDR: <a href="https://github.com/robashton/erlang.net">Erlang.NET Released on Github</a></p>
 <p>I&#39;ve been working in Erlang now for nearly a decade and for the last year or two we have been investigating what it would take to start writing a <em>lot</em> more of that Erlang in Purescript instead because in theory working in a sensibly typed language means fewer bugs means fewer support calls means more time spent working on features which can be sold and therefore this is good for profit margins.</p>
-<p>Well let me tell you - it blows, we have lost weeks trying to write typeclasses around row types to confirm that &#39;this chunk of binary is good to go into this piece of code that just wants a chunk of binary&#39;, months pontificating over whether an attribute should be declared at the type-level or merely at runtime and whilst progress has been made, it has been slow and painful.</p>
+<p>Well let me tell you - it blows, we have lost weeks trying to write typeclasses around row types to confirm that &#39;this chunk of binary is good to go into this piece of code that just wants a chunk of binary&#39; and months pontificating over whether an attribute should be declared at the type-level or merely at runtime and whilst progress has been made, it has been a slow and painful exercise.</p>
 <p><em>There has to be a better way</em></p>
-<p>I worked with one of my colleagues in a previous job - it was an honest living, we wrote VB.NET together in the hay day of .NETs 1 and 2 and by golly we were most productive, it has types but it also has freedom. It has generics but it also reads really cleanly because so much of its syntax is just <em>words</em> - in other words it was almost the perfect language. Since departing this world however I&#39;ve noticed its younger brother, C#, appearing in environments like Unity and other game engines as a scripting utility and that got me thinking - what if we could use host .NET in a similar way and use C# as a <em>real</em> language and build real software with it instead? (VB.NET usage remaining optional). </p>
-<p><em>Catching up with .NET</em></p>
-<p>It has been a while since I touched base with .NET, probably again about a decade. I largely quit because the default tooling was very mouse heavy and my wrists were starting to get sore (true story), as well as most enterprise shops using the technology being <a href="/entries/why-you-cant-be-a-good-.net-developer.html">heavy with the derp</a>. Things have apparently changed since then, everything seems to revolve around the <em>dotnet</em> CLI and with the language-server happenings being commonplace across most platforms, the support for writing .NET languages in Vim is not half bad out of the gate. Huzzah.</p>
-<p>.NET Core 5.0 seemed the obvious candidate seeing as that seems to be a unification point for all the complicated versioning stories that Microsoft is so fond of. Version <em>5.0.0</em>, not just one zero - but two, that&#39;s how you know software is ready to use.</p>
+<p>I worked with one of my colleagues in a previous job many years ago - it was an honest living. We wrote VB.NET together in the heyday of .NETs 1 and 2 and by golly we were very productive indeed. It has types but it also has freedom, It has generics but it also reads really cleanly because so much of its syntax is just <em>words</em> - in other words it is almost the perfect language for writing expressive code. Since departing the world of dotnet however I have noticed its younger brother, C#, appearing in environments like Unity and other game engines as a scripting utility and that got me thinking - what if we could use host .NET in a similar way and use C# as a <em>real</em> language and build real software with it instead? (Leaving us to use VB.NET at our leisure whilst appealing to the masses that prefer C#). </p>
+<p><em>Catching up with dotnet</em></p>
+<p>It has been a while since I touched base with dotnet, probably again about a decade. I largely quit because the default tooling was very mouse heavy and my wrists were starting to get sore (true story), not to mention most enterprise shops using the technology being <a href="/entries/why-you-cant-be-a-good-.net-developer.html">heavy with the derp</a>. (Some) things have apparently changed since then, tooling-wise everything seems to revolve around the <em>dotnet</em> CLI and with the language-server happenings being commonplace across most platforms, the support for writing .NET languages in Vim is not half bad out of the gate. Huzzah.</p>
+<p>.NET Core 5.0.0 seemed the obvious candidate seeing as that seems to be a unification point for all the complicated versioning stories that Microsoft is so fond of creating. Version <em>5.0.0</em>, not just one zero - but two, that&#39;s how you know that software is ready for use!</p>
 <p><em>The solution</em></p>
-<p>We have a lot of legacy Erlang so if we&#39;re to start writing .NET code to replace it we&#39;ll first need to find a way to interoperate - the <em>obvious</em> solution is to launch the .NET code inside the existing Erlang Application side by side so they can talk to each other.</p>
-<p>If I write the following app in C# (spin up a gen server and return the pid)</p>
-<pre><code class="language-csharp">  <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">MyCoolApp</span> : <span class="hljs-title">IApp</span> {
+<p>We have a lot of legacy Erlang so if we&#39;re to start writing dotnet code to replace it we&#39;ll first need to find a way to interoperate - the <em>obvious</em> solution is to launch the dotnet code inside the existing Erlang Application side by side so they can talk to each other.</p>
+<p>If we write the following app in dotnet (spin up a gen server and return the pid)</p>
+<pre><code class="language-csharp">  <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">MyEnterpriseGradeApp</span> : <span class="hljs-title">IApp</span> {
     <span class="hljs-function"><span class="hljs-keyword">public</span> Object <span class="hljs-title">Start</span>(<span class="hljs-params"></span>)</span> {
       <span class="hljs-keyword">return</span> GenServer.StartLink(() =&gt; <span class="hljs-keyword">new</span> MyCoolGenServer() );
     }
   }</code></pre>
-<p>I can embed it in a standard Erlang Gen Supervisor like so:</p>
+<p>We can embed it in a standard Erlang Gen Supervisor like so:</p>
 <pre><code class="language-erlang">
   init([]) -&gt;
-    {ok, { #{ strategy =&gt; one_for_one }, [  #{ start =&gt; { dotnet_shim
-                                                        , start_link
-                                                        , [ <span class="hljs-string">"priv/acme.dll"</span>, <span class="hljs-string">"Acme.MyCoolApp"</span> ]
-                                                        }
-                                             , id =&gt; acme_app
-                                             , type =&gt; worker
-                                             }
-                                         ]}}.
+    {ok, { #{ strategy =&gt; one_for_one }, 
+           #{ start =&gt; { dotnet_shim
+                       , start_link
+                       , [ <span class="hljs-string">"priv/acme.dll"</span>, <span class="hljs-string">"Acme.MyEnterpriseGradeApp"</span> ]
+                       }
+            , id =&gt; acme_app
+            , type =&gt; worker
+            }
+       ]}}.
 </code></pre>
-<p>And this <em>just works</em> - Those of you who know both Erlang and C# at this point will hopefully be picking your jaw back off the floor - what on earth is going on here?</p>
+<p>And this <em>just works</em> - Those of you who know both Erlang and dotnet at this point will hopefully be picking your jaw back off the floor - what on earth is going on here?</p>
 <p><em>The simplest example</em></p>
-<p>At its heart, an <em>IApp</em> is simply a class that has a Start function that&#39;ll return <em>something</em> back up to Erlang, these can be launched manually from Erlang to execute arbitrary code - for example, here is an app written in C# that returns a fixed string to us...</p>
+<p>At its heart, an <em>IApp</em> is simply a class that has a Start method that&#39;ll return <em>something</em> back up to Erlang, these can be launched manually from Erlang to execute arbitrary code - for example, here is an app written in dotnet that returns a fixed string to us...</p>
 <pre><code class="language-csharp">  <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">HelloApp</span> : <span class="hljs-title">IApp</span> {
     <span class="hljs-function"><span class="hljs-keyword">public</span> Object <span class="hljs-title">Start</span>(<span class="hljs-params"></span>)</span> {
       <span class="hljs-keyword">return</span> <span class="hljs-string">"Hello Joe"</span>;
@@ -107,7 +108,7 @@
 <p>Can be executed from Erlang like so</p>
 <pre><code class="language-erlang">  { ok, Result } = dotnet:run_app_from_assembly(<span class="hljs-string">"priv/acme.dll"</span>, <span class="hljs-string">"Acme.HelloApp"</span>),
   ?LOG(Result). <span class="hljs-comment">%% Hello Joe</span></code></pre>
-<p>You will notice that the result from C# was automatically wrapped in an <em>{ok, Result}</em> tuple, as most Erlang APIs will expect that, if our C# code throws an exception then this will be automatically returned back as an <em>{ error, Reason }</em> instead - this seemed to be the cleanest way of expressing error conditions (and a special Exception (<em>TermException</em>) class is provided for explicitly providing that Reason to the Erlang host.</p>
+<p>You will notice that the result from dotnet was automatically wrapped in an <em>{ok, Result}</em> tuple, as most Erlang APIs will expect that, if our dotnet code throws an exception then this will be automatically returned back as an <em>{ error, Reason }</em> instead - this seemed to be the cleanest way of expressing error conditions (and a special Exception (<em>TermException</em>) class is provided for explicitly providing that Reason to the Erlang host.</p>
 <p><em>Passing values in</em></p>
 <p>A generic implementation of <em>IApp</em> exists, <em>IApp<TArgs></em>, for which an input can be requested by the <em>Start</em> method, for example adding two numbers together</p>
 <pre><code class="language-csharp">  public class AddApp : IApp&lt;Tuple&lt;Int,Int&gt;&gt; {
@@ -118,11 +119,9 @@
 </code></pre>
 <pre><code class="language-erlang">  { ok, Result } = dotnet:run_app_from_assembly(<span class="hljs-string">"priv/acme.dll"</span>, <span class="hljs-string">"Acme.AddApp"</span>, { <span class="hljs-number">5</span>, <span class="hljs-number">5</span> }),
   ?LOG(Result). <span class="hljs-comment">%% 10</span></code></pre>
-<p>The observant reader will notice that we&#39;re using a .NET <em>Tuple&lt;Int, Int&gt;</em> here and passing in an erlang tuple <em>{ integer(), integer }</em> and it just maps across automatically, how does this work? Ah well, go read the source code to find out or wait for the blog posts that I&#39;ll be writing on that subject, for now just accept that you can stick pretty much anything in your type signature and the equivalent Erlang types will get converted across. How about using a record instead of the tuple for example?</p>
-<pre><code class="language-csharp">  public record AddArgs {
-    public int X { get; init; }
-    public int Y { get; init; }
-  }
+<p>The observant reader will notice that we&#39;re using a dotnet <em>Tuple&lt;Int, Int&gt;</em> here and passing in an erlang tuple <em>{ integer(), integer }</em> and it just maps across automatically, how does this work? Ah well, go read the source code to find out or wait for the blog posts that I&#39;ll be writing on that subject, for now just accept that you can stick pretty much anything in your type signature and the equivalent Erlang types will get converted across. How about using a record instead of the tuple for example?</p>
+<pre><code class="language-csharp">  public record AddArgs (int X, int Y);
+
   public class AddApp : IApp&lt;AddArgs&gt; {
     public Object Start(AddArgs args) {
       return args.X + args.Y;
@@ -131,16 +130,16 @@
 </code></pre>
 <pre><code class="language-erlang">  { ok, Result } = dotnet:run_app_from_assembly(<span class="hljs-string">"priv/acme.dll"</span>, <span class="hljs-string">"Acme.HelloApp"</span>, #{ x =&gt; <span class="hljs-number">5</span>, y =&gt; <span class="hljs-number">5</span> }),
   ?LOG(Result). <span class="hljs-comment">%% 10</span></code></pre>
-<p>Not a problem. The observant reader will not only notice that the casing is automatically adjusted (Erlang is typically <em>snake_case</em>, and C# is typically <em>PascalCase</em>) but they&#39;ll <em>also</em> notice that the return type of Start is just a plain ol&#39; object, and the same thing applies there, return anything you like and it&#39;ll get converted into something that Erlang will understand.</p>
+<p>Not a problem. The observant reader will notice that not only is the casing automatically adjusted (Erlang is typically <em>snake_case</em>, and dotnet is typically <em>PascalCase</em>) but return type of Start is just a plain ol&#39; object, and the same thing applies there, return anything you like and it&#39;ll get converted into something that Erlang will understand.</p>
 <pre><code class="language-csharp">
   <span class="hljs-keyword">public</span> record ComplexReturnValue {
     <span class="hljs-keyword">public</span> AnotherComplexValue Why { <span class="hljs-keyword">get</span>; init; }
     <span class="hljs-keyword">public</span> <span class="hljs-keyword">int</span> Y { <span class="hljs-keyword">get</span>; init; }
     <span class="hljs-keyword">public</span> String Rye { <span class="hljs-keyword">get</span>; init; }
   }
-  <span class="hljs-keyword">public</span> record AnotherComplexValue {
-    <span class="hljs-keyword">public</span> String Because { <span class="hljs-keyword">get</span>; init; }
-  }
+
+  <span class="hljs-function"><span class="hljs-keyword">public</span> record <span class="hljs-title">AnotherComplexValue</span> (<span class="hljs-params"> <span class="hljs-keyword">string</span> Because </span>)</span>;
+
   <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">ComplexApp</span> : <span class="hljs-title">IApp</span> {
     <span class="hljs-function"><span class="hljs-keyword">public</span> Object <span class="hljs-title">Start</span>(<span class="hljs-params"></span>)</span> {
       <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> ComplexReturnValue {
@@ -160,10 +159,10 @@
   <span class="hljs-comment">%% Why: "We can", y: 1337, rye: "Rittenhouse"</span>
   ?LOG(<span class="hljs-string">"Why: ~p, y: ~p, rye: ~p ~n"</span>, [Reason, Number, Whisky ]). 
 </code></pre>
-<p><em>Back to that C# GenServer then</em></p>
-<p>We&#39;ve established that we can invoke arbitary .NET code from Erlang, which is already probably one of the most useful things I&#39;ve created this year - the Erlang eco system is almost non-existent and being able to access all of that open source technology in Nuget is going to save us a lot of future development time. Going back to the start of this blog post our very first example was one of spinning up an actual genserver in C# - that is to say, code that is going to execute in its own Erlang process and in turn be able to execute its own arbitrary logic outside of the single function call that kicked that off.</p>
+<p><em>Back to that Dotnet GenServer then</em></p>
+<p>We&#39;ve established that we can invoke arbitary dotnet code from Erlang, which is already probably one of the most useful things I&#39;ve created this year - the Erlang eco system is almost non-existent and being able to access all of that open source technology in Nuget is going to save us a lot of future development time. Going back to the start of this blog post our very first example was one of spinning up an actual genserver in dotnet - that is to say, code that is going to execute in its own Erlang process and in turn be able to execute its own arbitrary logic outside of the single function call that kicked that off.</p>
 <p>That example again:</p>
-<pre><code class="language-csharp">  <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">MyCoolApp</span> : <span class="hljs-title">IApp</span> {
+<pre><code class="language-csharp">  <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">MyEnterpriseGradeApp</span> : <span class="hljs-title">IApp</span> {
     <span class="hljs-function"><span class="hljs-keyword">public</span> Object <span class="hljs-title">Start</span>(<span class="hljs-params"></span>)</span> {
       <span class="hljs-keyword">return</span> GenServer.StartLink(() =&gt; <span class="hljs-keyword">new</span> MyCoolGenServer() );
     }
@@ -176,9 +175,9 @@
 <span class="hljs-function"><span class="hljs-title">init</span><span class="hljs-params">([Arg1, Arg2])</span> -&gt;</span>
   <span class="hljs-comment">%% Executed in new gen process</span>
   #state { one = Arg1, two = Arg2 }</code></pre>
-<p>In the C# above, initial StartLink call takes place in the host process, and the callback is what is invoked in the init call and is expected to return &#39;some state&#39;. At its simplest, that state could just be an empty object:</p>
+<p>In the dotnet above, initial StartLink call takes place in the host process, and the callback is what is invoked in the init call and is expected to return &#39;some state&#39;. At its simplest, that state could just be an empty object:</p>
 <pre><code class="language-csharp">  <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">MyCoolGenServer</span> {}</code></pre>
-<p>In Erlang, if you want to invoke some code in the process that kicked off these shenanigans, you would invoke that code via a gen_server method (call/cast) or send a message via the pid using the bang <em>!</em> operator, and so long as the relevant callback was implemented that would result in something happening.</p>
+<p>In Erlang, if you want to invoke some code in the process that kicked off these shenanigans, you would invoke that code via a gen_server method (call/cast) or send a message via the pid using the bang (<em>!</em>) operator, and so long as the relevant callback was implemented that would result in something happening.</p>
 <pre><code class="language-erlang"><span class="hljs-function"><span class="hljs-title">start_link</span><span class="hljs-params">(Arg1, Arg2)</span> -&gt;</span>
   gen_server:start_link({local, ?MODULE}, [Arg1, Arg2]).
 
@@ -194,7 +193,7 @@ handle_info(Msg, State) -&gt;
   <span class="hljs-comment">%% Hello Robert</span>
   Pid ! <span class="hljs-string">"Hello Robert"</span>.
 </code></pre>
-<p>The same thing works in C# (woah), you just need to implement an interface on the object that gets returned in that init call</p>
+<p>The same thing works in dotnet (woah), we just need to implement an interface on the object that gets returned in that init call</p>
 <pre><code class="language-csharp">public class MyCoolGenServer : IHandleInfo&lt;String&gt; {
   public HandleInfoResult HandleInfo(HandleInfoContext ctx, String msg) {
     Console.WriteLine(msg);
@@ -202,18 +201,18 @@ handle_info(Msg, State) -&gt;
   }
 }
 
-public class MyCoolApp : IApp {
+public class MyEnterpriseGradeApp : IApp {
   public Object Start() { 
     return GenServer.StartLink(() =&gt; new MyCoolGenServer());
   }
 }
 </code></pre>
-<pre><code class="language-erlang">  { ok, Pid } = dotnet_shim:start_link(<span class="hljs-string">"priv/acme.dll"</span>, <span class="hljs-string">"Acme.MyCoolApp"</span> ),
+<pre><code class="language-erlang">  { ok, Pid } = dotnet_shim:start_link(<span class="hljs-string">"priv/acme.dll"</span>, <span class="hljs-string">"Acme.MyEnterpriseGradeApp"</span> ),
 
   <span class="hljs-comment">%% Hello Robert</span>
   Pid ! <span class="hljs-string">"Hello Robert"</span>.
 </code></pre>
-<p>Yes, this just works - arbitrary messages sent from Erlang to a process started (and running!) in C# arrive and get translated accordingly. How about doing something with state then?</p>
+<p>Yes, this just works - arbitrary messages sent from Erlang to a process started (and running!) in dotnet arrive and get translated accordingly. How about doing something with state then?</p>
 <pre><code class="language-csharp">public class AdditionServer : IHandleCall&lt;int&gt; {
   private int total = 0;
 
@@ -237,7 +236,8 @@ public class AdditionApp : IApp {
   <span class="hljs-comment">%% 11</span>
   ?LOG(gen_server:call(Pid, <span class="hljs-number">6</span>)),
 </code></pre>
-<p><em>Pattern Matching in C#</em></p>
+<p>In Erlang we&#39;d have a state record that needs returning as part of the handle_info callback, but that is because Erlang doesn&#39;t have mutation. Dotnet is somewhat fuller featured in this regard and we can just store our state on a member variable and forgo the extra steps required.</p>
+<p><em>Pattern Matching in Dotnet</em></p>
 <p>Now you&#39;ll notice that our IHandleInfo/IHandleCall interfaces are generic and take the input shape expected, but it&#39;s really common in Erlang for a handle_info call to take a multitude of shapes and perform pattern matching based on those shapes to perform the correct block of logic.</p>
 <p>Consider this code written in Erlang</p>
 <pre><code class="language-erlang">
@@ -249,7 +249,7 @@ public class AdditionApp : IApp {
 handle_info({op, {mul, X}), State = #state { value = Value }) -&gt; 
   {noreply, State#state { value = Value * X }}.
 </span></span></code></pre>
-<p>This code either receives a <em>{ atom(), pid() }</em>, or <em>{ atom(), { atom(), integer() }}</em>, we don&#39;t have union types in C# so can&#39;t map this across cleanly - or <em>can we</em>. C# has some semblance of pattern matching these days as any good scripting language should - what if we just request &#39;Object&#39; as our message type instead?</p>
+<p>This code either receives a <em>{ atom(), pid() }</em>, or <em>{ atom(), { atom(), integer() }}</em>, we don&#39;t have union types in dotnet so can&#39;t map this across cleanly - or <em>can we</em>. C# has some semblance of pattern matching these days as any good scripting language should - what if we just request &#39;Object&#39; as our message type instead?</p>
 <pre><code class="language-csharp">public class MyCoolGenServer : IHandleInfo&lt;Object&gt; {
   private int value = 0;
 
@@ -273,10 +273,10 @@ handle_info({op, {mul, X}), State = #state { value = Value }) -&gt;
   }
 }</code></pre>
 <p>Okay it&#39;s not the nicest example in the world but it <em>works</em>. <em>Atom</em> and <em>Pid</em> by the way are C# types that wrap the <em>concept</em> of an Atom (just a string really) and an instance of a <em>Pid</em> respectively. An Erlang static class exists for doing things like sending data to an arbitrary pid and that&#39;s what is invoked in that above code. </p>
-<p>Now that&#39;s interesting, <em>Erlang.Send</em>? That smells a lot like I&#39;m calling Erlang from C# and you know why? It&#39;s because I&#39;m calling Erlang from C#.</p>
-<p><em>Using Dynamic to invoke arbitrary Erlang code from C#</em></p>
-<p>There is absolutely no point in writing gen servers in C# if we then go and use the .NET File or Sockets API (or any other IO for that matter). One of the more glorious aspects of writing Erlang is that when you&#39;re opening handles to various IO, you&#39;re actually spinning up processes that are linked to an owner and a pile of excellent behaviour is there by default to ensure that if the host crashes that the supervision tree will handle that, restart appropriate children and those handles will get <em>closed cleanly</em>. This is <em>baked right into OTP</em> and is one of the reasons why implementions of actor models in platforms such as Java/Scala (Akka) are missing 100% of the shots they&#39;re taking. (This also goes double for implementing these patterns using <a href="http://codeofrob.com/entries/the-ashton-disinterest-curve---clojure.html">core.async in Clojure</a> but I digress)</p>
-<p>It makes sense therefore to just allow the execution of arbitrary Erlang code from C# and therefore open access to these APIs.</p>
+<p>Now that&#39;s interesting, <em>Erlang.Send</em>? That smells a lot like we&#39;re calling Erlang from dotnet and you know why? It&#39;s because we&#39;re calling Erlang from dotnet.</p>
+<p><em>Using Dynamic to invoke arbitrary Erlang code from Dotnet</em></p>
+<p>There is absolutely no point in writing gen servers in dotnet if we then go and use the dotnet File or Sockets API (or perform any other IO for that matter). One of the more glorious aspects of writing Erlang is that when you&#39;re opening handles to various IO, you&#39;re actually spinning up processes that are linked to an owner and a pile of excellent behaviour is there by default to ensure that if the host crashes that the supervision tree will handle that, restart appropriate children and those handles will get <em>closed cleanly</em>. This is <em>baked right into OTP</em> and is one of the reasons why implementions of actor models in platforms such as Java/Scala (Akka) are missing 100% of the shots they&#39;re taking. (This also goes double for implementing these patterns using <a href="http://codeofrob.com/entries/the-ashton-disinterest-curve---clojure.html">core.async in Clojure</a> but I digress)</p>
+<p>It makes sense therefore to just allow the execution of arbitrary Erlang code from dotnet and therefore open access to these APIs.</p>
 <p>Consider <em><a href="https://erlang.org/doc/man/file.html#write_file-2">file:write_file</a></em> for example</p>
 <pre><code class="language-csharp">  result = Erlang.Modules.File.WriteFile(&quot;foo.txt&quot;, Encoding.ASCII.GetBytes(&quot;please write me to that file));
   switch(result) {
@@ -302,7 +302,7 @@ handle_info({op, {mul, X}), State = #state { value = Value }) -&gt;
   <span class="hljs-keyword">this</span>.pid = ErlNifPid.Zero;
 
 </code></pre>
-<p>In a similar vein, that also means that APIs that involve messages being sent back to the parent process work as well - this can either be implemented in the IHandleInfo as above, or we can spin up an arbitrary process in C# to handle those specific messages. Doing this and wrapping this functionality in a C# class is a far more pleasant way of hiding the low level dynamic call taking place and exporting a nicer API to the C# client.</p>
+<p>In a similar vein, that also means that APIs that involve messages being sent back to the parent process work as well - this can either be implemented in the IHandleInfo as above, or we can spin up an arbitrary process in dotnet to handle those specific messages. Doing this and wrapping this functionality in a dotnet class is a far more pleasant way of hiding the low level dynamic call taking place and exporting a nicer API to the dotnet client.</p>
 <pre><code class="language-csharp">  <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">class</span> <span class="hljs-title">GenUdp</span> {
 
   <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> Pid <span class="hljs-title">Open</span>(<span class="hljs-params">Tuple&lt;Int, Int, Int, Int&gt; ip, <span class="hljs-keyword">int</span> port</span>)</span> {
@@ -355,20 +355,24 @@ handle_info({op, {mul, X}), State = #state { value = Value }) -&gt;
     }
   }
 </code></pre>
-<p><em>Building more of the application in C# itself</em></p>
-<p>So far we&#39;ve demonstrated how you can invoke arbitary code written in .NET from Erlang, spin up processes written in C# (either as standalone processes or as gen servers), and invoke arbitrary Erlang code from C# as well as all the magic type back and forth nonsense we&#39;ve managed to pack into this library.</p>
-<p>What if we want to build more complex functionality in C#? It&#39;s one thing spinning up a single process which then spins up ad-hoc processes itself, but to build a proper reliable application in C# what we need is the ability to define supervision trees!</p>
+<p><em>Building more of the application in dotnet itself</em></p>
+<p>So far we&#39;ve demonstrated how you can invoke arbitary code written in dotnet from Erlang, spin up processes written in dotnet (either as standalone processes or as gen servers), and invoke arbitrary Erlang code from dotnet as well as all the magic type back and forth nonsense we&#39;ve managed to pack into this library.</p>
+<p>What if we want to build more complex functionality in dotnet? It&#39;s one thing spinning up a single process which then spins up ad-hoc processes itself, but to build a proper reliable application in dotnet what we need is the ability to define supervision trees!</p>
 <p>In Erlang, typically the application will spin up a top level supervision tree - which is effectively a list of ids, and then modules/args to invoke for those ids in order to get a process. If one of these processes crash then depending on how that supervision tree is configured, either the whole tree will be restarted, or just the child that crashed (and then repeated crashes might then cause the supervisor itself to restart). Some of these children can themselves be supervisors and thus with a little careful reasoning about how your application needs to interact, a tree can be built that maximises robustness whilst minimising any potential downtime.</p>
-<p>In C#... Well we can just do all of this in a single file - here is a supervision tree from one of the tests written in the Erlang.NET project itself.</p>
+<p>In dotnet... Well we can just do all of this in a single file - here is a supervision tree from one of the tests written in the Erlang.NET project itself.</p>
 <pre><code class="language-csharp">    <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">SimpleSupApp</span> : <span class="hljs-title">IApp</span>
     {
       <span class="hljs-function"><span class="hljs-keyword">public</span> Object <span class="hljs-title">Start</span>(<span class="hljs-params"></span>)</span> {
-        <span class="hljs-keyword">return</span> Supervisor.StartLink(<span class="hljs-string">"primary-sup"</span>, () =&gt; <span class="hljs-keyword">new</span> SupervisorConfig(SupervisionStrategy.OneForAll,
-              <span class="hljs-keyword">new</span> SupervisorChild [] { <span class="hljs-keyword">new</span> SupervisorWorker(<span class="hljs-string">"c1"</span>, () =&gt; GenServer.StartLink(<span class="hljs-string">"genserver-one"</span>, () =&gt; <span class="hljs-keyword">new</span> WorkerGenServer1()))
+        <span class="hljs-keyword">return</span> Supervisor.StartLink(<span class="hljs-string">"primary-sup"</span>, 
+                  () =&gt; <span class="hljs-keyword">new</span> SupervisorConfig(
+                    SupervisionStrategy.OneForAll,
+                    <span class="hljs-keyword">new</span> SupervisorChild [] { 
+                       <span class="hljs-keyword">new</span> SupervisorWorker(<span class="hljs-string">"c1"</span>, () =&gt; GenServer.StartLink(<span class="hljs-string">"genserver-one"</span>, () =&gt; <span class="hljs-keyword">new</span> WorkerGenServer1()))
                      , <span class="hljs-keyword">new</span> SupervisorWorker(<span class="hljs-string">"c2"</span>, () =&gt; GenServer.StartLink(<span class="hljs-string">"genserver-two"</span>, () =&gt; <span class="hljs-keyword">new</span> WorkerGenServer1()))
                      , <span class="hljs-keyword">new</span> SupervisorWorker(<span class="hljs-string">"c3"</span>, () =&gt; GenServer.StartLink(<span class="hljs-string">"genserver-three"</span>, () =&gt; <span class="hljs-keyword">new</span> WorkerGenServer1()))
                      , <span class="hljs-keyword">new</span> Supervisor(<span class="hljs-string">"s1"</span>, () =&gt; 
-                         Supervisor.StartLink(<span class="hljs-string">"secondary-sup"</span>, () =&gt; <span class="hljs-keyword">new</span> SupervisorConfig(SupervisionStrategy.OneForOne, 
+                         Supervisor.StartLink(<span class="hljs-string">"secondary-sup"</span>, 
+                         () =&gt; <span class="hljs-keyword">new</span> SupervisorConfig(SupervisionStrategy.OneForOne, 
                            <span class="hljs-keyword">new</span> [] { <span class="hljs-keyword">new</span> SupervisorWorker(<span class="hljs-string">"sc1"</span>, () =&gt; GenServer.StartLink(<span class="hljs-string">"nested-one"</span>, () =&gt; <span class="hljs-keyword">new</span> WorkerGenServer1()))
                                  ,  <span class="hljs-keyword">new</span> SupervisorWorker(<span class="hljs-string">"sc2"</span>, () =&gt; GenServer.StartLink(<span class="hljs-string">"nested-two"</span>, () =&gt; <span class="hljs-keyword">new</span> WorkerGenServer1()))
                                  ,  <span class="hljs-keyword">new</span> SupervisorWorker(<span class="hljs-string">"sc3"</span>, () =&gt; GenServer.StartLink(<span class="hljs-string">"nested-three"</span>, () =&gt; <span class="hljs-keyword">new</span> WorkerGenServer1()))
@@ -398,7 +402,7 @@ handle_info({op, {mul, X}), State = #state { value = Value }) -&gt;
 </ul>
 <p>By restarted, we mean that callback above (the penis operator () =&gt;) being invoked once again. Args can be captured and passed in here if required, it&#39;s just closures all the way down.</p>
 <p><em>Conclusion</em> </p>
-<p>Now while all the examples in this blog entry are written in C# (as that appears to be the prevailing language in that ecosystem for the moment, yes I know there are five F# developers too <em>waves</em>), all of this results in our original aim which was to write our gen servers in Visual Basic .NET.</p>
+<p>Now while all the examples in this blog entry are written in C# (as that appears to be the prevailing language in that ecosystem for the moment, yes I know there are F# developers too <em>waves at all five of them</em>), all of this results in our original aim which was to write our gen servers in Visual Basic .NET.</p>
 <pre><code class="language-vb">    <span class="hljs-keyword">Public</span> <span class="hljs-keyword">Class</span> MyGenServerVB
         <span class="hljs-keyword">Inherits</span> IHandleInfo(<span class="hljs-keyword">Of</span> Msg)
         <span class="hljs-keyword">Public</span> <span class="hljs-keyword">Sub</span> <span class="hljs-keyword">New</span>()
@@ -413,7 +417,7 @@ handle_info({op, {mul, X}), State = #state { value = Value }) -&gt;
         <span class="hljs-keyword">End</span> <span class="hljs-keyword">Function</span>
     <span class="hljs-keyword">End</span> <span class="hljs-keyword">Class</span></code></pre>
 <p>That&#39;s all it took, I&#39;ll be following this blog entry up with how any of this works so subscribe to the RSS (lol) if you want to read that, technical stuff that you don&#39;t need to know in order to appreciate the &#39;it just works&#39; nature of this integration if that&#39;s all you wanted.</p>
-<p>Take a look over at the Github for actual <a href="https://github.com/robashton/erlang.net">Getting Started</a> info, hopefully it&#39;s pretty clear.</p>
+<p>Take a look over at the Github for actual <a href="https://github.com/robashton/erlang.net">Getting Started</a> notes, there will no doubt be tweaks required but it should be enough for us to make some progress at least.</p>
 </div>
       <div id="links">
         <a href="/">Index</a>
