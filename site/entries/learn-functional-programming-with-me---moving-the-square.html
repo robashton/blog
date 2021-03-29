@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -71,15 +72,15 @@
 <p><strong>Reminder</strong>: The source for all of this can be found at <a href="https://github.com/robashton/clojure-spaceinvaders">github.com/robashton/clojure-spaceinvaders</a></p>
 <h2 id="parameterising-the-function">Parameterising the function</h2>
 <p>This is a no-brainer, I&#39;m going to need to know where to draw this thing, I start off by passing in the state required to draw a rect to my function.</p>
-<pre><code>(<span class="hljs-name">defn</span> drawRect [<span class="hljs-name">x</span> y w h]
-  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [<span class="hljs-name">target</span> (<span class="hljs-name">.getElementById</span> js/document <span class="hljs-string">"target"</span>)
-        context (<span class="hljs-name">.getContext</span> target <span class="hljs-string">"2d"</span>)]
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> drawRect [x y w h]
+  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [target (<span class="hljs-name">.getElementById</span> js/document <span class="hljs-string">&quot;target&quot;</span>)
+        context (<span class="hljs-name">.getContext</span> target <span class="hljs-string">&quot;2d&quot;</span>)]
      (<span class="hljs-name">.fillRect</span> context x y w h)           
   )
 )</code></pre><p>So far so good - but now I&#39;m going to need to not only pass in those variables, but - well they&#39;re going to have to be variable (somehow) because they&#39;re going to have to change each frame and it&#39;s stuff like this that makes me break out in a cold sweat because I haven&#39;t discovered the patterns to solve this type of problem yet.</p>
 <p>Let&#39;s explain - you see that &#39;let&#39; statement, the values I&#39;ve defined there, those key value pairs are <em>immutable</em>, this means I cannot change them - for example, if I want to make this square move of its own voilition, the literal equivalent of</p>
-<pre><code><span class="hljs-keyword">for</span>(var x = <span class="hljs-number">0</span>; x &lt; <span class="hljs-number">1000</span>; x++)
-  drawRect(x, <span class="hljs-number">0</span>, <span class="hljs-number">100</span>, <span class="hljs-number">100</span>);</code></pre><p>Doesn&#39;t exist.</p>
+<pre><code><span class="hljs-attribute">for</span>(var x = <span class="hljs-number">0</span>; x &lt; <span class="hljs-number">1000</span>; x++)
+  <span class="hljs-attribute">drawRect</span>(x, <span class="hljs-number">0</span>, <span class="hljs-number">100</span>, <span class="hljs-number">100</span>);</code></pre><p>Doesn&#39;t exist.</p>
 <p>Now, if I were to make my best guess at how to solve this, I&#39;d say that we need a function that takes in x, and then calls itself with x+1, for example at a conceptual level:</p>
 <pre><code><span class="hljs-keyword">function</span> draw<span class="hljs-constructor">AndMove(<span class="hljs-params">x</span>)</span> {
   draw<span class="hljs-constructor">Rect(<span class="hljs-params">x</span>, 0, 100, 100)</span>

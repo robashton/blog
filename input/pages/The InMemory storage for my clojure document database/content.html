@@ -8,8 +8,8 @@
 </ul>
 <p>Well, this is quite a simple thing. As described in the last two entries - we have a very small surface area to implement for our storage system, and all objects are passed in as Plain Old Clojure data structures. The implemention therefore clocks in at under 40 lines of code and is shown in its entirety below.</p>
 <p>Memory storage is implemented as an atom containing a sorted map.</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> create [] (<span class="hljs-name">MemoryStorage.</span> (<span class="hljs-name"><span class="hljs-builtin-name">atom</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">sorted-map</span></span>))))</code></pre><p>MemoryStorage merely returns whatever is in this atom at the start of a transaction (giving read isolation)</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defrecord</span></span> MemoryStorage [memory]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">create</span> [] (<span class="hljs-name">MemoryStorage.</span> (<span class="hljs-name"><span class="hljs-builtin-name">atom</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">sorted-map</span></span>))))</code></pre><p>MemoryStorage merely returns whatever is in this atom at the start of a transaction (giving read isolation)</p>
+<pre><code>(<span class="hljs-keyword">defrecord</span> <span class="hljs-title">MemoryStorage</span> [memory]
   java.io.Closeable
   Reader
   Storage
@@ -17,7 +17,7 @@
   (<span class="hljs-name">from-db</span> [this id] (<span class="hljs-name"><span class="hljs-builtin-name">get</span></span> @memory id))
   (<span class="hljs-name">open-iterator</span> [this] (<span class="hljs-name">MemoryIterator.</span> <span class="hljs-literal">nil</span> memory (<span class="hljs-name"><span class="hljs-builtin-name">atom</span></span> <span class="hljs-literal">nil</span>)))
   (<span class="hljs-name">close</span> [this] <span class="hljs-literal">nil</span>))</code></pre><p>Commiting the transaction, is just a reduction of operations inside the transaction into whatever is in the atom.</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defrecord</span></span> MemoryTransaction [snapshot memory]
+<pre><code>(<span class="hljs-keyword">defrecord</span> <span class="hljs-title">MemoryTransaction</span> [snapshot memory]
   java.io.Closeable
   Writer
   Reader
@@ -27,7 +27,7 @@
                   (<span class="hljs-name"><span class="hljs-builtin-name">if</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> <span class="hljs-symbol">:deleted</span> v) (<span class="hljs-name"><span class="hljs-builtin-name">dissoc</span></span> m k) (<span class="hljs-name"><span class="hljs-builtin-name">assoc</span></span> m k v)))
                                         %<span class="hljs-number">1</span> (<span class="hljs-symbol">:cache</span> this))))
   (<span class="hljs-name">close</span> [this] <span class="hljs-literal">nil</span>))</code></pre><p>And because we created a sorted map, iterating means dropping up to the point where we want to begin iterating, and returning the sequence.</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defrecord</span></span> MemoryIterator [snapshot memory start]
+<pre><code>(<span class="hljs-keyword">defrecord</span> <span class="hljs-title">MemoryIterator</span> [snapshot memory start]
   java.io.Closeable
   Iterator
   (<span class="hljs-name">seek!</span> [this value] (<span class="hljs-name"><span class="hljs-builtin-name">swap!</span></span> start (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [i] value)))

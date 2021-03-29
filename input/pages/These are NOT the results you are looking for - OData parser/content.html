@@ -12,21 +12,21 @@
 </ul>
 <p>Before we get onto some more fuzzy stuff, it would be good to deal with &#39;not&#39;</p>
 <p>Not is an interesting case because it&#39;s not really  the same as the rest of the expressions so far</p>
-<pre><code><span class="hljs-literal">Not</span>  Logical negation  /Products?$filter=<span class="hljs-literal">not</span> endswith(Description,<span class="hljs-string">'milk'</span>)</code></pre><p>It can&#39;t apply in situations like this however</p>
-<pre><code>/Products?<span class="hljs-symbol">$</span>filter=<span class="hljs-keyword">not</span> Product <span class="hljs-keyword">eq</span> <span class="hljs-number">5</span></code></pre><p>But it can probably apply in situations like this</p>
-<pre><code>/Products?$filter=<span class="hljs-literal">not</span> Published</code></pre><p>This tells us something, which is that not isn&#39;t going to be expecting an expression unless it&#39;s in braces, otherwise it&#39;s going to be looking for a value.</p>
+<pre><code>Not  Logical negation  /Products?<span class="hljs-variable">$filter</span><span class="hljs-built_in">=not</span> endswith(Description,<span class="hljs-string">&#x27;milk&#x27;</span>)</code></pre><p>It can&#39;t apply in situations like this however</p>
+<pre><code>/Products?<span class="hljs-variable">$filter</span><span class="hljs-built_in">=not</span> Product <span class="hljs-literal">eq</span> <span class="hljs-number">5</span></code></pre><p>But it can probably apply in situations like this</p>
+<pre><code>/Products?<span class="hljs-variable">$filter</span><span class="hljs-built_in">=not</span> Published</code></pre><p>This tells us something, which is that not isn&#39;t going to be expecting an expression unless it&#39;s in braces, otherwise it&#39;s going to be looking for a value.</p>
 <p>I&#39;m not supporting methods yet, so I&#39;ll ignore that requirement for now.</p>
-<pre><code>test(<span class="hljs-string">"/some/resource?$filterby=not Published"</span>, <span class="hljs-string">"OData"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">result</span>) </span>{
+<pre><code><span class="hljs-function"><span class="hljs-title">test</span><span class="hljs-params">(<span class="hljs-string">&quot;/some/resource?$filterby=not Published&quot;</span>, <span class="hljs-string">&quot;OData&quot;</span>, function(result)</span></span> {
 
-  it(<span class="hljs-string">"A filter should be present"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-     assert.notEqual(result.options.<span class="hljs-symbol">$filter</span>by, <span class="hljs-literal">null</span>)
+  it(<span class="hljs-string">&quot;A filter should be present&quot;</span>, function() {
+     assert<span class="hljs-selector-class">.notEqual</span>(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$filterby</span>, null)
   })
-  it(<span class="hljs-string">"Filter should be an instance of 'not'"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-     assert.equal(result.options.<span class="hljs-symbol">$filter</span>by[<span class="hljs-number">0</span>], <span class="hljs-string">"not"</span>)
+  it(<span class="hljs-string">&quot;Filter should be an instance of &#x27;not&#x27;&quot;</span>, function() {
+     assert<span class="hljs-selector-class">.equal</span>(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$filterby</span><span class="hljs-selector-attr">[0]</span>, <span class="hljs-string">&quot;not&quot;</span>)
   })
 
-  it(<span class="hljs-string">"value should be 'Published'"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-    assert.equal(result.options.<span class="hljs-symbol">$filter</span>by[<span class="hljs-number">1</span>].name, <span class="hljs-string">"Published"</span>)
+  it(<span class="hljs-string">&quot;value should be &#x27;Published&#x27;&quot;</span>, function() {
+    assert<span class="hljs-selector-class">.equal</span>(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$filterby</span><span class="hljs-selector-attr">[1]</span><span class="hljs-selector-class">.name</span>, <span class="hljs-string">&quot;Published&quot;</span>)
   })
 })</code></pre><p>First off, this one</p>
 <pre><code>FilterByValue = 
@@ -38,33 +38,33 @@
 
 FilterNegateExpression = 
   spaces
-  seq(<span class="hljs-string">"not"</span>)
+  seq(<span class="hljs-string">&quot;not&quot;</span>)
   spaces
-  FilterByValue:value       -&gt;  [ <span class="hljs-string">"not"</span>, value ]
+  FilterByValue:value       -&gt;  [ <span class="hljs-string">&quot;not&quot;</span>, value ]
 ,</code></pre><p>Quite simple, if we get as far as checking for a value, it means we haven&#39;t found an expression, so we&#39;ll check for &quot;Not&quot; - I guess this is where we&#39;ll probably stick methods later too. </p>
 <p>A &quot;NegateExpression&quot; is simply a &quot;not&quot; followed by a value, we&#39;ll allow double negatives too because there is no harm in this.</p>
 <p>Next up, we&#39;ll check for braces, and inside braces we&#39;ll allow further expressions (recurse recurse recurse)</p>
-<pre><code>test(<span class="hljs-string">"/some/resource?$filterby=not (Price gt 5)"</span>, <span class="hljs-string">"OData"</span>, function(<span class="hljs-name">result</span>) {
+<pre><code><span class="hljs-function"><span class="hljs-title">test</span><span class="hljs-params">(<span class="hljs-string">&quot;/some/resource?$filterby=not (Price gt 5)&quot;</span>, <span class="hljs-string">&quot;OData&quot;</span>, function(result)</span></span> {
 
-  it(<span class="hljs-string">"A filter should be present"</span>, function() {
-     assert.notEqual(<span class="hljs-name">result</span>.options.$filterby, null)
+  it(<span class="hljs-string">&quot;A filter should be present&quot;</span>, function() {
+     assert<span class="hljs-selector-class">.notEqual</span>(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$filterby</span>, null)
   })
-  it(<span class="hljs-string">"Filter should be an instance of 'not'"</span>, function() {
-     assert.equal(<span class="hljs-name">result</span>.options.$filterby[<span class="hljs-number">0</span>], <span class="hljs-string">"not"</span>)
+  it(<span class="hljs-string">&quot;Filter should be an instance of &#x27;not&#x27;&quot;</span>, function() {
+     assert<span class="hljs-selector-class">.equal</span>(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$filterby</span><span class="hljs-selector-attr">[0]</span>, <span class="hljs-string">&quot;not&quot;</span>)
   })
-  it(<span class="hljs-string">"Value should be Price gt 5"</span>, function() {
-     var rhs = result.options.$filterby[<span class="hljs-number">1</span>] 
-     assert.equal(<span class="hljs-name">rhs</span>[<span class="hljs-number">0</span>], <span class="hljs-string">"gt"</span>)
-     assert.equal(<span class="hljs-name">rhs</span>[<span class="hljs-number">1</span>].name, <span class="hljs-string">"Price"</span>)
-     assert.equal(<span class="hljs-name">rhs</span>[<span class="hljs-number">2</span>], <span class="hljs-number">5</span>)
+  it(<span class="hljs-string">&quot;Value should be Price gt 5&quot;</span>, function() {
+     <span class="hljs-selector-tag">var</span> rhs = result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$filterby</span><span class="hljs-selector-attr">[1]</span> 
+     assert<span class="hljs-selector-class">.equal</span>(rhs<span class="hljs-selector-attr">[0]</span>, <span class="hljs-string">&quot;gt&quot;</span>)
+     assert<span class="hljs-selector-class">.equal</span>(rhs<span class="hljs-selector-attr">[1]</span><span class="hljs-selector-class">.name</span>, <span class="hljs-string">&quot;Price&quot;</span>)
+     assert<span class="hljs-selector-class">.equal</span>(rhs<span class="hljs-selector-attr">[2]</span>, <span class="hljs-number">5</span>)
   })
 })</code></pre><p>Solved by</p>
 <pre><code>FilterNegateExpression = 
   spaces
-  se<span class="hljs-string">q("not")</span>
+  se<span class="hljs-string">q(&quot;not&quot;)</span>
   spaces
   (
     FilterByValue
-  | <span class="hljs-string">'('</span> spaces FilterByExpression:expr spaces <span class="hljs-string">')'</span> -&gt; expr
-  ):value -&gt;  [ <span class="hljs-string">"not"</span>, value ]
+  | <span class="hljs-string">&#x27;(&#x27;</span> spaces FilterByExpression:expr spaces <span class="hljs-string">&#x27;)&#x27;</span> -&gt; expr
+  ):value -&gt;  [ <span class="hljs-string">&quot;not&quot;</span>, value ]
 ,</code></pre><p>Dead easy, now it&#39;s time to get our heads stuck into Arithmetic Operators.</p>

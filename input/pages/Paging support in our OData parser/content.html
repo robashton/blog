@@ -54,18 +54,18 @@ Parsing /resource?$orderby=PropertyOne asc,PropertyTwo desc
 Parsing /resource?$orderby=PropertyOne/SubProperty
   ✓ <span class="hljs-built_in">sort</span> options are present <span class="hljs-keyword">on</span> <span class="hljs-title">the</span> <span class="hljs-title">result</span> 
   ✓ <span class="hljs-built_in">sort</span> options have property <span class="hljs-literal">one</span> name specified 
-  ✓ <span class="hljs-built_in">sort</span> options have property <span class="hljs-literal">one</span><span class="hljs-string">'s sub property specified </span></code></pre><p>Which is nice. Now I want to add paging support in the form of </p>
+  ✓ <span class="hljs-built_in">sort</span> options have property <span class="hljs-literal">one</span><span class="hljs-string">&#x27;s sub property specified </span></code></pre><p>Which is nice. Now I want to add paging support in the form of </p>
 <p>$top and $skip, while I&#39;m at it I may as well add support for $inlinecount because it&#39;s pretty much the same thing.</p>
 <p>This should be fairly easy, this is what I want to support:</p>
-<pre><code>/<span class="hljs-keyword">some</span>/<span class="hljs-type">path</span>?$top=<span class="hljs-number">5</span>&amp;<span class="hljs-keyword">limit</span>=skip=<span class="hljs-number">100</span>
-/<span class="hljs-keyword">some</span>/<span class="hljs-type">path</span>?$inlinecount=allpages</code></pre><p><strong>Top and Skip</strong></p>
+<pre><code><span class="hljs-regexp">/some/</span>path?<span class="hljs-variable">$top</span>=<span class="hljs-number">5</span>&amp;limit=skip=<span class="hljs-number">100</span>
+<span class="hljs-regexp">/some/</span>path?<span class="hljs-variable">$inlinecount</span>=allpages</code></pre><p><strong>Top and Skip</strong></p>
 <p>These are quite simple, just text and a number, let&#39;s write a couple of tests</p>
-<pre><code>test(<span class="hljs-string">"/some/resource?$top=5&amp;$skip=100"</span>, <span class="hljs-string">"OData"</span>, function(<span class="hljs-name">result</span>) {
-  it(<span class="hljs-string">"top should be specified"</span>, function() {
-     assert.equal(<span class="hljs-name">result</span>.options.$top, <span class="hljs-number">5</span>)
+<pre><code>test(<span class="hljs-string">&quot;/some/resource?<span class="hljs-subst">$top</span>=5&amp;<span class="hljs-subst">$skip</span>=100&quot;</span>, <span class="hljs-string">&quot;OData&quot;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">result</span>) </span>{
+  it(<span class="hljs-string">&quot;top should be specified&quot;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+     assert.equal(result.options.<span class="hljs-variable">$top</span>, <span class="hljs-number">5</span>)
   })
-  it(<span class="hljs-string">"skip should be specified"</span>, function() {
-     assert.equal(<span class="hljs-name">result</span>.options.$skip, <span class="hljs-number">100</span>)
+  it(<span class="hljs-string">&quot;skip should be specified&quot;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+     assert.equal(result.options.<span class="hljs-variable">$skip</span>, <span class="hljs-number">100</span>)
   })
 })</code></pre><p>I just need to add these to the list of recognised query options</p>
 <pre><code>QueryOption = 
@@ -76,28 +76,28 @@ Parsing /resource?$orderby=PropertyOne/SubProperty
 ,</code></pre><p>This is where the elegance of OMeta makes me really happy, being able to easily say what the options for something are in this way is really pretty.</p>
 <p>So, TopOption</p>
 <pre><code>TopOption = 
-  se<span class="hljs-string">q("$top=")</span> Number:value -&gt; { name: <span class="hljs-string">"$top"</span>, value: value }
+  se<span class="hljs-string">q(&quot;$top=&quot;)</span> Number:value -&gt; { name: <span class="hljs-string">&quot;$top&quot;</span>, value: value }
 ,</code></pre><p>and SkipOption</p>
 <pre><code>SkipOption = 
-  se<span class="hljs-string">q("$skip=")</span> Number:value -&gt; { name: <span class="hljs-string">"$skip"</span>, value: value }
+  se<span class="hljs-string">q(&quot;$skip=&quot;)</span> Number:value -&gt; { name: <span class="hljs-string">&quot;$skip&quot;</span>, value: value }
 ,</code></pre><p>Can&#39;t say fairer than that!</p>
 <p><strong>inlinecount</strong></p>
 <p>This one is a bit more interesting, the only valid options are <em>none</em> and <em>allpages</em>, and we&#39;re supposed to return a 404 if we don&#39;t match. We&#39;re not currently doing anything with HTTP in this parser so what I&#39;ll actually do is accept &quot;any text&quot; and leave it up to the consumer to do this job for us. (Rather than throw a generic <em>I can&#39;t parse this</em> exception)</p>
-<pre><code>test(<span class="hljs-string">"/some/resource?$inlinecount=allpages"</span>, <span class="hljs-string">"OData"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">result</span>) </span>{
-  it(<span class="hljs-string">"inline should be specified"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-     assert.equal(result.options.<span class="hljs-symbol">$i</span>nlinecount, <span class="hljs-string">"allpages"</span>)
+<pre><code>test(<span class="hljs-string">&quot;/some/resource?<span class="hljs-subst">$inlinecount</span>=allpages&quot;</span>, <span class="hljs-string">&quot;OData&quot;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">result</span>) </span>{
+  it(<span class="hljs-string">&quot;inline should be specified&quot;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+     assert.equal(result.options.<span class="hljs-variable">$inlinecount</span>, <span class="hljs-string">&quot;allpages&quot;</span>)
   })
 })
 
-test(<span class="hljs-string">"/some/resource?$inlinecount=none"</span>, <span class="hljs-string">"OData"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">result</span>) </span>{
-  it(<span class="hljs-string">"inline should be specified"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-     assert.equal(result.options.<span class="hljs-symbol">$i</span>nlinecount, <span class="hljs-string">"none"</span>)
+test(<span class="hljs-string">&quot;/some/resource?<span class="hljs-subst">$inlinecount</span>=none&quot;</span>, <span class="hljs-string">&quot;OData&quot;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">result</span>) </span>{
+  it(<span class="hljs-string">&quot;inline should be specified&quot;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+     assert.equal(result.options.<span class="hljs-variable">$inlinecount</span>, <span class="hljs-string">&quot;none&quot;</span>)
   })
 })
 
-test(<span class="hljs-string">"/some/resource?$inlinecount=flibble"</span>, <span class="hljs-string">"OData"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">result</span>) </span>{
-  it(<span class="hljs-string">"inline should be specified"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-     assert.equal(result.options.<span class="hljs-symbol">$i</span>nlinecount, <span class="hljs-string">""</span>)
+test(<span class="hljs-string">&quot;/some/resource?<span class="hljs-subst">$inlinecount</span>=flibble&quot;</span>, <span class="hljs-string">&quot;OData&quot;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">result</span>) </span>{
+  it(<span class="hljs-string">&quot;inline should be specified&quot;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+     assert.equal(result.options.<span class="hljs-variable">$inlinecount</span>, <span class="hljs-string">&quot;&quot;</span>)
   })
 })</code></pre><p>I want explicit handling for this because it&#39;ll help with the highlighting efforts in the editor that  this will be used in.</p>
 <p>We can add it like so</p>
@@ -109,11 +109,11 @@ test(<span class="hljs-string">"/some/resource?$inlinecount=flibble"</span>, <sp
   <span class="hljs-string">| OperationParam</span>
 ,</code></pre><p>And handle our explcit decisions like so</p>
 <pre><code>InlineCountOption =
-  se<span class="hljs-string">q("$inlinecount=")</span> 
+  se<span class="hljs-string">q(&quot;$inlinecount=&quot;)</span> 
   (
-    se<span class="hljs-string">q("allpages")</span> -&gt; <span class="hljs-string">"allpages"</span>
-  | se<span class="hljs-string">q("none")</span> -&gt; <span class="hljs-string">"none"</span>
-  | Text -&gt; <span class="hljs-string">""</span>
-  ):value -&gt; { name: <span class="hljs-string">"$inlinecount"</span>, value: value }
+    se<span class="hljs-string">q(&quot;allpages&quot;)</span> -&gt; <span class="hljs-string">&quot;allpages&quot;</span>
+  | se<span class="hljs-string">q(&quot;none&quot;)</span> -&gt; <span class="hljs-string">&quot;none&quot;</span>
+  | Text -&gt; <span class="hljs-string">&quot;&quot;</span>
+  ):value -&gt; { name: <span class="hljs-string">&quot;$inlinecount&quot;</span>, value: value }
 ,</code></pre><p><strong>Et voila</strong></p>
 <p>So that&#39;s paging done and dusted, incredibly simple when you know how. Next up we&#39;ll explore the murky world of OData filtering.</p>

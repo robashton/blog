@@ -2,15 +2,15 @@
 <p>Well, the primary use case (in my mind) for this, is the creation of view models for web clients without having to de-normalise data or perform multiple remote calls.</p>
 <p>Well, actually - if we&#39;re viewing say, a single item by id, it doesn&#39;t make a lot of sense to have to do a query to get that single item by id. It doesn&#39;t make a lot of sense to have to create an index for this.</p>
 <p>In the past, that&#39;s the best we could hope for, unless perhaps you used the &#39;include&#39; functionality to load related documents and then created the view model in the client out of those related documents. This looks something like this:</p>
-<pre><code>var <span class="hljs-keyword">order</span> = <span class="hljs-keyword">session</span>.<span class="hljs-keyword">Include</span>("CustomerId")
-                        .<span class="hljs-keyword">Load</span>&lt;<span class="hljs-keyword">Order</span>&gt;("orders/1")
+<pre><code>var <span class="hljs-keyword">order</span> = <span class="hljs-keyword">session</span>.<span class="hljs-keyword">Include</span>(&quot;CustomerId&quot;)
+                        .<span class="hljs-keyword">Load</span>&lt;<span class="hljs-keyword">Order</span>&gt;(&quot;orders/1&quot;)
 
 var customer = <span class="hljs-keyword">session</span>.<span class="hljs-keyword">Load</span>&lt;Customer&gt;(<span class="hljs-keyword">order</span>.CustomerId)
 
 // Build <span class="hljs-keyword">view</span> model here</code></pre><p>This is okay and everything, but requires a bit of mental leg-work on the part of the client.</p>
 <p>What you really want to do is just ask for the view model, sort of like making a single query in SQL to get all the information you want with one go.</p>
 <p>Well, how about this?</p>
-<pre><code>  var orderViewModel = <span class="hljs-keyword">session</span>.<span class="hljs-keyword">Load</span>&lt;OrderWithCustomerTransform, OrderWithCustomer&gt;("orders/1")</code></pre><p>That&#39;s a lot nicer, the code for this is as thus</p>
+<pre><code>  var orderViewModel = <span class="hljs-keyword">session</span>.<span class="hljs-keyword">Load</span>&lt;OrderWithCustomerTransform, OrderWithCustomer&gt;(&quot;orders/1&quot;)</code></pre><p>That&#39;s a lot nicer, the code for this is as thus</p>
 <pre><code><span class="hljs-built_in">public</span> <span class="hljs-keyword">class</span> OrderWithCustomer 
 {
    <span class="hljs-built_in">public</span> string OrderId { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }

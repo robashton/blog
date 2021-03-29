@@ -14,24 +14,24 @@
 <p>Well, I want faster feedback, I don&#39;t want to have to keep spawning up Java and I don&#39;t want any manaul build process.</p>
 <p>Here is what I came up with (I know there is a repl and stuff, but I honestly just want to get some Clojure written at this stage and this seemed nice)</p>
 <p>I&#39;m using <a href="https://github.com/ibdknox/cljs-watch">cljs-watch</a>, and I&#39;ve written a Makefile that looks like this:</p>
-<pre><code><span class="hljs-attribute">default</span>: build
-<span class="hljs-attribute">all</span>: build
+<pre><code><span class="hljs-symbol">default:</span> build
+<span class="hljs-symbol">all:</span> build
 
-<span class="stylus">build:
-  cljsc game<span class="hljs-selector-class">.cljs</span> \
-      <span class="hljs-string">'{:optimizations :simple :pretty-print true}'</span> \
-      &gt; ./game<span class="hljs-selector-class">.js</span>
+<span class="hljs-symbol">build:</span>
+  cljsc game.cljs \
+      <span class="hljs-comment">&#x27;{:optimizations :simple :pretty-print true}&#x27; \</span>
+      &gt; ./game.js
 
-develop:
-  cljs-watch game<span class="hljs-selector-class">.cljs</span> \
-    <span class="hljs-string">'{:optimizations :simple :pretty-print true :output-to "./game.js"}'</span></span></code></pre><p>Hacky, but if I type &quot;make develop&quot;, I can get on and write code without having to worry about compilation so I&#39;m happier with life, now I just make changes and hit refresh and they&#39;re there.</p>
+<span class="hljs-symbol">develop:</span>
+  cljs-watch game.cljs \
+    <span class="hljs-comment">&#x27;{:optimizations :simple :pretty-print true :output-to &quot;./game.js&quot;}&#x27;</span></code></pre><p>Hacky, but if I type &quot;make develop&quot;, I can get on and write code without having to worry about compilation so I&#39;m happier with life, now I just make changes and hit refresh and they&#39;re there.</p>
 <p><strong>Reminding myself of where I was</strong></p>
 <p><em>First off, I specify that I&#39;m sticking this all in the namespace &#39;game&#39;</em></p>
 <pre><code class="language-clojure">    (<span class="hljs-name"><span class="hljs-builtin-name">ns</span></span> game)</code></pre>
 <p><em>I define a method called &#39;context&#39;, which takes no args</em></p>
-<pre><code class="language-clojure">    (<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> context []</code></pre>
+<pre><code class="language-clojure">    (<span class="hljs-keyword">defn</span> <span class="hljs-title">context</span> []</code></pre>
 <p><em>I let &#39;target&#39; be thbe result of calling .getElementById (interop)</em></p>
-<pre><code class="language-clojure">      (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [target (<span class="hljs-name">.getElementById</span> js/document <span class="hljs-string">"target"</span>)]</code></pre>
+<pre><code class="language-clojure">      (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [target (<span class="hljs-name">.getElementById</span> js/document <span class="hljs-string">&quot;target&quot;</span>)]</code></pre>
 <p><em>Return a &#39;vector&#39; containing the context, the width, and the height</em></p>
 <pre><code class="language-clojure">        [
           (.getContext target &quot;2d&quot;) 
@@ -41,19 +41,19 @@ develop:
       )
     )</code></pre>
 <p><em>Define a function called clearScreen, taking in a vector of &#39;ctx, width, height&#39; - see above</em></p>
-<pre><code class="language-clojure">    (<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> clearScreen [[ctx width height]]</code></pre>
+<pre><code class="language-clojure">    (<span class="hljs-keyword">defn</span> <span class="hljs-title">clearScreen</span> [[ctx width height]]</code></pre>
 <p><em>Set a property on the context of fillStyle &#39;#FFF&#39;</em></p>
-<pre><code class="language-clojure">      (<span class="hljs-name"><span class="hljs-builtin-name">set!</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">.</span></span> ctx -fillStyle) <span class="hljs-string">"#FFF"</span>)</code></pre>
+<pre><code class="language-clojure">      (<span class="hljs-name"><span class="hljs-builtin-name">set!</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">.</span></span> ctx -fillStyle) <span class="hljs-string">&quot;#FFF&quot;</span>)</code></pre>
 <p><em>Call clearRect on the context, with 0,0,width,height</em></p>
 <pre><code class="language-clojure">      (.clearRect ctx 0 0 width height) 
     )</code></pre>
 <p><em>Same again, only parameterised so we&#39;re drawing a square</em></p>
-<pre><code class="language-clojure">    (<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> drawSquare [[ctx width height] x y w h]
-      (<span class="hljs-name"><span class="hljs-builtin-name">set!</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">.</span></span> ctx -fillStyle) <span class="hljs-string">"#FF0"</span>)
+<pre><code class="language-clojure">    (<span class="hljs-keyword">defn</span> <span class="hljs-title">drawSquare</span> [[ctx width height] x y w h]
+      (<span class="hljs-name"><span class="hljs-builtin-name">set!</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">.</span></span> ctx -fillStyle) <span class="hljs-string">&quot;#FF0&quot;</span>)
       (<span class="hljs-name">.fillRect</span> ctx x y w h) 
     )</code></pre>
 <p><em>Now we have a function called tick which will call clearScreen over and over again, with drawSquare over again</em></p>
-<pre><code class="language-clojure">    (<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> tick [x]
+<pre><code class="language-clojure">    (<span class="hljs-keyword">defn</span> <span class="hljs-title">tick</span> [x]
       (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [ctx (<span class="hljs-name">context</span>)] 
         (<span class="hljs-name">clearScreen</span> ctx) 
         (<span class="hljs-name">drawSquare</span> ctx x <span class="hljs-number">0</span> <span class="hljs-number">100</span> <span class="hljs-number">100</span>)  
@@ -67,7 +67,7 @@ develop:
       )
     )</code></pre>
 <p><em>We export a function called &#39;init&#39; so I can call this from JS and make the game happen</em></p>
-<pre><code class="language-clojure">    (<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> ^<span class="hljs-symbol">:export</span> init []
+<pre><code class="language-clojure">    (<span class="hljs-keyword">defn</span> ^<span class="hljs-symbol">:export</span> <span class="hljs-title">init</span> []
       (<span class="hljs-name">tick</span> <span class="hljs-number">0</span>) 
     )</code></pre>
 <p>Wow. There is a lot to (re)-take in here.</p>

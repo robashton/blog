@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -86,11 +87,11 @@
 <p>We looked at hooking the events exposed by the RavenDB client to add the field check to all queries, but unless we wanted to manipulate the final string query this was a dead end (and it didn&#39;t seem like there was an easy way to hook the load/save process either). </p>
 <p>This is either an omission on our parts, or RavenDB doesn&#39;t have those APIs yet, I really want those APIs, so I might add those APIs later, moving on however because we haven&#39;t got time for that...</p>
 <p>I&#39;m not particularly proud of what we did next, but it worked, everywhere the system asked for IDocumentSession, we changed it to ISecureDocumentSession and exposed the 5 methods on Session that we&#39;re actually using </p>
-<pre><code>- <span class="hljs-keyword">Load</span>&lt;<span class="hljs-keyword">Type</span>&gt;(<span class="hljs-keyword">string</span> <span class="hljs-keyword">id</span>)
-- <span class="hljs-keyword">Load</span>&lt;<span class="hljs-keyword">Type</span>&gt;(<span class="hljs-built_in">int</span> <span class="hljs-keyword">id</span>)
-- <span class="hljs-keyword">Load</span>&lt;<span class="hljs-keyword">Type</span>&gt;(<span class="hljs-keyword">string</span>[] ids)
-- <span class="hljs-keyword">Query</span>&lt;<span class="hljs-keyword">Type</span>&gt;(<span class="hljs-keyword">string</span> <span class="hljs-keyword">id</span>)
-- <span class="hljs-keyword">Store</span>(<span class="hljs-keyword">Object</span> doc)</code></pre><p>In each of these we check for typeof T === ISecured, and apply a check for the OrganisationId of the document.</p>
+<pre><code>- <span class="hljs-keyword">Load</span>&lt;<span class="hljs-built_in">Type</span>&gt;(<span class="hljs-keyword">string</span> id)
+- <span class="hljs-keyword">Load</span>&lt;<span class="hljs-built_in">Type</span>&gt;(int id)
+- <span class="hljs-keyword">Load</span>&lt;<span class="hljs-built_in">Type</span>&gt;(<span class="hljs-keyword">string</span>[] ids)
+- Query&lt;<span class="hljs-built_in">Type</span>&gt;(<span class="hljs-keyword">string</span> id)
+- <span class="hljs-built_in">Store</span>(Object doc)</code></pre><p>In each of these we check for typeof T === ISecured, and apply a check for the OrganisationId of the document.</p>
 <p>This took all of 5 minutes, and was an effective use of time, perhaps to be re-visited in the future if it doesn&#39;t pan out.</p>
 <p><em>Complicated logic</em></p>
 <p>However, we now have quite a lot of complicated behaviour around </p>

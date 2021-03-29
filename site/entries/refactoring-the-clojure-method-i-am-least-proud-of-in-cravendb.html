@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -69,7 +70,7 @@
       <h6>Published on <span class="date">2013-10-3</span></h6>
       <div id="post"><p>I&#39;ve had a bit of a duck in my <a href="http://github.com/robashton/cravendb">database</a> for a while (and I&#39;m not making reference to the read-strings that were in there for months while I got on with more important things).</p>
 <p>The duck came in the form of this method</p>
-<pre><code class="language-clojure">(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> perform-query 
+<pre><code class="language-clojure">(<span class="hljs-keyword">defn</span> <span class="hljs-title">perform-query</span> 
   [tx reader query offset amount sort-field sort-order]
   (<span class="hljs-name"><span class="hljs-builtin-name">loop</span></span> [results ()
          current-offset offset
@@ -82,10 +83,10 @@
                new-total (<span class="hljs-name"><span class="hljs-builtin-name">count</span></span> new-results) 
                new-offset (<span class="hljs-name"><span class="hljs-builtin-name">+</span></span> current-offset requested-amount)]
 
-           (<span class="hljs-name">debug</span> <span class="hljs-string">"Requested"</span> requested-amount 
-                    <span class="hljs-string">"CurrentTotal"</span> total-collected 
-                    <span class="hljs-string">"Skipped"</span> current-offset <span class="hljs-string">"Of"</span>
-                    <span class="hljs-string">"Received"</span> (<span class="hljs-name"><span class="hljs-builtin-name">count</span></span> raw-results))
+           (<span class="hljs-name">debug</span> <span class="hljs-string">&quot;Requested&quot;</span> requested-amount 
+                    <span class="hljs-string">&quot;CurrentTotal&quot;</span> total-collected 
+                    <span class="hljs-string">&quot;Skipped&quot;</span> current-offset <span class="hljs-string">&quot;Of&quot;</span>
+                    <span class="hljs-string">&quot;Received&quot;</span> (<span class="hljs-name"><span class="hljs-builtin-name">count</span></span> raw-results))
            (<span class="hljs-name"><span class="hljs-builtin-name">if</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">and</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">count</span></span> raw-results) requested-amount)
                     (<span class="hljs-name"><span class="hljs-builtin-name">not=</span></span> new-total amount)
                     (<span class="hljs-name"><span class="hljs-builtin-name">&gt;</span></span> <span class="hljs-number">10</span> attempt))
@@ -109,7 +110,7 @@
 <p>One thing I&#39;ve learned so far in Clojure that if you have a abnormal construct (in this case my lucene reader), is that we should try and get that into either a <em>map</em> or a <em>sequence</em> as early on as possible so as to be able to leverage all the Clojure built-ins on it.</p>
 <h3 id="what-i-want-here-is-a-lazy-sequence-built-up-with-recursion">What I want here, is a lazy sequence built up with recursion</h3>
 <p>I wrote a quick proof of concept of that sort of thing, it looks like this:</p>
-<pre><code class="language-clojure">(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> number-seq 
+<pre><code class="language-clojure">(<span class="hljs-keyword">defn</span> <span class="hljs-title">number-seq</span> 
   ([] (<span class="hljs-name">number-seq</span> <span class="hljs-number">0</span>))
   ([i]
   (<span class="hljs-name"><span class="hljs-builtin-name">cons</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">inc</span></span> i) (<span class="hljs-name"><span class="hljs-builtin-name">lazy-seq</span></span> (<span class="hljs-name">form-sequence</span> (<span class="hljs-name"><span class="hljs-builtin-name">inc</span></span> i))))))</code></pre>
@@ -132,7 +133,7 @@
 </ul>
 <p>It is quite clear that only two of these values actually change during the recursive loop, and the rest are only used with a single object (reader) the same way over and over again.</p>
 <p>My first step in C# would probably be to &quot;create another object&quot;, in this case here though a producer function of some sort is what springs to mind</p>
-<pre><code class="language-clojure">(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> lucene-producer [tx reader query sort-field sort-order]
+<pre><code class="language-clojure">(<span class="hljs-keyword">defn</span> <span class="hljs-title">lucene-producer</span> [tx reader query sort-field sort-order]
 
   (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [offset amount]
     (<span class="hljs-name"><span class="hljs-builtin-name">-&gt;&gt;</span></span> 
@@ -150,7 +151,7 @@
 <p>I slot this into my original loop function, verify it all still works and then look at the next step:</p>
 <h3 id="second-step---split-out-the-paging">Second step - split out the paging</h3>
 <p>What I really want is the ability to skip through pages of the index and not keep accumulators around in the loop itself, I can employ a similar trick and write a function that knows about the current page and how to get the next page. I&#39;ll store the results in a map and a function to get the next page in the map as well.</p>
-<pre><code class="language-clojure">(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> lucene-page 
+<pre><code class="language-clojure">(<span class="hljs-keyword">defn</span> <span class="hljs-title">lucene-page</span> 
   ([producer page-size] (<span class="hljs-name">lucene-page</span> producer <span class="hljs-number">0</span> page-size))
   ([producer current-offset page-size]
    {
@@ -158,7 +159,7 @@
     <span class="hljs-symbol">:next</span> (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [] (<span class="hljs-name">lucene-page</span> producer (<span class="hljs-name"><span class="hljs-builtin-name">+</span></span> current-offset page-size) page-size))
    }))</code></pre>
 <p>An alternative might be to just assoc the paging values into the map itself and create a next-page function like so</p>
-<pre><code class="language-clojure">(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> lucene-page 
+<pre><code class="language-clojure">(<span class="hljs-keyword">defn</span> <span class="hljs-title">lucene-page</span> 
   ([producer page-size] (<span class="hljs-name">lucene-page</span> producer <span class="hljs-number">0</span> page-size))
   ([producer current-offset page-size]
    {
@@ -168,11 +169,11 @@
     <span class="hljs-symbol">:results</span> (<span class="hljs-name">producer</span> current-offset page-size)
    }))
 
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> next-page [{<span class="hljs-symbol">:keys</span> [producer offset page-size]}]
+(<span class="hljs-keyword">defn</span> <span class="hljs-title">next-page</span> [{<span class="hljs-symbol">:keys</span> [producer offset page-size]}]
   (<span class="hljs-name">lucene-page</span> producer (<span class="hljs-name"><span class="hljs-builtin-name">+</span></span> offset page-size) page-size))</code></pre>
 <p>But I quite like the little function and it&#39;s smaller so I&#39;m rolling with it until I&#39;m told that it&#39;s a bad thing and I&#39;m a naughty boy.</p>
 <p>With this, I can consume the results I have and and simply call &quot;next&quot; to get the next lucene page without worrying about the accumulators in the loop function, this means I&#39;m now left with quite a stripped down loop:</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> perform-query 
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">perform-query</span> 
   [producer offset amount]
   (<span class="hljs-name"><span class="hljs-builtin-name">loop</span></span> [results ()
         page (<span class="hljs-name">lucene-page</span> producer amount)]
@@ -185,14 +186,14 @@
                     ((<span class="hljs-symbol">:next</span> page)))
             new-results))))</code></pre><h3 id="to-the-recursive-lazy-sequence">To the recursive lazy sequence</h3>
 <p>Now I&#39;ve pulled out the important bits of this code into two different stages (pulling data from lucene, paging data over that), it&#39;s quite trivial to convert the loop into a lazy sequence</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> lucene-seq 
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">lucene-seq</span> 
   ([page] (<span class="hljs-name">lucene-seq</span> page (<span class="hljs-symbol">:results</span> page)))
   ([page src]
   (<span class="hljs-name"><span class="hljs-builtin-name">cond</span></span>
     (<span class="hljs-name"><span class="hljs-builtin-name">empty?</span></span> (<span class="hljs-symbol">:results</span> page)) ()
     (<span class="hljs-name"><span class="hljs-builtin-name">empty?</span></span> src) (<span class="hljs-name">lucene-seq</span> ((<span class="hljs-symbol">:next</span> page)))
     <span class="hljs-symbol">:else</span> (<span class="hljs-name"><span class="hljs-builtin-name">cons</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">first</span></span> src) (<span class="hljs-name"><span class="hljs-builtin-name">lazy-seq</span></span> (<span class="hljs-name">lucene-seq</span> page (<span class="hljs-name"><span class="hljs-builtin-name">rest</span></span> src)))))))</code></pre><p>I&#39;m pretty pleased with this, tidying up the rest of the code around the rest of the file reduces my line count by 50% and leaves the complete solution looking like this:</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> lucene-producer [tx reader opts]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">lucene-producer</span> [tx reader opts]
   (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [offset amount]
     (<span class="hljs-name"><span class="hljs-builtin-name">-&gt;&gt;</span></span> 
       (<span class="hljs-name">lucene/query</span> reader 
@@ -203,7 +204,7 @@
       (<span class="hljs-name"><span class="hljs-builtin-name">drop</span></span> offset) 
       (<span class="hljs-name">valid-documents</span> tx))))
 
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> lucene-page 
+(<span class="hljs-keyword">defn</span> <span class="hljs-title">lucene-page</span> 
   ([producer page-size] (<span class="hljs-name">lucene-page</span> producer <span class="hljs-number">0</span> page-size))
   ([producer current-offset page-size]
   {
@@ -211,7 +212,7 @@
     <span class="hljs-symbol">:next</span> (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [] (<span class="hljs-name">lucene-page</span> producer (<span class="hljs-name"><span class="hljs-builtin-name">+</span></span> current-offset page-size) page-size))
   }))
 
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> lucene-seq 
+(<span class="hljs-keyword">defn</span> <span class="hljs-title">lucene-seq</span> 
   ([page] (<span class="hljs-name">lucene-seq</span> page (<span class="hljs-symbol">:results</span> page)))
   ([page src]
   (<span class="hljs-name"><span class="hljs-builtin-name">cond</span></span>

@@ -3,62 +3,62 @@
 <p>Oh, and because this is something new and different, my spike into it will involve feeling my way through the problem with tests. I can&#39;t do it all in-line hardcore TDD-style in the test functions and extract because of the OMeta compilation phase - but it should be good enough for fast feedback while learning.</p>
 <p>So first off, I want to know how to match an empty object</p>
 <pre><code>{}</code></pre><p>That&#39;s my empty object there, the simplest possible blob of JSON I can come up with :-)</p>
-<pre><code><span class="hljs-function"><span class="hljs-title">describe</span><span class="hljs-params">(<span class="hljs-string">"matching an empty object"</span>, function()</span></span> {
-  <span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">input</span> = <span class="hljs-string">"{}"</span>
-  <span class="hljs-selector-tag">var</span> result = JsonReader.matchAll(<span class="hljs-selector-tag">input</span>, <span class="hljs-string">"obj"</span>)
-  assert.deepEqual(result, {})
+<pre><code>describe(<span class="hljs-string">&quot;matching an empty object&quot;</span>, <span class="hljs-keyword">function</span><span class="hljs-literal">()</span> {
+  var input = <span class="hljs-string">&quot;{}&quot;</span>
+  var result = <span class="hljs-module-access"><span class="hljs-module"><span class="hljs-identifier">JsonReader</span>.</span></span><span class="hljs-keyword">match</span><span class="hljs-constructor">All(<span class="hljs-params">input</span>, <span class="hljs-string">&quot;obj&quot;</span>)</span>
+  <span class="hljs-keyword">assert</span>.deep<span class="hljs-constructor">Equal(<span class="hljs-params">result</span>, {})</span>
 })</code></pre><p>So how do I match it?</p>
 <pre><code><span class="hljs-attribute">ometa</span> JsonReader {
-  <span class="hljs-attribute">obj</span> = <span class="hljs-string">"{}"</span> -&gt; {}
+  <span class="hljs-attribute">obj</span> = <span class="hljs-string">&quot;{}&quot;</span> -&gt; {}
 }</code></pre><p>How about matching a single numerical value?</p>
-<pre><code><span class="hljs-function"><span class="hljs-title">describe</span><span class="hljs-params">(<span class="hljs-string">"matching a single numerical value"</span>, function()</span></span> {
-  <span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">input</span> = <span class="hljs-string">"400"</span>
-  <span class="hljs-selector-tag">var</span> result = jsonreader.matchall(<span class="hljs-selector-tag">input</span>, <span class="hljs-string">"num"</span>)
-  assert.equal(result, <span class="hljs-number">400</span>)
+<pre><code><span class="hljs-function"><span class="hljs-title">describe</span><span class="hljs-params">(<span class="hljs-string">&quot;matching a single numerical value&quot;</span>, function()</span></span> {
+  <span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">input</span> = <span class="hljs-string">&quot;400&quot;</span>
+  <span class="hljs-selector-tag">var</span> result = jsonreader<span class="hljs-selector-class">.matchall</span>(<span class="hljs-selector-tag">input</span>, <span class="hljs-string">&quot;num&quot;</span>)
+  assert<span class="hljs-selector-class">.equal</span>(result, <span class="hljs-number">400</span>)
 })</code></pre><p>This won&#39;t work for long, but it&#39;s the easiest solution - match <em>anything</em> over and over again, then parse the result as an integer</p>
 <pre><code>ometa JsonReader {
-  num = anything+:<span class="hljs-meta">x</span> -&gt; pars<span class="hljs-meta">eInt(</span><span class="hljs-meta">x</span>.jo<span class="hljs-meta">in(</span><span class="hljs-string">''</span>), 10),
-  obj = <span class="hljs-string">"{}"</span> -&gt; {}
+  num = anything+:<span class="hljs-meta">x</span> -&gt; pars<span class="hljs-meta">eInt(</span><span class="hljs-meta">x</span>.jo<span class="hljs-meta">in(</span><span class="hljs-string">&#x27;&#x27;</span>), 10),
+  obj = <span class="hljs-string">&quot;{}&quot;</span> -&gt; {}
 }</code></pre><p>How about matching some text? we need to match quoted text as it can be both a value or a key.</p>
-<pre><code><span class="hljs-function"><span class="hljs-title">describe</span><span class="hljs-params">(<span class="hljs-string">"Matching a single string value"</span>, function()</span></span> {
-  <span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">input</span> = <span class="hljs-string">'"hello"'</span>
-  <span class="hljs-selector-tag">var</span> result = JsonReader.matchAll(<span class="hljs-selector-tag">input</span>, <span class="hljs-string">"str"</span>)
-  assert.equal(result, <span class="hljs-string">"hello"</span>)
+<pre><code><span class="hljs-function"><span class="hljs-title">describe</span><span class="hljs-params">(<span class="hljs-string">&quot;Matching a single string value&quot;</span>, function()</span></span> {
+  <span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">input</span> = <span class="hljs-string">&#x27;&quot;hello&quot;&#x27;</span>
+  <span class="hljs-selector-tag">var</span> result = JsonReader<span class="hljs-selector-class">.matchAll</span>(<span class="hljs-selector-tag">input</span>, <span class="hljs-string">&quot;str&quot;</span>)
+  assert<span class="hljs-selector-class">.equal</span>(result, <span class="hljs-string">&quot;hello&quot;</span>)
 })</code></pre><p>Opting for the simplest I can think of, <em>match anything and them remove the quotes.</em></p>
 <pre><code>ometa JsonReader {
-  str = anything+<span class="hljs-symbol">:x</span> -&gt; x.join(<span class="hljs-string">''</span>).replace(<span class="hljs-regexp">/\"/g</span>, <span class="hljs-string">''</span>),
-  num = anything+<span class="hljs-symbol">:x</span> -&gt; parseInt(x.join(<span class="hljs-string">''</span>), <span class="hljs-number">10</span>),
-  obj = <span class="hljs-string">"{}"</span> -&gt; {}
+  str = anything+<span class="hljs-symbol">:x</span> -&gt; x.join(<span class="hljs-string">&#x27;&#x27;</span>).replace(<span class="hljs-regexp">/\&quot;/g</span>, <span class="hljs-string">&#x27;&#x27;</span>),
+  num = anything+<span class="hljs-symbol">:x</span> -&gt; parseInt(x.join(<span class="hljs-string">&#x27;&#x27;</span>), <span class="hljs-number">10</span>),
+  obj = <span class="hljs-string">&quot;{}&quot;</span> -&gt; {}
 }</code></pre><p>This will come back to bite me I&#39;m sure - how about matching a basic key value pair?</p>
-<pre><code><span class="hljs-function"><span class="hljs-title">describe</span><span class="hljs-params">(<span class="hljs-string">"Matching a key value pair with a numerical value"</span>, function()</span></span> {
-  <span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">input</span> = <span class="hljs-string">'"foo":1337'</span>
-  <span class="hljs-selector-tag">var</span> result = JsonReader.matchAll(<span class="hljs-selector-tag">input</span>, <span class="hljs-string">"kvp"</span>)
-  assert.deepEqual(result, [ <span class="hljs-string">"foo"</span>, <span class="hljs-number">1337</span> ])
+<pre><code><span class="hljs-function"><span class="hljs-title">describe</span><span class="hljs-params">(<span class="hljs-string">&quot;Matching a key value pair with a numerical value&quot;</span>, function()</span></span> {
+  <span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">input</span> = <span class="hljs-string">&#x27;&quot;foo&quot;:1337&#x27;</span>
+  <span class="hljs-selector-tag">var</span> result = JsonReader<span class="hljs-selector-class">.matchAll</span>(<span class="hljs-selector-tag">input</span>, <span class="hljs-string">&quot;kvp&quot;</span>)
+  assert<span class="hljs-selector-class">.deepEqual</span>(result, <span class="hljs-selector-attr">[ <span class="hljs-string">&quot;foo&quot;</span>, 1337 ]</span>)
 })</code></pre><p>Can we try this? <em>Match a string, then a colon, then a number</em></p>
 <pre><code>ometa JsonReader {
-  kvp = <span class="hljs-symbol">str:</span>k <span class="hljs-string">":"</span> <span class="hljs-symbol">num:</span>v -&gt; [ k, v ],
-  str = anything+<span class="hljs-symbol">:x</span> -&gt; x.join(<span class="hljs-string">''</span>).replace(<span class="hljs-regexp">/\"/g</span>, <span class="hljs-string">''</span>),
-  num = anything+<span class="hljs-symbol">:x</span> -&gt; parseInt(x.join(<span class="hljs-string">''</span>), <span class="hljs-number">10</span>),
-  obj = <span class="hljs-string">"{}"</span> -&gt; {}
+  kvp = <span class="hljs-symbol">str:</span>k <span class="hljs-string">&quot;:&quot;</span> <span class="hljs-symbol">num:</span>v -&gt; [ k, v ],
+  str = anything+<span class="hljs-symbol">:x</span> -&gt; x.join(<span class="hljs-string">&#x27;&#x27;</span>).replace(<span class="hljs-regexp">/\&quot;/g</span>, <span class="hljs-string">&#x27;&#x27;</span>),
+  num = anything+<span class="hljs-symbol">:x</span> -&gt; parseInt(x.join(<span class="hljs-string">&#x27;&#x27;</span>), <span class="hljs-number">10</span>),
+  obj = <span class="hljs-string">&quot;{}&quot;</span> -&gt; {}
 }</code></pre><p>Well we can, but it won&#39;t pass because we&#39;re being lazy and matching &quot;anything&quot; for both strings and numbers. (We&#39;re being greedy and it&#39;ll try and match quotes and braces and then fail) </p>
 <p>Back to the drawing board, can we specify what we mean by an expected character in a string?</p>
-<pre><code><span class="hljs-function"><span class="hljs-title">describe</span><span class="hljs-params">(<span class="hljs-string">"Matching the character 'a'"</span>, function()</span></span> {
-  <span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">input</span> = <span class="hljs-string">'a'</span>
-  <span class="hljs-selector-tag">var</span> result = JsonReader.matchAll(<span class="hljs-selector-tag">input</span>, <span class="hljs-string">"char"</span>)
-  assert.deepEqual(<span class="hljs-string">'a'</span>, result)
+<pre><code><span class="hljs-function"><span class="hljs-title">describe</span><span class="hljs-params">(<span class="hljs-string">&quot;Matching the character &#x27;a&#x27;&quot;</span>, function()</span></span> {
+  <span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">input</span> = <span class="hljs-string">&#x27;a&#x27;</span>
+  <span class="hljs-selector-tag">var</span> result = JsonReader<span class="hljs-selector-class">.matchAll</span>(<span class="hljs-selector-tag">input</span>, <span class="hljs-string">&quot;char&quot;</span>)
+  assert<span class="hljs-selector-class">.deepEqual</span>(<span class="hljs-string">&#x27;a&#x27;</span>, result)
 })</code></pre><p>Well yes, there is only one! So I&#39;ll cheat and just match <em>anything</em> again :P</p>
 <pre><code>ometa JsonReader {
   char = <span class="hljs-symbol">anything:</span>x -&gt; x,
-  kvp = <span class="hljs-symbol">str:</span>k <span class="hljs-string">":"</span> <span class="hljs-symbol">num:</span>v -&gt; [ k, v ],
-  str = anything+<span class="hljs-symbol">:x</span> -&gt; x.join(<span class="hljs-string">''</span>).replace(<span class="hljs-regexp">/\"/g</span>, <span class="hljs-string">''</span>),
-  num = anything+<span class="hljs-symbol">:x</span> -&gt; parseInt(x.join(<span class="hljs-string">''</span>), <span class="hljs-number">10</span>),
-  obj = <span class="hljs-string">"{}"</span> -&gt; {}
+  kvp = <span class="hljs-symbol">str:</span>k <span class="hljs-string">&quot;:&quot;</span> <span class="hljs-symbol">num:</span>v -&gt; [ k, v ],
+  str = anything+<span class="hljs-symbol">:x</span> -&gt; x.join(<span class="hljs-string">&#x27;&#x27;</span>).replace(<span class="hljs-regexp">/\&quot;/g</span>, <span class="hljs-string">&#x27;&#x27;</span>),
+  num = anything+<span class="hljs-symbol">:x</span> -&gt; parseInt(x.join(<span class="hljs-string">&#x27;&#x27;</span>), <span class="hljs-number">10</span>),
+  obj = <span class="hljs-string">&quot;{}&quot;</span> -&gt; {}
 }</code></pre><p>How about not managing to map something that isn&#39;t a character? <em>anything</em> isn&#39;t going to work remember!</p>
-<pre><code>describe(<span class="hljs-string">"Character matching doesn't match quotes"</span>, <span class="hljs-keyword">function</span><span class="hljs-literal">()</span> {
-  var input = <span class="hljs-character">'"'</span>
+<pre><code>describe(<span class="hljs-string">&quot;Character matching doesn&#x27;t match quotes&quot;</span>, <span class="hljs-keyword">function</span><span class="hljs-literal">()</span> {
+  var input = <span class="hljs-character">&#x27;&quot;&#x27;</span>
     , thrown = null
   <span class="hljs-keyword">try</span> {
-    <span class="hljs-module-access"><span class="hljs-module"><span class="hljs-identifier">JsonReader</span>.</span></span><span class="hljs-keyword">match</span><span class="hljs-constructor">All(<span class="hljs-params">input</span>, <span class="hljs-string">"char"</span>)</span>
+    <span class="hljs-module-access"><span class="hljs-module"><span class="hljs-identifier">JsonReader</span>.</span></span><span class="hljs-keyword">match</span><span class="hljs-constructor">All(<span class="hljs-params">input</span>, <span class="hljs-string">&quot;char&quot;</span>)</span>
   } catch(ex) {
     thrown = ex
   }
@@ -66,67 +66,67 @@
 })</code></pre><p>Not too hard, just <em>check that we haven&#39;t got a double quote and then match anything else</em>:</p>
 <pre><code>ometa JsonReader {
   char =  (
-            ~<span class="hljs-string">'"'</span>
+            ~<span class="hljs-string">&#x27;&quot;&#x27;</span>
             anything
           )<span class="hljs-symbol">:x</span> -&gt; x,
-  kvp = <span class="hljs-symbol">str:</span>k <span class="hljs-string">":"</span> <span class="hljs-symbol">num:</span>v -&gt; [ k, v ],
-  str = anything+<span class="hljs-symbol">:x</span> -&gt; x.join(<span class="hljs-string">''</span>).replace(<span class="hljs-regexp">/\"/g</span>, <span class="hljs-string">''</span>),
-  num = anything+<span class="hljs-symbol">:x</span> -&gt; parseInt(x.join(<span class="hljs-string">''</span>), <span class="hljs-number">10</span>),
-  obj = <span class="hljs-string">"{}"</span> -&gt; {}
+  kvp = <span class="hljs-symbol">str:</span>k <span class="hljs-string">&quot;:&quot;</span> <span class="hljs-symbol">num:</span>v -&gt; [ k, v ],
+  str = anything+<span class="hljs-symbol">:x</span> -&gt; x.join(<span class="hljs-string">&#x27;&#x27;</span>).replace(<span class="hljs-regexp">/\&quot;/g</span>, <span class="hljs-string">&#x27;&#x27;</span>),
+  num = anything+<span class="hljs-symbol">:x</span> -&gt; parseInt(x.join(<span class="hljs-string">&#x27;&#x27;</span>), <span class="hljs-number">10</span>),
+  obj = <span class="hljs-string">&quot;{}&quot;</span> -&gt; {}
 }</code></pre><p>How about going back to that original test with the string matching?</p>
-<pre><code><span class="hljs-function"><span class="hljs-title">describe</span><span class="hljs-params">(<span class="hljs-string">"Matching a single string value"</span>, function()</span></span> {
-  <span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">input</span> = <span class="hljs-string">'"hello"'</span>
-  <span class="hljs-selector-tag">var</span> result = JsonReader.matchAll(<span class="hljs-selector-tag">input</span>, <span class="hljs-string">"str"</span>)
-  assert.equal(result, <span class="hljs-string">"hello"</span>)
+<pre><code><span class="hljs-function"><span class="hljs-title">describe</span><span class="hljs-params">(<span class="hljs-string">&quot;Matching a single string value&quot;</span>, function()</span></span> {
+  <span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">input</span> = <span class="hljs-string">&#x27;&quot;hello&quot;&#x27;</span>
+  <span class="hljs-selector-tag">var</span> result = JsonReader<span class="hljs-selector-class">.matchAll</span>(<span class="hljs-selector-tag">input</span>, <span class="hljs-string">&quot;str&quot;</span>)
+  assert<span class="hljs-selector-class">.equal</span>(result, <span class="hljs-string">&quot;hello&quot;</span>)
 })</code></pre><p>What happens if we come to a quote in the middle of the data?</p>
-<pre><code><span class="hljs-function"><span class="hljs-title">describe</span><span class="hljs-params">(<span class="hljs-string">"Matching a string value with pre-mature quote"</span>, function()</span></span> {
-  <span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">input</span> = <span class="hljs-string">'"hel"lo"'</span>
-  <span class="hljs-selector-tag">var</span> result = JsonReader.matchAll(<span class="hljs-selector-tag">input</span>, <span class="hljs-string">"str"</span>)
-  assert.equal(result, <span class="hljs-string">"hel"</span>)
+<pre><code><span class="hljs-function"><span class="hljs-title">describe</span><span class="hljs-params">(<span class="hljs-string">&quot;Matching a string value with pre-mature quote&quot;</span>, function()</span></span> {
+  <span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">input</span> = <span class="hljs-string">&#x27;&quot;hel&quot;lo&quot;&#x27;</span>
+  <span class="hljs-selector-tag">var</span> result = JsonReader<span class="hljs-selector-class">.matchAll</span>(<span class="hljs-selector-tag">input</span>, <span class="hljs-string">&quot;str&quot;</span>)
+  assert<span class="hljs-selector-class">.equal</span>(result, <span class="hljs-string">&quot;hel&quot;</span>)
 })</code></pre><p>If we say that rather than matching &quot;anything&quot; for str, we want to match <em>only a collection of &quot;char&quot; with quotes around it</em> then..</p>
 <pre><code>ometa JsonReader {
   char =  (
-            ~<span class="hljs-string">'"'</span>
+            ~<span class="hljs-string">&#x27;&quot;&#x27;</span>
             anything
           ):<span class="hljs-meta">x</span> -&gt; <span class="hljs-meta">x</span>,
-  kvp = str:k <span class="hljs-string">":"</span> num:v -&gt; [ k, v ],
-  str = <span class="hljs-string">'"'</span> char+:<span class="hljs-meta">x</span> <span class="hljs-string">'"'</span> -&gt; <span class="hljs-meta">x</span>.jo<span class="hljs-meta">in(</span><span class="hljs-string">''</span>),
-  num = anything+:<span class="hljs-meta">x</span> -&gt; pars<span class="hljs-meta">eInt(</span><span class="hljs-meta">x</span>.jo<span class="hljs-meta">in(</span><span class="hljs-string">''</span>), 10),
-  obj = <span class="hljs-string">"{}"</span> -&gt; {}
+  kvp = str:k <span class="hljs-string">&quot;:&quot;</span> num:v -&gt; [ k, v ],
+  str = <span class="hljs-string">&#x27;&quot;&#x27;</span> char+:<span class="hljs-meta">x</span> <span class="hljs-string">&#x27;&quot;&#x27;</span> -&gt; <span class="hljs-meta">x</span>.jo<span class="hljs-meta">in(</span><span class="hljs-string">&#x27;&#x27;</span>),
+  num = anything+:<span class="hljs-meta">x</span> -&gt; pars<span class="hljs-meta">eInt(</span><span class="hljs-meta">x</span>.jo<span class="hljs-meta">in(</span><span class="hljs-string">&#x27;&#x27;</span>), 10),
+  obj = <span class="hljs-string">&quot;{}&quot;</span> -&gt; {}
 }</code></pre><p>Now can we run that key-value one again?</p>
-<pre><code><span class="hljs-function"><span class="hljs-title">describe</span><span class="hljs-params">(<span class="hljs-string">"Matching a key value pair with a numerical value"</span>, function()</span></span> {
-  <span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">input</span> = <span class="hljs-string">'"foo":1337'</span>
-  <span class="hljs-selector-tag">var</span> result = JsonReader.matchAll(<span class="hljs-selector-tag">input</span>, <span class="hljs-string">"kvp"</span>)
-  assert.deepEqual(result, [ <span class="hljs-string">"foo"</span>, <span class="hljs-number">1337</span> ])
+<pre><code><span class="hljs-function"><span class="hljs-title">describe</span><span class="hljs-params">(<span class="hljs-string">&quot;Matching a key value pair with a numerical value&quot;</span>, function()</span></span> {
+  <span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">input</span> = <span class="hljs-string">&#x27;&quot;foo&quot;:1337&#x27;</span>
+  <span class="hljs-selector-tag">var</span> result = JsonReader<span class="hljs-selector-class">.matchAll</span>(<span class="hljs-selector-tag">input</span>, <span class="hljs-string">&quot;kvp&quot;</span>)
+  assert<span class="hljs-selector-class">.deepEqual</span>(result, <span class="hljs-selector-attr">[ <span class="hljs-string">&quot;foo&quot;</span>, 1337 ]</span>)
 })</code></pre><p>Huzzah. Functional.</p>
 <p>How about a key-value with a string value?</p>
-<pre><code><span class="hljs-function"><span class="hljs-title">describe</span><span class="hljs-params">(<span class="hljs-string">"Matching a key value pair with a string value"</span>, function()</span></span> {
-  <span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">input</span> = <span class="hljs-string">'"foo":"bar"'</span>
-  <span class="hljs-selector-tag">var</span> result = JsonReader.matchAll(<span class="hljs-selector-tag">input</span>, <span class="hljs-string">"kvp"</span>)
-  assert.deepEqual(result, [ <span class="hljs-string">"foo"</span>, <span class="hljs-string">"bar"</span> ])
+<pre><code>describe(<span class="hljs-string">&quot;Matching a key value pair with a string value&quot;</span>, <span class="hljs-keyword">function</span><span class="hljs-literal">()</span> {
+  var input = &#x27;<span class="hljs-string">&quot;foo&quot;</span>:<span class="hljs-string">&quot;bar&quot;</span>&#x27;
+  var result = <span class="hljs-module-access"><span class="hljs-module"><span class="hljs-identifier">JsonReader</span>.</span></span><span class="hljs-keyword">match</span><span class="hljs-constructor">All(<span class="hljs-params">input</span>, <span class="hljs-string">&quot;kvp&quot;</span>)</span>
+  <span class="hljs-keyword">assert</span>.deep<span class="hljs-constructor">Equal(<span class="hljs-params">result</span>, [ <span class="hljs-string">&quot;foo&quot;</span>, <span class="hljs-string">&quot;bar&quot;</span> ])</span>
 })</code></pre><p>Well this is where the our parsing language shines, as we can specify *&quot;any valid value&quot;, where &quot;value -&gt; num | str&quot;*</p>
 <pre><code>ometa JsonReader {
   char =  (
-            ~<span class="hljs-string">'"'</span>
+            ~<span class="hljs-string">&#x27;&quot;&#x27;</span>
             anything
           ):<span class="hljs-meta">x</span> -&gt; <span class="hljs-meta">x</span>,
   value = (
             num
           | str
           ):<span class="hljs-meta">x</span> -&gt; <span class="hljs-meta">x</span>,
-  kvp = str:k <span class="hljs-string">":"</span> value:v -&gt; [ k, v ],
-  str = <span class="hljs-string">'"'</span> char+:<span class="hljs-meta">x</span> <span class="hljs-string">'"'</span> -&gt; <span class="hljs-meta">x</span>.jo<span class="hljs-meta">in(</span><span class="hljs-string">''</span>),
-  num = anything+:<span class="hljs-meta">x</span> -&gt; pars<span class="hljs-meta">eInt(</span><span class="hljs-meta">x</span>.jo<span class="hljs-meta">in(</span><span class="hljs-string">''</span>), 10),
-  obj = <span class="hljs-string">"{}"</span> -&gt; {}
+  kvp = str:k <span class="hljs-string">&quot;:&quot;</span> value:v -&gt; [ k, v ],
+  str = <span class="hljs-string">&#x27;&quot;&#x27;</span> char+:<span class="hljs-meta">x</span> <span class="hljs-string">&#x27;&quot;&#x27;</span> -&gt; <span class="hljs-meta">x</span>.jo<span class="hljs-meta">in(</span><span class="hljs-string">&#x27;&#x27;</span>),
+  num = anything+:<span class="hljs-meta">x</span> -&gt; pars<span class="hljs-meta">eInt(</span><span class="hljs-meta">x</span>.jo<span class="hljs-meta">in(</span><span class="hljs-string">&#x27;&#x27;</span>), 10),
+  obj = <span class="hljs-string">&quot;{}&quot;</span> -&gt; {}
 }</code></pre><p>Actually, this probably means that matching objects shouldn&#39;t be too hard.</p>
-<pre><code><span class="hljs-function"><span class="hljs-title">describe</span><span class="hljs-params">(<span class="hljs-string">"Matching a key value pair with an object value"</span>, function()</span></span> {
-  <span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">input</span> = <span class="hljs-string">'"foo":{}'</span>
-  <span class="hljs-selector-tag">var</span> result = JsonReader.matchAll(<span class="hljs-selector-tag">input</span>, <span class="hljs-string">"kvp"</span>)
-  assert.deepEqual(result, [ <span class="hljs-string">"foo"</span>, {}])
+<pre><code><span class="hljs-function"><span class="hljs-title">describe</span><span class="hljs-params">(<span class="hljs-string">&quot;Matching a key value pair with an object value&quot;</span>, function()</span></span> {
+  <span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">input</span> = <span class="hljs-string">&#x27;&quot;foo&quot;:{}&#x27;</span>
+  <span class="hljs-selector-tag">var</span> result = JsonReader<span class="hljs-selector-class">.matchAll</span>(<span class="hljs-selector-tag">input</span>, <span class="hljs-string">&quot;kvp&quot;</span>)
+  assert<span class="hljs-selector-class">.deepEqual</span>(result, <span class="hljs-selector-attr">[ <span class="hljs-string">&quot;foo&quot;</span>, {}]</span>)
 }) </code></pre><p>Just add the obj to the list of possible values expected (<em>note it comes before number because number is still really greedy!</em>)</p>
 <pre><code>ometa JsonReader {
   char =  (
-            ~<span class="hljs-string">'"'</span>
+            ~<span class="hljs-string">&#x27;&quot;&#x27;</span>
             anything
           ):<span class="hljs-meta">x</span> -&gt; <span class="hljs-meta">x</span>,
   value = (
@@ -134,24 +134,24 @@
           | obj
           | num
           ):<span class="hljs-meta">x</span> -&gt; <span class="hljs-meta">x</span>,
-  kvp = str:k <span class="hljs-string">":"</span> value:v -&gt; [ k, v ],
-  str = <span class="hljs-string">'"'</span> char+:<span class="hljs-meta">x</span> <span class="hljs-string">'"'</span> -&gt; <span class="hljs-meta">x</span>.jo<span class="hljs-meta">in(</span><span class="hljs-string">''</span>),
-  num = anything+:<span class="hljs-meta">x</span> -&gt; pars<span class="hljs-meta">eInt(</span><span class="hljs-meta">x</span>.jo<span class="hljs-meta">in(</span><span class="hljs-string">''</span>), 10),
-  obj = <span class="hljs-string">"{}"</span> -&gt; {}
+  kvp = str:k <span class="hljs-string">&quot;:&quot;</span> value:v -&gt; [ k, v ],
+  str = <span class="hljs-string">&#x27;&quot;&#x27;</span> char+:<span class="hljs-meta">x</span> <span class="hljs-string">&#x27;&quot;&#x27;</span> -&gt; <span class="hljs-meta">x</span>.jo<span class="hljs-meta">in(</span><span class="hljs-string">&#x27;&#x27;</span>),
+  num = anything+:<span class="hljs-meta">x</span> -&gt; pars<span class="hljs-meta">eInt(</span><span class="hljs-meta">x</span>.jo<span class="hljs-meta">in(</span><span class="hljs-string">&#x27;&#x27;</span>), 10),
+  obj = <span class="hljs-string">&quot;{}&quot;</span> -&gt; {}
 }</code></pre><p>Now, this obj definition isn&#39;t actually correct - because objects contain one or more key value pairs.</p>
-<pre><code><span class="hljs-function"><span class="hljs-title">describe</span><span class="hljs-params">(<span class="hljs-string">"Matching an object with a single key value pair"</span>, function()</span></span> {
-  <span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">input</span> = <span class="hljs-string">'{"foo":1337}'</span>
-  <span class="hljs-selector-tag">var</span> result = JsonReader.matchAll(<span class="hljs-selector-tag">input</span>, <span class="hljs-string">"obj"</span>)
-  assert.deepEqual(result, { foo: <span class="hljs-number">1337</span> })
+<pre><code>describe(<span class="hljs-string">&quot;Matching an object with a single key value pair&quot;</span>, <span class="hljs-keyword">function</span><span class="hljs-literal">()</span> {
+  var input = &#x27;{<span class="hljs-string">&quot;foo&quot;</span>:<span class="hljs-number">1337</span>}&#x27;
+  var result = <span class="hljs-module-access"><span class="hljs-module"><span class="hljs-identifier">JsonReader</span>.</span></span><span class="hljs-keyword">match</span><span class="hljs-constructor">All(<span class="hljs-params">input</span>, <span class="hljs-string">&quot;obj&quot;</span>)</span>
+  <span class="hljs-keyword">assert</span>.deep<span class="hljs-constructor">Equal(<span class="hljs-params">result</span>, { <span class="hljs-params">foo</span>: 1337 })</span>
 })</code></pre><p>This won&#39;t actually work because as mentioned above, &#39;num&#39; is still greedy and needs changing so it only matches numerical digits.</p>
-<pre><code><span class="hljs-function"><span class="hljs-title">describe</span><span class="hljs-params">(<span class="hljs-string">"Matching a number with an early termination"</span>, function()</span></span> {
-  <span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">input</span> = <span class="hljs-string">'133"7'</span>
-  <span class="hljs-selector-tag">var</span> result = JsonReader.matchAll(<span class="hljs-selector-tag">input</span>, <span class="hljs-string">"num"</span>)
-  assert.equal(result, <span class="hljs-number">133</span>)
+<pre><code><span class="hljs-function"><span class="hljs-title">describe</span><span class="hljs-params">(<span class="hljs-string">&quot;Matching a number with an early termination&quot;</span>, function()</span></span> {
+  <span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">input</span> = <span class="hljs-string">&#x27;133&quot;7&#x27;</span>
+  <span class="hljs-selector-tag">var</span> result = JsonReader<span class="hljs-selector-class">.matchAll</span>(<span class="hljs-selector-tag">input</span>, <span class="hljs-string">&quot;num&quot;</span>)
+  assert<span class="hljs-selector-class">.equal</span>(result, <span class="hljs-number">133</span>)
 })</code></pre><p>Turns out that there is a built-in called &#39;digit&#39; to help us with this ( there is probably a built-in for strings too, but documentation for OMeta is not very good and I didn&#39;t see it)</p>
 <pre><code>ometa JsonReader {
   char =  (
-            ~<span class="hljs-string">'"'</span>
+            ~<span class="hljs-string">&#x27;&quot;&#x27;</span>
             anything
           )<span class="hljs-symbol">:x</span> -&gt; x,
   value = (
@@ -159,19 +159,19 @@
           | obj
           | num
           )<span class="hljs-symbol">:x</span> -&gt; x,
-  kvp = <span class="hljs-symbol">str:</span>k <span class="hljs-string">":"</span> <span class="hljs-symbol">value:</span>v -&gt; [ k, v ],
-  str = <span class="hljs-string">'"'</span> char+<span class="hljs-symbol">:x</span> <span class="hljs-string">'"'</span> -&gt; x.join(<span class="hljs-string">''</span>),
+  kvp = <span class="hljs-symbol">str:</span>k <span class="hljs-string">&quot;:&quot;</span> <span class="hljs-symbol">value:</span>v -&gt; [ k, v ],
+  str = <span class="hljs-string">&#x27;&quot;&#x27;</span> char+<span class="hljs-symbol">:x</span> <span class="hljs-string">&#x27;&quot;&#x27;</span> -&gt; x.join(<span class="hljs-string">&#x27;&#x27;</span>),
   num = &lt;digit+&gt;<span class="hljs-symbol">:x</span> -&gt; parseInt(x, <span class="hljs-number">10</span>),
-  obj = <span class="hljs-string">"{}"</span> -&gt; {}
+  obj = <span class="hljs-string">&quot;{}&quot;</span> -&gt; {}
 }</code></pre><p>Groovy, now perhaps we can try that test again:</p>
-<pre><code><span class="hljs-function"><span class="hljs-title">describe</span><span class="hljs-params">(<span class="hljs-string">"Matching an object with a single key value pair"</span>, function()</span></span> {
-  <span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">input</span> = <span class="hljs-string">'{"foo":1337}'</span>
-  <span class="hljs-selector-tag">var</span> result = JsonReader.matchAll(<span class="hljs-selector-tag">input</span>, <span class="hljs-string">"obj"</span>)
-  assert.deepEqual(result, { foo: <span class="hljs-number">1337</span> })
+<pre><code>describe(<span class="hljs-string">&quot;Matching an object with a single key value pair&quot;</span>, <span class="hljs-keyword">function</span><span class="hljs-literal">()</span> {
+  var input = &#x27;{<span class="hljs-string">&quot;foo&quot;</span>:<span class="hljs-number">1337</span>}&#x27;
+  var result = <span class="hljs-module-access"><span class="hljs-module"><span class="hljs-identifier">JsonReader</span>.</span></span><span class="hljs-keyword">match</span><span class="hljs-constructor">All(<span class="hljs-params">input</span>, <span class="hljs-string">&quot;obj&quot;</span>)</span>
+  <span class="hljs-keyword">assert</span>.deep<span class="hljs-constructor">Equal(<span class="hljs-params">result</span>, { <span class="hljs-params">foo</span>: 1337 })</span>
 })</code></pre><p>I decide to call an external function to help build up the object which has key/value pairs - that&#39;s the <em>makeObject(args):output</em> bit:</p>
 <pre><code>ometa JsonReader {
   char =  (
-            ~<span class="hljs-string">'"'</span>
+            ~<span class="hljs-string">&#x27;&quot;&#x27;</span>
             anything
           ):<span class="hljs-meta">x</span> -&gt; <span class="hljs-meta">x</span>,
   value = (
@@ -179,15 +179,15 @@
           | obj
           | num
           ):<span class="hljs-meta">x</span> -&gt; <span class="hljs-meta">x</span>,
-  kvp = str:k <span class="hljs-string">":"</span> value:v -&gt; [ k, v ],
-  str = <span class="hljs-string">'"'</span> char+:<span class="hljs-meta">x</span> <span class="hljs-string">'"'</span> -&gt; <span class="hljs-meta">x</span>.jo<span class="hljs-meta">in(</span><span class="hljs-string">''</span>),
+  kvp = str:k <span class="hljs-string">&quot;:&quot;</span> value:v -&gt; [ k, v ],
+  str = <span class="hljs-string">&#x27;&quot;&#x27;</span> char+:<span class="hljs-meta">x</span> <span class="hljs-string">&#x27;&quot;&#x27;</span> -&gt; <span class="hljs-meta">x</span>.jo<span class="hljs-meta">in(</span><span class="hljs-string">&#x27;&#x27;</span>),
   num = &lt;digit+&gt;:<span class="hljs-meta">x</span> -&gt; pars<span class="hljs-meta">eInt(</span><span class="hljs-meta">x</span>, 10),
-  obj = <span class="hljs-string">"{}"</span> -&gt; {}
-      | <span class="hljs-string">"{"</span> (
+  obj = <span class="hljs-string">&quot;{}&quot;</span> -&gt; {}
+      | <span class="hljs-string">&quot;{&quot;</span> (
               kvp:kv 
               makeObject(kv):<span class="hljs-meta">output</span>
             ):<span class="hljs-meta">output</span>
-        <span class="hljs-string">"}"</span> -&gt; <span class="hljs-meta">output</span>
+        <span class="hljs-string">&quot;}&quot;</span> -&gt; <span class="hljs-meta">output</span>
 }
 
 JsonReader.makeObject = functi<span class="hljs-meta">on(</span>kv) {
@@ -195,39 +195,39 @@ JsonReader.makeObject = functi<span class="hljs-meta">on(</span>kv) {
   obj[kv[0]] = kv[1]
   <span class="hljs-meta">return</span> obj
 }</code></pre><p>Finally, how about lists of arguments?</p>
-<pre><code>describe(<span class="hljs-string">"Matching an object with multiple key value pairs"</span>, <span class="hljs-keyword">function</span><span class="hljs-literal">()</span> {
-  var input = '{<span class="hljs-string">"foo"</span>:<span class="hljs-number">43</span>,<span class="hljs-string">"bar"</span>:<span class="hljs-number">343</span>}'
-  var result = <span class="hljs-module-access"><span class="hljs-module"><span class="hljs-identifier">JsonReader</span>.</span></span><span class="hljs-keyword">match</span><span class="hljs-constructor">All(<span class="hljs-params">input</span>, <span class="hljs-string">"obj"</span>)</span>
+<pre><code>describe(<span class="hljs-string">&quot;Matching an object with multiple key value pairs&quot;</span>, <span class="hljs-keyword">function</span><span class="hljs-literal">()</span> {
+  var input = &#x27;{<span class="hljs-string">&quot;foo&quot;</span>:<span class="hljs-number">43</span>,<span class="hljs-string">&quot;bar&quot;</span>:<span class="hljs-number">343</span>}&#x27;
+  var result = <span class="hljs-module-access"><span class="hljs-module"><span class="hljs-identifier">JsonReader</span>.</span></span><span class="hljs-keyword">match</span><span class="hljs-constructor">All(<span class="hljs-params">input</span>, <span class="hljs-string">&quot;obj&quot;</span>)</span>
   <span class="hljs-keyword">assert</span>.deep<span class="hljs-constructor">Equal(<span class="hljs-params">result</span>, { <span class="hljs-params">foo</span>: 1337, <span class="hljs-params">bar</span>: 343 })</span>
 })</code></pre><p>Turns out that there is another construct in OMeta for this scenario (The best way to find these constructs is to read the ometa-js source - sorry.) <em>listOf</em></p>
 <pre><code>ometa JsonReader {
   char =  (
-            ~<span class="hljs-string">'"'</span>
+            ~<span class="hljs-string">&#x27;&quot;&#x27;</span>
             anything
-          )<span class="hljs-symbol">:x</span> -&gt; x,
+          ):<span class="hljs-meta">x</span> -&gt; <span class="hljs-meta">x</span>,
   value = (
             str
           | obj
           | num
-          )<span class="hljs-symbol">:x</span> -&gt; x,
-  kvp = <span class="hljs-symbol">str:</span>k <span class="hljs-string">":"</span> <span class="hljs-symbol">value:</span>v -&gt; [ k, v ],
-  str = <span class="hljs-string">'"'</span> char+<span class="hljs-symbol">:x</span> <span class="hljs-string">'"'</span> -&gt; x.join(<span class="hljs-string">''</span>),
-  num = &lt;digit+&gt;<span class="hljs-symbol">:x</span> -&gt; parseInt(x, <span class="hljs-number">10</span>),
-  obj = <span class="hljs-string">"{}"</span> -&gt; {}
-      | <span class="hljs-string">"{"</span> (
-              listOf(`kvp, <span class="hljs-string">','</span>)<span class="hljs-symbol">:kvs</span>
-              makeObject(kvs)<span class="hljs-symbol">:output</span>
+          ):<span class="hljs-meta">x</span> -&gt; <span class="hljs-meta">x</span>,
+  kvp = str:k <span class="hljs-string">&quot;:&quot;</span> value:v -&gt; [ k, v ],
+  str = <span class="hljs-string">&#x27;&quot;&#x27;</span> char+:<span class="hljs-meta">x</span> <span class="hljs-string">&#x27;&quot;&#x27;</span> -&gt; <span class="hljs-meta">x</span>.jo<span class="hljs-meta">in(</span><span class="hljs-string">&#x27;&#x27;</span>),
+  num = &lt;digit+&gt;:<span class="hljs-meta">x</span> -&gt; pars<span class="hljs-meta">eInt(</span><span class="hljs-meta">x</span>, 10),
+  obj = <span class="hljs-string">&quot;{}&quot;</span> -&gt; {}
+      | <span class="hljs-string">&quot;{&quot;</span> (
+              listOf(`kvp, <span class="hljs-string">&#x27;,&#x27;</span>):kvs
+              makeObject(kvs):<span class="hljs-meta">output</span>
             )
-        <span class="hljs-string">"}"</span> -&gt; output
+        <span class="hljs-string">&quot;}&quot;</span> -&gt; <span class="hljs-meta">output</span>
 }
 
-JsonReader.makeObject = function(kvs) {
+JsonReader.makeObject = functi<span class="hljs-meta">on(</span>kvs) {
   var obj = {}
-  <span class="hljs-keyword">for</span>(var i = <span class="hljs-number">0</span> ; i &lt; kvs.length; i++) {
+  for(var i = 0 ; i &lt; kvs.<span class="hljs-meta">length</span>; i++) {
     var kv = kvs[i]
-    obj[kv[<span class="hljs-number">0</span>]] = kv[<span class="hljs-number">1</span>]
+    obj[kv[0]] = kv[1]
   }
-  <span class="hljs-keyword">return</span> obj
+  <span class="hljs-meta">return</span> obj
 }</code></pre><p><strong>Summary</strong></p>
 <p>It&#39;s pretty trivial to build up a parser for something if you built up a test suite as you go and have some way of</p>
 <ul>

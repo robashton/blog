@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -73,11 +74,11 @@
 <p>I&#39;ll take that second option because I already have all the code required to do this in Erlang in our proprietary workflow engine - a simplified example of the code I&#39;ll write to test my decoder appears below. (Working inside of a mature codebase has its advantages)</p>
 <pre><code class="language-erlang">
   #workflow {
-    generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">"foo.ts"</span>&gt;&gt; },
+    generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">&quot;foo.ts&quot;</span>&gt;&gt; },
     processors = [
       #nvidia_decoder { name = decode, from = { source, ?video_frames_with_stream_id(<span class="hljs-number">256</span>) } },
       #x264_encoder { name = encode, from = decode },
-      #ts_writer { name = write, from = encode, filename  = &lt;&lt;<span class="hljs-string">"out.ts"</span>&gt;&gt; }
+      #ts_writer { name = write, from = encode, filename  = &lt;&lt;<span class="hljs-string">&quot;out.ts&quot;</span>&gt;&gt; }
     ]
   }
 </code></pre>
@@ -146,7 +147,7 @@
 <pre><code class="language-c">
   <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> CUDAAPI <span class="hljs-title">decode_session_handle_video_sequence</span><span class="hljs-params">(<span class="hljs-keyword">void</span> *obj, CUVIDEOFORMAT* pVideoFormat)</span>
   </span>{
-    TRACE(<span class="hljs-string">"handle_video_sequence  \r\n"</span>);
+    TRACE(<span class="hljs-string">&quot;handle_video_sequence  \r\n&quot;</span>);
   }
 </code></pre>
 <p>Each of these callbacks present us with a <em>void\</em> obj<em>, which is the *pUserData</em> passed into the parser parameters on creation, we&#39;re using a struct here containing the parser and parameters, and it makes sense to stash the decoder in this struct too.</p>
@@ -291,19 +292,19 @@
 </code></pre>
 <p>If we wanted this in host memory, we&#39;d do a straight up malloc of (byte_width * byte_height) with a pitch of byte_width, and copy it out this way</p>
 <pre><code>
-  CUDA_MEMCPY2D m = { <span class="hljs-number">0</span> }<span class="hljs-comment">;</span>
-  CUresult cr<span class="hljs-comment">;</span>
+  CUDA_MEMCPY2D <span class="hljs-attr">m</span> = { <span class="hljs-number">0</span> };
+  CUresult cr;
 
-  m.srcMemoryType = CU_MEMORYTYPE_DEVICE<span class="hljs-comment">;</span>
-  m.srcDevice = (CUdeviceptr)srcFrame<span class="hljs-comment">;</span>
-  m.srcPitch = srcPitch<span class="hljs-comment">;</span>
-  m.dstMemoryType = CU_MEMORYTYPE_HOST<span class="hljs-comment">;</span>
-  m.dstHost = (CUdeviceptr)dstFrame<span class="hljs-comment">;</span>
-  m.dstPitch = <span class="hljs-keyword">byte_width;
-</span>  m.WidthInBytes = <span class="hljs-keyword">byte_width;
-</span>  m.Height = <span class="hljs-keyword">byte_height;
-</span>
-  cuMemcpy2D(&amp;m)<span class="hljs-comment">;</span>
+  m.<span class="hljs-attr">srcMemoryType</span> = CU_MEMORYTYPE_DEVICE;
+  m.<span class="hljs-attr">srcDevice</span> = (CUdeviceptr)srcFrame;
+  m.<span class="hljs-attr">srcPitch</span> = srcPitch;
+  m.<span class="hljs-attr">dstMemoryType</span> = CU_MEMORYTYPE_HOST;
+  m.<span class="hljs-attr">dstHost</span> = (CUdeviceptr)dstFrame;
+  m.<span class="hljs-attr">dstPitch</span> = byte_width;
+  m.<span class="hljs-attr">WidthInBytes</span> = byte_width;
+  m.<span class="hljs-attr">Height</span> = byte_height;
+
+  cuMemcpy2D(&amp;m);
 </code></pre><p>That data can then be fired into libx264 along with <em>pDispInfo-&gt;timestamp</em>, encoded and viewed with pleasure. I guess the next post I should  probably talk about CUDA context management before I get to the job of encoding or transforming this data and  maybe it&#39;s worth talking a little about how I&#39;m managing reference counted surfaces between Erlang and C as well as that&#39;s a whole world of fun after this.</p>
 <p>Mundane, but hopefully useful to me or somebody else in the future.</p>
 </div>

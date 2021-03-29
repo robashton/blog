@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -93,30 +94,30 @@
 <li>Document metadata</li>
 </ul>
 <p>Therefore, we keep a few built-in prefixes around to determine how these documents are stored</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">def</span></span> synctags-to-docs-prefix <span class="hljs-string">"synctags-to-docs-"</span>)
-(<span class="hljs-name"><span class="hljs-builtin-name">def</span></span> conflict-prefix <span class="hljs-string">"conflict-"</span>)
-(<span class="hljs-name"><span class="hljs-builtin-name">def</span></span> document-prefix <span class="hljs-string">"doc-"</span>)
-(<span class="hljs-name"><span class="hljs-builtin-name">def</span></span> last-synctag-key <span class="hljs-string">"last-synctag"</span>)
-(<span class="hljs-name"><span class="hljs-builtin-name">def</span></span> docs-to-metadata-prefix <span class="hljs-string">"docs-to-metadata-"</span>)</code></pre><p>Thus, writing is actually the addition of multiple entries to the underlying key-value store. I have a few helper methods for determining whether an entry in the underlying storage is a specific type of key/value pair. Note: I know, these are using reflection and I should be using the built in string methods - I never got around to updating this code :)</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> is-document-key [<span class="hljs-comment">^String</span> k]
-  (<span class="hljs-name">.startsWith</span> k document-prefix))
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> is-document-key-prefixed-with [prefix entry]
-  (<span class="hljs-name">.startsWith</span> (<span class="hljs-name">entry</span> <span class="hljs-symbol">:k</span>) (<span class="hljs-name"><span class="hljs-builtin-name">str</span></span> document-prefix prefix)))
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> is-synctags-to-docs-key [k]
-  (<span class="hljs-name">.startsWith</span> k synctags-to-docs-prefix))
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> is-synctag-docs-entry [m]
-  (<span class="hljs-name">is-synctags-to-docs-key</span> (<span class="hljs-symbol">:k</span> m)))
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> is-conflict-entry [m]
-  (<span class="hljs-name">.startsWith</span> (<span class="hljs-symbol">:k</span> m) conflict-prefix))
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> is-conflict-entry-for [m doc-id]
-  (<span class="hljs-name">.startsWith</span> (<span class="hljs-symbol">:k</span> m) (<span class="hljs-name"><span class="hljs-builtin-name">str</span></span> conflict-prefix doc-id)))</code></pre><p>Storing a document is just a repeated application of chnages to the underlying transaction as described in previous entries</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> store-document
+<pre><code>(def synctags-<span class="hljs-keyword">to</span>-docs-prefix &quot;synctags-to-docs-&quot;)
+(def <span class="hljs-keyword">conflict</span>-prefix &quot;conflict-&quot;)
+(def document-prefix &quot;doc-&quot;)
+(def last-synctag-key &quot;last-synctag&quot;)
+(def docs-<span class="hljs-keyword">to</span>-metadata-prefix &quot;docs-to-metadata-&quot;)</code></pre><p>Thus, writing is actually the addition of multiple entries to the underlying key-value store. I have a few helper methods for determining whether an entry in the underlying storage is a specific type of key/value pair. Note: I know, these are using reflection and I should be using the built in string methods - I never got around to updating this code :)</p>
+<pre><code>(defn <span class="hljs-keyword">is</span>-document-key [^String k]
+  (.startsWith k document-prefix))
+(defn <span class="hljs-keyword">is</span>-document-key-prefixed-<span class="hljs-keyword">with</span> [prefix entry]
+  (.startsWith (entry :k) (str document-prefix prefix)))
+(defn <span class="hljs-keyword">is</span>-synctags-<span class="hljs-keyword">to</span>-docs-key [k]
+  (.startsWith k synctags-<span class="hljs-keyword">to</span>-docs-prefix))
+(defn <span class="hljs-keyword">is</span>-synctag-docs-entry [m]
+  (<span class="hljs-keyword">is</span>-synctags-<span class="hljs-keyword">to</span>-docs-key (:k m)))
+(defn <span class="hljs-keyword">is</span>-<span class="hljs-keyword">conflict</span>-entry [m]
+  (.startsWith (:k m) <span class="hljs-keyword">conflict</span>-prefix))
+(defn <span class="hljs-keyword">is</span>-<span class="hljs-keyword">conflict</span>-entry-<span class="hljs-keyword">for</span> [m doc-id]
+  (.startsWith (:k m) (str <span class="hljs-keyword">conflict</span>-prefix doc-id)))</code></pre><p>Storing a document is just a repeated application of chnages to the underlying transaction as described in previous entries</p>
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">store-document</span>
   [db id document metadata]
   (<span class="hljs-name"><span class="hljs-builtin-name">-&gt;</span></span> db
     (<span class="hljs-name">s/store</span> (<span class="hljs-name"><span class="hljs-builtin-name">str</span></span> document-prefix id) document)
     (<span class="hljs-name">s/store</span> (<span class="hljs-name"><span class="hljs-builtin-name">str</span></span> synctags-to-docs-prefix (<span class="hljs-symbol">:synctag</span> metadata)) id)
     (<span class="hljs-name">s/store</span> (<span class="hljs-name"><span class="hljs-builtin-name">str</span></span> docs-to-metadata-prefix id) metadata)))</code></pre><p>Likewise, deletion is a similar story</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> delete-document
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">delete-document</span>
   [session id metadata]
   (<span class="hljs-name"><span class="hljs-builtin-name">-&gt;</span></span> session
     (<span class="hljs-name">s/delete</span> (<span class="hljs-name"><span class="hljs-builtin-name">str</span></span> document-prefix id))
@@ -129,22 +130,22 @@
             :id id
             :data document
             :metadata metadata }))</code></pre><p>Getting all the conflicts from the document storage, is just a matter of opening an appropriate iterator and reading entries until one is not a conflict</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> conflicts
-  ([db] (<span class="hljs-name">conflicts</span> db <span class="hljs-string">""</span>))
+<pre><code>(defn conflicts
+  ([db] (conflicts db &quot;&quot;))
   ([db prefix]
-      (<span class="hljs-name"><span class="hljs-builtin-name">with-open</span></span> [iter (<span class="hljs-name">s/get-iterator</span> db )]
-        (<span class="hljs-name">s/seek</span> iter (<span class="hljs-name"><span class="hljs-builtin-name">str</span></span> conflict-prefix prefix))
-        (<span class="hljs-name"><span class="hljs-builtin-name">doall</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">-&gt;&gt;</span></span> (<span class="hljs-name">s/as-seq</span> iter)
-            (<span class="hljs-name"><span class="hljs-builtin-name">take-while</span></span> #(<span class="hljs-name">is-conflict-entry-for</span> %<span class="hljs-number">1</span> prefix))
-            (<span class="hljs-name"><span class="hljs-builtin-name">map</span></span> <span class="hljs-symbol">:v</span>))))))</code></pre><p>This is not lazy, we can see a with-open block and a do-all, I guess if I&#39;d fleshed out the MVCC set-up then the iterator control would have been passed up to a higher layer.</p>
+      (<span class="hljs-keyword">with</span>-<span class="hljs-keyword">open</span> [iter (s/<span class="hljs-keyword">get</span>-iterator db )]
+        (s/seek iter (str <span class="hljs-keyword">conflict</span>-prefix prefix))
+        (doall (-&gt;&gt; (s/<span class="hljs-keyword">as</span>-seq iter)
+            (take-<span class="hljs-keyword">while</span> #(<span class="hljs-keyword">is</span>-<span class="hljs-keyword">conflict</span>-entry-<span class="hljs-keyword">for</span> %<span class="hljs-number">1</span> prefix))
+            (map :v))))))</code></pre><p>This is not lazy, we can see a with-open block and a do-all, I guess if I&#39;d fleshed out the MVCC set-up then the iterator control would have been passed up to a higher layer.</p>
 <p>For convenience, the documents also surface some convenience methods for reading through documents from a specific key or order. Unlike conflicts, these take in an iterator and it is assumed that the utiliser will take care of evaluation and the closing of that iterator in the appropriate manner.</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> iterate-documents-prefixed-with [iter prefix]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">iterate-documents-prefixed-with</span> [iter prefix]
   (<span class="hljs-name">s/seek</span> iter (<span class="hljs-name"><span class="hljs-builtin-name">str</span></span> document-prefix prefix))
   (<span class="hljs-name"><span class="hljs-builtin-name">-&gt;&gt;</span></span> (<span class="hljs-name">s/as-seq</span> iter)
     (<span class="hljs-name"><span class="hljs-builtin-name">take-while</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">partial</span></span> is-document-key-prefixed-with prefix))
     (<span class="hljs-name"><span class="hljs-builtin-name">map</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">comp</span></span> edn/read-string <span class="hljs-symbol">:v</span>))) )
 
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> iterate-synctags-after [iter synctag]
+(<span class="hljs-keyword">defn</span> <span class="hljs-title">iterate-synctags-after</span> [iter synctag]
   (<span class="hljs-name">s/seek</span> iter (<span class="hljs-name"><span class="hljs-builtin-name">str</span></span> synctags-to-docs-prefix (<span class="hljs-name">next-synctag</span> synctag)))
   (<span class="hljs-name"><span class="hljs-builtin-name">-&gt;&gt;</span></span> (<span class="hljs-name">s/as-seq</span> iter) (<span class="hljs-name"><span class="hljs-builtin-name">take-while</span></span> is-synctag-docs-entry) (<span class="hljs-name"><span class="hljs-builtin-name">map</span></span> <span class="hljs-symbol">:v</span>) (<span class="hljs-name">distinct</span>)))</code></pre><p>That&#39;s actually the entire implementation of document storage listed out in this blog entry. Clojure can be very terse at timess due to the data-oriented nature of this code - and in my opinion doesn&#39;t lose legibility in this case for that sake.</p>
 <p>Note that all functions in this are actually pure, they take in one map, and return a new map with changes applied to it. (Or as pure as they can be, the underlying storage mechnism can do all sorts of weird things with atoms and we wouldn&#39;t even know.)</p>

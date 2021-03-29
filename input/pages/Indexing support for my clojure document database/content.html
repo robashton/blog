@@ -10,14 +10,14 @@
 </ul>
 <p><strong>What is an index?</strong></p>
 <p>An index, is just something that transforms a potentially complex document into something that can be put into our index store. For example, if we had the following document and we wanted to be able to search for ponies by the town in which they live.</p>
-<pre><code>{ <span class="hljs-attribute">name</span>: <span class="hljs-string">"Pinkie Pie"</span>
+<pre><code>{ name: <span class="hljs-string">&quot;Pinkie Pie&quot;</span>
   address: {
-    :town <span class="hljs-string">"Ponyville"</span>
+    <span class="hljs-symbol">:town</span> <span class="hljs-string">&quot;Ponyville&quot;</span>
   }}</code></pre><p>We might write the following map function</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> pony-by-town [pony] { <span class="hljs-string">"town"</span> (<span class="hljs-name"><span class="hljs-builtin-name">get-in</span></span> pony [<span class="hljs-symbol">:address</span> <span class="hljs-symbol">:town</span>])})</code></pre><p>The results of this might be put in some form of secondary index (in Couch this would be a variety of b-tree) for look-up purposes.</p>
+<pre><code>(<span class="hljs-string">defn</span> <span class="hljs-string">pony-by-town</span> [<span class="hljs-string">pony</span>] { <span class="hljs-string">&quot;town&quot;</span> (<span class="hljs-built_in">get-in</span> <span class="hljs-string">pony</span> [:<span class="hljs-string">address</span> :<span class="hljs-string">town</span>])})</code></pre><p>The results of this might be put in some form of secondary index (in Couch this would be a variety of b-tree) for look-up purposes.</p>
 <p>This index definition needs storing in the database too, as the database will need to run all of these indexes on documents as they are written/modified.  Sadly there is no &quot;tidy&quot; way to serialize functions in Clojure and while I now know about macros and could probably make them do it for me, I opted for taking in strings representing these index functions.</p>
-<pre><code>{ <span class="hljs-symbol">:id</span> <span class="hljs-string">"ponies-by-town"</span>
-  <span class="hljs-symbol">:map</span> <span class="hljs-string">"(fn [doc] { \"town\" (get-in doc [:address :town])})"</span>
+<pre><code>{ <span class="hljs-symbol">:id</span> <span class="hljs-string">&quot;ponies-by-town&quot;</span>
+  <span class="hljs-symbol">:map</span> <span class="hljs-string">&quot;(fn [doc] { \&quot;town\&quot; (get-in doc [:address :town])})&quot;</span>
 }</code></pre><p>These have their own GET/PUT/DELETE methods in the HTTP API and Document API and are treated just like documents. (indeed, indexes.clj looks very much like documents.clj)</p>
 <p><strong>The index store itself</strong></p>
 <p>Again, no way am I writing a secondary index store from scratch and just like RavenDB did, I&#39;m reaching for Lucene to provide these capabilities.</p>
@@ -33,43 +33,43 @@
                                       TextField IntField FloatField StringField)))</code></pre><p>Very classes. Much namespace. Wow.</p>
 <p><strong>Some more protocols</strong></p>
 <p>While in the rest of the database, protocols have been used for convenient polymorphism, in this case they were used to provide very thin wrappers over Lucene (hiding the immense object construction required to build up the various reader/writer/indexes) and ensuring the consistent use of Lucene.</p>
-<pre><code>(<span class="hljs-name">defrecord</span> LuceneIndexWriting [<span class="hljs-name">writer</span> analyzer]
+<pre><code>(<span class="hljs-keyword">defrecord</span> <span class="hljs-title">LuceneIndexWriting</span> [writer analyzer]
   java.io.Closeable
-  (<span class="hljs-name">close</span> [<span class="hljs-name">this</span>]
+  (<span class="hljs-name">close</span> [this]
     (<span class="hljs-name">.close</span> writer)))
-(<span class="hljs-name">defrecord</span> LuceneIndexReading [<span class="hljs-name">reader</span> analyzer]
+(<span class="hljs-keyword">defrecord</span> <span class="hljs-title">LuceneIndexReading</span> [reader analyzer]
   java.io.Closeable
-  (<span class="hljs-name">close</span> [<span class="hljs-name">this</span>]
+  (<span class="hljs-name">close</span> [this]
     (<span class="hljs-name">.close</span> reader)))
-(<span class="hljs-name">defrecord</span> LuceneIndex [<span class="hljs-name">analyzer</span> directory config]
+(<span class="hljs-keyword">defrecord</span> <span class="hljs-title">LuceneIndex</span> [analyzer directory config]
   java.io.Closeable
-  (<span class="hljs-name">close</span> [<span class="hljs-name">this</span>]
+  (<span class="hljs-name">close</span> [this]
     (<span class="hljs-name">.close</span> directory)))</code></pre><p>And lo, the following factory methods were born.</p>
-<pre><code>(<span class="hljs-name">defn</span> open-writer [<span class="hljs-name">index</span>] (<span class="hljs-name">LuceneIndexWriting.</span>
-                      (<span class="hljs-name">IndexWriter.</span> (<span class="hljs-name">:directory</span> index) (<span class="hljs-name">:config</span> index))
-                        (<span class="hljs-name">:analyzer</span> index)))
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> open-writer [index] (<span class="hljs-name">LuceneIndexWriting.</span>
+                      (<span class="hljs-name">IndexWriter.</span> (<span class="hljs-symbol">:directory</span> index) (<span class="hljs-symbol">:config</span> index))
+                        (<span class="hljs-symbol">:analyzer</span> index)))
 
-(<span class="hljs-name">defn</span> open-reader [<span class="hljs-name">index</span>] (<span class="hljs-name">LuceneIndexReading.</span>
-                      (<span class="hljs-name">DirectoryReader/open</span> (<span class="hljs-name">:directory</span> index)) (<span class="hljs-name">:analyzer</span> index)))
+(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> open-reader [index] (<span class="hljs-name">LuceneIndexReading.</span>
+                      (<span class="hljs-name">DirectoryReader/open</span> (<span class="hljs-symbol">:directory</span> index)) (<span class="hljs-symbol">:analyzer</span> index)))
 
-(<span class="hljs-name">defn</span> create-index [<span class="hljs-name">file</span>]
-  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [<span class="hljs-name">analyzer</span> (<span class="hljs-name">StandardAnalyzer.</span> Version/LUCENE_CURRENT)
+(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> create-index [file]
+  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [analyzer (<span class="hljs-name">StandardAnalyzer.</span> Version/LUCENE_CURRENT)
         directory (<span class="hljs-name">FSDirectory/open</span> file)
         config (<span class="hljs-name">IndexWriterConfig.</span> Version/LUCENE_CURRENT analyzer) ]
     (<span class="hljs-name">LuceneIndex.</span> analyzer directory config)))
 
-(<span class="hljs-name">defn</span> create-memory-index []
-  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [<span class="hljs-name">analyzer</span> (<span class="hljs-name">StandardAnalyzer.</span> Version/LUCENE_CURRENT)
+(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> create-memory-index []
+  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [analyzer (<span class="hljs-name">StandardAnalyzer.</span> Version/LUCENE_CURRENT)
         directory (<span class="hljs-name">RAMDirectory.</span>)
         config (<span class="hljs-name">IndexWriterConfig.</span> Version/LUCENE_CURRENT analyzer)]
     (<span class="hljs-name">LuceneIndex.</span> analyzer directory config)))</code></pre><p>Not much to it, but how do we write to this?</p>
 <p><strong>Writing to our indexes</strong></p>
 <p>The only important function really, is this.</p>
-<pre><code>(<span class="hljs-name">defn</span> put-entry [<span class="hljs-name">index</span> ref-id content]
-  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [<span class="hljs-name">doc</span> (<span class="hljs-name">Document.</span>)]
-    (<span class="hljs-name">doseq</span> [<span class="hljs-name">f</span> (<span class="hljs-name">map-to-lucene</span> content)] (<span class="hljs-name">.add</span> doc f))
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">put-entry</span> [index ref-id content]
+  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [doc (<span class="hljs-name">Document.</span>)]
+    (<span class="hljs-name"><span class="hljs-builtin-name">doseq</span></span> [f (<span class="hljs-name">map-to-lucene</span> content)] (<span class="hljs-name">.add</span> doc f))
     (<span class="hljs-name">.add</span> doc (<span class="hljs-name">document-id-field</span> ref-id))
-    (<span class="hljs-name">.addDocument</span> (<span class="hljs-name">:writer</span> index) doc))
+    (<span class="hljs-name">.addDocument</span> (<span class="hljs-symbol">:writer</span> index) doc))
   index)</code></pre><p>So, somehow we&#39;ll need to go through all of our documents as they are written/modified and execute all the indexes we have against them before calling put-entry and storing the results in Lucene.</p>
 <p>That&#39;s a job for the indexing engine, but we&#39;ll leave that for now as it&#39;s one of the more complicated pieces of code and will need a bit of explanation.</p>
 <p><strong>Summary</strong></p>

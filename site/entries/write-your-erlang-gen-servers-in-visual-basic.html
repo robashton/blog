@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -89,7 +90,7 @@
     {ok, { #{ strategy =&gt; one_for_one }, 
            #{ start =&gt; { dotnet_shim
                        , start_link
-                       , [ <span class="hljs-string">"priv/acme.dll"</span>, <span class="hljs-string">"Acme.MyEnterpriseGradeApp"</span> ]
+                       , [ <span class="hljs-string">&quot;priv/acme.dll&quot;</span>, <span class="hljs-string">&quot;Acme.MyEnterpriseGradeApp&quot;</span> ]
                        }
             , id =&gt; acme_app
             , type =&gt; worker
@@ -101,12 +102,12 @@
 <p>At its heart, an <em>IApp</em> is simply a class that has a Start method that&#39;ll return <em>something</em> back up to Erlang, these can be launched manually from Erlang to execute arbitrary code - for example, here is an app written in dotnet that returns a fixed string to us...</p>
 <pre><code class="language-csharp">  <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">HelloApp</span> : <span class="hljs-title">IApp</span> {
     <span class="hljs-function"><span class="hljs-keyword">public</span> Object <span class="hljs-title">Start</span>(<span class="hljs-params"></span>)</span> {
-      <span class="hljs-keyword">return</span> <span class="hljs-string">"Hello Joe"</span>;
+      <span class="hljs-keyword">return</span> <span class="hljs-string">&quot;Hello Joe&quot;</span>;
     }
   }
 </code></pre>
 <p>Can be executed from Erlang like so</p>
-<pre><code class="language-erlang">  { ok, Result } = dotnet:run_app_from_assembly(<span class="hljs-string">"priv/acme.dll"</span>, <span class="hljs-string">"Acme.HelloApp"</span>),
+<pre><code class="language-erlang">  { ok, Result } = dotnet:run_app_from_assembly(<span class="hljs-string">&quot;priv/acme.dll&quot;</span>, <span class="hljs-string">&quot;Acme.HelloApp&quot;</span>),
   ?LOG(Result). <span class="hljs-comment">%% Hello Joe</span></code></pre>
 <p>You will notice that the result from dotnet was automatically wrapped in an <em>{ok, Result}</em> tuple, as most Erlang APIs will expect that, if our dotnet code throws an exception then this will be automatically returned back as an <em>{ error, Reason }</em> instead - this seemed to be the cleanest way of expressing error conditions (and a special Exception (<em>TermException</em>) class is provided for explicitly providing that Reason to the Erlang host.</p>
 <p><em>Passing values in</em></p>
@@ -117,47 +118,47 @@
     }
   }
 </code></pre>
-<pre><code class="language-erlang">  { ok, Result } = dotnet:run_app_from_assembly(<span class="hljs-string">"priv/acme.dll"</span>, <span class="hljs-string">"Acme.AddApp"</span>, { <span class="hljs-number">5</span>, <span class="hljs-number">5</span> }),
+<pre><code class="language-erlang">  { ok, Result } = dotnet:run_app_from_assembly(<span class="hljs-string">&quot;priv/acme.dll&quot;</span>, <span class="hljs-string">&quot;Acme.AddApp&quot;</span>, { <span class="hljs-number">5</span>, <span class="hljs-number">5</span> }),
   ?LOG(Result). <span class="hljs-comment">%% 10</span></code></pre>
 <p>The observant reader will notice that we&#39;re using a dotnet <em>Tuple&lt;Int, Int&gt;</em> here and passing in an erlang tuple <em>{ integer(), integer }</em> and it just maps across automatically, how does this work? Ah well, go read the source code to find out or wait for the blog posts that I&#39;ll be writing on that subject, for now just accept that you can stick pretty much anything in your type signature and the equivalent Erlang types will get converted across. How about using a record instead of the tuple for example?</p>
-<pre><code class="language-csharp">  public record AddArgs (int X, int Y);
+<pre><code class="language-csharp">  <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">record</span> <span class="hljs-title">AddArgs</span> (<span class="hljs-params"><span class="hljs-built_in">int</span> X, <span class="hljs-built_in">int</span> Y</span>)</span>;
 
-  public class AddApp : IApp&lt;AddArgs&gt; {
-    public Object Start(AddArgs args) {
-      return args.X + args.Y;
+  <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">AddApp</span> : <span class="hljs-title">IApp</span>&lt;<span class="hljs-title">AddArgs</span>&gt; {
+    <span class="hljs-function"><span class="hljs-keyword">public</span> Object <span class="hljs-title">Start</span>(<span class="hljs-params">AddArgs args</span>)</span> {
+      <span class="hljs-keyword">return</span> args.X + args.Y;
     }
   }
 </code></pre>
-<pre><code class="language-erlang">  { ok, Result } = dotnet:run_app_from_assembly(<span class="hljs-string">"priv/acme.dll"</span>, <span class="hljs-string">"Acme.HelloApp"</span>, #{ x =&gt; <span class="hljs-number">5</span>, y =&gt; <span class="hljs-number">5</span> }),
+<pre><code class="language-erlang">  { ok, Result } = dotnet:run_app_from_assembly(<span class="hljs-string">&quot;priv/acme.dll&quot;</span>, <span class="hljs-string">&quot;Acme.HelloApp&quot;</span>, #{ x =&gt; <span class="hljs-number">5</span>, y =&gt; <span class="hljs-number">5</span> }),
   ?LOG(Result). <span class="hljs-comment">%% 10</span></code></pre>
 <p>Not a problem. The observant reader will notice that not only is the casing automatically adjusted (Erlang is typically <em>snake_case</em>, and dotnet is typically <em>PascalCase</em>) but return type of Start is just a plain ol&#39; object, and the same thing applies there, return anything you like and it&#39;ll get converted into something that Erlang will understand.</p>
 <pre><code class="language-csharp">
-  <span class="hljs-keyword">public</span> record ComplexReturnValue {
-    <span class="hljs-keyword">public</span> AnotherComplexValue Why { <span class="hljs-keyword">get</span>; init; }
-    <span class="hljs-keyword">public</span> <span class="hljs-keyword">int</span> Y { <span class="hljs-keyword">get</span>; init; }
-    <span class="hljs-keyword">public</span> String Rye { <span class="hljs-keyword">get</span>; init; }
+  <span class="hljs-keyword">public</span> <span class="hljs-keyword">record</span> <span class="hljs-title">ComplexReturnValue</span> {
+    <span class="hljs-keyword">public</span> AnotherComplexValue Why { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">init</span>; }
+    <span class="hljs-keyword">public</span> <span class="hljs-built_in">int</span> Y { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">init</span>; }
+    <span class="hljs-keyword">public</span> String Rye { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">init</span>; }
   }
 
-  <span class="hljs-function"><span class="hljs-keyword">public</span> record <span class="hljs-title">AnotherComplexValue</span> (<span class="hljs-params"> <span class="hljs-keyword">string</span> Because </span>)</span>;
+  <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">record</span> <span class="hljs-title">AnotherComplexValue</span> (<span class="hljs-params"> <span class="hljs-built_in">string</span> Because </span>)</span>;
 
   <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">ComplexApp</span> : <span class="hljs-title">IApp</span> {
     <span class="hljs-function"><span class="hljs-keyword">public</span> Object <span class="hljs-title">Start</span>(<span class="hljs-params"></span>)</span> {
       <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> ComplexReturnValue {
         Why = <span class="hljs-keyword">new</span> () { 
-          Because = <span class="hljs-string">"We can"</span>
+          Because = <span class="hljs-string">&quot;We can&quot;</span>
         },
         Y = <span class="hljs-number">1337</span>,
-        Rye = <span class="hljs-string">"Rittenhouse"</span>
+        Rye = <span class="hljs-string">&quot;Rittenhouse&quot;</span>
       };
     }
   }</code></pre>
 <pre><code class="language-erlang">  { ok, #{ why := #{ because := Reason }
          , y := Number
          , rye := Whisky
-  }} = dotnet:run_app_from_assembly(<span class="hljs-string">"priv/acme.dll"</span>, <span class="hljs-string">"Acme.ComplexApp"</span>),
+  }} = dotnet:run_app_from_assembly(<span class="hljs-string">&quot;priv/acme.dll&quot;</span>, <span class="hljs-string">&quot;Acme.ComplexApp&quot;</span>),
 
-  <span class="hljs-comment">%% Why: "We can", y: 1337, rye: "Rittenhouse"</span>
-  ?LOG(<span class="hljs-string">"Why: ~p, y: ~p, rye: ~p ~n"</span>, [Reason, Number, Whisky ]). 
+  <span class="hljs-comment">%% Why: &quot;We can&quot;, y: 1337, rye: &quot;Rittenhouse&quot;</span>
+  ?LOG(<span class="hljs-string">&quot;Why: ~p, y: ~p, rye: ~p ~n&quot;</span>, [Reason, Number, Whisky ]). 
 </code></pre>
 <p><em>Back to that Dotnet GenServer then</em></p>
 <p>We&#39;ve established that we can invoke arbitary dotnet code from Erlang, which is already probably one of the most useful things I&#39;ve created this year - the Erlang eco system is almost non-existent and being able to access all of that open source technology in Nuget is going to save us a lot of future development time. Going back to the start of this blog post our very first example was one of spinning up an actual genserver in dotnet - that is to say, code that is going to execute in its own Erlang process and in turn be able to execute its own arbitrary logic outside of the single function call that kicked that off.</p>
@@ -178,56 +179,56 @@
 <p>In the dotnet above, initial StartLink call takes place in the host process, and the callback is what is invoked in the init call and is expected to return &#39;some state&#39;. At its simplest, that state could just be an empty object:</p>
 <pre><code class="language-csharp">  <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">MyCoolGenServer</span> {}</code></pre>
 <p>In Erlang, if you want to invoke some code in the process that kicked off these shenanigans, you would invoke that code via a gen_server method (call/cast) or send a message via the pid using the bang (<em>!</em>) operator, and so long as the relevant callback was implemented that would result in something happening.</p>
-<pre><code class="language-erlang"><span class="hljs-function"><span class="hljs-title">start_link</span><span class="hljs-params">(Arg1, Arg2)</span> -&gt;</span>
-  gen_server:start_link({local, ?MODULE}, [Arg1, Arg2]).
+<pre><code class="language-erlang"><span class="hljs-function"><span class="hljs-title">start_link</span><span class="hljs-params">()</span> -&gt;</span>
+  gen_server:start_link({local, ?MODULE}, []).
 
-<span class="hljs-function"><span class="hljs-title">init</span><span class="hljs-params">([Arg1, Arg2])</span> -&gt;</span>
-  #state { one = Arg1, two = Arg2 }
+<span class="hljs-function"><span class="hljs-title">init</span><span class="hljs-params">([])</span> -&gt;</span>
+  #state{}
 
 handle_info(Msg, State) -&gt;
   ?LOG(Msg),
   {noreply, State}.</code></pre>
 <p>Used as thus</p>
-<pre><code class="language-erlang">  { ok, Pid } = my_cool_genserver:start_link(X,Y),
+<pre><code class="language-erlang">  { ok, Pid } = my_cool_genserver:start_link(),
 
   <span class="hljs-comment">%% Hello Robert</span>
-  Pid ! <span class="hljs-string">"Hello Robert"</span>.
+  Pid ! <span class="hljs-string">&quot;Hello Robert&quot;</span>.
 </code></pre>
 <p>The same thing works in dotnet (woah), we just need to implement an interface on the object that gets returned in that init call</p>
-<pre><code class="language-csharp">public class MyCoolGenServer : IHandleInfo&lt;String&gt; {
-  public HandleInfoResult HandleInfo(HandleInfoContext ctx, String msg) {
+<pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">MyCoolGenServer</span> : <span class="hljs-title">IHandleInfo</span>&lt;<span class="hljs-title">String</span>&gt; {
+  <span class="hljs-function"><span class="hljs-keyword">public</span> HandleInfoResult <span class="hljs-title">HandleInfo</span>(<span class="hljs-params">HandleInfoContext ctx, String msg</span>)</span> {
     Console.WriteLine(msg);
-    return ctx.NoReply();
+    <span class="hljs-keyword">return</span> ctx.NoReply();
   }
 }
 
-public class MyEnterpriseGradeApp : IApp {
-  public Object Start() { 
-    return GenServer.StartLink(() =&gt; new MyCoolGenServer());
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">MyEnterpriseGradeApp</span> : <span class="hljs-title">IApp</span> {
+  <span class="hljs-function"><span class="hljs-keyword">public</span> Object <span class="hljs-title">Start</span>(<span class="hljs-params"></span>)</span> { 
+    <span class="hljs-keyword">return</span> GenServer.StartLink(() =&gt; <span class="hljs-keyword">new</span> MyCoolGenServer());
   }
 }
 </code></pre>
-<pre><code class="language-erlang">  { ok, Pid } = dotnet_shim:start_link(<span class="hljs-string">"priv/acme.dll"</span>, <span class="hljs-string">"Acme.MyEnterpriseGradeApp"</span> ),
+<pre><code class="language-erlang">  { ok, Pid } = dotnet_shim:start_link(<span class="hljs-string">&quot;priv/acme.dll&quot;</span>, <span class="hljs-string">&quot;Acme.MyEnterpriseGradeApp&quot;</span> ),
 
   <span class="hljs-comment">%% Hello Robert</span>
-  Pid ! <span class="hljs-string">"Hello Robert"</span>.
+  Pid ! <span class="hljs-string">&quot;Hello Robert&quot;</span>.
 </code></pre>
 <p>Yes, this just works - arbitrary messages sent from Erlang to a process started (and running!) in dotnet arrive and get translated accordingly. How about doing something with state then?</p>
-<pre><code class="language-csharp">public class AdditionServer : IHandleCall&lt;int&gt; {
-  private int total = 0;
+<pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">AdditionServer</span> : <span class="hljs-title">IHandleCall</span>&lt;<span class="hljs-title">int</span>&gt; {
+  <span class="hljs-keyword">private</span> <span class="hljs-built_in">int</span> total = <span class="hljs-number">0</span>;
 
-  public HandleCall(HandleCallContext ctx, int msg) {
-    this.total += msg;
-    return ctx.Reply(total);
+  <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">HandleCall</span>(<span class="hljs-params">HandleCallContext ctx, <span class="hljs-built_in">int</span> msg</span>)</span> {
+    <span class="hljs-keyword">this</span>.total += msg;
+    <span class="hljs-keyword">return</span> ctx.Reply(total);
   }
 }
 
-public class AdditionApp : IApp {
-  public Object Start() { 
-    return GenServer.StartLink(() =&gt; new AdditionServer());
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">AdditionApp</span> : <span class="hljs-title">IApp</span> {
+  <span class="hljs-function"><span class="hljs-keyword">public</span> Object <span class="hljs-title">Start</span>(<span class="hljs-params"></span>)</span> { 
+    <span class="hljs-keyword">return</span> GenServer.StartLink(() =&gt; <span class="hljs-keyword">new</span> AdditionServer());
   }
 }</code></pre>
-<pre><code class="language-erlang">  { ok, Pid } = dotnet_shim:start_link(<span class="hljs-string">"priv/acme.dll"</span>, <span class="hljs-string">"Acme.AdditionApp"</span> ),
+<pre><code class="language-erlang">  { ok, Pid } = dotnet_shim:start_link(<span class="hljs-string">&quot;priv/acme.dll&quot;</span>, <span class="hljs-string">&quot;Acme.AdditionApp&quot;</span> ),
 
   <span class="hljs-comment">%% 1</span>
   ?LOG(gen_server:call(Pid, <span class="hljs-number">1</span>)),
@@ -250,26 +251,26 @@ handle_info({op, {mul, X}), State = #state { value = Value }) -&gt;
   {noreply, State#state { value = Value * X }}.
 </span></span></code></pre>
 <p>This code either receives a <em>{ atom(), pid() }</em>, or <em>{ atom(), { atom(), integer() }}</em>, we don&#39;t have union types in dotnet so can&#39;t map this across cleanly - or <em>can we</em>. C# has some semblance of pattern matching these days as any good scripting language should - what if we just request &#39;Object&#39; as our message type instead?</p>
-<pre><code class="language-csharp">public class MyCoolGenServer : IHandleInfo&lt;Object&gt; {
-  private int value = 0;
+<pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">MyCoolGenServer</span> : <span class="hljs-title">IHandleInfo</span>&lt;<span class="hljs-title">Object</span>&gt; {
+  <span class="hljs-keyword">private</span> <span class="hljs-built_in">int</span> <span class="hljs-keyword">value</span> = <span class="hljs-number">0</span>;
 
-  public HandleInfoResult HandleInfo(HandleInfoContext ctx, Object msg) {
-    switch(msg) {
-      case Tuple&lt;Atom, Pid&gt; t when t.Item1 == "tell_me":
-        Erlang.Send(t.Item2, this.value);
-        break;
-      case Tuple&lt;Atom, Tuple&lt;Atom, Int&gt;&gt; when t.Item1 == "op" 
-                                         &amp;&amp; t.Item2.Item1 == "add":
-        this.value += t.Item2.Item2;
-        break;
-      case Tuple&lt;Atom, Tuple&lt;Atom, Int&gt;&gt; when t.Item1 == "op" 
-                                         &amp;&amp; t.Item2.Item1 == "mul":
-        this.value *= t.Item2.Item2;
-        break;
-      default:
-        throw new TermException("Unsupported message received");
+  <span class="hljs-function"><span class="hljs-keyword">public</span> HandleInfoResult <span class="hljs-title">HandleInfo</span>(<span class="hljs-params">HandleInfoContext ctx, Object msg</span>)</span> {
+    <span class="hljs-keyword">switch</span>(msg) {
+      <span class="hljs-keyword">case</span> Tuple&lt;Atom, Pid&gt; t <span class="hljs-keyword">when</span> t.Item1 == <span class="hljs-string">&quot;tell_me&quot;</span>:
+        Erlang.Send(t.Item2, <span class="hljs-keyword">this</span>.<span class="hljs-keyword">value</span>);
+        <span class="hljs-keyword">break</span>;
+      <span class="hljs-keyword">case</span> Tuple&lt;Atom, Tuple&lt;Atom, Int&gt;&gt; <span class="hljs-keyword">when</span> t.Item1 == <span class="hljs-string">&quot;op&quot;</span> 
+                                         &amp;&amp; t.Item2.Item1 == <span class="hljs-string">&quot;add&quot;</span>:
+        <span class="hljs-keyword">this</span>.<span class="hljs-keyword">value</span> += t.Item2.Item2;
+        <span class="hljs-keyword">break</span>;
+      <span class="hljs-keyword">case</span> Tuple&lt;Atom, Tuple&lt;Atom, Int&gt;&gt; <span class="hljs-keyword">when</span> t.Item1 == <span class="hljs-string">&quot;op&quot;</span> 
+                                         &amp;&amp; t.Item2.Item1 == <span class="hljs-string">&quot;mul&quot;</span>:
+        <span class="hljs-keyword">this</span>.<span class="hljs-keyword">value</span> *= t.Item2.Item2;
+        <span class="hljs-keyword">break</span>;
+      <span class="hljs-literal">default</span>:
+        <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> TermException(<span class="hljs-string">&quot;Unsupported message received&quot;</span>);
     }
-    return ctx.NoReply();
+    <span class="hljs-keyword">return</span> ctx.NoReply();
   }
 }</code></pre>
 <p>Okay it&#39;s not the nicest example in the world but it <em>works</em>. <em>Atom</em> and <em>Pid</em> by the way are C# types that wrap the <em>concept</em> of an Atom (just a string really) and an instance of a <em>Pid</em> respectively. An Erlang static class exists for doing things like sending data to an arbitrary pid and that&#39;s what is invoked in that above code. </p>
@@ -283,13 +284,13 @@ handle_info({op, {mul, X}), State = #state { value = Value }) -&gt;
     case Atom a when a == &quot;ok&quot;: 
       return;
     default: 
-      throw new TermException&quot;That didn&#39;t work&quot;);
+      throw new TermException&quot;That didn&#x27;t work&quot;);
   }</code></pre>
 <p>Works out of the box. How about <em><a href="https://erlang.org/doc/man/file.html#open-2">file:open</a></em>, <em><a href="https://erlang.org/doc/man/file.html#write-2">file:write</a></em> and <em><a href="https://erlang.org/doc/man/file.html#close-1">file:close</a></em>?</p>
 <p>Like most of the Erlang APIs, file:open effectively returns a pid which is linked to the parent process. This also <em>just works</em> in Erlang.NET.</p>
 <pre><code class="language-csharp">
   <span class="hljs-comment">// Open the file handle and stash the pid for future use</span>
-  Tuple &lt;Atom, Pid&gt; success = (Tuple&lt;Atom,Pid&gt;)Erlang.Modules.File.Open(<span class="hljs-string">"file.txt"</span>, <span class="hljs-keyword">new</span> <span class="hljs-keyword">object</span>[] { <span class="hljs-keyword">new</span> Atom(<span class="hljs-string">"write"</span>) } );
+  Tuple &lt;Atom, Pid&gt; success = (Tuple&lt;Atom,Pid&gt;)Erlang.Modules.File.Open(<span class="hljs-string">&quot;file.txt&quot;</span>, <span class="hljs-keyword">new</span> <span class="hljs-built_in">object</span>[] { <span class="hljs-keyword">new</span> Atom(<span class="hljs-string">&quot;write&quot;</span>) } );
   <span class="hljs-keyword">this</span>.pid = success.Item2;
 
   <span class="hljs-comment">// And then do some of this</span>
@@ -305,12 +306,12 @@ handle_info({op, {mul, X}), State = #state { value = Value }) -&gt;
 <p>In a similar vein, that also means that APIs that involve messages being sent back to the parent process work as well - this can either be implemented in the IHandleInfo as above, or we can spin up an arbitrary process in dotnet to handle those specific messages. Doing this and wrapping this functionality in a dotnet class is a far more pleasant way of hiding the low level dynamic call taking place and exporting a nicer API to the dotnet client.</p>
 <pre><code class="language-csharp">  <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">class</span> <span class="hljs-title">GenUdp</span> {
 
-  <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> Pid <span class="hljs-title">Open</span>(<span class="hljs-params">Tuple&lt;Int, Int, Int, Int&gt; ip, <span class="hljs-keyword">int</span> port</span>)</span> {
+  <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> Pid <span class="hljs-title">Open</span>(<span class="hljs-params">Tuple&lt;Int, Int, Int, Int&gt; ip, <span class="hljs-built_in">int</span> port</span>)</span> {
      Pid parent = Erlang.Self();
      <span class="hljs-keyword">return</span> Process.Spawn((Process ctx) =&gt; {
       Tuple&lt;Atom, Pid&gt; success = (Tuple&lt;Atom, Pid&gt;)Erlang.Modules.GenUdp.Open(port, 
-      <span class="hljs-keyword">new</span> <span class="hljs-keyword">object</span>[] { Tuple.Create(<span class="hljs-keyword">new</span> Atom(<span class="hljs-string">"ip"</span>), ip)
-                   , Tuple.Create(<span class="hljs-keyword">new</span> Atom(<span class="hljs-string">"active"</span>), <span class="hljs-literal">true</span>)
+      <span class="hljs-keyword">new</span> <span class="hljs-built_in">object</span>[] { Tuple.Create(<span class="hljs-keyword">new</span> Atom(<span class="hljs-string">&quot;ip&quot;</span>), ip)
+                   , Tuple.Create(<span class="hljs-keyword">new</span> Atom(<span class="hljs-string">&quot;active&quot;</span>), <span class="hljs-literal">true</span>)
                    }
       });
       <span class="hljs-keyword">return</span> ReceiveLoop(parent, process);
@@ -324,32 +325,32 @@ handle_info({op, {mul, X}), State = #state { value = Value }) -&gt;
         <span class="hljs-keyword">case</span> Tuple&lt;Atom, Pid, Tuple&lt;Int,Int,Int,Int&gt;, Int, Byte[]&gt; data: 
           Erlang.send(parent, data.Item5);
           <span class="hljs-keyword">return</span> ReceiveLoop(parent, process);
-        <span class="hljs-keyword">default</span>:
-          <span class="hljs-keyword">return</span> process.Finish(<span class="hljs-keyword">new</span> Atom(<span class="hljs-string">"ok"</span>));
+        <span class="hljs-literal">default</span>:
+          <span class="hljs-keyword">return</span> process.Finish(<span class="hljs-keyword">new</span> Atom(<span class="hljs-string">&quot;ok&quot;</span>));
       }
     })
   }
 
   <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title">Stop</span>(<span class="hljs-params">Pid pid</span>)</span> {
-    Erlang.Send(pid, <span class="hljs-keyword">new</span> Atom(<span class="hljs-string">"stop"</span>));
+    Erlang.Send(pid, <span class="hljs-keyword">new</span> Atom(<span class="hljs-string">&quot;stop&quot;</span>));
   }</code></pre>
 <p>And this would allow us to write a gen server which connects to a udp sockets and writes everything it receives to disk. (Assuming we&#39;ve wrapped file:open/etc the same way as we just did with UDP)</p>
 <pre><code class="language-csharp">
-  public class UdpToFileServer : IHandleInfo&lt;Byte[]&gt;, IHandleTerminate {
-    private Pid udp;
-    private Pid file;
+  <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">UdpToFileServer</span> : <span class="hljs-title">IHandleInfo</span>&lt;<span class="hljs-title">Byte</span>[]&gt;, <span class="hljs-title">IHandleTerminate</span> {
+    <span class="hljs-keyword">private</span> Pid udp;
+    <span class="hljs-keyword">private</span> Pid file;
 
-    public UdpToFileServer(String filename, Tuple&lt;Int,Int,Int,Int&gt; ip, int port) {
-      this.udp = GenUdp.Open(Tuple.Create(ip, port));
-      this.file = ErlangFile.Open(filename, new object[] { new Atom("write") } );
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">UdpToFileServer</span>(<span class="hljs-params">String filename, Tuple&lt;Int,Int,Int,Int&gt; ip, <span class="hljs-built_in">int</span> port</span>)</span> {
+      <span class="hljs-keyword">this</span>.udp = GenUdp.Open(Tuple.Create(ip, port));
+      <span class="hljs-keyword">this</span>.file = ErlangFile.Open(filename, <span class="hljs-keyword">new</span> <span class="hljs-built_in">object</span>[] { <span class="hljs-keyword">new</span> Atom(<span class="hljs-string">&quot;write&quot;</span>) } );
     }
 
-    public HandleInfoResult HandleInfo(HandleInfoContext ctx, Byte[] bin) {
-      ErlangFile.Write(this.file, bin);
+    <span class="hljs-function"><span class="hljs-keyword">public</span> HandleInfoResult <span class="hljs-title">HandleInfo</span>(<span class="hljs-params">HandleInfoContext ctx, Byte[] bin</span>)</span> {
+      ErlangFile.Write(<span class="hljs-keyword">this</span>.file, bin);
     }
 
-    // Not necessary, but be kind
-    public void Terminate() {
+    <span class="hljs-comment">// Not necessary, but be kind</span>
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">Terminate</span>(<span class="hljs-params"></span>)</span> {
       GenUdp.Stop(udp);
       ErlangFile.Close(file);
     }
@@ -363,19 +364,19 @@ handle_info({op, {mul, X}), State = #state { value = Value }) -&gt;
 <pre><code class="language-csharp">    <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">SimpleSupApp</span> : <span class="hljs-title">IApp</span>
     {
       <span class="hljs-function"><span class="hljs-keyword">public</span> Object <span class="hljs-title">Start</span>(<span class="hljs-params"></span>)</span> {
-        <span class="hljs-keyword">return</span> Supervisor.StartLink(<span class="hljs-string">"primary-sup"</span>, 
+        <span class="hljs-keyword">return</span> Supervisor.StartLink(<span class="hljs-string">&quot;primary-sup&quot;</span>, 
                   () =&gt; <span class="hljs-keyword">new</span> SupervisorConfig(
                     SupervisionStrategy.OneForAll,
                     <span class="hljs-keyword">new</span> SupervisorChild [] { 
-                       <span class="hljs-keyword">new</span> SupervisorWorker(<span class="hljs-string">"c1"</span>, () =&gt; GenServer.StartLink(<span class="hljs-string">"genserver-one"</span>, () =&gt; <span class="hljs-keyword">new</span> WorkerGenServer1()))
-                     , <span class="hljs-keyword">new</span> SupervisorWorker(<span class="hljs-string">"c2"</span>, () =&gt; GenServer.StartLink(<span class="hljs-string">"genserver-two"</span>, () =&gt; <span class="hljs-keyword">new</span> WorkerGenServer1()))
-                     , <span class="hljs-keyword">new</span> SupervisorWorker(<span class="hljs-string">"c3"</span>, () =&gt; GenServer.StartLink(<span class="hljs-string">"genserver-three"</span>, () =&gt; <span class="hljs-keyword">new</span> WorkerGenServer1()))
-                     , <span class="hljs-keyword">new</span> Supervisor(<span class="hljs-string">"s1"</span>, () =&gt; 
-                         Supervisor.StartLink(<span class="hljs-string">"secondary-sup"</span>, 
+                       <span class="hljs-keyword">new</span> SupervisorWorker(<span class="hljs-string">&quot;c1&quot;</span>, () =&gt; GenServer.StartLink(<span class="hljs-string">&quot;genserver-one&quot;</span>, () =&gt; <span class="hljs-keyword">new</span> WorkerGenServer1()))
+                     , <span class="hljs-keyword">new</span> SupervisorWorker(<span class="hljs-string">&quot;c2&quot;</span>, () =&gt; GenServer.StartLink(<span class="hljs-string">&quot;genserver-two&quot;</span>, () =&gt; <span class="hljs-keyword">new</span> WorkerGenServer1()))
+                     , <span class="hljs-keyword">new</span> SupervisorWorker(<span class="hljs-string">&quot;c3&quot;</span>, () =&gt; GenServer.StartLink(<span class="hljs-string">&quot;genserver-three&quot;</span>, () =&gt; <span class="hljs-keyword">new</span> WorkerGenServer1()))
+                     , <span class="hljs-keyword">new</span> Supervisor(<span class="hljs-string">&quot;s1&quot;</span>, () =&gt; 
+                         Supervisor.StartLink(<span class="hljs-string">&quot;secondary-sup&quot;</span>, 
                          () =&gt; <span class="hljs-keyword">new</span> SupervisorConfig(SupervisionStrategy.OneForOne, 
-                           <span class="hljs-keyword">new</span> [] { <span class="hljs-keyword">new</span> SupervisorWorker(<span class="hljs-string">"sc1"</span>, () =&gt; GenServer.StartLink(<span class="hljs-string">"nested-one"</span>, () =&gt; <span class="hljs-keyword">new</span> WorkerGenServer1()))
-                                 ,  <span class="hljs-keyword">new</span> SupervisorWorker(<span class="hljs-string">"sc2"</span>, () =&gt; GenServer.StartLink(<span class="hljs-string">"nested-two"</span>, () =&gt; <span class="hljs-keyword">new</span> WorkerGenServer1()))
-                                 ,  <span class="hljs-keyword">new</span> SupervisorWorker(<span class="hljs-string">"sc3"</span>, () =&gt; GenServer.StartLink(<span class="hljs-string">"nested-three"</span>, () =&gt; <span class="hljs-keyword">new</span> WorkerGenServer1()))
+                           <span class="hljs-keyword">new</span> [] { <span class="hljs-keyword">new</span> SupervisorWorker(<span class="hljs-string">&quot;sc1&quot;</span>, () =&gt; GenServer.StartLink(<span class="hljs-string">&quot;nested-one&quot;</span>, () =&gt; <span class="hljs-keyword">new</span> WorkerGenServer1()))
+                                 ,  <span class="hljs-keyword">new</span> SupervisorWorker(<span class="hljs-string">&quot;sc2&quot;</span>, () =&gt; GenServer.StartLink(<span class="hljs-string">&quot;nested-two&quot;</span>, () =&gt; <span class="hljs-keyword">new</span> WorkerGenServer1()))
+                                 ,  <span class="hljs-keyword">new</span> SupervisorWorker(<span class="hljs-string">&quot;sc3&quot;</span>, () =&gt; GenServer.StartLink(<span class="hljs-string">&quot;nested-three&quot;</span>, () =&gt; <span class="hljs-keyword">new</span> WorkerGenServer1()))
                                  })))
                      }));
       }
@@ -405,13 +406,13 @@ handle_info({op, {mul, X}), State = #state { value = Value }) -&gt;
 <p>Now while all the examples in this blog entry are written in C# (as that appears to be the prevailing language in that ecosystem for the moment, yes I know there are F# developers too <em>waves at all five of them</em>), all of this results in our original aim which was to write our gen servers in Visual Basic .NET.</p>
 <pre><code class="language-vb">    <span class="hljs-keyword">Public</span> <span class="hljs-keyword">Class</span> MyGenServerVB
         <span class="hljs-keyword">Inherits</span> IHandleInfo(<span class="hljs-keyword">Of</span> Msg)
-        <span class="hljs-keyword">Public</span> <span class="hljs-keyword">Sub</span> <span class="hljs-keyword">New</span>()
+        <span class="hljs-keyword">Public</span> <span class="hljs-keyword">Sub</span> <span class="hljs-built_in">New</span>()
         <span class="hljs-keyword">End</span> <span class="hljs-keyword">Sub</span>
         <span class="hljs-keyword">Public</span> <span class="hljs-keyword">Function</span> HandleInfo(<span class="hljs-keyword">ByVal</span> ctx <span class="hljs-keyword">As</span> HandleInfoContext, <span class="hljs-keyword">ByVal</span> msg <span class="hljs-keyword">As</span> Msg) <span class="hljs-keyword">As</span> HandleInfoResult
-          <span class="hljs-keyword">If</span> msg.Item1 = <span class="hljs-string">"hello bob"</span> <span class="hljs-keyword">Then</span>
-            Erlang.Send(msg.Item2, <span class="hljs-string">"hello joe"</span>)
+          <span class="hljs-keyword">If</span> msg.Item1 = <span class="hljs-string">&quot;hello bob&quot;</span> <span class="hljs-keyword">Then</span>
+            Erlang.Send(msg.Item2, <span class="hljs-string">&quot;hello joe&quot;</span>)
           <span class="hljs-keyword">Else</span>
-            Erlang.Send(msg.Item2, <span class="hljs-string">"weeee"</span>)
+            Erlang.Send(msg.Item2, <span class="hljs-string">&quot;weeee&quot;</span>)
           <span class="hljs-keyword">End</span> <span class="hljs-keyword">If</span>
           <span class="hljs-keyword">Return</span> ctx.NoReply()
         <span class="hljs-keyword">End</span> <span class="hljs-keyword">Function</span>

@@ -4,35 +4,35 @@
 <pre><code><span class="hljs-comment">// An Event</span>
 {
 <span class="hljs-symbol">  Data:</span> {
-<span class="hljs-symbol">    PonyName:</span> <span class="hljs-string">"Rainbow Dash"</span>,
-<span class="hljs-symbol">    TrampStamp:</span> <span class="hljs-string">"Rainbow"</span>,
-<span class="hljs-symbol">    Date:</span> <span class="hljs-string">"January 2013"</span>
+<span class="hljs-symbol">    PonyName:</span> <span class="hljs-string">&quot;Rainbow Dash&quot;</span>,
+<span class="hljs-symbol">    TrampStamp:</span> <span class="hljs-string">&quot;Rainbow&quot;</span>,
+<span class="hljs-symbol">    Date:</span> <span class="hljs-string">&quot;January 2013&quot;</span>
   },
-<span class="hljs-symbol">  EventType:</span> <span class="hljs-string">"PonyBorn"</span>
+<span class="hljs-symbol">  EventType:</span> <span class="hljs-string">&quot;PonyBorn&quot;</span>
 }</code></pre><p>And I want to get this into a stream, well first I want to package it up</p>
 <pre><code><span class="hljs-comment">// A package with the event in it</span>
 {
-<span class="hljs-symbol">  CorrelationId:</span> <span class="hljs-string">"something-i-know"</span>,
-<span class="hljs-symbol">  ExpectedVersion:</span> <span class="hljs-string">"last-version-i-knew-about"</span>,
+<span class="hljs-symbol">  CorrelationId:</span> <span class="hljs-string">&quot;something-i-know&quot;</span>,
+<span class="hljs-symbol">  ExpectedVersion:</span> <span class="hljs-string">&quot;last-version-i-knew-about&quot;</span>,
 <span class="hljs-symbol">  Events:</span> [ ev ]
 }</code></pre><p>And serialise it</p>
-<pre><code><span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">body</span> = JSON.stringify(package)</code></pre><p>I can POST it to the event store with the following code</p>
-<pre><code>var req = http.request({
-  host: <span class="hljs-string">"127.0.0.1"</span>,
+<pre><code><span class="hljs-selector-tag">var</span> <span class="hljs-selector-tag">body</span> = JSON<span class="hljs-selector-class">.stringify</span>(package)</code></pre><p>I can POST it to the event store with the following code</p>
+<pre><code><span class="hljs-selector-tag">var</span> req = http<span class="hljs-selector-class">.request</span>({
+  host: <span class="hljs-string">&quot;127.0.0.1&quot;</span>,
   port: <span class="hljs-number">2113</span>,
-  path: <span class="hljs-string">"/streams/ponies"</span>,
-  method: <span class="hljs-string">"<span class="hljs-keyword">POST</span>"</span>,
+  path: <span class="hljs-string">&quot;/streams/ponies&quot;</span>,
+  method: <span class="hljs-string">&quot;POST&quot;</span>,
   headers: {
-    <span class="hljs-string">"Accept"</span>: <span class="hljs-string">"application/json"</span>,
-    <span class="hljs-string">"Content-Type"</span>: <span class="hljs-string">"application/json"</span>,
-    <span class="hljs-string">"Content-Length"</span>: body.length
+    <span class="hljs-string">&quot;Accept&quot;</span>: <span class="hljs-string">&quot;application/json&quot;</span>,
+    <span class="hljs-string">&quot;Content-Type&quot;</span>: <span class="hljs-string">&quot;application/json&quot;</span>,
+    <span class="hljs-string">&quot;Content-Length&quot;</span>: <span class="hljs-selector-tag">body</span><span class="hljs-selector-class">.length</span>
   }
 }, function(res) {
-  // Handle this
+  <span class="hljs-comment">// Handle this</span>
 })
 
-req.write(body)
-req.end()</code></pre><p>What do we notice about the data?</p>
+req<span class="hljs-selector-class">.write</span>(body)
+req<span class="hljs-selector-class">.end</span>()</code></pre><p>What do we notice about the data?</p>
 <ul>
 <li>We can supply a correlation id for our own convenience</li>
 <li>We supply an expected version so our event can be rejected if things are not as they should be</li>
@@ -48,103 +48,103 @@ req.end()</code></pre><p>What do we notice about the data?</p>
 <p>Well, we&#39;ll see that I have a ponies stream</p>
 <p><em>/streams</em></p>
 <pre><code>{
-  <span class="hljs-attribute">title</span>: <span class="hljs-string">"ponies"</span>,
-  uri: <span class="hljs-string">"http://127.0.0.1:2113/streams/ponies"</span>,
-  accepts: [
+<span class="hljs-symbol">  title:</span> <span class="hljs-string">&quot;ponies&quot;</span>,
+<span class="hljs-symbol">  uri:</span> <span class="hljs-string">&quot;http://127.0.0.1:2113/streams/ponies&quot;</span>,
+<span class="hljs-symbol">  accepts:</span> [
     {
-      type: <span class="hljs-string">"text/xml"</span>
+<span class="hljs-symbol">      type:</span> <span class="hljs-string">&quot;text/xml&quot;</span>
     },
     {
-      <span class="hljs-attribute">type</span>: <span class="hljs-string">"application/atom+xml"</span>
+<span class="hljs-symbol">      type:</span> <span class="hljs-string">&quot;application/atom+xml&quot;</span>
     },
     {
-      <span class="hljs-attribute">type</span>: <span class="hljs-string">"application/json"</span>
+<span class="hljs-symbol">      type:</span> <span class="hljs-string">&quot;application/json&quot;</span>
     },
     {
-      <span class="hljs-attribute">type</span>: <span class="hljs-string">"application/atom+x.json"</span>
+<span class="hljs-symbol">      type:</span> <span class="hljs-string">&quot;application/atom+x.json&quot;</span>
     }
   ]
 },</code></pre><p>And that if we go to this ponies stream via the URI specified we&#39;ll see</p>
 <p><em>/streams/ponies</em></p>
 <pre><code>[
   {
-<span class="hljs-symbol">    title:</span> <span class="hljs-string">"ponies #1"</span>,
-<span class="hljs-symbol">    id:</span> <span class="hljs-string">"http://127.0.0.1:2113/streams/ponies/1"</span>,
-<span class="hljs-symbol">    updated:</span> <span class="hljs-string">"2013-03-01T22:30:11.790066Z"</span>,
+<span class="hljs-symbol">    title:</span> <span class="hljs-string">&quot;ponies #1&quot;</span>,
+<span class="hljs-symbol">    id:</span> <span class="hljs-string">&quot;http://127.0.0.1:2113/streams/ponies/1&quot;</span>,
+<span class="hljs-symbol">    updated:</span> <span class="hljs-string">&quot;2013-03-01T22:30:11.790066Z&quot;</span>,
 <span class="hljs-symbol">    author:</span> {
-<span class="hljs-symbol">      name:</span> <span class="hljs-string">"EventStore"</span>
+<span class="hljs-symbol">      name:</span> <span class="hljs-string">&quot;EventStore&quot;</span>
     },
-<span class="hljs-symbol">    summary:</span> <span class="hljs-string">"Entry #1"</span>,
+<span class="hljs-symbol">    summary:</span> <span class="hljs-string">&quot;Entry #1&quot;</span>,
 <span class="hljs-symbol">    links:</span> [
       {
-<span class="hljs-symbol">        uri:</span> <span class="hljs-string">"http://127.0.0.1:2113/streams/ponies/1"</span>,
-<span class="hljs-symbol">        relation:</span> <span class="hljs-string">"edit"</span>
+<span class="hljs-symbol">        uri:</span> <span class="hljs-string">&quot;http://127.0.0.1:2113/streams/ponies/1&quot;</span>,
+<span class="hljs-symbol">        relation:</span> <span class="hljs-string">&quot;edit&quot;</span>
       },
       {
-<span class="hljs-symbol">        uri:</span> <span class="hljs-string">"http://127.0.0.1:2113/streams/ponies/event/1?format=text"</span>,
-<span class="hljs-symbol">        type:</span> <span class="hljs-string">"text/plain"</span>
+<span class="hljs-symbol">        uri:</span> <span class="hljs-string">&quot;http://127.0.0.1:2113/streams/ponies/event/1?format=text&quot;</span>,
+<span class="hljs-symbol">        type:</span> <span class="hljs-string">&quot;text/plain&quot;</span>
       },
       {
-<span class="hljs-symbol">        uri:</span> <span class="hljs-string">"http://127.0.0.1:2113/streams/ponies/event/1?format=json"</span>,
-<span class="hljs-symbol">        relation:</span> <span class="hljs-string">"alternate"</span>,
-<span class="hljs-symbol">        type:</span> <span class="hljs-string">"application/json"</span>
+<span class="hljs-symbol">        uri:</span> <span class="hljs-string">&quot;http://127.0.0.1:2113/streams/ponies/event/1?format=json&quot;</span>,
+<span class="hljs-symbol">        relation:</span> <span class="hljs-string">&quot;alternate&quot;</span>,
+<span class="hljs-symbol">        type:</span> <span class="hljs-string">&quot;application/json&quot;</span>
       },
       {
-<span class="hljs-symbol">        uri:</span> <span class="hljs-string">"http://127.0.0.1:2113/streams/ponies/event/1?format=xml"</span>,
-<span class="hljs-symbol">        relation:</span> <span class="hljs-string">"alternate"</span>,
-<span class="hljs-symbol">        type:</span> <span class="hljs-string">"text/xml"</span>
+<span class="hljs-symbol">        uri:</span> <span class="hljs-string">&quot;http://127.0.0.1:2113/streams/ponies/event/1?format=xml&quot;</span>,
+<span class="hljs-symbol">        relation:</span> <span class="hljs-string">&quot;alternate&quot;</span>,
+<span class="hljs-symbol">        type:</span> <span class="hljs-string">&quot;text/xml&quot;</span>
       }
     ]
   },
   {
-<span class="hljs-symbol">    title:</span> <span class="hljs-string">"ponies #0"</span>,
-<span class="hljs-symbol">    id:</span> <span class="hljs-string">"http://127.0.0.1:2113/streams/ponies/0"</span>,
-<span class="hljs-symbol">    updated:</span> <span class="hljs-string">"2013-03-01T22:30:11.79004Z"</span>,
+<span class="hljs-symbol">    title:</span> <span class="hljs-string">&quot;ponies #0&quot;</span>,
+<span class="hljs-symbol">    id:</span> <span class="hljs-string">&quot;http://127.0.0.1:2113/streams/ponies/0&quot;</span>,
+<span class="hljs-symbol">    updated:</span> <span class="hljs-string">&quot;2013-03-01T22:30:11.79004Z&quot;</span>,
 <span class="hljs-symbol">    author:</span> {
-<span class="hljs-symbol">      name:</span> <span class="hljs-string">"EventStore"</span>
+<span class="hljs-symbol">      name:</span> <span class="hljs-string">&quot;EventStore&quot;</span>
     },
-<span class="hljs-symbol">    summary:</span> <span class="hljs-string">"Entry #0"</span>,
+<span class="hljs-symbol">    summary:</span> <span class="hljs-string">&quot;Entry #0&quot;</span>,
 <span class="hljs-symbol">    links:</span> [
       {
-<span class="hljs-symbol">        uri:</span> <span class="hljs-string">"http://127.0.0.1:2113/streams/ponies/0"</span>,
-<span class="hljs-symbol">        relation:</span> <span class="hljs-string">"edit"</span>
+<span class="hljs-symbol">        uri:</span> <span class="hljs-string">&quot;http://127.0.0.1:2113/streams/ponies/0&quot;</span>,
+<span class="hljs-symbol">        relation:</span> <span class="hljs-string">&quot;edit&quot;</span>
       },
       {
-<span class="hljs-symbol">        uri:</span> <span class="hljs-string">"http://127.0.0.1:2113/streams/ponies/event/0?format=text"</span>,
-<span class="hljs-symbol">        type:</span> <span class="hljs-string">"text/plain"</span>
+<span class="hljs-symbol">        uri:</span> <span class="hljs-string">&quot;http://127.0.0.1:2113/streams/ponies/event/0?format=text&quot;</span>,
+<span class="hljs-symbol">        type:</span> <span class="hljs-string">&quot;text/plain&quot;</span>
       },
       {
-<span class="hljs-symbol">        uri:</span> <span class="hljs-string">"http://127.0.0.1:2113/streams/ponies/event/0?format=json"</span>,
-<span class="hljs-symbol">        relation:</span> <span class="hljs-string">"alternate"</span>,
-<span class="hljs-symbol">        type:</span> <span class="hljs-string">"application/json"</span>
+<span class="hljs-symbol">        uri:</span> <span class="hljs-string">&quot;http://127.0.0.1:2113/streams/ponies/event/0?format=json&quot;</span>,
+<span class="hljs-symbol">        relation:</span> <span class="hljs-string">&quot;alternate&quot;</span>,
+<span class="hljs-symbol">        type:</span> <span class="hljs-string">&quot;application/json&quot;</span>
       },
       {
-<span class="hljs-symbol">        uri:</span> <span class="hljs-string">"http://127.0.0.1:2113/streams/ponies/event/0?format=xml"</span>,
-<span class="hljs-symbol">        relation:</span> <span class="hljs-string">"alternate"</span>,
-<span class="hljs-symbol">        type:</span> <span class="hljs-string">"text/xml"</span>
+<span class="hljs-symbol">        uri:</span> <span class="hljs-string">&quot;http://127.0.0.1:2113/streams/ponies/event/0?format=xml&quot;</span>,
+<span class="hljs-symbol">        relation:</span> <span class="hljs-string">&quot;alternate&quot;</span>,
+<span class="hljs-symbol">        type:</span> <span class="hljs-string">&quot;text/xml&quot;</span>
       }
     ]
   }
 ]</code></pre><p>We have two events, navigating to them we can see that one of them is for the creation of the stream</p>
 <p><em>/streams/ponies/event/0?format=json</em></p>
 <pre><code>{
-<span class="hljs-symbol">  eventStreamId:</span> <span class="hljs-string">"ponies"</span>,
+<span class="hljs-symbol">  eventStreamId:</span> <span class="hljs-string">&quot;ponies&quot;</span>,
 <span class="hljs-symbol">  eventNumber:</span> <span class="hljs-number">0</span>,
-<span class="hljs-symbol">  eventType:</span> <span class="hljs-string">"$stream-created-implicit"</span>,
-<span class="hljs-symbol">  data:</span> <span class="hljs-string">""</span>,
-<span class="hljs-symbol">  metadata:</span> <span class="hljs-string">""</span>
+<span class="hljs-symbol">  eventType:</span> <span class="hljs-string">&quot;$stream-created-implicit&quot;</span>,
+<span class="hljs-symbol">  data:</span> <span class="hljs-string">&quot;&quot;</span>,
+<span class="hljs-symbol">  metadata:</span> <span class="hljs-string">&quot;&quot;</span>
 }</code></pre><p>And the other one is the event we pushed</p>
 <p><em>/streams/ponies/event/1?format=json</em></p>
 <pre><code>{
-<span class="hljs-symbol">  eventStreamId:</span> <span class="hljs-string">"ponies"</span>,
+<span class="hljs-symbol">  eventStreamId:</span> <span class="hljs-string">&quot;ponies&quot;</span>,
 <span class="hljs-symbol">  eventNumber:</span> <span class="hljs-number">1</span>,
-<span class="hljs-symbol">  eventType:</span> <span class="hljs-string">"PonyBorn"</span>,
+<span class="hljs-symbol">  eventType:</span> <span class="hljs-string">&quot;PonyBorn&quot;</span>,
 <span class="hljs-symbol">  data:</span> {
-<span class="hljs-symbol">    PonyName:</span> <span class="hljs-string">"Rainbow Dash"</span>,
-<span class="hljs-symbol">    TrampStamp:</span> <span class="hljs-string">"Rainbow"</span>,
-<span class="hljs-symbol">    Date:</span> <span class="hljs-string">"January 2013"</span>
+<span class="hljs-symbol">    PonyName:</span> <span class="hljs-string">&quot;Rainbow Dash&quot;</span>,
+<span class="hljs-symbol">    TrampStamp:</span> <span class="hljs-string">&quot;Rainbow&quot;</span>,
+<span class="hljs-symbol">    Date:</span> <span class="hljs-string">&quot;January 2013&quot;</span>
   },
-<span class="hljs-symbol">  metadata:</span> <span class="hljs-string">""</span>
+<span class="hljs-symbol">  metadata:</span> <span class="hljs-string">&quot;&quot;</span>
 }</code></pre><p>Neato, I guess we notice a few things here then</p>
 <ul>
 <li>The stream doesn&#39;t contain the actual events, just links to the events</li>

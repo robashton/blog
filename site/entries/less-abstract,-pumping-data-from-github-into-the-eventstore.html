@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -73,38 +74,38 @@
 <p>Well, I&#39;m interested in the public events stream, which can be polled up to 5000 times an hour (at current rates, it needs polling about every 10 seconds in order to keep up, so I&#39;ll not be able to get them all)</p>
 <p>What this looks like</p>
 <pre><code> <span class="hljs-keyword">var</span> request = https.get(
- { <span class="hljs-attr">host</span>: <span class="hljs-string">'api.github.com'</span>, <span class="hljs-attr">path</span>: <span class="hljs-string">'/events'</span> + auth }, 
+ { <span class="hljs-attr">host</span>: <span class="hljs-string">&#x27;api.github.com&#x27;</span>, <span class="hljs-attr">path</span>: <span class="hljs-string">&#x27;/events&#x27;</span> + auth }, 
  <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">res</span>) </span>{
-    <span class="hljs-keyword">var</span> data = <span class="hljs-string">''</span>
-    res.on(<span class="hljs-string">'data'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">chunk</span>) </span>{
+    <span class="hljs-keyword">var</span> data = <span class="hljs-string">&#x27;&#x27;</span>
+    res.on(<span class="hljs-string">&#x27;data&#x27;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">chunk</span>) </span>{
       data += chunk
     });
-    res.on(<span class="hljs-string">'end'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+    res.on(<span class="hljs-string">&#x27;end&#x27;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
       processData(data)
     })
   })
-  .on(<span class="hljs-string">'error'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">e</span>) </span>{
+  .on(<span class="hljs-string">&#x27;error&#x27;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">e</span>) </span>{
     <span class="hljs-built_in">console</span>.error(e)
   }).end()
 
   <span class="hljs-keyword">var</span> processData = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">data</span>) </span>{
     <span class="hljs-keyword">var</span> eventArray = <span class="hljs-built_in">JSON</span>.parse(data)
-    <span class="hljs-keyword">for</span>(<span class="hljs-keyword">var</span> i = eventArray.length<span class="hljs-number">-1</span> ; i &gt;= <span class="hljs-number">0</span>; i--) {
+    <span class="hljs-keyword">for</span>(<span class="hljs-keyword">var</span> i = eventArray.length-<span class="hljs-number">1</span> ; i &gt;= <span class="hljs-number">0</span>; i--) {
       processEvent(eventArray[i])
     }
   }</code></pre><p>An event looks like this</p>
 <pre><code>{
-<span class="hljs-symbol">  id:</span> <span class="hljs-string">"somelongid"</span>,
-<span class="hljs-symbol">  type:</span> <span class="hljs-string">"PushEvent"</span>,
+<span class="hljs-symbol">  id:</span> <span class="hljs-string">&quot;somelongid&quot;</span>,
+<span class="hljs-symbol">  type:</span> <span class="hljs-string">&quot;PushEvent&quot;</span>,
 <span class="hljs-symbol">  actor:</span> { <span class="hljs-comment">// info about the user },</span>
 <span class="hljs-symbol">  repo:</span> { <span class="hljs-comment">// info about the repo }</span>
 <span class="hljs-symbol">  payload:</span> { <span class="hljs-comment">// the event itself }</span>
 }</code></pre><p>I&#39;m going to be shoving these events &#39;as is&#39; into the EventStore, and using their ids &#39;as is&#39; too, this means I don&#39;t need to do any de-duping or anything like that.</p>
 <p>Now, because of the kind of question I want to ask, it isn&#39;t enough for me to have the scant info about a repo that the event stream gives me (it looks like this)</p>
 <pre><code>{
- <span class="hljs-attr">"id"</span>: <span class="hljs-number">3</span>,
- <span class="hljs-attr">"name"</span>: <span class="hljs-string">"octocat/Hello-World"</span>,
- <span class="hljs-attr">"url"</span>: <span class="hljs-string">"https://api.github.com/repos/octocat/Hello-World"</span>
+ <span class="hljs-attr">&quot;id&quot;</span>: <span class="hljs-number">3</span>,
+ <span class="hljs-attr">&quot;name&quot;</span>: <span class="hljs-string">&quot;octocat/Hello-World&quot;</span>,
+ <span class="hljs-attr">&quot;url&quot;</span>: <span class="hljs-string">&quot;https://api.github.com/repos/octocat/Hello-World&quot;</span>
 }</code></pre><p>So I&#39;m going to augment each event with repo information (this is quite common in the eventing world, augmenting events with useful information for query purposes), and therefore my processEvent method looks something like this:</p>
 <pre><code><span class="hljs-keyword">function</span> process<span class="hljs-constructor">Event(<span class="hljs-params">ev</span>)</span> {
   <span class="hljs-keyword">if</span>(ev.repo) {

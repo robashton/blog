@@ -1,24 +1,24 @@
 <p><a href="http://github.com/robashton/vir">Vir</a> is a bunching together of various scripts we had lying around our projects written in a combination of Bash and Erlang to manage the execution/release/etc process for our applications. It does what we need to do and stops about there - I suspect the best way of using Vir is to either use it as it is or fork it for your own organisation rather than trying to make it help everybody.</p>
 <p>The easiest way to get started with vir is to clone it to ~/.vir and add this folder to the path, but it&#39;ll work if you just add it to a GH repo and run it locally to so... whatever - do what you want it&#39;s just a bash script.</p>
 <p>Anyway, running vir should give us a list of possible commands, for now we&#39;ll just create an empty web application in a folder, so do something like the below..</p>
-<pre><code><span class="hljs-attr">mkdir</span> <span class="hljs-string">awesomeapp</span>
-<span class="hljs-attr">cd</span> <span class="hljs-string">awesomeapp</span>
-<span class="hljs-attr">git</span> <span class="hljs-string">init</span>
-<span class="hljs-attr">vir</span> <span class="hljs-string">init -t web awesome</span>
-<span class="hljs-attr">git</span> <span class="hljs-string">commit ...</span></code></pre><p>This creates an application called &quot;<em>awesome</em>&quot; (and builds it) based off the <em>web</em> and gives us a folder structure that looks similar to below:</p>
+<pre><code><span class="hljs-built_in">mkdir</span> awesomeapp
+<span class="hljs-keyword">cd</span> awesomeapp
+git init
+vir init -t web awesome
+git commit ...</code></pre><p>This creates an application called &quot;<em>awesome</em>&quot; (and builds it) based off the <em>web</em> and gives us a folder structure that looks similar to below:</p>
 <p>As mentioned in a previous blog entry, this is at immediate glance a lot to digest, but we can go through it a little at a time and see just what has been created for us.</p>
 <p><strong>Config</strong></p>
-<pre><code>apps/awesome/<span class="hljs-built_in">release</span>-files/sys.<span class="hljs-built_in">config</span>
-apps/awesome/src/awesome_config.erl</code></pre><p>sys.config is a standalone file containing various key-value pairs of config and awesome_config is a wrapper that provides an API to read that file. Not much to see here.</p>
+<pre><code>apps<span class="hljs-regexp">/awesome/</span>release-files/sys.config
+apps<span class="hljs-regexp">/awesome/</span>src/awesome_config.erl</code></pre><p>sys.config is a standalone file containing various key-value pairs of config and awesome_config is a wrapper that provides an API to read that file. Not much to see here.</p>
 <p><strong>Application startup</strong></p>
-<pre><code>apps<span class="hljs-meta-keyword">/awesome/</span>src/awesome_app.erl
-apps<span class="hljs-meta-keyword">/awesome/</span>src/awesome_sup.erl</code></pre><p>An application requires something that implements the OTP Behaviour &quot;Application&quot; (<em>awesome_app.erl</em>), and if I want child processes within the structure I&#39;ll need a supervisor to manager them, that&#39;s (<em>awesome_sup.erl</em>).</p>
+<pre><code>apps<span class="hljs-regexp">/awesome/</span>src/awesome_app.erl
+apps<span class="hljs-regexp">/awesome/</span>src/awesome_sup.erl</code></pre><p>An application requires something that implements the OTP Behaviour &quot;Application&quot; (<em>awesome_app.erl</em>), and if I want child processes within the structure I&#39;ll need a supervisor to manager them, that&#39;s (<em>awesome_sup.erl</em>).</p>
 <p><strong>A web application</strong></p>
-<pre><code>apps<span class="hljs-regexp">/awesome/</span>src<span class="hljs-regexp">/awesome_cowboy.erl</span></code></pre><p>This is just a OTP genserver that uses Cowboy (one of our dependencies) to create a simple http listener.</p>
+<pre><code>apps<span class="hljs-regexp">/awesome/</span>src/awesome_cowboy.erl</code></pre><p>This is just a OTP genserver that uses Cowboy (one of our dependencies) to create a simple http listener.</p>
 <p><strong>Release artifacts</strong></p>
-<pre><code><span class="hljs-symbol">deployment</span>/<span class="hljs-keyword">build_no
-</span><span class="hljs-symbol">deployment</span>/major_ver
-<span class="hljs-symbol">deployment</span>/minor_ver</code></pre><p>This is a cheap way of bumping version for the application during a release cycle.</p>
+<pre><code>deployment/build<span class="hljs-emphasis">_no
+deployment/major_ver
+deployment/minor_</span>ver</code></pre><p>This is a cheap way of bumping version for the application during a release cycle.</p>
 <p><strong>Dependencies</strong></p>
 <pre><code>deps<span class="hljs-regexp">/cowboy/</span>
 deps<span class="hljs-regexp">/cowlib/</span>
@@ -32,32 +32,32 @@ deps<span class="hljs-regexp">/ranch/</span></code></pre><p>Lots of folders cont
 <p>In reality we&#39;re only explicitly bringing in <em>cowboy</em>, <em>gproc</em>, <em>jsx</em> and <em>lager</em> and the others are further dependencies of these. Because Erlang operates in a single global namespace you can&#39;t do explicit imports ala NodeJS and have multiple versions of things in the application.</p>
 <p>It doesn&#39;t matter too much anyway because dependency applications often spin up a fleet of processes on start-up rather than simply operating as library code, so you wouldn&#39;t want more than one version of an application running within a project.</p>
 <p><strong>Various Manifests</strong></p>
-<pre><code>apps/awesome/relx<span class="hljs-selector-class">.config</span>
-apps/awesome/src/awesome<span class="hljs-selector-class">.app</span><span class="hljs-selector-class">.src</span></code></pre><p><em>relx.config</em> is a manifest specifying how to do a release with all the appropriate files, and <em>awesome.app.src</em> tells the boot system what state our application needs to be in before it can be started.</p>
+<pre><code>apps<span class="hljs-regexp">/awesome/</span>relx.config
+apps<span class="hljs-regexp">/awesome/</span>src/awesome.app.src</code></pre><p><em>relx.config</em> is a manifest specifying how to do a release with all the appropriate files, and <em>awesome.app.src</em> tells the boot system what state our application needs to be in before it can be started.</p>
 <p><strong>A Makefile</strong></p>
 <pre><code><span class="hljs-attribute">Makefile</span></code></pre><p>Yup, we use make.</p>
 <h1 id="using-it">Using it</h1>
 <p>So how do we use this? Well the bash script we just ran probably did all this already but loosely our general dev cycle will be</p>
-<pre><code>make -j apps         <span class="hljs-comment">#  "make in parallel, the apps only, ignore the deps"</span>
-vir <span class="hljs-keyword">run</span><span class="bash"> awesome      <span class="hljs-comment">#  "vir, run the app please"</span></span></code></pre><p>If we add new dependencies, then we&#39;ll need to run the following command after a build before running</p>
-<pre><code>vir <span class="hljs-keyword">boot</span>             # <span class="hljs-keyword">Generate</span> bootscripts <span class="hljs-keyword">for</span> each application based <span class="hljs-keyword">on</span> the manifests</code></pre><p>So what do we have when it starts up? Well, let&#39;s look at the logs first</p>
-<pre><code>Erlang/OTP <span class="hljs-number">17</span> [erts<span class="hljs-number">-6.1</span>] [source] [<span class="hljs-number">64</span>-bit] [smp:<span class="hljs-number">4</span>:<span class="hljs-number">4</span>] [async-threads:<span class="hljs-number">10</span>] [kernel-poll:<span class="hljs-literal">false</span>]
+<pre><code>make -j apps         <span class="hljs-comment">#  &quot;make in parallel, the apps only, ignore the deps&quot;</span>
+vir <span class="hljs-keyword">run</span><span class="bash"> awesome      <span class="hljs-comment">#  &quot;vir, run the app please&quot;</span></span></code></pre><p>If we add new dependencies, then we&#39;ll need to run the following command after a build before running</p>
+<pre><code>vir <span class="hljs-keyword">boot </span>            <span class="hljs-comment"># Generate bootscripts for each application based on the manifests</span></code></pre><p>So what do we have when it starts up? Well, let&#39;s look at the logs first</p>
+<pre><code>Erlang/OTP <span class="hljs-number">17</span> [erts-<span class="hljs-number">6.1</span>] [source] [<span class="hljs-number">64</span>-bit] [smp:<span class="hljs-number">4</span>:<span class="hljs-number">4</span>] [async-threads:<span class="hljs-number">10</span>] [kernel-poll:<span class="hljs-literal">false</span>]
 
-<span class="hljs-number">13</span>:<span class="hljs-number">08</span>:<span class="hljs-number">49.978</span> [info] Application lager started on node <span class="hljs-symbol">nonode@</span>nohost
-<span class="hljs-number">13</span>:<span class="hljs-number">08</span>:<span class="hljs-number">49.979</span> [info] Application ranch started on node <span class="hljs-symbol">nonode@</span>nohost
-<span class="hljs-number">13</span>:<span class="hljs-number">08</span>:<span class="hljs-number">49.979</span> [info] Application crypto started on node <span class="hljs-symbol">nonode@</span>nohost
-<span class="hljs-number">13</span>:<span class="hljs-number">08</span>:<span class="hljs-number">49.980</span> [info] Application cowlib started on node <span class="hljs-symbol">nonode@</span>nohost
-<span class="hljs-number">13</span>:<span class="hljs-number">08</span>:<span class="hljs-number">49.988</span> [info] Application cowboy started on node <span class="hljs-symbol">nonode@</span>nohost
-<span class="hljs-number">13</span>:<span class="hljs-number">08</span>:<span class="hljs-number">49.998</span> [info] Application gproc started on node <span class="hljs-symbol">nonode@</span>nohost
-<span class="hljs-number">13</span>:<span class="hljs-number">08</span>:<span class="hljs-number">49.998</span> [info] Application <span class="hljs-keyword">shared</span> started on node <span class="hljs-symbol">nonode@</span>nohost
-Mode dev <span class="hljs-keyword">not</span> found
-<span class="hljs-number">13</span>:<span class="hljs-number">08</span>:<span class="hljs-number">50.024</span> [info] Application awesome started on node <span class="hljs-symbol">nonode@</span>nohost
-Eshell V6<span class="hljs-number">.1</span>  (abort with ^G)</code></pre><p>Neato, we see all the applications specified in <em>awesome.app.src</em> started up. (Mode dev isn&#39;t found because we haven&#39;t got one and that&#39;s the default mode)</p>
+<span class="hljs-number">13</span>:<span class="hljs-number">08</span>:<span class="hljs-number">49.978</span> [<span class="hljs-literal">inf</span>o] Application lager <span class="hljs-literal">started</span> on <span class="hljs-keyword">node</span> <span class="hljs-title">nonode</span>@nohost
+<span class="hljs-number">13</span>:<span class="hljs-number">08</span>:<span class="hljs-number">49.979</span> [<span class="hljs-literal">inf</span>o] Application ranch <span class="hljs-literal">started</span> on <span class="hljs-keyword">node</span> <span class="hljs-title">nonode</span>@nohost
+<span class="hljs-number">13</span>:<span class="hljs-number">08</span>:<span class="hljs-number">49.979</span> [<span class="hljs-literal">inf</span>o] Application crypto <span class="hljs-literal">started</span> on <span class="hljs-keyword">node</span> <span class="hljs-title">nonode</span>@nohost
+<span class="hljs-number">13</span>:<span class="hljs-number">08</span>:<span class="hljs-number">49.980</span> [<span class="hljs-literal">inf</span>o] Application cowlib <span class="hljs-literal">started</span> on <span class="hljs-keyword">node</span> <span class="hljs-title">nonode</span>@nohost
+<span class="hljs-number">13</span>:<span class="hljs-number">08</span>:<span class="hljs-number">49.988</span> [<span class="hljs-literal">inf</span>o] Application cowboy <span class="hljs-literal">started</span> on <span class="hljs-keyword">node</span> <span class="hljs-title">nonode</span>@nohost
+<span class="hljs-number">13</span>:<span class="hljs-number">08</span>:<span class="hljs-number">49.998</span> [<span class="hljs-literal">inf</span>o] Application gproc <span class="hljs-literal">started</span> on <span class="hljs-keyword">node</span> <span class="hljs-title">nonode</span>@nohost
+<span class="hljs-number">13</span>:<span class="hljs-number">08</span>:<span class="hljs-number">49.998</span> [<span class="hljs-literal">inf</span>o] Application shared <span class="hljs-literal">started</span> on <span class="hljs-keyword">node</span> <span class="hljs-title">nonode</span>@nohost
+Mode dev not found
+<span class="hljs-number">13</span>:<span class="hljs-number">08</span>:<span class="hljs-number">50.024</span> [<span class="hljs-literal">inf</span>o] Application awesome <span class="hljs-literal">started</span> on <span class="hljs-keyword">node</span> <span class="hljs-title">nonode</span>@nohost
+Eshell V6.<span class="hljs-number">1</span>  (abort with ^G)</code></pre><p>Neato, we see all the applications specified in <em>awesome.app.src</em> started up. (Mode dev isn&#39;t found because we haven&#39;t got one and that&#39;s the default mode)</p>
 <p>This is awesome.app.src for reference.</p>
 <pre><code>{application, awesome,
  [
-  {description, <span class="hljs-string">""</span>},
-  {vsn, <span class="hljs-string">"1.0.0"</span>},
+  {description, <span class="hljs-string">&quot;&quot;</span>},
+  {vsn, <span class="hljs-string">&quot;1.0.0&quot;</span>},
   {registered, []},
   {modules, []},
   {included_applications, []},
@@ -75,13 +75,13 @@ Eshell V6<span class="hljs-number">.1</span>  (abort with ^G)</code></pre><p>Nea
   {env, []}
   ]}.</code></pre><p>See what I mean about dependencies not simply being a pile of code, that list of folders we have in deps contain actual applications that are started up before awesome_app itself.</p>
 <p>Is it working?</p>
-<pre><code>curl http:<span class="hljs-comment">//localhost:3000/index.html</span>
-<span class="hljs-params">&lt;html&gt;</span>
-  <span class="hljs-params">&lt;head&gt;</span>
-  <span class="hljs-params">&lt;/head&gt;</span>
-  <span class="hljs-params">&lt;body&gt;</span>
-    <span class="hljs-params">&lt;h1&gt;</span>Hello world<span class="hljs-params">&lt;/h1&gt;</span>
-  <span class="hljs-params">&lt;/body&gt;</span>
-<span class="hljs-params">&lt;/html&gt;</span></code></pre><p>Yup.</p>
+<pre><code><span class="hljs-attribute">curl</span> http://localhost:<span class="hljs-number">3000</span>/index.html
+<span class="hljs-section">&lt;html&gt;</span>
+  <span class="hljs-section">&lt;head&gt;</span>
+  <span class="hljs-section">&lt;/head&gt;</span>
+  <span class="hljs-section">&lt;body&gt;</span>
+    <span class="hljs-section">&lt;h1&gt;</span><span class="hljs-attribute">Hello</span> world&lt;/h<span class="hljs-number">1</span>&gt;
+  <span class="hljs-section">&lt;/body&gt;</span>
+<span class="hljs-section">&lt;/html&gt;</span></code></pre><p>Yup.</p>
 <h1 id="next-up">Next up</h1>
 <p>I&#39;ll look at our Makefile and how we handle dependencies, and explain a bit more our decisions around that.</p>

@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -93,23 +94,23 @@
 <p>Okay, I&#39;m a convert - I&#39;ve been talking AMD for a while now, and the idea of having to run a build script had put me off Browserify for a while - it turns out the development experience is pretty good and by the time you get to the browser to hit refresh, this is generally done already anyway. AMD is now dead to me.</p>
 <pre><code>npm <span class="hljs-keyword">install</span> -g browserify</code></pre><p>Once you have it, if you write your JS with node-flavoured CommonJS style require calls, you can package JS up for the client by running Browserify as part of your build script.</p>
 <p><strong>app.js</strong></p>
-<pre><code><span class="hljs-keyword">var</span> windowing = <span class="hljs-built_in">require</span>(<span class="hljs-string">'./windowing'</span>)
-  , messaging = <span class="hljs-built_in">require</span>(<span class="hljs-string">'./messaging'</span>)
+<pre><code><span class="hljs-keyword">var</span> windowing = <span class="hljs-keyword">require</span>(<span class="hljs-string">&#x27;./windowing&#x27;</span>)
+  , messaging = <span class="hljs-keyword">require</span>(<span class="hljs-string">&#x27;./messaging&#x27;</span>)
 
 
-messaging.on(<span class="hljs-string">'foo'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">message</span>) </span>{
+messaging.on(<span class="hljs-string">&#x27;foo&#x27;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(message)</span> </span>{
   windowing.showMessage(message)
 })</code></pre><p><strong>Then build</strong></p>
-<pre><code>browserify site/<span class="hljs-keyword">app</span>.js &gt; site/<span class="hljs-keyword">app</span>-built.js</code></pre><p>This might be alarming at first, because it seems like concatenating these files might make the debug experience a thing of nightmares, but that&#39;s what the --debug flag is for:</p>
-<pre><code>browserify site/app<span class="hljs-selector-class">.js</span> -o site/app-built<span class="hljs-selector-class">.js</span> --debug</code></pre><p>This inserts special directives into the JS so the browser knows what the original files were and they can therefore be opened and debugged in their original state.</p>
+<pre><code>browserify site<span class="hljs-regexp">/app.js &gt; site/</span>app-built.js</code></pre><p>This might be alarming at first, because it seems like concatenating these files might make the debug experience a thing of nightmares, but that&#39;s what the --debug flag is for:</p>
+<pre><code>browserify site/app<span class="hljs-number">.</span><span class="hljs-keyword">js</span> -o site/app-built<span class="hljs-number">.</span><span class="hljs-keyword">js</span> --debug</code></pre><p>This inserts special directives into the JS so the browser knows what the original files were and they can therefore be opened and debugged in their original state.</p>
 <p>I have a Makefile I copied from VoxelJS - it looks like this</p>
-<pre><code><span class="hljs-attribute">all</span>: concat
+<pre><code>all: concat
 
-<span class="stylus">concat:
-  browserify site/app<span class="hljs-selector-class">.js</span> &gt; site/app-built<span class="hljs-selector-class">.js</span>
+concat:
+  browserify site<span class="hljs-regexp">/app.js &gt; site/</span>app-built.js
 
 watch:
-  browserify site/app<span class="hljs-selector-class">.js</span> -o site/app-built<span class="hljs-selector-class">.js</span> --watch --debug</span></code></pre><p>During development of my application, I type</p>
+  browserify site<span class="hljs-regexp">/app.js -o site/</span>app-built.js --watch --debug</code></pre><p>During development of my application, I type</p>
 <pre><code><span class="hljs-attribute">make watch</span></code></pre><p>and I don&#39;t have to think about this ever again.</p>
 <p>Now, the cool part. With RequireJS I was always having to set up elaborate configuration scripts, &quot;You can find underscore over here, you can find jQuery over here, you can find this other legacy JS over here, please do these things with them&quot;, this was, in short, a ball-ache.</p>
 <p>Browserify eschues this way of thinking, and simply says &quot;if it&#39;s a relative path, I&#39;ll use it, if it&#39;s a global path I&#39;ll look in node_modules&quot;</p>
@@ -128,45 +129,45 @@ watch:
 <p>Nevertheless, PrimoJS is currently split across 16 modules, all of which fit the above list of requirements, they could all be used independently of each other, or more likely brought into a project that has pulled in the core engine and wants the additional functionality that these modules bring.</p>
 <p>What does this look like in reality? This is the package.json of one of my &#39;example&#39; projects, the actual application using PrimoJS</p>
 <pre><code>{
-  <span class="hljs-attr">"name"</span>: <span class="hljs-string">"centipede2013"</span>,
-  <span class="hljs-attr">"version"</span>: <span class="hljs-string">"1.0.0"</span>,
-  <span class="hljs-attr">"dependencies"</span>: {
-    <span class="hljs-attr">"send"</span>: <span class="hljs-string">"~0.1.0"</span>,
-    <span class="hljs-attr">"express"</span>: <span class="hljs-string">"~3.0.3"</span>,
-    <span class="hljs-attr">"underscore"</span>: <span class="hljs-string">"~1.4.3"</span>
+  <span class="hljs-attr">&quot;name&quot;</span>: <span class="hljs-string">&quot;centipede2013&quot;</span>,
+  <span class="hljs-attr">&quot;version&quot;</span>: <span class="hljs-string">&quot;1.0.0&quot;</span>,
+  <span class="hljs-attr">&quot;dependencies&quot;</span>: {
+    <span class="hljs-attr">&quot;send&quot;</span>: <span class="hljs-string">&quot;~0.1.0&quot;</span>,
+    <span class="hljs-attr">&quot;express&quot;</span>: <span class="hljs-string">&quot;~3.0.3&quot;</span>,
+    <span class="hljs-attr">&quot;underscore&quot;</span>: <span class="hljs-string">&quot;~1.4.3&quot;</span>
   },
-  <span class="hljs-attr">"devDependencies"</span>: {
-    <span class="hljs-attr">"primo"</span>: <span class="hljs-string">""</span>,
-    <span class="hljs-attr">"primo-animation"</span>: <span class="hljs-string">""</span>,
-    <span class="hljs-attr">"primo-text"</span>: <span class="hljs-string">""</span>,
-    <span class="hljs-attr">"primo-boundary"</span>: <span class="hljs-string">""</span>,
-    <span class="hljs-attr">"primo-rigidbody"</span>: <span class="hljs-string">""</span>,
-    <span class="hljs-attr">"primo-events"</span>: <span class="hljs-string">""</span>,
-    <span class="hljs-attr">"primo-audio"</span>: <span class="hljs-string">""</span>
+  <span class="hljs-attr">&quot;devDependencies&quot;</span>: {
+    <span class="hljs-attr">&quot;primo&quot;</span>: <span class="hljs-string">&quot;&quot;</span>,
+    <span class="hljs-attr">&quot;primo-animation&quot;</span>: <span class="hljs-string">&quot;&quot;</span>,
+    <span class="hljs-attr">&quot;primo-text&quot;</span>: <span class="hljs-string">&quot;&quot;</span>,
+    <span class="hljs-attr">&quot;primo-boundary&quot;</span>: <span class="hljs-string">&quot;&quot;</span>,
+    <span class="hljs-attr">&quot;primo-rigidbody&quot;</span>: <span class="hljs-string">&quot;&quot;</span>,
+    <span class="hljs-attr">&quot;primo-events&quot;</span>: <span class="hljs-string">&quot;&quot;</span>,
+    <span class="hljs-attr">&quot;primo-audio&quot;</span>: <span class="hljs-string">&quot;&quot;</span>
   },
-  <span class="hljs-attr">"engines"</span>: {
-    <span class="hljs-attr">"node"</span>: <span class="hljs-string">"0.8.x"</span>,
-    <span class="hljs-attr">"npm"</span>: <span class="hljs-string">"1.1.x"</span>
+  <span class="hljs-attr">&quot;engines&quot;</span>: {
+    <span class="hljs-attr">&quot;node&quot;</span>: <span class="hljs-string">&quot;0.8.x&quot;</span>,
+    <span class="hljs-attr">&quot;npm&quot;</span>: <span class="hljs-string">&quot;1.1.x&quot;</span>
   }
 }</code></pre><p>The core engine is brought in, and then other components are brought in for use with that project, it is important to note that none of these components have a dependency on that core primo module, or vice versa - they are independent and could be used independently. 
 What does this look like? Well, I can use NPM list to show me the dependency graph, which goes something like this:</p>
-<pre><code>├─┬ <span class="hljs-symbol">primo@</span><span class="hljs-number">0.1</span><span class="hljs-number">.1</span>
-│ ├── primo-<span class="hljs-symbol">camera@</span><span class="hljs-number">0.0</span><span class="hljs-number">.0</span>
-│ ├── primo-<span class="hljs-symbol">canvas@</span><span class="hljs-number">0.0</span><span class="hljs-number">.0</span>
-│ ├── primo-<span class="hljs-symbol">counter@</span><span class="hljs-number">0.0</span><span class="hljs-number">.0</span>
-│ ├── primo-<span class="hljs-symbol">events@</span><span class="hljs-number">1.0</span><span class="hljs-number">.2</span>
-│ ├── primo-<span class="hljs-symbol">spritemap@</span><span class="hljs-number">0.0</span><span class="hljs-number">.0</span>
-│ └── primo-<span class="hljs-symbol">timer@</span><span class="hljs-number">0.0</span><span class="hljs-number">.0</span>
-├─┬ primo-<span class="hljs-symbol">animation@</span><span class="hljs-number">0.0</span><span class="hljs-number">.1</span>
-│ └─┬ primo-<span class="hljs-symbol">spritemap@</span><span class="hljs-number">0.0</span><span class="hljs-number">.1</span>
-│   ├── primo-<span class="hljs-symbol">canvas@</span><span class="hljs-number">0.0</span><span class="hljs-number">.0</span>
-│   └── primo-<span class="hljs-symbol">events@</span><span class="hljs-number">1.0</span><span class="hljs-number">.2</span>
-├── primo-<span class="hljs-symbol">boundary@</span><span class="hljs-number">0.0</span><span class="hljs-number">.0</span>
-├── primo-<span class="hljs-symbol">audio@</span><span class="hljs-number">0.0</span><span class="hljs-number">.6</span>
-├── primo-<span class="hljs-symbol">events@</span><span class="hljs-number">1.0</span><span class="hljs-number">.2</span>
-├─┬ primo-<span class="hljs-symbol">rigidbody@</span><span class="hljs-number">0.0</span><span class="hljs-number">.2</span>
-│ └── primo-<span class="hljs-symbol">utils@</span><span class="hljs-number">0.0</span><span class="hljs-number">.0</span>
-├── primo-<span class="hljs-symbol">text@</span><span class="hljs-number">0.0</span><span class="hljs-number">.0</span></code></pre><p>We&#39;ll notice that the spritemap is used several times, as is primo-events and primo-canvas. If I was using relative paths, this would be pretty messy and hard to trace, but with a package manager the relationship is clear and it is obvious that those modules are independent.</p>
+<pre><code>├─┬ primo@0<span class="hljs-number">.1</span><span class="hljs-number">.1</span>
+│ ├── primo-<span class="hljs-keyword">camera</span>@0<span class="hljs-number">.0</span><span class="hljs-number">.0</span>
+│ ├── primo-<span class="hljs-keyword">canvas</span>@0<span class="hljs-number">.0</span><span class="hljs-number">.0</span>
+│ ├── primo-counter@0<span class="hljs-number">.0</span><span class="hljs-number">.0</span>
+│ ├── primo-events@1<span class="hljs-number">.0</span><span class="hljs-number">.2</span>
+│ ├── primo-spritemap@0<span class="hljs-number">.0</span><span class="hljs-number">.0</span>
+│ └── primo-timer@0<span class="hljs-number">.0</span><span class="hljs-number">.0</span>
+├─┬ primo-animation@0<span class="hljs-number">.0</span><span class="hljs-number">.1</span>
+│ └─┬ primo-spritemap@0<span class="hljs-number">.0</span><span class="hljs-number">.1</span>
+│   ├── primo-<span class="hljs-keyword">canvas</span>@0<span class="hljs-number">.0</span><span class="hljs-number">.0</span>
+│   └── primo-events@1<span class="hljs-number">.0</span><span class="hljs-number">.2</span>
+├── primo-<span class="hljs-keyword">boundary</span>@0<span class="hljs-number">.0</span><span class="hljs-number">.0</span>
+├── primo-audio@0<span class="hljs-number">.0</span><span class="hljs-number">.6</span>
+├── primo-events@1<span class="hljs-number">.0</span><span class="hljs-number">.2</span>
+├─┬ primo-rigidbody@0<span class="hljs-number">.0</span><span class="hljs-number">.2</span>
+│ └── primo-utils@0<span class="hljs-number">.0</span><span class="hljs-number">.0</span>
+├── primo-<span class="hljs-keyword">text</span>@0<span class="hljs-number">.0</span><span class="hljs-number">.0</span></code></pre><p>We&#39;ll notice that the spritemap is used several times, as is primo-events and primo-canvas. If I was using relative paths, this would be pretty messy and hard to trace, but with a package manager the relationship is clear and it is obvious that those modules are independent.</p>
 <p>Fine, so what now? I have a folder on my hard drive that has a pile of other folders in them, each has its own package.json, its own git repository and can be developed independently - but this is hardly ideal from a development point of view is it?</p>
 <p>An obvious question to be asked now, is &quot;If you have a bug in primo-animation that impacts your centipede application, how do you fix, test, verify and iterate on that bug without copying JS around and making a mess of things. (How often have you downloaded the source of NHIbernate in .NET and had to debug an issue with it that happens in your code base? It&#39;s not fun is it)</p>
 <p>That&#39;s where NPM really shines, we have NPM link - one of the finest commands in the history of package management.</p>
@@ -174,7 +175,7 @@ What does this look like? Well, I can use NPM list to show me the dependency gra
   <span class="hljs-regexp">/usr/</span>local<span class="hljs-regexp">/lib/</span>node_modules<span class="hljs-regexp">/primo-animation -&gt; /</span>home<span class="hljs-regexp">/robashton/</span>src<span class="hljs-regexp">/primo/</span>components/animation
 cd ..<span class="hljs-regexp">/../</span>examples-centipede
 npm link primo-animation
-<span class="hljs-regexp">/home/</span>robashton<span class="hljs-regexp">/src/</span>primo<span class="hljs-regexp">/examples-centipede/</span>node_modules<span class="hljs-regexp">/primo-animation -&gt; /</span>usr<span class="hljs-regexp">/local/</span>lib<span class="hljs-regexp">/node_modules/</span>primo-animation -&gt; <span class="hljs-regexp">/home/</span>robashton<span class="hljs-regexp">/src/</span>primo<span class="hljs-regexp">/components/</span>animation</code></pre><p>NPM can set up symlinks, so editing the files in primo animation <em>in place</em>, will result in the changes being visible in the application as you make these changes.</p>
+<span class="hljs-regexp">/home/</span>robashton<span class="hljs-regexp">/src/</span>primo<span class="hljs-regexp">/examples-centipede/</span>node_modules<span class="hljs-regexp">/primo-animation -&gt; /u</span>sr<span class="hljs-regexp">/local/</span>lib<span class="hljs-regexp">/node_modules/</span>primo-animation -&gt; <span class="hljs-regexp">/home/</span>robashton<span class="hljs-regexp">/src/</span>primo<span class="hljs-regexp">/components/</span>animation</code></pre><p>NPM can set up symlinks, so editing the files in primo animation <em>in place</em>, will result in the changes being visible in the application as you make these changes.</p>
 <p>This tells you a few things</p>
 <ul>
 <li>This is an explicit step, you have to conciously choose to edit across module boundaries</li>
@@ -193,15 +194,15 @@ npm link primo-animation
 <p>This shouldn&#39;t happen very often (and it doesn&#39;t, because having things that do one thing and needing it to do two things means you probably want two things, that second thing being a new thing), but when it does, and you&#39;re offline, you end up with folders that are out of date with regards to the published state of the package and the only way I can see to manage this is to go through all these folder and check manually whether I need to push and/or publish. This could be solved by tooling - any takers?</p>
 <p><strong>Package hell</strong></p>
 <p>I have lots of packages, each with their own git repo - but the primary use case is for usage within the PrimoJS eco-system - when you pull down primo for use in a new game you only get the core, and a lot of the time you might want animations, audio, physics etc.</p>
-<pre><code>&gt; npm install primo <span class="hljs-comment">--save</span></code></pre><p>There is nothing here to tell the developer that they might also want to do</p>
-<pre><code>&gt; npm install primo-animations primo-<span class="hljs-selector-tag">audio</span> primo-rigidbody --save</code></pre><p>I think this can be solved with documentation and tooling, maybe a command line script ala RoR for generating a new game&#39;s folder structure</p>
-<pre><code>&gt; primo-create mynewgame
-<span class="hljs-keyword">do</span> you want all the<span class="hljs-built_in"> default </span>components available? (y/n)
-&gt; y
-<span class="hljs-keyword">do</span> you want a level editor (y/n)
-&gt; n
-<span class="hljs-keyword">do</span> you want a browserify build script? (y/n)
-&gt; y</code></pre><p><strong>Module discovery + documentation</strong></p>
+<pre><code><span class="hljs-meta">&gt;</span> <span class="javascript">npm install primo --save</span></code></pre><p>There is nothing here to tell the developer that they might also want to do</p>
+<pre><code><span class="hljs-meta">&gt;</span> <span class="javascript">npm install primo-animations primo-audio primo-rigidbody --save</span></code></pre><p>I think this can be solved with documentation and tooling, maybe a command line script ala RoR for generating a new game&#39;s folder structure</p>
+<pre><code><span class="hljs-meta">&gt;</span> <span class="javascript">primo-create mynewgame</span>
+do you want all the default components available? (y/n)
+<span class="hljs-meta">&gt;</span> <span class="javascript">y</span>
+do you want a level editor (y/n)
+<span class="hljs-meta">&gt;</span> <span class="javascript">n</span>
+do you want a browserify build script? (y/n)
+<span class="hljs-meta">&gt;</span> <span class="javascript">y</span></code></pre><p><strong>Module discovery + documentation</strong></p>
 <p>Again, lots of small modules - where does the documentation go? Where does the user go to find answers to his questions when he has them? where does the user go to work out which module is for what?</p>
 <p>I think this varies across projects, are your modules all part of the same eco-system? Are they truly standalone and usable wherever? I think for each &#39;tree&#39; of modules, a single <em>source</em> of information is useful - even if the sub-categories are just links to the documentation for the specific modules. Making the user go searching for the right module and the right documentation is just asking for trouble down the line. (So, in my case, it would be primojs.com and links to the available modules.</p>
 <h2 id="summary">Summary</h2>

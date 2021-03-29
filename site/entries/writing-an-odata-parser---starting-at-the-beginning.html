@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -81,83 +82,83 @@
 <p>In this way, I hope to be able to hand this over to Rulemotion in its semi-complete state but with a nice document (the tests) explaining what is covered so far.</p>
 <p><strong>My first few tests</strong></p>
 <p>I&#39;ll not bother covering the order in which I do this, as it&#39;s pretty similar to how I did the JSON parser, except I can make a few more assumptions because I know a but more about how OMeta works.</p>
-<pre><code><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">test</span><span class="hljs-params">(input, entry, expectation)</span></span> {
-  describe(<span class="hljs-string">"Parsing "</span> + <span class="hljs-built_in">input</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span></span> {
-    var parser = ODataParser.createInstance()
-    var result = parser.matchAll(<span class="hljs-built_in">input</span>, entry)
+<pre><code><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">test</span><span class="hljs-params">(input, entry, expectation)</span> </span>{
+  describe(<span class="hljs-string">&quot;Parsing &quot;</span> + input, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span> </span>{
+    <span class="hljs-keyword">var</span> parser = ODataParser.createInstance()
+    <span class="hljs-keyword">var</span> result = parser.matchAll(input, entry)
     expectation(result)
   });
 }
 
-test(<span class="hljs-string">"/"</span>, <span class="hljs-string">"OData"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(result)</span></span> {
-  it(<span class="hljs-string">"Service root should have no model"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span></span> {
-     <span class="hljs-built_in">assert</span>.equal(result.resource, null)
+test(<span class="hljs-string">&quot;/&quot;</span>, <span class="hljs-string">&quot;OData&quot;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(result)</span> </span>{
+  it(<span class="hljs-string">&quot;Service root should have no model&quot;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span> </span>{
+     assert.equal(result.<span class="hljs-keyword">resource</span>, <span class="hljs-keyword">null</span>)
   })
 })
 
-test(<span class="hljs-string">"/model"</span>, <span class="hljs-string">"OData"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(result)</span></span> {
-  it(<span class="hljs-string">"should have the resource specified"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span></span> {
-     <span class="hljs-built_in">assert</span>.equal(result.resource, <span class="hljs-string">'model'</span>)
+test(<span class="hljs-string">&quot;/model&quot;</span>, <span class="hljs-string">&quot;OData&quot;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(result)</span> </span>{
+  it(<span class="hljs-string">&quot;should have the resource specified&quot;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span> </span>{
+     assert.equal(result.<span class="hljs-keyword">resource</span>, <span class="hljs-string">&#x27;model&#x27;</span>)
   })
 })
 
-test(<span class="hljs-string">"/model(1)"</span>, <span class="hljs-string">"OData"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(result)</span></span> {
-  it(<span class="hljs-string">"should have the resource specified"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span></span> {
-     <span class="hljs-built_in">assert</span>.equal(result.resource, <span class="hljs-string">'model'</span>)
+test(<span class="hljs-string">&quot;/model(1)&quot;</span>, <span class="hljs-string">&quot;OData&quot;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(result)</span> </span>{
+  it(<span class="hljs-string">&quot;should have the resource specified&quot;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span> </span>{
+     assert.equal(result.<span class="hljs-keyword">resource</span>, <span class="hljs-string">&#x27;model&#x27;</span>)
   })
-  it(<span class="hljs-string">"should have the key specified for the source"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span></span> {
-     <span class="hljs-built_in">assert</span>.equal(result.key, <span class="hljs-string">'1'</span>)
+  it(<span class="hljs-string">&quot;should have the key specified for the source&quot;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span> </span>{
+     assert.equal(result.key, <span class="hljs-string">&#x27;1&#x27;</span>)
   })
 })</code></pre><p>After the first couple of tests, setting up the parser etc was a ball-ache so I fixed it.</p>
 <p>I&#39;m missing out the bit where I specify what the service root is, I&#39;ll come back to it later as I&#39;m more interested in parsing the path itself.</p>
 <p>This is what I wrote to support the above tests:</p>
 <pre><code>ometa ODataParser 
-  Number = &lt;digit+&gt;:d -&gt; pars<span class="hljs-meta">eInt(</span>d, 10),
+  <span class="hljs-built_in">Number</span> = &lt;digit+&gt;:d -&gt; <span class="hljs-built_in">parseInt</span>(d, <span class="hljs-number">10</span>),
 
   OData = (
       PathSegment
-    | <span class="hljs-string">'/'</span>
+    | <span class="hljs-string">&#x27;/&#x27;</span>
   ) 
   ,
 
   PathSegment = 
-      <span class="hljs-string">'/'</span>
+      <span class="hljs-string">&#x27;/&#x27;</span>
         ResourceName:resource
         (
-          (<span class="hljs-string">"("</span> Number:<span class="hljs-meta">key</span> <span class="hljs-string">")"</span>)?
-        ) -&gt; { resource: resource, <span class="hljs-meta">key</span>: <span class="hljs-meta">key</span> }
+          (<span class="hljs-string">&quot;(&quot;</span> Number:key <span class="hljs-string">&quot;)&quot;</span>)?
+        ) -&gt; { resource: resource, key: key }
       ,
 
   ResourcePart =
     &lt;    (    letter
-      |    <span class="hljs-string">'_'</span>
+      |    <span class="hljs-string">&#x27;_&#x27;</span>
       )+
     &gt;:resourcePart
-    -&gt; resourcePart.<span class="hljs-meta">replace</span>(new Re<span class="hljs-meta">gExp(</span><span class="hljs-string">'_'</span>, <span class="hljs-string">'g'</span>), <span class="hljs-string">' '</span>),
+    -&gt; resourcePart.replace(<span class="hljs-keyword">new</span> <span class="hljs-built_in">RegExp</span>(<span class="hljs-string">&#x27;_&#x27;</span>, <span class="hljs-string">&#x27;g&#x27;</span>), <span class="hljs-string">&#x27; &#x27;</span>),
 
   ResourceName =
     &lt;    ResourcePart
-      (    <span class="hljs-string">'-'</span>
+      (    <span class="hljs-string">&#x27;-&#x27;</span>
         ResourcePart
-      )<span class="hljs-comment">*
+      )*
     &gt;
-}</span></code></pre><p>Things of note</p>
+}</code></pre><p>Things of note</p>
 <ul>
 <li>I&#39;m currently returning the model from PathSegment as { resource: resource, key: key }, I&#39;ll end up making something else for this I think</li>
 <li>The &quot;key&quot; is optional, if it&#39;s not there then it will simply be undefined, this is what that question mark is for after those braces</li>
 <li>The ResourcePart and ResourceName are copied from the old code and simply convert underscores into spaces, I haven&#39;t bothered writing tests for this as I&#39;ve not checked what ODatas rules are for entity names yet (It&#39;s likely to be a bit more complicated than &quot;any text at all&quot;)</li>
 </ul>
 <p>This is all very rudimentary, now - looking at the URI conventions, they seem to support arbitrary paths into object relationships like so:</p>
-<pre><code><span class="hljs-string">/model</span><span class="hljs-params">(1)</span><span class="hljs-string">/children</span><span class="hljs-params">(1)</span><span class="hljs-string">/otherchildren</span><span class="hljs-params">(1)</span><span class="hljs-string">/field</span></code></pre><p>This suggests I probably want to recurse in order to build up this sequence</p>
-<pre><code>test(<span class="hljs-string">"/model(1)/child"</span>, <span class="hljs-string">"OData"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(result)</span></span> {
-  it(<span class="hljs-string">"should have the resource specified"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span></span> {
-     <span class="hljs-built_in">assert</span>.equal(result.resource, <span class="hljs-string">'model'</span>)
+<pre><code><span class="hljs-regexp">/model(1)/</span>children(<span class="hljs-number">1</span>)<span class="hljs-regexp">/otherchildren(1)/</span>field</code></pre><p>This suggests I probably want to recurse in order to build up this sequence</p>
+<pre><code>test(<span class="hljs-string">&quot;/model(1)/child&quot;</span>, <span class="hljs-string">&quot;OData&quot;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(result)</span></span> {
+  it(<span class="hljs-string">&quot;should have the resource specified&quot;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span></span> {
+     <span class="hljs-built_in">assert</span>.equal(result.resource, <span class="hljs-string">&#x27;model&#x27;</span>)
   })
-  it(<span class="hljs-string">"should have the key specified for the resource"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span></span> {
-     <span class="hljs-built_in">assert</span>.equal(result.key, <span class="hljs-string">'1'</span>)
+  it(<span class="hljs-string">&quot;should have the key specified for the resource&quot;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span></span> {
+     <span class="hljs-built_in">assert</span>.equal(result.key, <span class="hljs-string">&#x27;1&#x27;</span>)
   })
-  it(<span class="hljs-string">"should have the child specified"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span></span> {
-     <span class="hljs-built_in">assert</span>.equal(result.resource.<span class="hljs-built_in">next</span>, <span class="hljs-string">'child'</span>)
+  it(<span class="hljs-string">&quot;should have the child specified&quot;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span></span> {
+     <span class="hljs-built_in">assert</span>.equal(result.resource.<span class="hljs-built_in">next</span>, <span class="hljs-string">&#x27;child&#x27;</span>)
   })
 })</code></pre><p>Not sure if this is an appropriate representation, but it&#39;ll do for now until I find out how we&#39;re going to be consuming this model.</p>
 <p>Having just arrived at the hotel and written this all on the boat, I&#39;ll defer having a look at how to do this until tomorrow, I&#39;ve already passed the balmers peak.</p>

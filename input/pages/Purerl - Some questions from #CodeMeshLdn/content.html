@@ -38,8 +38,8 @@
 <pre><code class="language-bash">Eshell V10.5  (abort with ^G)
 1&gt; l(cool@ps).
 {module,cool@ps}
-2&gt; cool@ps:base64(&lt;&lt;<span class="hljs-string">"foo"</span>&gt;&gt;).
-&lt;&lt;<span class="hljs-string">"Zm9v"</span>&gt;&gt;
+2&gt; cool@ps:base64(&lt;&lt;<span class="hljs-string">&quot;foo&quot;</span>&gt;&gt;).
+&lt;&lt;<span class="hljs-string">&quot;Zm9v&quot;</span>&gt;&gt;
 3&gt;</code></pre>
 <p>So.. what if we lie about the types at play here?</p>
 <pre><code class="language-haskell">
@@ -49,14 +49,14 @@
 <pre><code class="language-bash">Eshell V10.5  (abort with ^G)
 1&gt; l(cool@ps).
 {module,cool@ps}
-2&gt; cool@ps:base64(&lt;&lt;<span class="hljs-string">"foo"</span>&gt;&gt;).
-&lt;&lt;<span class="hljs-string">"Zm9v"</span>&gt;&gt;
+2&gt; cool@ps:base64(&lt;&lt;<span class="hljs-string">&quot;foo&quot;</span>&gt;&gt;).
+&lt;&lt;<span class="hljs-string">&quot;Zm9v&quot;</span>&gt;&gt;
 3&gt;</code></pre>
 <p>How about using it in a purescript application?</p>
 <pre><code class="language-haskell">
 <span class="hljs-title">doSomething</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
 <span class="hljs-title">doSomething</span> = <span class="hljs-keyword">do</span>
-  <span class="hljs-keyword">let</span> result = base64 <span class="hljs-string">"wow"</span>
+  <span class="hljs-keyword">let</span> result = base64 <span class="hljs-string">&quot;wow&quot;</span>
   _ &lt;- <span class="hljs-type">Console</span>.log $ show result
   pure unit
 </code></pre>
@@ -64,9 +64,9 @@
 &gt; (cool@ps:doSomething())().
 ** exception error: bad argument
      <span class="hljs-keyword">in</span> <span class="hljs-keyword">function</span>  integer_to_binary/1
-        called as integer_to_binary(&lt;&lt;<span class="hljs-string">"d293"</span>&gt;&gt;)
+        called as integer_to_binary(&lt;&lt;<span class="hljs-string">&quot;d293&quot;</span>&gt;&gt;)
      <span class="hljs-keyword">in</span> call from data_show@foreign:showIntImpl/1 (output/Data.Show/data_show@foreign.erl, line 4)
-     <span class="hljs-keyword">in</span> call from main@ps:<span class="hljs-string">'-doSomething/0-fun-0-'</span>/1 (/home/robashton/talks/purescript_beam/demo_2/src/Main.purs, line 19)
+     <span class="hljs-keyword">in</span> call from main@ps:<span class="hljs-string">&#x27;-doSomething/0-fun-0-&#x27;</span>/1 (/home/robashton/talks/purescript_beam/demo_2/src/Main.purs, line 19)
 </code></pre>
 <p>Passing the variable around in Purescript land, nothing cares - it is assumed that if you&#39;ve said something is a certain type, that it is that type and all type checking will be done on that basis - sooner or later, every bit of data will end up getting somewhere where it needs to be serialized whether for display, storage or transmission and that will involve passing the data into code that makes assumptions based on the type being passed in and you&#39;ll get a runtime crash.</p>
 <p>So obviously the answer is &quot;don&#39;t do it&quot; - when building FFI, getting types correct is essential - definitely something worth testing.</p>
@@ -77,7 +77,7 @@
 <span class="hljs-keyword">-export</span><span class="hljs-params">([ add/<span class="hljs-number">2</span> ])</span>.
 
 <span class="hljs-function"><span class="hljs-title">add</span><span class="hljs-params">(X,Y)</span> -&gt;</span>
-  io:format(user, <span class="hljs-string">"WOW, I AM ADDING ~p and ~p"</span>, [ X, Y ]),
+  io:format(user, <span class="hljs-string">&quot;WOW, I AM ADDING ~p and ~p&quot;</span>, [ X, Y ]),
   X + Y.
 </code></pre>
 <pre><code class="language-haskell">
@@ -185,8 +185,8 @@ unit</code></pre>
 <span class="hljs-title">atomToCool</span>  :: <span class="hljs-type">Erl</span>.<span class="hljs-type">Atom</span> -&gt; <span class="hljs-type">CoolListDirPosixFailure</span>
 <span class="hljs-title">atomToCool</span> a = 
   <span class="hljs-keyword">case</span> a <span class="hljs-keyword">of</span>
-    (atom <span class="hljs-string">"eacces"</span>) -&gt; <span class="hljs-type">Eaccess</span>
-    (atom <span class="hljs-string">"enoent"</span>) -&gt; <span class="hljs-type">Enoent</span>
+    (atom <span class="hljs-string">&quot;eacces&quot;</span>) -&gt; <span class="hljs-type">Eaccess</span>
+    (atom <span class="hljs-string">&quot;enoent&quot;</span>) -&gt; <span class="hljs-type">Enoent</span>
     <span class="hljs-comment">--- etc</span>
 </code></pre>
 <p>Essentially getting rid of those arbitary atoms and Erlang data types and representing them as native Purerl data types. You <em>could</em> just write your binding directly in this way from the get-go, but it&#39;s considered polite to write the low level bindings as directly as possible to the original API because it saves on mental load (and doing as little work as possible in the Erlang code), the documentation for the original API is then applicable to the low level bindings too.</p>

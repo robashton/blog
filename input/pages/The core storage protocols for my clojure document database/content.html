@@ -15,19 +15,19 @@
 <li>Support bulk operations</li>
 </ul>
 <p>For the actual storage engine, I went with LevelDB as that supports the above and intitially wrote the entire system against that before extracting the protocol seen below: (<em>storageops.clj</em>)</p>
-<pre><code>(<span class="hljs-name">defprotocol</span> Reader
-  (<span class="hljs-name">open-iterator</span> [<span class="hljs-name">this</span>])
-  (<span class="hljs-name">from-db</span> [<span class="hljs-name">this</span> id]))
+<pre><code>(<span class="hljs-keyword">defprotocol</span> <span class="hljs-title">Reader</span>
+  (<span class="hljs-name">open-iterator</span> [this])
+  (<span class="hljs-name">from-db</span> [this id]))
 
-(<span class="hljs-name">defprotocol</span> Writer
-  (<span class="hljs-name">commit!</span> [<span class="hljs-name">this</span>]))
+(<span class="hljs-keyword">defprotocol</span> <span class="hljs-title">Writer</span>
+  (<span class="hljs-name">commit!</span> [this]))
 
-(<span class="hljs-name">defprotocol</span> Iterator
-  (<span class="hljs-name">seek!</span> [<span class="hljs-name">this</span> k])
-  (<span class="hljs-name">as-seq</span> [<span class="hljs-name">this</span>]))
+(<span class="hljs-keyword">defprotocol</span> <span class="hljs-title">Iterator</span>
+  (<span class="hljs-name">seek!</span> [this k])
+  (<span class="hljs-name">as-seq</span> [this]))
 
-(<span class="hljs-name">defprotocol</span> Storage
-  (<span class="hljs-name">ensure-transaction</span> [<span class="hljs-name">this</span>]))</code></pre><p>Well, you&#39;ll notice immediately that there is no trace of any methods for &quot;put/get/delete&quot; operations and that&#39;s because it seemed to me that this sort of thing was common between all the storage subsystems and actually was a matter of building up a suitable data structure for flushing to the subsystem via that &quot;<em>commit!</em>&quot; method.</p>
+(<span class="hljs-keyword">defprotocol</span> <span class="hljs-title">Storage</span>
+  (<span class="hljs-name">ensure-transaction</span> [this]))</code></pre><p>Well, you&#39;ll notice immediately that there is no trace of any methods for &quot;put/get/delete&quot; operations and that&#39;s because it seemed to me that this sort of thing was common between all the storage subsystems and actually was a matter of building up a suitable data structure for flushing to the subsystem via that &quot;<em>commit!</em>&quot; method.</p>
 <p>Why Reader/Writer/Storage as separate protocols? Because a transaction can be a reader and a writer, and the core storage can be a reader and a writer as well (operations outside of a transaction).</p>
 <p><strong>Transaction lifecycle</strong></p>
 <p>So, we actually end up with another module, &quot;<em>storage.clj</em>&quot; to keep these operations over the top of the actual storage mechanism.</p>
@@ -39,7 +39,7 @@
 </ul>
 <p><strong>Core Storage Operations</strong></p>
 <p>The storage module exposes the actual functions used to communicate with the underlying storage system, and also surfaces an &quot;ensure-transaction&quot; function.</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> ensure-transaction [storage]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">ensure-transaction</span> [storage]
   (<span class="hljs-name"><span class="hljs-builtin-name">assoc</span></span> (<span class="hljs-name">s/ensure-transaction</span> storage)
       <span class="hljs-symbol">:last-synctag</span> (<span class="hljs-symbol">:last-synctag</span> storage)))</code></pre><p>Any operations happening within this transaction are managed by the storage module and are just a matter of</p>
 <ul>
@@ -48,18 +48,18 @@
 <li>Loading things from the underlying storage if a version doesn&#39;t exist in the map</li>
 </ul>
 <p>For example, retrieving an item from that map:</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> get-obj [ops id]
-  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [cached (<span class="hljs-name"><span class="hljs-builtin-name">get-in</span></span> ops [<span class="hljs-symbol">:cache</span> id])]
-    (<span class="hljs-name"><span class="hljs-builtin-name">if</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> cached <span class="hljs-symbol">:deleted</span>) <span class="hljs-literal">nil</span>
-      (<span class="hljs-name"><span class="hljs-builtin-name">or</span></span> cached (<span class="hljs-name">s/from-db</span> ops id)))))</code></pre><p>or marking an item as deleted:</p>
+<pre><code>(<span class="hljs-string">defn</span> <span class="hljs-built_in">get-obj</span> [<span class="hljs-string">ops</span> <span class="hljs-string">id</span>]
+  (<span class="hljs-string">let</span> [<span class="hljs-string">cached</span> (<span class="hljs-built_in">get-in</span> <span class="hljs-string">ops</span> [:<span class="hljs-string">cache</span> <span class="hljs-string">id</span>])]
+    (<span class="hljs-string">if</span> (= <span class="hljs-string">cached</span> :<span class="hljs-string">deleted</span>) <span class="hljs-string">nil</span>
+      (<span class="hljs-string">or</span> <span class="hljs-string">cached</span> (<span class="hljs-string">s</span>/<span class="hljs-string">from-db</span> <span class="hljs-string">ops</span> <span class="hljs-string">id</span>)))))</code></pre><p>or marking an item as deleted:</p>
 <pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> delete [ops id]
   (<span class="hljs-name">assoc-in</span> ops [<span class="hljs-symbol">:cache</span> id] <span class="hljs-symbol">:deleted</span>))</code></pre><p><strong>Zero mutation until flush</strong></p>
 <p>Because all the operations taking place are taking place over the top of a plain old Clojure Map, the code written on top of this is easy to follow as there is no incidental mutation, and it&#39;s easy to dump out the contents of the map in the REPL to see what is going on.</p>
 <p>To write a document from a module in the database, as well as some metadata and some useful marker for example, we can take a transaction from the underlying storage and do</p>
 <pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">-&gt;</span></span> (<span class="hljs-name">s/ensure-transaction</span> db)
-    (<span class="hljs-name">s/store</span> <span class="hljs-string">"doc-1"</span> { <span class="hljs-symbol">:id</span> <span class="hljs-string">"foo"</span> })
-    (<span class="hljs-name">s/store</span> <span class="hljs-string">"metadata-doc-1"</span> { <span class="hljs-symbol">:owner</span> <span class="hljs-string">"bob"</span> })
-    (<span class="hljs-name">s/store</span> <span class="hljs-string">"last-change"</span> (<span class="hljs-name">now</span>))
+    (<span class="hljs-name">s/store</span> <span class="hljs-string">&quot;doc-1&quot;</span> { <span class="hljs-symbol">:id</span> <span class="hljs-string">&quot;foo&quot;</span> })
+    (<span class="hljs-name">s/store</span> <span class="hljs-string">&quot;metadata-doc-1&quot;</span> { <span class="hljs-symbol">:owner</span> <span class="hljs-string">&quot;bob&quot;</span> })
+    (<span class="hljs-name">s/store</span> <span class="hljs-string">&quot;last-change&quot;</span> (<span class="hljs-name">now</span>))
     s/commit!)</code></pre><p>The majority of the logic here is just putting things into a map, and indeed the only code that actually touches the underying storage is the commit call in this instance. This is using data as integration between the different layers of the database and is quite simple to follow and understand.</p>
 <p><strong>Related files</strong></p>
 <ul>

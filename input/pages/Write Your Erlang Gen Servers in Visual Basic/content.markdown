@@ -180,11 +180,11 @@ In Erlang, if you want to invoke some code in the process that kicked off these 
 
 
 ```erlang
-start_link(Arg1, Arg2) ->
-  gen_server:start_link({local, ?MODULE}, [Arg1, Arg2]).
+start_link() ->
+  gen_server:start_link({local, ?MODULE}, []).
 
-init([Arg1, Arg2]) ->
-  #state { one = Arg1, two = Arg2 }
+init([]) ->
+  #state{}
 
 handle_info(Msg, State) ->
   ?LOG(Msg),
@@ -194,7 +194,7 @@ handle_info(Msg, State) ->
 Used as thus
 
 ```erlang
-  { ok, Pid } = my_cool_genserver:start_link(X,Y),
+  { ok, Pid } = my_cool_genserver:start_link(),
 
   %% Hello Robert
   Pid ! "Hello Robert".

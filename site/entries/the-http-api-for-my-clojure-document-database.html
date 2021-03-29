@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -74,20 +75,20 @@
 </ul>
 <p><strong>Recap</strong></p>
 <p>This took the form of a protocol that looked like this:</p>
-<pre><code>(<span class="hljs-name">defprotocol</span> DocumentDatabase
-  (<span class="hljs-name">close</span> [<span class="hljs-name">this</span>])
-  (<span class="hljs-name">load-document-metadata</span> [<span class="hljs-name">this</span> id])
-  (<span class="hljs-name">query</span> [<span class="hljs-name">this</span> opts])
-  (<span class="hljs-name">clear-conflicts</span> [<span class="hljs-name">this</span> id])
-  (<span class="hljs-name">conflicts</span> [<span class="hljs-name">this</span>])
-  (<span class="hljs-name">put-document</span> [<span class="hljs-name">this</span> id document metadata])
-  (<span class="hljs-name">load-document</span> [<span class="hljs-name">this</span> id])
-  (<span class="hljs-name">delete-document</span> [<span class="hljs-name">this</span> id metadata])
-  (<span class="hljs-name">bulk</span> [<span class="hljs-name">this</span> operations])
-  (<span class="hljs-name">put-index</span> [<span class="hljs-name">this</span> index])
-  (<span class="hljs-name">load-index-metadata</span> [<span class="hljs-name">this</span> id])
-  (<span class="hljs-name">delete-index</span> [<span class="hljs-name">this</span> id])
-  (<span class="hljs-name">load-index</span> [<span class="hljs-name">this</span> id]))</code></pre><p>It&#39;s fairly well established that document database operations map well into a restful interface - in the above mappings we only have two resources,</p>
+<pre><code>(<span class="hljs-keyword">defprotocol</span> <span class="hljs-title">DocumentDatabase</span>
+  (<span class="hljs-name">close</span> [this])
+  (<span class="hljs-name">load-document-metadata</span> [this id])
+  (<span class="hljs-name">query</span> [this opts])
+  (<span class="hljs-name">clear-conflicts</span> [this id])
+  (<span class="hljs-name">conflicts</span> [this])
+  (<span class="hljs-name">put-document</span> [this id document metadata])
+  (<span class="hljs-name">load-document</span> [this id])
+  (<span class="hljs-name">delete-document</span> [this id metadata])
+  (<span class="hljs-name">bulk</span> [this operations])
+  (<span class="hljs-name">put-index</span> [this index])
+  (<span class="hljs-name">load-index-metadata</span> [this id])
+  (<span class="hljs-name">delete-index</span> [this id])
+  (<span class="hljs-name">load-index</span> [this id]))</code></pre><p>It&#39;s fairly well established that document database operations map well into a restful interface - in the above mappings we only have two resources,</p>
 <ul>
 <li>/document (PUT/GET/DELETE/HEAD)</li>
 <li>/index    (PUT/GET/DELETE/HEAD)</li>
@@ -103,22 +104,22 @@
   <span class="hljs-symbol">:handle-ok</span> some-handler)</code></pre><p><strong>And HTTP-Kit</strong></p>
 <p>By itself, liberator isn&#39;t really enough to talk to the world over HTTP, as you need a http server to actually host it.</p>
 <p>I used HTTP Kit because it supports asynchronous operations and seems to be getting the love these days. What this means, is you create some handlers using liberator and pass them into the &#39;run-server&#39; function from http-kit.</p>
-<pre><code>(<span class="hljs-name">run-server</span> handlers)</code></pre><p><strong>So I have an embedded database</strong></p>
+<pre><code><span class="hljs-comment">(run-server handlers)</span></code></pre><p><strong>So I have an embedded database</strong></p>
 <p>I don&#39;t want these routes I&#39;ve defined to be coupled to either</p>
 <ul>
 <li>The HTTP server hosting them (http-kit in this case)</li>
 <li>The type of database being used (in-memory or otherwise)</li>
 </ul>
 <p>So what I did is created a closure, which takes in the instance of database to talk to and returns the routes defined around that instance</p>
-<pre><code>(<span class="hljs-string">defn </span><span class="hljs-built_in">create-http-server</span> [<span class="hljs-string">instance]</span>
-  (<span class="hljs-string">let </span>[<span class="hljs-string">db-routes </span>(<span class="hljs-built_in">create-routes</span> <span class="hljs-string">instance)</span>]
-    (<span class="hljs-string">handler/</span><span class="hljs-string">api </span><span class="hljs-string">db-routes)</span>))</code></pre><p>I can then use that in tests, the REPL or the main application to create a http server around an instance of a database</p>
+<pre><code>(<span class="hljs-string">defn</span> <span class="hljs-built_in">create-http-server</span> [<span class="hljs-string">instance</span>]
+  (<span class="hljs-string">let</span> [<span class="hljs-string">db-routes</span> (<span class="hljs-built_in">create-routes</span> <span class="hljs-string">instance</span>)]
+    (<span class="hljs-string">handler</span>/<span class="hljs-string">api</span> <span class="hljs-string">db-routes</span>)))</code></pre><p>I can then use that in tests, the REPL or the main application to create a http server around an instance of a database</p>
 <p>This is what my main application looks like for example.</p>
-<pre><code>(<span class="hljs-string">run-server
-</span>  (<span class="hljs-string">http/</span><span class="hljs-built_in">create-http-server</span> <span class="hljs-string">embedded-instance)</span> { :<span class="hljs-string">port </span><span class="hljs-string">8001 </span>:<span class="hljs-string">join?</span> <span class="hljs-string">true </span>}))</code></pre><p><strong>The routes themselves</strong></p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> create-routes [instance]
+<pre><code>(<span class="hljs-string">run-server</span>
+  (<span class="hljs-string">http</span>/<span class="hljs-built_in">create-http-server</span> <span class="hljs-string">embedded-instance</span>) { :<span class="hljs-string">port</span> <span class="hljs-string">8001</span> :<span class="hljs-string">join</span>? <span class="hljs-string">true</span> }))</code></pre><p><strong>The routes themselves</strong></p>
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">create-routes</span> [instance]
   (<span class="hljs-name">routes</span>
-    (<span class="hljs-name">ANY</span> <span class="hljs-string">"/document/:id"</span> [id]
+    (<span class="hljs-name">ANY</span> <span class="hljs-string">&quot;/document/:id&quot;</span> [id]
       (<span class="hljs-name">resource</span>
         <span class="hljs-symbol">:allowed-methods</span> [<span class="hljs-symbol">:put</span> <span class="hljs-symbol">:get</span> <span class="hljs-symbol">:delete</span> <span class="hljs-symbol">:head</span>]
         <span class="hljs-symbol">:exists?</span> (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [ctx] (<span class="hljs-name">resource-exists</span>
@@ -130,7 +131,7 @@
         <span class="hljs-symbol">:put!</span> (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [ctx] (<span class="hljs-name">db/put-document</span> instance id (<span class="hljs-name">read-body</span> ctx) (<span class="hljs-name">read-metadata</span> ctx)))
         <span class="hljs-symbol">:delete!</span> (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [_] (<span class="hljs-name">db/delete-document</span> instance id (<span class="hljs-name">read-metadata</span> _)))
         <span class="hljs-symbol">:handle-ok</span> (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [_] (<span class="hljs-name">standard-response</span> _ (<span class="hljs-symbol">::resource</span> _) (<span class="hljs-symbol">::metadata</span> _)))))
-    (<span class="hljs-name">ANY</span> <span class="hljs-string">"/index/:id"</span> [id]
+    (<span class="hljs-name">ANY</span> <span class="hljs-string">&quot;/index/:id&quot;</span> [id]
       (<span class="hljs-name">resource</span>
         <span class="hljs-symbol">:allowed-methods</span> [<span class="hljs-symbol">:put</span> <span class="hljs-symbol">:get</span> <span class="hljs-symbol">:delete</span> <span class="hljs-symbol">:head</span>]
         <span class="hljs-symbol">:exists?</span> (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [ctx] (<span class="hljs-name">resource-exists</span>

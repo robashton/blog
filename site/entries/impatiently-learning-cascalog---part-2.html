@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -76,12 +77,12 @@
 <p>I quite like the explanation given at the beginning of the article for why it&#39;s important that we be able to copy data from one place to another, and why we&#39;d use Cascalog for this. Basically we&#39;re talking about being able to make guarantees about this operation and that&#39;s going to be important when we&#39;re trying to write logic on top of this process.</p>
 <p>So anyway, we&#39;re given the following code</p>
 <pre><code class="language-clojure">(<span class="hljs-name">defmapcatop</span> split [line]
-  <span class="hljs-string">"reads in a line of string and splits it by regex"</span>
-    (<span class="hljs-name">s/split</span> line #<span class="hljs-string">"[\[\]\\(\),.)\s]+"</span>))</code></pre>
+  <span class="hljs-string">&quot;reads in a line of string and splits it by regex&quot;</span>
+    (<span class="hljs-name">s/split</span> line #<span class="hljs-string">&quot;[\[\]\\(\),.)\s]+&quot;</span>))</code></pre>
 <p>I guess that &#39;defmapcatop&#39; is a macro for defining map operations, and this appears to be splitting a line by whitespace.</p>
 <p>Googling this doesn&#39;t appear to yield in the documentation, which is a bit unfortunate - but a bit of rummaging around finds a handy page for <a href="http://entxtech.blogspot.co.uk/2010/12/which-operation-def-macro-should-i-use.html">&quot;which def should I use&quot;</a>  which suggests that I&#39;m on the right track with that line of thought.</p>
 <p>Okay, so we can move on from this pretty swiftly and see how we&#39;re going to use this</p>
-<pre><code class="language-clojure">(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> -main [in out &amp; args]
+<pre><code class="language-clojure">(<span class="hljs-keyword">defn</span> <span class="hljs-title">-main</span> [in out &amp; args]
   (<span class="hljs-name">?&lt;-</span> (<span class="hljs-name">hfs-delimited</span> out)
        [?word ?count]
        ((<span class="hljs-name">hfs-delimited</span> in <span class="hljs-symbol">:skip-header?</span> <span class="hljs-literal">true</span>) _ ?line)
@@ -110,7 +111,7 @@
 <p>I suspect that the <em>(?&lt;-</em> thingy is actually a macro of some sort that re-writes this into something more sane, but who knows right?</p>
 <p>Running this with</p>
 <pre><code>lein uberjar
-hadoop jar ./target/impatient<span class="hljs-selector-class">.jar</span> data/rain<span class="hljs-selector-class">.txt</span> output/wc</code></pre><p>Gives me a wonderful &quot;out of memory exception&quot;, so I post a dump on the mailing list and have a look at my environment.</p>
+hadoop jar .<span class="hljs-regexp">/target/im</span>patient.jar data<span class="hljs-regexp">/rain.txt output/</span>wc</code></pre><p>Gives me a wonderful &quot;out of memory exception&quot;, so I post a dump on the mailing list and have a look at my environment.</p>
 <p>Things I tried while I waited for a response</p>
 <ul>
 <li>Re-install the hadoop package (1.2.1) but the x64 version</li>
@@ -126,17 +127,17 @@ hadoop jar ./target/impatient<span class="hljs-selector-class">.jar</span> data/
 </ul>
 <p>Side note: The project pages for Hadoop are <em>awful</em>, I had to go through a dozen links before I got to download anything - it felt like it was <em>trying</em> to make me feel stupid, but oh well - carrying on.</p>
 <p>The real output?</p>
-<pre><code>A    <span class="hljs-number">3</span>
-Australia    <span class="hljs-number">1</span>
-Broken    <span class="hljs-number">1</span>
-California's    <span class="hljs-number">1</span>
-DVD    <span class="hljs-number">1</span>
-Death    <span class="hljs-number">1</span>
-Land    <span class="hljs-number">1</span>
-Secrets    <span class="hljs-number">1</span>
-This    <span class="hljs-number">2</span>
-Two    <span class="hljs-number">1</span>
-Valley    <span class="hljs-number">1</span></code></pre><p>Etc - so I&#39;m happy enough with that.</p>
+<pre><code><span class="hljs-attribute">A</span>    <span class="hljs-number">3</span>
+<span class="hljs-attribute">Australia</span>    <span class="hljs-number">1</span>
+<span class="hljs-attribute">Broken</span>    <span class="hljs-number">1</span>
+<span class="hljs-attribute">California</span>&#x27;s    <span class="hljs-number">1</span>
+<span class="hljs-attribute">DVD</span>    <span class="hljs-number">1</span>
+<span class="hljs-attribute">Death</span>    <span class="hljs-number">1</span>
+<span class="hljs-attribute">Land</span>    <span class="hljs-number">1</span>
+<span class="hljs-attribute">Secrets</span>    <span class="hljs-number">1</span>
+<span class="hljs-attribute">This</span>    <span class="hljs-number">2</span>
+<span class="hljs-attribute">Two</span>    <span class="hljs-number">1</span>
+<span class="hljs-attribute">Valley</span>    <span class="hljs-number">1</span></code></pre><p>Etc - so I&#39;m happy enough with that.</p>
 <p>I&#39;m still not <em>that</em> happy with the crazy syntax of the Clojure, I&#39;m grabbing at it and going with the rolling assumption that the logic-like-system is just a bunch of macros on top of vanilla Clojure and &quot;just works&quot;, so &quot;shut up and carry on Rob&quot;.</p>
 <p>Onto part 3 then...</p>
 </div>

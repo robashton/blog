@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -85,28 +86,28 @@
 <p><strong>Do all this stuff before you do the other stuff</strong></p>
 <p>I don&#39;t think this will be too hard to parse given our already built-up knowledge of how to do precedence.</p>
 <p>To the test..</p>
-<pre><code>test(<span class="hljs-string">"/some/resource?$filterby=(Price div Price) mul 5 gt 10"</span>, <span class="hljs-string">"OData"</span>, function(<span class="hljs-name">result</span>) {
-  it(<span class="hljs-string">"A filter should be present"</span>, function() {
-     assert.notEqual(<span class="hljs-name">result</span>.options.$filterby, null)
+<pre><code><span class="hljs-function"><span class="hljs-title">test</span><span class="hljs-params">(<span class="hljs-string">&quot;/some/resource?$filterby=(Price div Price) mul 5 gt 10&quot;</span>, <span class="hljs-string">&quot;OData&quot;</span>, function(result)</span></span> {
+  it(<span class="hljs-string">&quot;A filter should be present&quot;</span>, function() {
+     assert<span class="hljs-selector-class">.notEqual</span>(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$filterby</span>, null)
   })
-  it(<span class="hljs-string">"Filter should be an instance of 'gt'"</span>, function() {
-     assert.equal(<span class="hljs-name">result</span>.options.$filterby[<span class="hljs-number">0</span>], <span class="hljs-string">"gt"</span>)
+  it(<span class="hljs-string">&quot;Filter should be an instance of &#x27;gt&#x27;&quot;</span>, function() {
+     assert<span class="hljs-selector-class">.equal</span>(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$filterby</span><span class="hljs-selector-attr">[0]</span>, <span class="hljs-string">&quot;gt&quot;</span>)
   })
-  var lexpr = result.options.$filterby[<span class="hljs-number">1</span>] 
+  <span class="hljs-selector-tag">var</span> lexpr = result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$filterby</span><span class="hljs-selector-attr">[1]</span> 
 
-  it(<span class="hljs-string">"should be {expr} mul 5"</span>, function() {
-    assert.equal(<span class="hljs-name">lexpr</span>[<span class="hljs-number">0</span>], <span class="hljs-string">"mul"</span>)
-    assert.equal(<span class="hljs-name">lexpr</span>[<span class="hljs-number">2</span>], <span class="hljs-number">5</span>)
-  })
-
-  it(<span class="hljs-string">"should be {Price div Price}"</span>, function() {
-    assert.equal(<span class="hljs-name">lexpr</span>[<span class="hljs-number">1</span>][<span class="hljs-number">0</span>], <span class="hljs-string">"div"</span>)
-    assert.equal(<span class="hljs-name">lexpr</span>[<span class="hljs-number">1</span>][<span class="hljs-number">1</span>].name, <span class="hljs-string">"Price"</span>)
-    assert.equal(<span class="hljs-name">lexpr</span>[<span class="hljs-number">1</span>][<span class="hljs-number">2</span>].name, <span class="hljs-string">"Price"</span> )
+  it(<span class="hljs-string">&quot;should be {expr} mul 5&quot;</span>, function() {
+    assert<span class="hljs-selector-class">.equal</span>(lexpr<span class="hljs-selector-attr">[0]</span>, <span class="hljs-string">&quot;mul&quot;</span>)
+    assert<span class="hljs-selector-class">.equal</span>(lexpr<span class="hljs-selector-attr">[2]</span>, <span class="hljs-number">5</span>)
   })
 
-  it(<span class="hljs-string">"rhr should be 10"</span>, function() {
-     assert.equal(<span class="hljs-name">result</span>.options.$filterby[<span class="hljs-number">2</span>], <span class="hljs-number">10</span>)
+  it(<span class="hljs-string">&quot;should be {Price div Price}&quot;</span>, function() {
+    assert<span class="hljs-selector-class">.equal</span>(lexpr<span class="hljs-selector-attr">[1]</span><span class="hljs-selector-attr">[0]</span>, <span class="hljs-string">&quot;div&quot;</span>)
+    assert<span class="hljs-selector-class">.equal</span>(lexpr<span class="hljs-selector-attr">[1]</span><span class="hljs-selector-attr">[1]</span><span class="hljs-selector-class">.name</span>, <span class="hljs-string">&quot;Price&quot;</span>)
+    assert<span class="hljs-selector-class">.equal</span>(lexpr<span class="hljs-selector-attr">[1]</span><span class="hljs-selector-attr">[2]</span><span class="hljs-selector-class">.name</span>, <span class="hljs-string">&quot;Price&quot;</span> )
+  })
+
+  it(<span class="hljs-string">&quot;rhr should be 10&quot;</span>, function() {
+     assert<span class="hljs-selector-class">.equal</span>(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$filterby</span><span class="hljs-selector-attr">[2]</span>, <span class="hljs-number">10</span>)
   })
 })</code></pre><p>This is actually the same test as in our <a href="/entries/adding-arithmetic-operators-to-our-odata-parser.html">Arithmetic Operators</a> post, only we&#39;ve surrounded the div expression because we want that to happen all by itself.</p>
 <p>Well, Brackets actually have the <em>highest</em> precedence, so they&#39;ll need to go at the very end of our parser.</p>
@@ -119,7 +120,7 @@
 ,
 
 GroupedPrecedenceExpression = 
-  <span class="hljs-string">"("</span> spaces FilterByExpression:expr spaces <span class="hljs-string">")"</span> -&gt; expr
+  <span class="hljs-string">&quot;(&quot;</span> spaces FilterByExpression:expr spaces <span class="hljs-string">&quot;)&quot;</span> -&gt; expr
 
 ,</code></pre><p>Yes, it really is that simple. This is what comes of building up the definition of a parse-target out of little building blocks and then making a sequence of them.</p>
 <p>If only all programs worked like this.</p>

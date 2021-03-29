@@ -13,14 +13,14 @@
 <li>Temporal averages</li>
 </ul>
 <p>If we can <a href="/entries/evented-github-adventure---temporal-queries,-who-doesnt-trust-their-hardware.html">emit temporal events</a> by partitioning streams and building up state over time, then we can probably go a bit further and build up averages over &quot;How long things usually take&quot;, let&#39;s have a look at the temporal projection we used to emit time-based events:</p>
-<pre><code><span class="hljs-string">"PushEvent"</span>: <span class="hljs-keyword">function</span>(state, ev) {
-  <span class="hljs-keyword">if</span>(state.lastPush) {
-    var newDate = <span class="hljs-keyword">new</span> <span class="hljs-constructor">Date(<span class="hljs-params">ev</span>.<span class="hljs-params">body</span>.<span class="hljs-params">created_at</span>)</span>
-      , lastDate = <span class="hljs-keyword">new</span> <span class="hljs-constructor">Date(<span class="hljs-params">state</span>.<span class="hljs-params">lastPush</span>.<span class="hljs-params">body</span>.<span class="hljs-params">created_at</span>)</span>
-      , difference = (newDate.get<span class="hljs-constructor">Time()</span> - lastDate.get<span class="hljs-constructor">Time()</span>)<span class="hljs-operator"> / </span><span class="hljs-number">1000</span>
+<pre><code><span class="hljs-string">&quot;PushEvent&quot;</span>: function(<span class="hljs-keyword">state</span>, ev) {
+  if(<span class="hljs-keyword">state</span>.lastPush) {
+    var newDate = new Date(ev.body.created_at)
+      , lastDate = new Date(<span class="hljs-keyword">state</span>.lastPush.body.created_at)
+      , difference = (newDate.getTime() - lastDate.getTime()) / <span class="hljs-number">1000</span>
 
-    <span class="hljs-keyword">if</span>(difference &lt; <span class="hljs-number">120</span>) {
-      emit('paranoidpushes', <span class="hljs-string">"ParanoidPush"</span>, {
+    if(difference <span class="hljs-variable">&lt; 120) {
+      emit(&#x27;paranoidpushes&#x27;, &quot;ParanoidPush&quot;, {
         first: state.lastPush,
         next: ev
       })
@@ -28,20 +28,20 @@
   }
   state.lastPush = ev
   return state
-}</code></pre><p>What we can actually do here is instead of checking for a difference, simply emit an event for every time we receive a PushEvent notification which happened after another one we already saw:</p>
-<pre><code><span class="hljs-keyword">from</span>Category('pushesbyrepo')
+}</span></code></pre><p>What we can actually do here is instead of checking for a difference, simply emit an event for every time we receive a PushEvent notification which happened after another one we already saw:</p>
+<pre><code><span class="hljs-keyword">from</span>Category(&#x27;pushesbyrepo&#x27;)
   foreachStream()
   .when({
     <span class="hljs-variable">$init</span>: function(<span class="hljs-keyword">state</span>, ev) {
       return {}
     },
-    <span class="hljs-string">"PushEvent"</span>: function(<span class="hljs-keyword">state</span>, ev) {
+    <span class="hljs-string">&quot;PushEvent&quot;</span>: function(<span class="hljs-keyword">state</span>, ev) {
       if(<span class="hljs-keyword">state</span>.lastPush) {
         var newDate = new Date(ev.body.created_at)
           , lastDate = new Date(<span class="hljs-keyword">state</span>.lastPush.body.created_at)
           , difference = (newDate.getTime() - lastDate.getTime()) / <span class="hljs-number">1000</span>
 
-        emit('successivepushes', <span class="hljs-string">"SuccessivePush"</span>, {
+        emit(&#x27;successivepushes&#x27;, <span class="hljs-string">&quot;SuccessivePush&quot;</span>, {
           first: <span class="hljs-keyword">state</span>.lastPush,
           next: ev,
           difference: difference
@@ -53,12 +53,12 @@
   })</code></pre><p>This can actually lead to better analysis of our data, for example</p>
 <p><em>What are the average times between pushes across the different languages</em></p>
 <p>So, this time we&#39;ll partition by language and work out an average time between pushes per language</p>
-<pre><code><span class="hljs-keyword">from</span>Stream('successivepushes')
+<pre><code><span class="hljs-keyword">from</span>Stream(&#x27;successivepushes&#x27;)
   .when({
-   <span class="hljs-string">"$init"</span>: function() {
+   <span class="hljs-string">&quot;$init&quot;</span>: function() {
      return {}
    },
-   <span class="hljs-string">"SuccessivePush"</span>: function(<span class="hljs-keyword">state</span>, ev) {
+   <span class="hljs-string">&quot;SuccessivePush&quot;</span>: function(<span class="hljs-keyword">state</span>, ev) {
      var langState = getPerLanguageState(<span class="hljs-keyword">state</span>, ev)
      langState.total++
      langState.totaltime += ev.body.difference

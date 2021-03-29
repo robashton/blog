@@ -7,12 +7,12 @@
 <p><em>Taking the &#39;ction&#39; out of function</em></p>
 <p>What I immediately like about Kotlin that the hello world example (beyond the laborious exercise of getting it compiled) is really simple.</p>
 <pre><code><span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">main</span><span class="hljs-params">(args : <span class="hljs-type">Array</span>&lt;<span class="hljs-type">String</span>&gt;)</span></span> {
-  println(<span class="hljs-string">"Hello world"</span>)
+  println(<span class="hljs-string">&quot;Hello world&quot;</span>)
 }</code></pre><p>There are no import statements, I haven&#39;t had to create a containing static class with a static method etc, I&#39;ve not had to tell it where println is coming from and I haven&#39;t had to write &#39;function&#39; which makes it immediately 60% better than JavaScript and 260% better than Java.</p>
 <p>I&#39;m not sure how modules work in Kotlin yet, or how you&#39;d share these functions between projects (That means getting into some Javariffic cruft I imagine), but I&#39;m able to create other files in the project with more functions like so:</p>
 <p><em>secondary.kt</em></p>
 <pre><code><span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">doSomething</span><span class="hljs-params">()</span></span> {
-  println(<span class="hljs-string">"I'm doing something"</span>)
+  println(<span class="hljs-string">&quot;I&#x27;m doing something&quot;</span>)
 }</code></pre><p>and call them from my other files ala</p>
 <p><em>main.kt</em></p>
 <pre><code><span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">main</span><span class="hljs-params">(args : <span class="hljs-type">Array</span>&lt;<span class="hljs-type">String</span>&gt;)</span></span> {
@@ -25,10 +25,10 @@
 <pre><code><span class="hljs-keyword">class</span> <span class="hljs-symbol">Person</span>(<span class="hljs-symbol">age: <span class="hljs-symbol">Int</span>, <span class="hljs-symbol">name</span>: <span class="hljs-symbol">String</span></span>) {
 
 }</code></pre><p>and to create it (notice the lack of a new key-word)</p>
-<pre><code><span class="hljs-selector-tag">var</span> person = Person(<span class="hljs-number">27</span>, <span class="hljs-string">"Rob"</span>)</code></pre><p>However, we start to encounter differences almost immediately - let&#39;s try adding a function</p>
+<pre><code><span class="hljs-keyword">var</span> person = Person(<span class="hljs-number">27</span>, <span class="hljs-string">&quot;Rob&quot;</span>)</code></pre><p>However, we start to encounter differences almost immediately - let&#39;s try adding a function</p>
 <pre><code><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Person</span></span>(age: <span class="hljs-built_in">Int</span>, name: String) {
   <span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">sayHello</span><span class="hljs-params">()</span></span> {
-    println(<span class="hljs-string">"Hi, I am <span class="hljs-variable">$name</span>, and I am <span class="hljs-variable">$age</span> years old"</span>)
+    println(<span class="hljs-string">&quot;Hi, I am <span class="hljs-variable">$name</span>, and I am <span class="hljs-variable">$age</span> years old&quot;</span>)
   }
 }</code></pre><p>Ignoring the string interpolation at this point (any good sane language has this good feature these days) age and name don&#39;t actually exist at this point, we have to declare them as fields in the class and to do this we do:</p>
 <pre><code><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Person</span></span>(age: <span class="hljs-built_in">Int</span>, name: String) {
@@ -36,31 +36,31 @@
   <span class="hljs-keyword">var</span> name = name
 
   <span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">sayHello</span><span class="hljs-params">()</span></span> {
-    println(<span class="hljs-string">"Hi, I am <span class="hljs-variable">$name</span>, and I am <span class="hljs-variable">$age</span> years old"</span>)
+    println(<span class="hljs-string">&quot;Hi, I am <span class="hljs-variable">$name</span>, and I am <span class="hljs-variable">$age</span> years old&quot;</span>)
   }
 }</code></pre><p>Or short-hand:</p>
 <pre><code><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Person</span></span>(<span class="hljs-keyword">var</span> age: <span class="hljs-built_in">Int</span>, <span class="hljs-keyword">var</span> name: String) {
 
   <span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">sayHello</span><span class="hljs-params">()</span></span> {
-    println(<span class="hljs-string">"Hi, I am <span class="hljs-variable">$name</span>, and I am <span class="hljs-variable">$age</span> years old"</span>)
+    println(<span class="hljs-string">&quot;Hi, I am <span class="hljs-variable">$name</span>, and I am <span class="hljs-variable">$age</span> years old&quot;</span>)
   }
 }</code></pre><p>This feels a bit weird and unnecessary (if I understand it correctly), I&#39;m all for having to explicitly declare those properties if we want to access them externally but I don&#39;t see why we&#39;d be passing state in if we didn&#39;t want to use it.</p>
 <p>Now we&#39;ve declared those as vars, we can access them externally too, because those vars are public and write-only by default.</p>
 <pre><code><span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">main</span><span class="hljs-params">(args: <span class="hljs-type">Array</span>&lt;<span class="hljs-type">string</span>&gt;)</span></span> {
-  <span class="hljs-keyword">var</span> person = Person(<span class="hljs-number">27</span>, <span class="hljs-string">"Rob"</span>)
-  println(<span class="hljs-string">"I can access <span class="hljs-subst">${person.name}</span> from here"</span>)
+  <span class="hljs-keyword">var</span> person = Person(<span class="hljs-number">27</span>, <span class="hljs-string">&quot;Rob&quot;</span>)
+  println(<span class="hljs-string">&quot;I can access <span class="hljs-subst">${person.name}</span> from here&quot;</span>)
 }</code></pre><p>We actually have an immutable key-word too, which is &#39;val&#39;, we can make read-only properties therefore with:</p>
 <pre><code><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Person</span></span>(<span class="hljs-keyword">val</span> age: <span class="hljs-built_in">Int</span>, <span class="hljs-keyword">val</span> name: String) {
 
   <span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">sayHello</span><span class="hljs-params">()</span></span> {
-    println(<span class="hljs-string">"Hi, I am <span class="hljs-variable">$name</span>, and I am <span class="hljs-variable">$age</span> years old"</span>)
+    println(<span class="hljs-string">&quot;Hi, I am <span class="hljs-variable">$name</span>, and I am <span class="hljs-variable">$age</span> years old&quot;</span>)
   }
 }</code></pre><p><em>Access control in classes</em></p>
 <p>I&#39;m not a huge fan of public state in classes, so how do we make these things private?</p>
 <pre><code><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Person</span></span>(<span class="hljs-keyword">private</span> <span class="hljs-keyword">var</span> age: <span class="hljs-built_in">Int</span>, <span class="hljs-keyword">private</span> <span class="hljs-keyword">var</span> name: String) {
 
   <span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">sayHello</span><span class="hljs-params">()</span></span> {
-    println(<span class="hljs-string">"Hi, I am <span class="hljs-variable">$name</span>, and I am <span class="hljs-variable">$age</span> years old"</span>)
+    println(<span class="hljs-string">&quot;Hi, I am <span class="hljs-variable">$name</span>, and I am <span class="hljs-variable">$age</span> years old&quot;</span>)
   }
 }</code></pre><p>Yeah, they&#39;re public by default, this is a weird design decision - if we were looking to correct the sins of badly written Java programs this is not how I&#39;d start.</p>
 <p>In fact, the notion of data-only objects is baked right into Kotlin, this is a data-bag or struct in this language:</p>

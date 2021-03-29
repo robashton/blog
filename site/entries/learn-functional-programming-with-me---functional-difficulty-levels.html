@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -133,26 +134,26 @@
 <li>Enemies are all destroyed</li>
 </ul>
 <p>Taking the easiest approach here, I&#39;ll just perform a page re-direct on failure, and start the next level on success.</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> update-state [state]
-  (<span class="hljs-name">validate-end-conditions</span>
-    (<span class="hljs-name">update-bullets</span>
-      (<span class="hljs-name">update-player</span>
-        (<span class="hljs-name">update-enemies</span>
-          (<span class="hljs-name">update-direction</span> state))))))</code></pre><p>and</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> validate-end-conditions [state]
-  (<span class="hljs-name"><span class="hljs-builtin-name">cond</span></span> (<span class="hljs-name">enemies-are-all-dead</span> (<span class="hljs-symbol">:enemies</span> state)) (<span class="hljs-name">start-next-level</span>)
-        (<span class="hljs-name">enemies-are-at-the-gate</span> (<span class="hljs-symbol">:enemies</span> state)) (<span class="hljs-name">show-game-over</span>)
-        <span class="hljs-symbol">:else</span> state))</code></pre><p>Now obviously <em>show-game-over</em> isn&#39;t going to actually return any state, but we&#39;ll be on a different page then so that&#39;s no big deal. <em>start-next-level</em> will have an opportunity to create completely new state for our next level so that works out nicely too.</p>
+<pre><code>(defn update-state [<span class="hljs-keyword">state</span>]
+  (validate-end-conditions
+    (update-bullets
+      (update-player
+        (update-enemies
+          (update-direction <span class="hljs-keyword">state</span>))))))</code></pre><p>and</p>
+<pre><code>(defn validate-end-conditions [<span class="hljs-keyword">state</span>]
+  (cond (enemies-are-all-dead (:enemies <span class="hljs-keyword">state</span>)) (start-next-level)
+        (enemies-are-at-the-gate (:enemies <span class="hljs-keyword">state</span>)) (show-game-over)
+        :else <span class="hljs-keyword">state</span>))</code></pre><p>Now obviously <em>show-game-over</em> isn&#39;t going to actually return any state, but we&#39;ll be on a different page then so that&#39;s no big deal. <em>start-next-level</em> will have an opportunity to create completely new state for our next level so that works out nicely too.</p>
 <p><strong>Game over dude</strong></p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> enemies-are-at-the-gate [enemies]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">enemies-are-at-the-gate</span> [enemies]
   (<span class="hljs-name"><span class="hljs-builtin-name">&gt;</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">apply</span></span> max (<span class="hljs-name"><span class="hljs-builtin-name">map</span></span> <span class="hljs-symbol">:y</span> enemies)) <span class="hljs-number">400</span>))
 
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> show-game-over []
-  (<span class="hljs-name"><span class="hljs-builtin-name">set!</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">.</span></span> js/document -location) <span class="hljs-string">"gameover.html"</span>))</code></pre><p>This is another example of how delightfully terse Clojure can be at times :)</p>
+(<span class="hljs-keyword">defn</span> <span class="hljs-title">show-game-over</span> []
+  (<span class="hljs-name"><span class="hljs-builtin-name">set!</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">.</span></span> js/document -location) <span class="hljs-string">&quot;gameover.html&quot;</span>))</code></pre><p>This is another example of how delightfully terse Clojure can be at times :)</p>
 <p><strong>The enemies are dead, long live the enemies</strong></p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> enemies-are-all-dead [enemies]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">enemies-are-all-dead</span> [enemies]
   (<span class="hljs-name"><span class="hljs-builtin-name">not</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">first</span></span> enemies)))</code></pre><p>Apparently nil and false in Clojure are our only falsy values, so the above will work (first returns nil if the sequence is empty).</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> start-next-level []
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">start-next-level</span> []
   (<span class="hljs-name">create-state</span>))</code></pre><p>For now, let&#39;s just go with a re-start of the whole thing when we&#39;ve killed all the enemies so everything starts from the beginning once more.</p>
 <p><strong>Difficulty levels</strong></p>
 <p>Now we have game over and next level, let&#39;s look at next level and what it means.</p>
@@ -166,32 +167,32 @@
 </ul>
 <p>A lot of the time in my JS games, this is all modelled as state local to my entities and this is quite awkward. I can probably do better here.</p>
 <p>The only piece of state I need for any of this is &quot;current level&quot;, so I&#39;mma go ahead and stick that around</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> create-state [level]
-{ <span class="hljs-symbol">:direction</span> <span class="hljs-number">1</span>
- <span class="hljs-symbol">:level</span> level
- <span class="hljs-symbol">:enemies</span> (<span class="hljs-name"><span class="hljs-builtin-name">for</span></span> [x (<span class="hljs-name"><span class="hljs-builtin-name">range</span></span> <span class="hljs-number">0</span> <span class="hljs-number">480</span> <span class="hljs-number">60</span>)
-                y (<span class="hljs-name"><span class="hljs-builtin-name">range</span></span> <span class="hljs-number">0</span> <span class="hljs-number">240</span> <span class="hljs-number">60</span>)]
-            (<span class="hljs-name">create-rect</span> x y <span class="hljs-number">20</span> <span class="hljs-number">20</span>))
- <span class="hljs-symbol">:player</span> (<span class="hljs-name">create-rect</span> <span class="hljs-number">200</span> <span class="hljs-number">430</span> <span class="hljs-number">20</span> <span class="hljs-number">20</span>)
- <span class="hljs-symbol">:bullets</span> () 
- <span class="hljs-symbol">:last-firing-ticks</span> <span class="hljs-number">0</span>})
+<pre><code>(<span class="hljs-string">defn</span> <span class="hljs-built_in">create-state</span> [<span class="hljs-string">level</span>]
+{ :<span class="hljs-string">direction</span> <span class="hljs-string">1</span>
+ :<span class="hljs-string">level</span> <span class="hljs-string">level</span>
+ :<span class="hljs-string">enemies</span> (<span class="hljs-string">for</span> [<span class="hljs-string">x</span> (<span class="hljs-string">range</span> <span class="hljs-string">0</span> <span class="hljs-string">480</span> <span class="hljs-string">60</span>)
+                <span class="hljs-string">y</span> (<span class="hljs-string">range</span> <span class="hljs-string">0</span> <span class="hljs-string">240</span> <span class="hljs-string">60</span>)]
+            (<span class="hljs-built_in">create-rect</span> <span class="hljs-string">x</span> <span class="hljs-string">y</span> <span class="hljs-string">20</span> <span class="hljs-string">20</span>))
+ :<span class="hljs-string">player</span> (<span class="hljs-built_in">create-rect</span> <span class="hljs-string">200</span> <span class="hljs-string">430</span> <span class="hljs-string">20</span> <span class="hljs-string">20</span>)
+ :<span class="hljs-string">bullets</span> () 
+ :<span class="hljs-string">last-firing-ticks</span> <span class="hljs-string">0</span>})
 
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> start-next-level [state]
-  (<span class="hljs-name">create-state</span> (<span class="hljs-name"><span class="hljs-builtin-name">inc</span></span> (<span class="hljs-symbol">:level</span> state))))
+(<span class="hljs-string">defn</span> <span class="hljs-string">start-next-level</span> [<span class="hljs-string">state</span>]
+  (<span class="hljs-built_in">create-state</span> (<span class="hljs-string">inc</span> (:<span class="hljs-string">level</span> <span class="hljs-string">state</span>))))
 
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> ^<span class="hljs-symbol">:export</span> init []
-  (<span class="hljs-name">hook-input-events</span>)
-  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [ctx (<span class="hljs-name">context</span> <span class="hljs-number">640</span> <span class="hljs-number">480</span>)] 
-    (<span class="hljs-name">tick</span> ctx (<span class="hljs-name">create-state</span> <span class="hljs-number">1</span>))))</code></pre><p>We&#39;ll start at level 1, and then when creating the new state for the new level, we&#39;ll pass in level+1.</p>
+(<span class="hljs-string">defn</span> ^:<span class="hljs-string">export</span> <span class="hljs-string">init</span> []
+  (<span class="hljs-string">hook-input-events</span>)
+  (<span class="hljs-string">let</span> [<span class="hljs-string">ctx</span> (<span class="hljs-string">context</span> <span class="hljs-string">640</span> <span class="hljs-string">480</span>)] 
+    (<span class="hljs-string">tick</span> <span class="hljs-string">ctx</span> (<span class="hljs-built_in">create-state</span> <span class="hljs-string">1</span>))))</code></pre><p>We&#39;ll start at level 1, and then when creating the new state for the new level, we&#39;ll pass in level+1.</p>
 <p>Now then, how to use this for firing rate?</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">if</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">rem</span></span> (<span class="hljs-symbol">:last-firing-ticks</span> state) (<span class="hljs-name">firing-rate</span> state)) <span class="hljs-number">0</span>)</code></pre><p>and enemy movement</p>
+<pre><code>(if (= (rem (:last-firing-ticks <span class="hljs-keyword">state</span>) (firing-rate <span class="hljs-keyword">state</span>)) <span class="hljs-number">0</span>)</code></pre><p>and enemy movement</p>
 <pre><code>func (if(= direction 1) <span class="hljs-function"><span class="hljs-keyword">#</span><span class="hljs-params">(+ % (<span class="hljs-variable">enemy</span>-<span class="hljs-variable">speed</span> <span class="hljs-variable">state</span>)</span></span>) <span class="hljs-function"><span class="hljs-keyword">#</span><span class="hljs-params">(- (<span class="hljs-variable">enemy</span>-<span class="hljs-variable">speed</span> <span class="hljs-variable">state</span>)</span></span>)</code></pre><p>and bullet speed</p>
 <pre><code>(update-in bullet [:y] <span class="hljs-function"><span class="hljs-keyword">#</span><span class="hljs-params">(- % (<span class="hljs-variable">bullet</span>-<span class="hljs-variable">speed</span> <span class="hljs-variable">state</span>)</span></span>)))))</code></pre><p>and for the player movement?</p>
 <pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> update-player [state]
   (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [left (@key-states <span class="hljs-number">37</span>)
         right (@key-states <span class="hljs-number">39</span>)]
-    (<span class="hljs-name"><span class="hljs-builtin-name">cond</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> left <span class="hljs-literal">true</span>) (<span class="hljs-name"><span class="hljs-builtin-name">update-in</span></span> state [<span class="hljs-symbol">:player</span> <span class="hljs-symbol">:x</span>] #(<span class="hljs-name"><span class="hljs-builtin-name">-</span></span> % (<span class="hljs-name">player-speed</span> state)))
-          (<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> right <span class="hljs-literal">true</span>) (<span class="hljs-name"><span class="hljs-builtin-name">update-in</span></span> state [<span class="hljs-symbol">:player</span> <span class="hljs-symbol">:x</span>] #(<span class="hljs-name"><span class="hljs-builtin-name">+</span></span> % (<span class="hljs-name">player-speed</span> state)))
+    (<span class="hljs-name"><span class="hljs-builtin-name">cond</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> left <span class="hljs-literal">true</span>) (<span class="hljs-name">update-in</span> state [<span class="hljs-symbol">:player</span> <span class="hljs-symbol">:x</span>] #(<span class="hljs-name">-</span> % (<span class="hljs-name">player-speed</span> state)))
+          (<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> right <span class="hljs-literal">true</span>) (<span class="hljs-name">update-in</span> state [<span class="hljs-symbol">:player</span> <span class="hljs-symbol">:x</span>] #(<span class="hljs-name"><span class="hljs-builtin-name">+</span></span> % (<span class="hljs-name">player-speed</span> state)))
           <span class="hljs-symbol">:else</span> state)))</code></pre><p>And the implementation (for now) </p>
 <pre><code>(defn firing-rate [<span class="hljs-keyword">state</span>] (<span class="hljs-keyword">min</span> <span class="hljs-number">15</span> (- <span class="hljs-number">30</span> (* <span class="hljs-number">2</span> (:level <span class="hljs-keyword">state</span>)))))
 (defn enemy-speed [<span class="hljs-keyword">state</span>] (:level <span class="hljs-keyword">state</span>))

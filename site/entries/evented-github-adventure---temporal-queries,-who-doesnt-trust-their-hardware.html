@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -93,20 +94,20 @@
 <p>We care about <em>PushEvent*s for a unique *User</em> and <em>Repo</em>, so it makes sense that what we should do is <em>partition by UserAndRepo</em>  so we can easily keep state around per repo.</p>
 <p><strong>Partition by uniqueness</strong></p>
 <p>Here is how that might look:</p>
-<pre><code><span class="hljs-function"><span class="hljs-title">fromStream</span><span class="hljs-params">(<span class="hljs-string">'github'</span>)</span></span>
-  .when({
-    <span class="hljs-string">"PushEvent"</span>: function(state, ev) {
+<pre><code><span class="hljs-function"><span class="hljs-title">fromStream</span><span class="hljs-params">(<span class="hljs-string">&#x27;github&#x27;</span>)</span></span>
+  <span class="hljs-selector-class">.when</span>({
+    <span class="hljs-string">&quot;PushEvent&quot;</span>: function(state, ev) {
       <span class="hljs-selector-tag">var</span> repo = ev<span class="hljs-selector-class">.body</span><span class="hljs-selector-class">.repo</span><span class="hljs-selector-class">.full_name</span>
-      linkTo(<span class="hljs-string">'pushesbyrepo-'</span> + repo, ev)
+      linkTo(<span class="hljs-string">&#x27;pushesbyrepo-&#x27;</span> + repo, ev)
     }
   })</code></pre><p>So far so good, I now have a stream per repo called &quot;pushesbyrepo-{reponame}&quot; - now what?</p>
 <p>Well, the key thing I mentioned above was that we&#39;re &quot;looking for all the events where&quot;, this suggests that perhaps the thing we are looking for should be considered an event in its own right.</p>
 <p>We can do this, we can for each of thse streams keep a note of when the last push was, and if we encounter another push within a certain time-frame, emit an event for this find of ours.</p>
 <p><strong>Running a projection per generated stream</strong></p>
 <p>How to run this for each stream? Enter fromCategory</p>
-<pre><code><span class="hljs-function"><span class="hljs-title">fromCategory</span><span class="hljs-params">(<span class="hljs-string">'pushesbyrepo'</span>)</span></span>
+<pre><code><span class="hljs-function"><span class="hljs-title">fromCategory</span><span class="hljs-params">(<span class="hljs-string">&#x27;pushesbyrepo&#x27;</span>)</span></span>
   foreachStream()
-  .when({
+  <span class="hljs-selector-class">.when</span>({
     <span class="hljs-variable">$init</span>: <span class="hljs-comment">// etc</span>
   })</code></pre><p>There is a built in projection in the EventStore that will automatically use the character &#39;-&#39; to sort a collection of streams into categories, and if we have</p>
 <ul>
@@ -116,20 +117,20 @@
 </ul>
 <p>We&#39;ll get three categories to iterate through (bob, alice, and derpy)</p>
 <p><strong>Emit the events we&#39;re looking for</strong></p>
-<pre><code><span class="hljs-keyword">from</span>Category('pushesbyrepo')
+<pre><code><span class="hljs-keyword">from</span>Category(&#x27;pushesbyrepo&#x27;)
   foreachStream()
   .when({
     <span class="hljs-variable">$init</span>: function(<span class="hljs-keyword">state</span>, ev) {
       return {}
     },
-    <span class="hljs-string">"PushEvent"</span>: function(<span class="hljs-keyword">state</span>, ev) {
+    <span class="hljs-string">&quot;PushEvent&quot;</span>: function(<span class="hljs-keyword">state</span>, ev) {
       if(<span class="hljs-keyword">state</span>.lastPush) {
         var newDate = new Date(ev.body.created_at)
           , lastDate = new Date(<span class="hljs-keyword">state</span>.lastPush.body.created_at)
           , difference = (newDate.getTime() - lastDate.getTime()) / <span class="hljs-number">1000</span>
 
         if(difference <span class="hljs-variable">&lt; 120) {
-          emit('paranoidpushes', "ParanoidPush", {
+          emit(&#x27;paranoidpushes&#x27;, &quot;ParanoidPush&quot;, {
             first: state.lastPush,
             next: ev
           })
@@ -142,16 +143,16 @@
 <p>Running this, I now have a stream at </p>
 <p><em>/streams/paranoidpushes</em> </p>
 <p>So, how many paranoid pushes have I had in the time period I&#39;ve been sampling over? (roughly three hours at time of writing)</p>
-<pre><code><span class="hljs-keyword">from</span>Stream('paranoidpushes')
+<pre><code><span class="hljs-keyword">from</span>Stream(&#x27;paranoidpushes&#x27;)
   .when({
-    <span class="hljs-string">"$init"</span>: function(<span class="hljs-keyword">state</span>, ev) {
+    <span class="hljs-string">&quot;$init&quot;</span>: function(<span class="hljs-keyword">state</span>, ev) {
       return { count: <span class="hljs-number">0</span> }
     },
-    <span class="hljs-string">"ParanoidPush"</span>: function(<span class="hljs-keyword">state</span>, ev) {
+    <span class="hljs-string">&quot;ParanoidPush&quot;</span>: function(<span class="hljs-keyword">state</span>, ev) {
       <span class="hljs-keyword">state</span>.count++
     }
   })</code></pre><p>And the result?</p>
-<pre><code>{ <span class="hljs-attribute">count</span>: <span class="hljs-number">104533</span> }</code></pre><p>Voila, that&#39;s an incredibly simply temporal query that just works and gives me the total number of pushes that happened within 2 minutes of each other to the same repository - and it&#39;s pretty easy too. We have two steps:</p>
+<pre><code>{ <span class="hljs-built_in">count</span>: <span class="hljs-number">104533</span> }</code></pre><p>Voila, that&#39;s an incredibly simply temporal query that just works and gives me the total number of pushes that happened within 2 minutes of each other to the same repository - and it&#39;s pretty easy too. We have two steps:</p>
 <ul>
 <li>Push out events for each instance of some temporal correlation</li>
 <li>Aggregate on those events to get the result</li>

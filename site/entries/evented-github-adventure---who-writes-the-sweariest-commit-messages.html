@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -83,14 +84,14 @@
 <p>For reference, there are about 20 million commit messages in my event store, so I have more than enough data for this to be statistically relevant!</p>
 <p>*&quot;Oh Github Github, in the cloud, who is the sweariest developer out loud?&quot;*</p>
 <p>Well, this is the kind of thing we might do outside the store (after re-partitioning per-language inside the store), but I haven&#39;t got a secondary store so I&#39;m just going to build up a view model for my charting library directly inside the event store (using the commit events I made)</p>
-<pre><code>var swearwords = [ <span class="hljs-string">"poop"</span>, <span class="hljs-string">"arse"</span>, <span class="hljs-string">"sugarlumps"</span> ] // Changed <span class="hljs-keyword">to</span> protect the innocent
+<pre><code>var swearwords = [ <span class="hljs-string">&quot;poop&quot;</span>, <span class="hljs-string">&quot;arse&quot;</span>, <span class="hljs-string">&quot;sugarlumps&quot;</span> ] // Changed <span class="hljs-keyword">to</span> protect the innocent
 
-<span class="hljs-keyword">from</span>Stream('github-commits')
+<span class="hljs-keyword">from</span>Stream(&#x27;github-commits&#x27;)
   .when({
-    <span class="hljs-string">"$init"</span>: function(<span class="hljs-keyword">state</span>, ev) {
+    <span class="hljs-string">&quot;$init&quot;</span>: function(<span class="hljs-keyword">state</span>, ev) {
       return { }
     },
-    <span class="hljs-string">"Commit"</span>: function(<span class="hljs-keyword">state</span>, ev) {
+    <span class="hljs-string">&quot;Commit&quot;</span>: function(<span class="hljs-keyword">state</span>, ev) {
       var language = ev.body.repo.language
 
       if(!<span class="hljs-keyword">state</span>[language])
@@ -111,9 +112,9 @@
 <p><em>/projection/curses/state</em></p>
 <p>And get a big pile of JSON, which looks a bit like this</p>
 <pre><code>{
-  <span class="hljs-string">"ASP"</span>: { <span class="hljs-string">total:</span> <span class="hljs-number">1</span>, <span class="hljs-string">curses:</span> <span class="hljs-number">200</span> },
-  <span class="hljs-string">"OpenEdge ABL"</span>: { <span class="hljs-string">total:</span> <span class="hljs-number">2</span>, <span class="hljs-string">curses:</span> <span class="hljs-number">0</span> },
-  <span class="hljs-string">"Julia"</span>: { <span class="hljs-string">total:</span> <span class="hljs-number">11</span>, <span class="hljs-string">curses:</span> <span class="hljs-number">0</span> }
+  <span class="hljs-attr">&quot;ASP&quot;:</span> { <span class="hljs-attr">total:</span> <span class="hljs-number">1</span>, <span class="hljs-attr">curses:</span> <span class="hljs-number">200</span> },
+  <span class="hljs-attr">&quot;OpenEdge ABL&quot;:</span> { <span class="hljs-attr">total:</span> <span class="hljs-number">2</span>, <span class="hljs-attr">curses:</span> <span class="hljs-number">0</span> },
+  <span class="hljs-attr">&quot;Julia&quot;:</span> { <span class="hljs-attr">total:</span> <span class="hljs-number">11</span>, <span class="hljs-attr">curses:</span> <span class="hljs-number">0</span> }
 }</code></pre><p>Plugging this into d3, and filtering out the items without enough entries (5000 events), we get </p>
 <div id="graph"></div>
 <script type="text/javascript" src="/d3.v2.js"></script>
@@ -224,16 +225,16 @@ var data = {"Lua":{"count":365,"total":14410},"Java":{"count":24321,"total":4786
         .attr(&quot;x&quot;, 0)
         .attr(&quot;y&quot;, 0)
         .text(function(d) { return d.language })</p>
-<pre><code>svg.selectAll(<span class="hljs-string">".curse"</span>)
- .data(filteredData)
- .enter()
-   .append(<span class="hljs-string">"rect"</span>)
-     .attr(<span class="hljs-string">"class"</span>, <span class="hljs-string">"curse"</span>)
-     .attr(<span class="hljs-string">"fill"</span>, <span class="hljs-string">'#AAF'</span>)
-     .attr(<span class="hljs-string">"x"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(d, i)</span> { <span class="hljs-title">return</span> <span class="hljs-title">i</span> * <span class="hljs-params">(640 / filteredData.length)</span>})</span>
-     .attr(<span class="hljs-string">"y"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(d, i)</span> { <span class="hljs-title">return</span> 370 - <span class="hljs-params">(280 * scale(d.percentage)</span>) })</span>
-     .attr(<span class="hljs-string">"width"</span>, <span class="hljs-number">640</span> / (filteredData.<span class="hljs-built_in">length</span> + <span class="hljs-number">1</span>))
-     .attr(<span class="hljs-string">"height"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(d, i)</span> { <span class="hljs-title">return</span> 280 * <span class="hljs-title">scale</span><span class="hljs-params">(d.percentage)</span> })</span></code></pre><p></script></p>
+<pre><code><span class="hljs-selector-tag">svg</span><span class="hljs-selector-class">.selectAll</span>(<span class="hljs-string">&quot;.curse&quot;</span>)
+ <span class="hljs-selector-class">.data</span>(filteredData)
+ <span class="hljs-selector-class">.enter</span>()
+   <span class="hljs-selector-class">.append</span>(<span class="hljs-string">&quot;rect&quot;</span>)
+     <span class="hljs-selector-class">.attr</span>(<span class="hljs-string">&quot;class&quot;</span>, <span class="hljs-string">&quot;curse&quot;</span>)
+     <span class="hljs-selector-class">.attr</span>(<span class="hljs-string">&quot;fill&quot;</span>, <span class="hljs-string">&#x27;#AAF&#x27;</span>)
+     <span class="hljs-selector-class">.attr</span>(<span class="hljs-string">&quot;x&quot;</span>, function(d, i) { <span class="hljs-selector-tag">return</span> <span class="hljs-selector-tag">i</span> * (<span class="hljs-number">640</span> / filteredData.length)})
+     <span class="hljs-selector-class">.attr</span>(<span class="hljs-string">&quot;y&quot;</span>, function(d, i) { <span class="hljs-selector-tag">return</span> <span class="hljs-selector-tag">370</span> <span class="hljs-selector-tag">-</span> (<span class="hljs-number">280</span> * scale(d.percentage)) })
+     <span class="hljs-selector-class">.attr</span>(<span class="hljs-string">&quot;width&quot;</span>, <span class="hljs-number">640</span> / (filteredData.length + <span class="hljs-number">1</span>))
+     <span class="hljs-selector-class">.attr</span>(<span class="hljs-string">&quot;height&quot;</span>, function(d, i) { <span class="hljs-selector-tag">return</span> <span class="hljs-selector-tag">280</span> * <span class="hljs-selector-tag">scale</span>(d.percentage) })</code></pre><p></script></p>
 <p>I&#39;ll leave you to draw your own conclusions about this chart, but I can&#39;t say that it comes as a huge surprise judging from the various developers on <em>my</em> Twitter feed ;-)</p>
 <p>Scala developers are ducking <em>filthy</em>, but the lisp programmers probably save their curse words for Emacs rather than the language they&#39;re using. <em>Seems legit.</em></p>
 <p>Projections are a great way to analyse streams to generate knowledge about what is going on, of course simply doing aggregations over data over time is something we can achieve in most systems, in the next entry we&#39;ll look at something more interesting.</p>

@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -87,63 +88,63 @@
 <p>Well in a nutshell this is about ownership. If a bit of code wants to render something to an element, then it should be responsible for binding anything to that element or anything underneath that element. Touching anything outside of that should be strongly discouraged.</p>
 <p>This is one of the ideas that a lot of frameworks tend to push for good reason - and there are a million and one ways to do it. In this entry, we&#39;ll just take the most straight forward route of keeping the code in this single file and demonstrating the principle of ownership.</p>
 <p>This is the code we currently have:</p>
-<pre><code><span class="hljs-keyword">var</span> mustache = <span class="hljs-built_in">require</span>(<span class="hljs-string">'mustache'</span>)
-  , domReady = <span class="hljs-built_in">require</span>(<span class="hljs-string">'domready'</span>)
-  , ko = <span class="hljs-built_in">require</span>(<span class="hljs-string">'knockout'</span>)
-  , testdata = <span class="hljs-built_in">require</span>(<span class="hljs-string">'./testdata'</span>)
-  , fs = <span class="hljs-built_in">require</span>(<span class="hljs-string">'fs'</span>)
+<pre><code>var mustache = require(&#x27;mustache&#x27;)
+  , domReady = require(&#x27;domready&#x27;)
+  , ko = require(&#x27;knockout&#x27;)
+  , testdata = require(&#x27;./testdata&#x27;)
+  , fs = require(&#x27;fs&#x27;)
 
-<span class="hljs-keyword">var</span> template = fs.readFileSync(__dirname + <span class="hljs-string">"/customers.html"</span>)
-  , container = <span class="hljs-literal">null</span>
+var template = fs.read<span class="hljs-constructor">FileSync(<span class="hljs-params">__dirname</span> + <span class="hljs-string">&quot;/customers.html&quot;</span>)</span>
+  , container = null
 
-domReady(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-  container = <span class="hljs-built_in">document</span>.getElementById(<span class="hljs-string">'container'</span>)
-  renderCustomers(customers)
+dom<span class="hljs-constructor">Ready(<span class="hljs-params">function</span>()</span> {
+  container = document.get<span class="hljs-constructor">ElementById(&#x27;<span class="hljs-params">container</span>&#x27;)</span>
+  render<span class="hljs-constructor">Customers(<span class="hljs-params">customers</span>)</span>
 })
 
-<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">renderCustomers</span>(<span class="hljs-params">customers</span>) </span>{
-  container.innerHTML = mustache.render(template, { <span class="hljs-attr">customers</span>:  customers })
-  bindBankSelection()
+<span class="hljs-keyword">function</span> render<span class="hljs-constructor">Customers(<span class="hljs-params">customers</span>)</span> {
+  container.innerHTML = mustache.render(template, { customers:  customers })
+  bind<span class="hljs-constructor">BankSelection()</span>
 }
 
-<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">bindBankSelection</span>(<span class="hljs-params"></span>) </span>{
-  <span class="hljs-keyword">var</span> model = {
-    <span class="hljs-attr">banks</span>: ko.observableArray(testdata.banks),
-    selectedBank = ko.observable()
+<span class="hljs-keyword">function</span> bind<span class="hljs-constructor">BankSelection()</span> {
+  var model = {
+    banks: ko.observable<span class="hljs-constructor">Array(<span class="hljs-params">testdata</span>.<span class="hljs-params">banks</span>)</span>,
+    selectedBank = ko.observable<span class="hljs-literal">()</span>
   }
-  ko.applyBindings(model, container)
+  ko.apply<span class="hljs-constructor">Bindings(<span class="hljs-params">model</span>, <span class="hljs-params">container</span>)</span>
   model.selectedBank.subscribe(onBankSelected)
 }
 
-<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">onBankSelected</span>(<span class="hljs-params">bank</span>) </span>{
-  ko.cleanNode(container)
-  renderCustomers(filterCustomersByBank(bank))
+<span class="hljs-keyword">function</span> on<span class="hljs-constructor">BankSelected(<span class="hljs-params">bank</span>)</span> {
+  ko.clean<span class="hljs-constructor">Node(<span class="hljs-params">container</span>)</span>
+  render<span class="hljs-constructor">Customers(<span class="hljs-params">filterCustomersByBank</span>(<span class="hljs-params">bank</span>)</span>)
 }</code></pre><p>The problem at the root of all this, is that both the customer list and the bank selection are hammering on the top level element (container) and it&#39;s not clear who owns what.</p>
 <p>How about instead of this, we say that our top-level function takes in the top level container, and then gives a sub-element to both the customer list and the bank selection code?</p>
 <pre><code><span class="hljs-selector-tag">var</span> model = {
   customers: testdata<span class="hljs-selector-class">.customers</span>,
   banks: testdata<span class="hljs-selector-class">.customers</span>
-  selectedBank = ko.observable()
+  selectedBank = ko<span class="hljs-selector-class">.observable</span>()
 }
 
 <span class="hljs-function"><span class="hljs-title">domReady</span><span class="hljs-params">(function()</span></span> {
-  banks(container.getElementsByClassName(<span class="hljs-string">'banks'</span>)[<span class="hljs-number">0</span>])
-  customers(container.getElementsByClassName(<span class="hljs-string">'customers'</span>)[<span class="hljs-number">0</span>])
+  banks(container<span class="hljs-selector-class">.getElementsByClassName</span>(<span class="hljs-string">&#x27;banks&#x27;</span>)<span class="hljs-selector-attr">[0]</span>)
+  customers(container<span class="hljs-selector-class">.getElementsByClassName</span>(<span class="hljs-string">&#x27;customers&#x27;</span>)<span class="hljs-selector-attr">[0]</span>)
 })
 
 function banks(el) {
-  el<span class="hljs-selector-class">.innerHTML</span> = mustache.render(bankstemplate, model)
-  ko.applyBindings(model, el)
+  el<span class="hljs-selector-class">.innerHTML</span> = mustache<span class="hljs-selector-class">.render</span>(bankstemplate, model)
+  ko<span class="hljs-selector-class">.applyBindings</span>(model, el)
   model<span class="hljs-selector-class">.selectedBank</span><span class="hljs-selector-class">.subscribe</span>(onBankSelected)
 }
 
 function onBankSelected(bank) {
   model<span class="hljs-selector-class">.customers</span> = filterByBank(testdata.customers)
-  customers(container.getElementsByClassName(<span class="hljs-string">'customers'</span>)[<span class="hljs-number">0</span>])
+  customers(container<span class="hljs-selector-class">.getElementsByClassName</span>(<span class="hljs-string">&#x27;customers&#x27;</span>)<span class="hljs-selector-attr">[0]</span>)
 }
 
 function customers(el) {
-  el<span class="hljs-selector-class">.innerHTML</span> = mustache.render(customerstemplate, model)
+  el<span class="hljs-selector-class">.innerHTML</span> = mustache<span class="hljs-selector-class">.render</span>(customerstemplate, model)
 }</code></pre><p>Something like that.</p>
 <p><em>Yuck, still a mess</em></p>
 <p>Yep, we solved the main problem which was the ownership of elements but we&#39;re using a weird shared model and not really encapsulating anything else.</p>

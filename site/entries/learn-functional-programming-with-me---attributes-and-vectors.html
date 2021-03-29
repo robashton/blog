@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -73,9 +74,9 @@
 <p>First things first, I need to clear my screen in between frames or I&#39;m going to keep on having an ugly black smear instead of a moving black square, in JS this would look like.</p>
 <pre><code><span class="hljs-built_in">context</span>.clearRect(<span class="hljs-number">0</span>, <span class="hljs-number">0</span>, <span class="hljs-built_in">width</span>, <span class="hljs-built_in">height</span>);</code></pre><p>Not rocket science, right?</p>
 <p>Well, right now, I have the function for drawing a square, which gets the context and draws a square, this looks like</p>
-<pre><code>(<span class="hljs-name">defn</span> drawSquare [<span class="hljs-name">x</span> y w h]
-  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [<span class="hljs-name">target</span> (<span class="hljs-name">.getElementById</span> js/document <span class="hljs-string">"target"</span>)
-        context (<span class="hljs-name">.getContext</span> target <span class="hljs-string">"2d"</span>)]
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> drawSquare [x y w h]
+  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [target (<span class="hljs-name">.getElementById</span> js/document <span class="hljs-string">&quot;target&quot;</span>)
+        context (<span class="hljs-name">.getContext</span> target <span class="hljs-string">&quot;2d&quot;</span>)]
     (<span class="hljs-name">.fillRect</span> context x y w h)
   )
 )</code></pre><p>Great, but in order to have the moving square, I&#39;m going need that context more than once, and making multiple requests to get the context is a bad idea because it means lots of calls to the DOM (slow).</p>
@@ -89,11 +90,11 @@
 )
 
 (<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> context []
-  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [target (<span class="hljs-name">.getElementById</span> js/document <span class="hljs-string">"target"</span>)]
-  (<span class="hljs-name">.getContext</span> target <span class="hljs-string">"2d"</span>))
+  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [target (<span class="hljs-name">.getElementById</span> js/document <span class="hljs-string">&quot;target&quot;</span>)]
+  (<span class="hljs-name">.getContext</span> target <span class="hljs-string">&quot;2d&quot;</span>))
 )</code></pre><p>Meaning I can do</p>
-<pre><code>(<span class="hljs-name">defn</span> drawScene [<span class="hljs-name">x</span>]
-  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [<span class="hljs-name">ctx</span> (<span class="hljs-name">context</span>)]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">drawScene</span> [x]
+  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [ctx (<span class="hljs-name">context</span>)]
     (<span class="hljs-name">clearScreen</span> ctx)
     (<span class="hljs-name">drawRect</span> x <span class="hljs-number">0</span> <span class="hljs-number">100</span> <span class="hljs-number">100</span>)
   )
@@ -101,61 +102,61 @@
 <p>Okay - so first things first, how do I get attributes from an HTML element? HTML elements? Attributes? These aren&#39;t Clojure concepts - I can do a quick Google and see that this is possible:</p>
 <pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">.</span></span> target -width)</code></pre><p>According to the Wiki on Clojurescript, this is just part of the &quot;host interop&quot; featureset - I&#39;m not entirely sure how this maps to typical Clojure.</p>
 <p>Now - this still means I have the problem of how to get these out of a function, in JS I&#39;d probably have something like</p>
-<pre><code><span class="hljs-keyword">var</span> Rendering = <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(element)</span> </span>{
-  <span class="hljs-keyword">this</span>.context = element.getContext(<span class="hljs-string">'2d'</span>);
-  <span class="hljs-keyword">this</span>.width = element.width;
-  <span class="hljs-keyword">this</span>.height = element.height;
+<pre><code>var Rendering = function(element) {
+  <span class="hljs-keyword">this</span>.context = element.getContext(<span class="hljs-string">&#x27;2d&#x27;</span>);
+  <span class="hljs-keyword">this</span>.<span class="hljs-built_in">width</span> = element.<span class="hljs-built_in">width</span>;
+  <span class="hljs-keyword">this</span>.<span class="hljs-built_in">height</span> = element.<span class="hljs-built_in">height</span>;
 }</code></pre><p>Or something trite like that (see my other canvas codes in Github for what this actually looks like).</p>
 <p>Can&#39;t do this here as far as I know, turns out I can return a vector, or a list or a set or something from a function (duh), so I can do something like</p>
 <pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> context []
-  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [target (<span class="hljs-name">.getElementById</span> js/document <span class="hljs-string">"target"</span>)
+  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [target (<span class="hljs-name">.getElementById</span> js/document <span class="hljs-string">&quot;target&quot;</span>)
     [
-      (<span class="hljs-name">.getContext</span> target <span class="hljs-string">"2d"</span>)
+      (<span class="hljs-name">.getContext</span> target <span class="hljs-string">&quot;2d&quot;</span>)
       (<span class="hljs-name"><span class="hljs-builtin-name">.</span></span> target -width)
       (<span class="hljs-name"><span class="hljs-builtin-name">.</span></span> target -height)
     ]
   )
 )</code></pre><p>Which will return a vector containing</p>
 <pre><code>[<span class="hljs-built_in">context</span> <span class="hljs-built_in">width</span> <span class="hljs-built_in">height</span>]</code></pre><p>I can pass this into my clearRect function for example with</p>
-<pre><code>(<span class="hljs-name">defn</span> drawScene [<span class="hljs-name">x</span>]
-  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [<span class="hljs-name">ctx</span> (<span class="hljs-name">context</span>)]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">drawScene</span> [x]
+  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [ctx (<span class="hljs-name">context</span>)]
     (<span class="hljs-name">clearScreen</span> ctx)
     (<span class="hljs-name">drawRect</span> x <span class="hljs-number">0</span> <span class="hljs-number">100</span> <span class="hljs-number">100</span>)
   )
 )</code></pre><p>So nothing different here, but I&#39;ll need to unpack that vector in order to use it</p>
-<pre><code>(<span class="hljs-name">defn</span> clearScreen [<span class="hljs-name">ctx</span>]
-  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [[<span class="hljs-name">context</span> width height] ctx
-    (<span class="hljs-name">.clearRect</span> context <span class="hljs-number">0</span> <span class="hljs-number">0</span> width height)
+<pre><code>(defn clearScreen [ctx]
+  (<span class="hljs-built_in">let</span> [[<span class="hljs-built_in">context</span> <span class="hljs-built_in">width</span> <span class="hljs-built_in">height</span>] ctx
+    (.clearRect <span class="hljs-built_in">context</span> <span class="hljs-number">0</span> <span class="hljs-number">0</span> <span class="hljs-built_in">width</span> <span class="hljs-built_in">height</span>)
   )
 )</code></pre><p>Which is a bit verbose, or doing a bit of research it appears I can automatically unpack that vector when I call the function ala</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> clearScreen [[context width height]]
-  (<span class="hljs-name">.clearRect</span> context <span class="hljs-number">0</span> <span class="hljs-number">0</span> width height)
+<pre><code>(defn clearScreen [[<span class="hljs-built_in">context</span> <span class="hljs-built_in">width</span> <span class="hljs-built_in">height</span>]]
+  (.clearRect <span class="hljs-built_in">context</span> <span class="hljs-number">0</span> <span class="hljs-number">0</span> <span class="hljs-built_in">width</span> <span class="hljs-built_in">height</span>)
 )</code></pre><p>I&#39;m not entirely sure how I feel about this, I&#39;m just passing blobs of data around and assuming their structure in my functions - does Clojure have any inference over this stuff for verifiability (I&#39;m not sure) - seems I&#39;m losing a lot of the safety I&#39;d have with OO constructs (regardless of type safety or whatever).</p>
 <p>Either way, my complete program currently looks like this:</p>
 <pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">ns</span></span> game)
 
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> context []
-  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [target (<span class="hljs-name">.getElementById</span> js/document <span class="hljs-string">"target"</span>)]
+(<span class="hljs-keyword">defn</span> <span class="hljs-title">context</span> []
+  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [target (<span class="hljs-name">.getElementById</span> js/document <span class="hljs-string">&quot;target&quot;</span>)]
     [
-      (<span class="hljs-name">.getContext</span> target <span class="hljs-string">"2d"</span>) 
+      (<span class="hljs-name">.getContext</span> target <span class="hljs-string">&quot;2d&quot;</span>) 
       (<span class="hljs-name"><span class="hljs-builtin-name">.</span></span> target -width)
       (<span class="hljs-name"><span class="hljs-builtin-name">.</span></span> target -height)
     ]
   )
 )
 
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> clearScreen [[ctx width height]]
-  (<span class="hljs-name"><span class="hljs-builtin-name">set!</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">.</span></span> ctx -fillStyle) <span class="hljs-string">"#FFF"</span>)
+(<span class="hljs-keyword">defn</span> <span class="hljs-title">clearScreen</span> [[ctx width height]]
+  (<span class="hljs-name"><span class="hljs-builtin-name">set!</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">.</span></span> ctx -fillStyle) <span class="hljs-string">&quot;#FFF&quot;</span>)
   (<span class="hljs-name">.clearRect</span> ctx <span class="hljs-number">0</span> <span class="hljs-number">0</span> width height) 
 )
 
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> drawSquare [[ctx width height] x y w h]
-  (<span class="hljs-name"><span class="hljs-builtin-name">set!</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">.</span></span> ctx -fillStyle) <span class="hljs-string">"#000"</span>)
+(<span class="hljs-keyword">defn</span> <span class="hljs-title">drawSquare</span> [[ctx width height] x y w h]
+  (<span class="hljs-name"><span class="hljs-builtin-name">set!</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">.</span></span> ctx -fillStyle) <span class="hljs-string">&quot;#000&quot;</span>)
   (<span class="hljs-name">.fillRect</span> ctx x y w h) 
 )
 
 
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> tick [x]
+(<span class="hljs-keyword">defn</span> <span class="hljs-title">tick</span> [x]
   (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [ctx (<span class="hljs-name">context</span>)] 
     (<span class="hljs-name">clearScreen</span> ctx) 
     (<span class="hljs-name">drawSquare</span> ctx x <span class="hljs-number">0</span> <span class="hljs-number">100</span> <span class="hljs-number">100</span>)  
@@ -167,7 +168,7 @@
   )
 )
 
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> ^<span class="hljs-symbol">:export</span> init []
+(<span class="hljs-keyword">defn</span> ^<span class="hljs-symbol">:export</span> <span class="hljs-title">init</span> []
   (<span class="hljs-name">tick</span> <span class="hljs-number">0</span>) 
 )</code></pre><p>This has the effect of drawing a square, clearing the rect and drawing the square again, which means my square floats across the screen.</p>
 <p>Seems I&#39;ve once again run out of room to talk about input to this program from the keyboard, hopefully I&#39;ll reach that next entry!</p>

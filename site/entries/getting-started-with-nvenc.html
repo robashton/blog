@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -76,16 +77,16 @@
 <p>The first thing I needed to do was update the kernel to latest and survey what the state of Nvidia drivers/etc is in this world having not looked at it for a couple of years. The answer is &#39;in a state of flux&#39; (<em>when isn&#39;t it?</em>), but it looks like we&#39;ve finally got sensible offloading of the GPU built in and in theory we can run an X session off-screen for doing rendering and such on that GPU without draining the battery just because I was silly enough to open vim inside a terminal emulator. </p>
 <p>The support for the encode/decode functionality is built into these drivers in the form of dynamically loaded libraries and they need to be set up properly before anything will work. On Windows this probably just means running an EXE, on MacOS it probably means dragging an icon onto another icon and on Nixos I need configure the drivers with the information of where to find the hardware and how I want it to operate.</p>
 <p>I had been lying to ACPI to get my touchpad working with Nvidia disabled, but now comes the time to tell the truth once more..</p>
-<pre><code>    <span class="hljs-keyword">boot.kernelParams </span>= [ <span class="hljs-string">"acpi_osi=Linux"</span> ]<span class="hljs-comment">;</span></code></pre><p>Hey NVIDIA, this is where my hardware is (located using lspci)</p>
-<pre><code>  hardware.nvidia.prime.nvidiaBusId = <span class="hljs-string">"PCI:1:0:0"</span><span class="hljs-comment">;</span>
-  hardware.nvidia.prime.intelBusId = <span class="hljs-string">"PCI:0:2:0"</span><span class="hljs-comment">;</span></code></pre><p>And I want the official drivers pls, blacklist nouveau - don&#39;t even think about it pal.</p>
-<pre><code>  hardware.nvidia.modesetting.<span class="hljs-attr">enable</span> = <span class="hljs-literal">true</span>;
-  hardware.nvidia.prime.offload.<span class="hljs-attr">enable</span> = <span class="hljs-literal">true</span>;
-  hardware.nvidia.<span class="hljs-attr">nvidiaPersistenced</span> = <span class="hljs-literal">true</span>;
+<pre><code>    <span class="hljs-attr">boot.kernelParams</span> = [ <span class="hljs-string">&quot;acpi_osi=Linux&quot;</span> ]<span class="hljs-comment">;</span></code></pre><p>Hey NVIDIA, this is where my hardware is (located using lspci)</p>
+<pre><code>  <span class="hljs-attr">hardware.nvidia.prime.nvidiaBusId</span> = <span class="hljs-string">&quot;PCI:1:0:0&quot;</span><span class="hljs-comment">;</span>
+  <span class="hljs-attr">hardware.nvidia.prime.intelBusId</span> = <span class="hljs-string">&quot;PCI:0:2:0&quot;</span><span class="hljs-comment">;</span></code></pre><p>And I want the official drivers pls, blacklist nouveau - don&#39;t even think about it pal.</p>
+<pre><code>  <span class="hljs-attr">hardware.nvidia.modesetting.enable</span> = <span class="hljs-literal">true</span><span class="hljs-comment">;</span>
+  <span class="hljs-attr">hardware.nvidia.prime.offload.enable</span> = <span class="hljs-literal">true</span><span class="hljs-comment">;</span>
+  <span class="hljs-attr">hardware.nvidia.nvidiaPersistenced</span> = <span class="hljs-literal">true</span><span class="hljs-comment">;</span>
 
-  services.xserver.<span class="hljs-attr">videoDrivers</span> = [ <span class="hljs-string">"nvidia"</span> ];
-  boot.<span class="hljs-attr">kernelModules</span> = [ <span class="hljs-string">"nvidia-uvm"</span> <span class="hljs-string">"nvidia-drm"</span> ];
-  boot.<span class="hljs-attr">blacklistedKernelModules</span> = [ <span class="hljs-string">"nouveau"</span> ];</code></pre><p>And also the X11 packages for this stuff</p>
+  <span class="hljs-attr">services.xserver.videoDrivers</span> = [ <span class="hljs-string">&quot;nvidia&quot;</span> ]<span class="hljs-comment">;</span>
+  <span class="hljs-attr">boot.kernelModules</span> = [ <span class="hljs-string">&quot;nvidia-uvm&quot;</span> <span class="hljs-string">&quot;nvidia-drm&quot;</span> ]<span class="hljs-comment">;</span>
+  <span class="hljs-attr">boot.blacklistedKernelModules</span> = [ <span class="hljs-string">&quot;nouveau&quot;</span> ]<span class="hljs-comment">;</span></code></pre><p>And also the X11 packages for this stuff</p>
 <pre><code>  environment.systemPackages = with pkgs<span class="hljs-comment">; [</span>
     linuxPackages.nvidia_x11
   ]<span class="hljs-comment">;</span></code></pre><p>And may as well get the opengl stuff set up while we&#39;re here, although it&#39;s not strictly useful for the encodes it&#39;s good for testing the hardware itself.</p>
@@ -106,24 +107,24 @@
 <p>I don&#39;t tend to install SDKs or even development tools and such in my global environment, it nearly always ends up being the case that I need a different version of something for one project or another and because I&#39;m on Nixos I just use Nix shells for the individual projects and their development requirements <a href="https://purerl-cookbook.readthedocs.io/en/latest/devenv/nix.html">(Something I have written a bit about)</a></p>
 <p>It turns out I just need to add these packages to my environment and I&#39;m good to go, I already have nvidia_x11, but I &#39;add&#39; it again here so I can use it to generate some environment variables later on in the shell.nix so everything lines up.</p>
 <pre><code>
-  cudatoolkit
-  nvidia-video-sdk
-  linuxPackages<span class="hljs-selector-class">.nvidia_x11</span>
+  <span class="hljs-attribute">cudatoolkit</span>
+  <span class="hljs-attribute">nvidia</span>-video-sdk
+  <span class="hljs-attribute">linuxPackages</span>.nvidia_x<span class="hljs-number">11</span>
 </code></pre><p>As a bonus, I also go and add these because it&#39;ll make the code samples build and run properly (and as code samples typically seem to be the main entrance to SDKs like this that&#39;s a helpful thing.</p>
-<pre><code>    <span class="hljs-attribute">cmake</span>
+<pre><code><span class="hljs-code">    cmake
     pkgconfig
     gcc8
     ffmpeg-full
-</code></pre><p>As a further bonus, I go and add <em>gdb</em> to this list because I literally don&#39;t have any development tools on my host OS and I&#39;m bound to cause a few SIGSEGVs over the next couple of weeks that need debugging.</p>
+</span></code></pre><p>As a further bonus, I go and add <em>gdb</em> to this list because I literally don&#39;t have any development tools on my host OS and I&#39;m bound to cause a few SIGSEGVs over the next couple of weeks that need debugging.</p>
 <p>The cuda toolkit doesn&#39;t (at time of writing) work with the modern version of GCC on my OS so I needed to explicitly pull GCC8 and set that in the environment so that when I&#39;m building code with our standard makefiles we&#39;ll do the right thing.</p>
-<pre><code>  shellHook = <span class="hljs-string">''</span>
-    <span class="hljs-built_in">export</span> CUDA_PATH=<span class="hljs-variable">${pkgs.cudatoolkit}</span>
-    <span class="hljs-built_in">export</span> LD_LIBRARY_PATH=<span class="hljs-variable">${pkgs.linuxPackages.nvidia_x11}</span>/lib
-    <span class="hljs-built_in">export</span> EXTRA_LDFLAGS=<span class="hljs-string">"-L/lib -L<span class="hljs-variable">${pkgs.linuxPackages.nvidia_x11}</span>/lib"</span>
-    <span class="hljs-built_in">export</span> EXTRA_CCFLAGS=<span class="hljs-string">"-I/usr/include"</span>
-    <span class="hljs-built_in">export</span> CC=<span class="hljs-variable">${pkgs.gcc8}</span>/bin/gcc
-    <span class="hljs-built_in">export</span> CXX=<span class="hljs-variable">${pkgs.gcc8}</span>/bin/g++
-  <span class="hljs-string">''</span>;</code></pre><p>Anyway, that&#39;s my setup - seeing as I&#39;ve made it to 1000 words already I&#39;ll leave the next post of &quot;exploring the samples, SDK surface area, documentation, etc&quot; to the next one. mundane <em>and</em> wordy, everybody&#39;s favourite.</p>
+<pre><code>  shellHook = <span class="hljs-string">&#x27;&#x27;</span>
+    <span class="hljs-builtin-name">export</span> <span class="hljs-attribute">CUDA_PATH</span>=<span class="hljs-variable">${pkgs.cudatoolkit}</span>
+    <span class="hljs-builtin-name">export</span> <span class="hljs-attribute">LD_LIBRARY_PATH</span>=<span class="hljs-variable">${pkgs.linuxPackages.nvidia_x11}</span>/lib
+    <span class="hljs-builtin-name">export</span> <span class="hljs-attribute">EXTRA_LDFLAGS</span>=<span class="hljs-string">&quot;-L/lib -L<span class="hljs-variable">${pkgs.linuxPackages.nvidia_x11}</span>/lib&quot;</span>
+    <span class="hljs-builtin-name">export</span> <span class="hljs-attribute">EXTRA_CCFLAGS</span>=<span class="hljs-string">&quot;-I/usr/include&quot;</span>
+    <span class="hljs-builtin-name">export</span> <span class="hljs-attribute">CC</span>=<span class="hljs-variable">${pkgs.gcc8}</span>/bin/gcc
+    <span class="hljs-builtin-name">export</span> <span class="hljs-attribute">CXX</span>=<span class="hljs-variable">${pkgs.gcc8}</span>/bin/g++
+  <span class="hljs-string">&#x27;&#x27;</span>;</code></pre><p>Anyway, that&#39;s my setup - seeing as I&#39;ve made it to 1000 words already I&#39;ll leave the next post of &quot;exploring the samples, SDK surface area, documentation, etc&quot; to the next one. mundane <em>and</em> wordy, everybody&#39;s favourite.</p>
 </div>
       <div id="links">
         <a href="/">Index</a>

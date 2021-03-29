@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -83,7 +84,7 @@ db.<span class="hljs-constructor">Put(<span class="hljs-params">string</span> <s
 <p>No problem, I fork the original project and set about addding Byte array support and then notice something.</p>
 <p><em>The bindings are using the C API for LevelDB</em> (which makes sense if you&#39;re going to support cross platform C#), but more importantly the C API looks something like this:</p>
 <pre><code><span class="hljs-built_in">char</span>* leveldb<span class="hljs-constructor">_get(<span class="hljs-params">char</span><span class="hljs-operator">*</span> <span class="hljs-params">key</span>)</span></code></pre><p>See that return result? That&#39;s a malloc, what does the LevelDB C# code do?</p>
-<pre><code> <span class="hljs-keyword">var</span> <span class="hljs-keyword">value</span> = Marshal.PtrToStringAnsi(valuePtr, (<span class="hljs-keyword">int</span>) valueLength);
+<pre><code> <span class="hljs-keyword">var</span> <span class="hljs-keyword">value</span> = Marshal.PtrToStringAnsi(valuePtr, (<span class="hljs-built_in">int</span>) valueLength);
  <span class="hljs-keyword">return</span> <span class="hljs-keyword">value</span>;</code></pre><p>Ignoring the <a href="https://github.com/meebey/leveldb-sharp/issues/2">memory leak</a>, as it&#39;s a known issue and an easy mistake to make, we can see we&#39;re copying the data out of the unmanaged array into a managed string via the PtrToStringAnsi call.</p>
 <p>What does the C api do?</p>
 <pre><code>Status s = db-&gt;rep-&gt;<span class="hljs-constructor">Get(<span class="hljs-params">options</span>-&gt;<span class="hljs-params">rep</span>, Slice(<span class="hljs-params">key</span>, <span class="hljs-params">keylen</span>)</span>, &amp;tmp);
@@ -97,15 +98,15 @@ db.<span class="hljs-constructor">Put(<span class="hljs-params">string</span> <s
   }
 }
 return result;</code></pre><p>And CopyString?</p>
-<pre><code><span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">char</span>* <span class="hljs-title">CopyString</span><span class="hljs-params">(<span class="hljs-keyword">const</span> <span class="hljs-built_in">std</span>::<span class="hljs-built_in">string</span>&amp; str)</span> </span>{
-  <span class="hljs-keyword">char</span>* result = <span class="hljs-keyword">reinterpret_cast</span>&lt;<span class="hljs-keyword">char</span>*&gt;(<span class="hljs-built_in">malloc</span>(<span class="hljs-keyword">sizeof</span>(<span class="hljs-keyword">char</span>) * str.size()));
-  <span class="hljs-built_in">memcpy</span>(result, str.data(), <span class="hljs-keyword">sizeof</span>(<span class="hljs-keyword">char</span>) * str.size());
+<pre><code><span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">char</span>* <span class="hljs-title">CopyString</span><span class="hljs-params">(<span class="hljs-keyword">const</span> std::string&amp; str)</span> </span>{
+  <span class="hljs-keyword">char</span>* result = <span class="hljs-keyword">reinterpret_cast</span>&lt;<span class="hljs-keyword">char</span>*&gt;(<span class="hljs-built_in">malloc</span>(<span class="hljs-built_in"><span class="hljs-keyword">sizeof</span></span>(<span class="hljs-keyword">char</span>) * str.<span class="hljs-built_in">size</span>()));
+  <span class="hljs-built_in">memcpy</span>(result, str.<span class="hljs-built_in">data</span>(), <span class="hljs-built_in"><span class="hljs-keyword">sizeof</span></span>(<span class="hljs-keyword">char</span>) * str.<span class="hljs-built_in">size</span>());
   <span class="hljs-keyword">return</span> result;
 }</code></pre><p><em>urk</em></p>
 <p>In order to get a stored document from LevelDB, the following operations are performed:</p>
-<pre><code>- Internally, LevelDB will <span class="hljs-keyword">load</span> the <span class="hljs-keyword">document</span> <span class="hljs-keyword">into</span> <span class="hljs-keyword">memory</span>
-- Internally, LevelDB will copy that <span class="hljs-keyword">memory</span> <span class="hljs-keyword">into</span> a <span class="hljs-keyword">string</span> <span class="hljs-keyword">on</span> a <span class="hljs-keyword">Get</span> <span class="hljs-keyword">call</span>
-- The C API copies that <span class="hljs-keyword">memory</span> <span class="hljs-keyword">into</span> a mallocced <span class="hljs-keyword">byte</span> <span class="hljs-built_in">array</span>
+<pre><code>- Internally, LevelDB will <span class="hljs-built_in">load</span> <span class="hljs-keyword">the</span> document <span class="hljs-keyword">into</span> memory
+- Internally, LevelDB will copy that memory <span class="hljs-keyword">into</span> <span class="hljs-keyword">a</span> <span class="hljs-keyword">string</span> <span class="hljs-keyword">on</span> <span class="hljs-title">a</span> <span class="hljs-title">Get</span> <span class="hljs-title">call</span>
+- The C API copies that memory <span class="hljs-keyword">into</span> <span class="hljs-keyword">a</span> mallocced <span class="hljs-keyword">byte</span> array
 - The C<span class="hljs-comment"># API copies that memory into a managed string (probably on the Large Object Heap)</span></code></pre><p>What we have here, is a C# wrapper around a C API that is a wrapper around a C++ API, and each of them is trying to be semantically equivalent to the underlying API - and the abstraction is <em>killing us</em>.</p>
 <p>For small values, this probably isn&#39;t a big deal, but RavenDB documents can be any size, and RavenDB documents often <em>are</em> any size - ideally what we want is</p>
 <pre><code>MemoryStream stream = db.<span class="hljs-constructor">Get(<span class="hljs-params">string</span> <span class="hljs-params">key</span>)</span></code></pre><p>Where that stream reads from the start of an unmanaged array to the end of that unmanaged array and then disposes it.</p>

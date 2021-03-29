@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -86,13 +87,13 @@
 <p><strong>Expand</strong></p>
 <p>Expand allows the expansion of a particular property path in OData, like so</p>
 <p><em>Expand the path Products/Suppliers</em></p>
-<pre><code>/Categories?<span class="hljs-symbol">$e</span>xpand=Products/Suppliers</code></pre><p><em>Expand the path Suppliers AND expand the path Products</em></p>
-<pre><code>/Categories?<span class="hljs-symbol">$e</span>xpand=Suppliers,Products</code></pre><p>So this is quite easy, $expand expects a list of ResourcePath, separated by a comma.</p>
+<pre><code><span class="hljs-regexp">/Categories?$expand=Products/</span>Suppliers</code></pre><p><em>Expand the path Suppliers AND expand the path Products</em></p>
+<pre><code>/Categories?$<span class="hljs-attr">expand=Suppliers,Products</span></code></pre><p>So this is quite easy, $expand expects a list of ResourcePath, separated by a comma.</p>
 <p>I&#39;ll not show the tests for this, you can assume I have some though, with the appropriate data appearing on the model..</p>
 <pre><code>ExpandOption = 
-  seq(<span class="hljs-string">"$expand="</span>)
-  listOf(`PropertyPath, <span class="hljs-string">','</span>):properties -&gt; { <span class="hljs-string">name:</span> <span class="hljs-string">"$expand"</span>, <span class="hljs-string">value:</span> { <span class="hljs-string">properties:</span> properties }}
-,</code></pre><p>Doesn&#39;t take a genius to work that one out does it :)</p>
+  se<span class="hljs-string">q(&quot;$expand=&quot;)</span>
+  listOf(<span class="hljs-string">`PropertyPath, &#x27;,&#x27;):properties -&gt; { name: &quot;$expand&quot;, value: { properties: properties }}
+,</span></code></pre><p>Doesn&#39;t take a genius to work that one out does it :)</p>
 <p><strong>Format</strong></p>
 <p>This one is a doozy, the docs pretty much say it accepts</p>
 <ul>
@@ -103,27 +104,27 @@
 </ul>
 <p>So what we&#39;re saying here is that we&#39;ll parse any content type, what I&#39;ll do is just parse the general pattern to make sure it doesn&#39;t contain garbage and leave it at that.</p>
 <pre><code>FormatOption = 
-  se<span class="hljs-string">q("$format=")</span>
-  ContentType:type -&gt; { name: <span class="hljs-string">"$format"</span>, value: type }
+  se<span class="hljs-string">q(&quot;$format=&quot;)</span>
+  ContentType:type -&gt; { name: <span class="hljs-string">&quot;$format&quot;</span>, value: type }
 ,
 
 ContentType = 
   &lt; letter+
-    <span class="hljs-string">'/'</span> 
+    <span class="hljs-string">&#x27;/&#x27;</span> 
     letter+
     (
-      <span class="hljs-string">'+'</span> letter+
+      <span class="hljs-string">&#x27;+&#x27;</span> letter+
     )?
   &gt;</code></pre><p>There are probably more rules than that but it&#39;s easily improved later</p>
 <p><strong>Select</strong></p>
 <p>Select tells us what is going to be brought back from a query, this can either be a property path, a collection of property paths or an asterisk.</p>
 <p>An asterisk means bring back EVERYTHING. Nothing special.</p>
 <pre><code>SelectOption =
-  seq(<span class="hljs-string">"$select="</span>)
+  seq(<span class="hljs-string">&quot;$select=&quot;</span>)
   (
-    <span class="hljs-string">"*"</span>                                 -&gt; <span class="hljs-string">'*'</span> 
-  | listOf(`PropertyPath, <span class="hljs-string">','</span>)<span class="hljs-symbol">:properties</span>  -&gt; { <span class="hljs-symbol">properties:</span> properties }
-  )<span class="hljs-symbol">:value</span> -&gt; { <span class="hljs-symbol">name:</span> <span class="hljs-string">"$select"</span>, <span class="hljs-symbol">value:</span> value }
+    <span class="hljs-string">&quot;*&quot;</span>                                 -&gt; <span class="hljs-string">&#x27;*&#x27;</span> 
+  | listOf(`PropertyPath, <span class="hljs-string">&#x27;,&#x27;</span>)<span class="hljs-symbol">:properties</span>  -&gt; { <span class="hljs-symbol">properties:</span> properties }
+  )<span class="hljs-symbol">:value</span> -&gt; { <span class="hljs-symbol">name:</span> <span class="hljs-string">&quot;$select&quot;</span>, <span class="hljs-symbol">value:</span> value }
 ,</code></pre><p><strong>Highlighting a problem or three</strong></p>
 <p>That&#39;s pretty much the entire spec sorted out, and we have a few tidy ups on our hand</p>
 <ul>

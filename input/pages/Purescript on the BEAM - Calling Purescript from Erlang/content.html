@@ -50,10 +50,10 @@
     <span class="hljs-keyword">module</span> MyCode <span class="hljs-keyword">where</span>
 
     init :: <span class="hljs-type">Effect</span> <span class="hljs-type">Atom</span>
-    init = <span class="hljs-type">SomeLibrary</span>.configure (atom <span class="hljs-string">"myCode@ps"</span>) (atom <span class="hljs-string">"callback"</span>)
+    init = <span class="hljs-type">SomeLibrary</span>.configure (atom <span class="hljs-string">&quot;myCode@ps&quot;</span>) (atom <span class="hljs-string">&quot;callback&quot;</span>)
 
     callback :: <span class="hljs-type">OpaqueState</span> -&gt; <span class="hljs-type">Tuple2</span> <span class="hljs-type">Atom</span> <span class="hljs-type">OpaqueState</span>
-    callback state = tuple2 $ (atom <span class="hljs-string">"ok"</span>) state <span class="hljs-comment">-- don't actually do anything yet</span>
+    callback state = tuple2 $ (atom <span class="hljs-string">&quot;ok&quot;</span>) state <span class="hljs-comment">-- don&#x27;t actually do anything yet</span>
 </code></pre>
 <p>A problem immediately presents itself, we can&#39;t use the doSomething function from our callback because it&#39;s an Effectful function and our callback function is not, this means callback is pure and can&#39;t actually have any side effects.</p>
 <p>We can try to re-write callback so it is Effectful</p>
@@ -61,12 +61,12 @@
     <span class="hljs-keyword">module</span> MyCode <span class="hljs-keyword">where</span>
 
     init :: <span class="hljs-type">Effect</span> <span class="hljs-type">Atom</span>
-    init = <span class="hljs-type">SomeLibrary</span>.configure (atom <span class="hljs-string">"myCode@ps"</span>) (atom <span class="hljs-string">"callback"</span>)
+    init = <span class="hljs-type">SomeLibrary</span>.configure (atom <span class="hljs-string">&quot;myCode@ps&quot;</span>) (atom <span class="hljs-string">&quot;callback&quot;</span>)
 
     callback :: <span class="hljs-type">OpaqueState</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Tuple2</span> <span class="hljs-type">Atom</span> <span class="hljs-type">OpaqueState</span>)
     callback state = <span class="hljs-keyword">do</span>
       newState &lt;- <span class="hljs-type">SomeLibrary</span>.state
-      pure $ tuple2 $ (atom <span class="hljs-string">"ok"</span>) newState 
+      pure $ tuple2 $ (atom <span class="hljs-string">&quot;ok&quot;</span>) newState 
 </code></pre>
 <p>But now we&#39;ll just get a runtime error because the native Erlang code expects a function of <em>(LibraryState -&gt; { ok, Library State })</em>, and we&#39;ve now giving it a function that is <em>LibraryState -&gt; (() -&gt; { ok, LibraryState})</em> - essentially passing a function reference back to Erlang instead of the result of that function (ew).</p>
 <p>We can dance around this in a number of ways, the simplest being to lie about the effect and use unsafePerformEffect in our &quot;pure&quot; function (No thanks).</p>
@@ -75,12 +75,12 @@
     <span class="hljs-keyword">module</span> MyCode <span class="hljs-keyword">where</span>
 
     init :: <span class="hljs-type">Effect</span> <span class="hljs-type">Atom</span>
-    init = <span class="hljs-type">SomeLibrary</span>.configure (atom <span class="hljs-string">"myCode@ps"</span>) (atom <span class="hljs-string">"callback"</span>)
+    init = <span class="hljs-type">SomeLibrary</span>.configure (atom <span class="hljs-string">&quot;myCode@ps&quot;</span>) (atom <span class="hljs-string">&quot;callback&quot;</span>)
 
     callback :: <span class="hljs-type">EffectFn1</span> <span class="hljs-type">OpaqueState</span> (<span class="hljs-type">Tuple2</span> <span class="hljs-type">Atom</span> <span class="hljs-type">OpaqueState</span>)
     callback = mkEffectFn1 \state -&gt; <span class="hljs-keyword">do</span>
         newState &lt;- <span class="hljs-type">SomeLibrary</span>.state
-        pure $ tuple2 $ (atom <span class="hljs-string">"ok"</span>) newState 
+        pure $ tuple2 $ (atom <span class="hljs-string">&quot;ok&quot;</span>) newState 
 </code></pre>
 <p>(IE, the direct result) without writing any code that lies about what it actually is.</p>
 <p>This is typically how we will interact directly with Erlang libraries and will get us pretty far when creating low level bindings with those libraries, but we will see as we progress into creating our wrappers around OTP we&#39;ll uncover some better patterns for making this less brittle (Passing atoms all over the show is pretty dull). For one-off cases the above is perfectly fine, but in reality we&#39;ll only be using this mechanism when writing the wrappers themselves and presenting higher level APIs to the application itself.</p>

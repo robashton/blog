@@ -29,11 +29,11 @@
 <span class="hljs-meta"># Rest.contentTypesProvided (\req state -&gt; Rest.result (jsonWriter : nil) req state)</span>
 
 <span class="hljs-title">jsonWriter</span> :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">WriteForeign</span> a =&gt; <span class="hljs-type">Tuple2</span> <span class="hljs-type">String</span> (<span class="hljs-type">Req</span> -&gt; a -&gt; (<span class="hljs-type">Effect</span> (<span class="hljs-type">RestResult</span> <span class="hljs-type">String</span> a)))
-<span class="hljs-title">jsonWriter</span> = tuple2 <span class="hljs-string">"application/json"</span> (\req state -&gt; <span class="hljs-type">Rest</span>.result (writeJSON state) req state)
+<span class="hljs-title">jsonWriter</span> = tuple2 <span class="hljs-string">&quot;application/json&quot;</span> (\req state -&gt; <span class="hljs-type">Rest</span>.result (writeJSON state) req state)
 </code></pre>
 <p>If we open up the client code, we can see</p>
 <pre><code class="language-haskell">
-<span class="hljs-title">maybeBook</span> &lt;- <span class="hljs-type">H</span>.liftAff $ loadItem $ <span class="hljs-string">"/api/books/"</span> &lt;&gt; isbn
+<span class="hljs-title">maybeBook</span> &lt;- <span class="hljs-type">H</span>.liftAff $ loadItem $ <span class="hljs-string">&quot;/api/books/&quot;</span> &lt;&gt; isbn
 
 <span class="hljs-comment">-- where</span>
 
@@ -41,7 +41,7 @@
 <span class="hljs-title">loadItem</span> uri = <span class="hljs-keyword">do</span>
   response &lt;- <span class="hljs-type">AX</span>.get <span class="hljs-type">AXResponse</span>.string uri
   <span class="hljs-keyword">case</span> response.body <span class="hljs-keyword">of</span>
-     <span class="hljs-type">Left</span> err -&gt; pure $ <span class="hljs-type">Left</span> <span class="hljs-string">"No"</span>
+     <span class="hljs-type">Left</span> err -&gt; pure $ <span class="hljs-type">Left</span> <span class="hljs-string">&quot;No&quot;</span>
      <span class="hljs-type">Right</span> json -&gt; pure $ bimap show identity $ readJSON json
 </code></pre>
 <p>That is all that is required to shift data between the server Purescript and the client Purescript which is pretty tidy indeed! Because we&#39;re using the same library, any custom implementations of <em>ReadForeign</em> and <em>WriteForeign</em> we might choose to write can then also be shared between the two.</p>

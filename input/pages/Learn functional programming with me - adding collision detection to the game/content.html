@@ -53,12 +53,12 @@
 <p>Nevertheless, I&#39;ll press forwards with my current solution because I want something that works.</p>
 <p><strong>My first attempt</strong></p>
 <p>My first attempt was a failure, I thought it&#39;d be simple to just loop through several times and do something like</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> bullet-collides-with-enemy [bullet state]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">bullet-collides-with-enemy</span> [bullet state]
   (<span class="hljs-name"><span class="hljs-builtin-name">not</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">not-any?</span></span> 
      (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [enemy] (<span class="hljs-name">collides-with</span> enemy bullet)) 
      (<span class="hljs-symbol">:enemies</span> state))))
 
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> enemy-collides-with-bullet [enemy state]
+(<span class="hljs-keyword">defn</span> <span class="hljs-title">enemy-collides-with-bullet</span> [enemy state]
   (<span class="hljs-name"><span class="hljs-builtin-name">not</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">not-any?</span></span> 
      (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [bullet] (<span class="hljs-name">collides-with</span> bullet enemy)) 
      (<span class="hljs-name"><span class="hljs-builtin-name">get-in</span></span> [<span class="hljs-symbol">:bullets</span> <span class="hljs-symbol">:active</span>] state))))</code></pre><p>And filter out enemies/bullets in the seq for these things, this is an awful idea because of multiple iterations it&#39;s also an awful idea because written in this way it&#39;s hard to follow.</p>
@@ -66,20 +66,20 @@
 <p>A better idea would be to iterate once, ask for all the colliisons that have taken place and then use this information to create a new version of the state without the affected enemies/bullets in it.</p>
 <p>This moves me closer in the direction described by the article I linked above so I&#39;ll give it a go.</p>
 <p>I can write a function that does this and returns a list of the collisions.</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> get-bullet-enemy-collisions [state]
-  (<span class="hljs-name"><span class="hljs-builtin-name">for</span></span> [bullet (<span class="hljs-name">active-bullets</span> state)]
-    { <span class="hljs-symbol">:bullet</span> bullet
-      <span class="hljs-symbol">:alien</span> (<span class="hljs-name"><span class="hljs-builtin-name">first</span></span> (<span class="hljs-name">enemies-colliding-with-bullet</span> bullet state))}))</code></pre><p>But this won&#39;t actually be effective I don&#39;t think, because I&#39;m returning a map of maps which would need comparing against the other maps in order to remove them from the collection they&#39;re in.</p>
+<pre><code>(defn get-bullet-enemy-collisions [<span class="hljs-keyword">state</span>]
+  (<span class="hljs-keyword">for</span> [bullet (active-bullets <span class="hljs-keyword">state</span>)]
+    { :bullet bullet
+      :alien (first (enemies-colliding-with-bullet bullet <span class="hljs-keyword">state</span>))}))</code></pre><p>But this won&#39;t actually be effective I don&#39;t think, because I&#39;m returning a map of maps which would need comparing against the other maps in order to remove them from the collection they&#39;re in.</p>
 <p>By-reference comparison won&#39;t work, maps are (as I understand it) compared by value - and while this would work it&#39;s not &quot;correct&quot;. Identity is what we want to compare against here and our bullets and aliens don&#39;t have identies.</p>
 <p><strong>Third attempt</strong></p>
 <p>I&#39;ve found <a href="http://clojuredocs.org/clojure_core/clojure.core/map-indexed">map-indexed</a> and <a href="http://clojuredocs.org/clojure_core/clojure.core/keep-indexed">keep-indexed</a>, which will allow me to do pretty much the same as above but return a list of indexes into the collections which represent collisions.</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> get-bullet-enemy-collisions [state]
-  (<span class="hljs-name">keep-indexed</span> #({ <span class="hljs-symbol">:bullet</span> %<span class="hljs-number">1</span>
-                    <span class="hljs-symbol">:alien</span> (<span class="hljs-name"><span class="hljs-builtin-name">first</span></span> (<span class="hljs-name">enemies-colliding-with-bullet</span> bullet state))})
-                (<span class="hljs-name">active-bullets</span> state)))
+<pre><code>(defn get-bullet-enemy-collisions [<span class="hljs-keyword">state</span>]
+  (keep-indexed <span class="hljs-comment">#({ :bullet %1</span>
+                    :alien (first (enemies-colliding-with-bullet bullet <span class="hljs-keyword">state</span>))})
+                (active-bullets <span class="hljs-keyword">state</span>)))
 
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> enemies-colliding-with-bullet [bullet state]
-  (<span class="hljs-name">keep-indexed</span> #(<span class="hljs-name"><span class="hljs-builtin-name">if</span></span> (<span class="hljs-name">collides-with</span> %<span class="hljs-number">2</span> bullet) %<span class="hljs-number">1</span>) (<span class="hljs-symbol">:enemies</span> state)))</code></pre><p>I&#39;ve also discovered that little # symbol, which appears to be shorthand for an anonymous function with a 1-indexed list of arguments.</p>
+(defn enemies-colliding-with-bullet [bullet <span class="hljs-keyword">state</span>]
+  (keep-indexed <span class="hljs-comment">#(if (collides-with %2 bullet) %1) (:enemies state)))</span></code></pre><p>I&#39;ve also discovered that little # symbol, which appears to be shorthand for an anonymous function with a 1-indexed list of arguments.</p>
 <p>Anyway, now I have a list of collisions that have taken place in my game world, I can filter out the items I don&#39;t want any more.</p>
 <p>I couldn&#39;t figure out an easy way of using this data though, so back to</p>
 <p><strong>Option one again</strong></p>

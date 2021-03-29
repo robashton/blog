@@ -10,8 +10,8 @@
 <li><a href="/entries/learn-functional-programming-with-me---improving-our-data-structure-with-maps.html">Improving our data structure with maps</a></li>
 </ul>
 <p>Well, first off let&#39;s create the player</p>
-<pre><code> :player (initPlayer <span class="hljs-number">0</span> <span class="hljs-number">430</span> <span class="hljs-number">20</span> <span class="hljs-number">20</span>)</code></pre><p>Where</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> initPlayer [x y w h]
+<pre><code> <span class="hljs-symbol">:player</span> (<span class="hljs-name">initPlayer</span> <span class="hljs-number">0</span> <span class="hljs-number">430</span> <span class="hljs-number">20</span> <span class="hljs-number">20</span>)</code></pre><p>Where</p>
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">initPlayer</span> [x y w h]
  {
   <span class="hljs-symbol">:x</span> x
   <span class="hljs-symbol">:y</span> y
@@ -20,18 +20,18 @@
  }
 )</code></pre><p>There are some similarities here between the player and the enemy, and perhaps I&#39;ll address that when I&#39;m a position to tell how.</p>
 <p>Now, I&#39;ll want to render that player, and I&#39;m actually going to take the bold step of pulling out a render function so my main loop now looks like this:</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> tick [ctx state]
-  (<span class="hljs-name">clearScreen</span> ctx) 
-  (<span class="hljs-name">renderScene</span> ctx state)
-  (<span class="hljs-name">js/setTimeout</span> (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> []
-    (<span class="hljs-name">tick</span> ctx (<span class="hljs-name">doLogic</span> state))
+<pre><code>(defn tick [ctx <span class="hljs-keyword">state</span>]
+  (clearScreen ctx) 
+  (renderScene ctx <span class="hljs-keyword">state</span>)
+  (js/<span class="hljs-built_in">set</span>Timeout (fn []
+    (tick ctx (doLogic <span class="hljs-keyword">state</span>))
   ) <span class="hljs-number">33</span>  )
 )</code></pre><p>Just keeping things tidy!</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> renderScene [ctx state]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">renderScene</span> [ctx state]
   (<span class="hljs-name">enemiesRender</span> ctx state)
 )
 
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> enemiesRender [ctx state]
+(<span class="hljs-keyword">defn</span> <span class="hljs-title">enemiesRender</span> [ctx state]
   (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [enemies (<span class="hljs-symbol">:enemies</span> state)]
     (<span class="hljs-name"><span class="hljs-builtin-name">doseq</span></span> [enemy enemies] 
       (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [{<span class="hljs-symbol">:keys</span> [x y w h]} enemy]
@@ -40,15 +40,15 @@
     )
   )
 )</code></pre><p>Right, so now I have a player, I may as well render it</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> renderScene [ctx state]
-  (<span class="hljs-name">enemiesRender</span> ctx state)
-  (<span class="hljs-name">playerRender</span> ctx state)
+<pre><code>(defn renderScene [ctx <span class="hljs-keyword">state</span>]
+  (enemiesRender ctx <span class="hljs-keyword">state</span>)
+  (playerRender ctx <span class="hljs-keyword">state</span>)
 )
 
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> playerRender [ctx state]
-  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [player (<span class="hljs-symbol">:player</span> state)]
-    (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [{<span class="hljs-symbol">:keys</span> [x y w h]} player]
-      (<span class="hljs-name">drawSquare</span> ctx x y w h)
+(defn playerRender [ctx <span class="hljs-keyword">state</span>]
+  (let [player (:player <span class="hljs-keyword">state</span>)]
+    (let [{:keys [x y w h]} player]
+      (drawSquare ctx x y w h)
     )
   )
 )</code></pre><p>And I&#39;ll need to copy it across to the new state each iteration</p>
@@ -75,12 +75,12 @@
   tick applyLogic(<span class="hljs-keyword">state</span>, inputs)</code></pre><p>I don&#39;t have to care that behind that getCurrentInputs is some horrible interop with the browser and piles of mutability, and if I work out how to do it better later it should limit the area of change needing to be applied.</p>
 <p>I can hook the events using the standard js interop, which looks like this</p>
 <pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> hookInputEvents []
-  (<span class="hljs-name">.addEventListener</span> js/document <span class="hljs-string">"keydown"</span> 
+  (<span class="hljs-name">.addEventListener</span> js/document <span class="hljs-string">&quot;keydown&quot;</span> 
    (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [e]
     (<span class="hljs-name">setKeyState</span> e.KeyCode <span class="hljs-literal">true</span>)
    )
   )
-  (<span class="hljs-name">.addEventListener</span> js/document <span class="hljs-string">"keyup"</span> 
+  (<span class="hljs-name">.addEventListener</span> js/document <span class="hljs-string">&quot;keyup&quot;</span> 
    (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [e]
 
    )
@@ -91,7 +91,7 @@
 <p>I&#39;ve tried to avoid having any of this trickery yet, but this is somewhere I think going to need it.</p>
 <p>So, an atom - I&#39;m putting this into my &#39;global&#39; scope (actually, it&#39;s namespaced into (ns game))</p>
 <p><em>Define some state called keyStates, assign to it an atom (initial value is an empty map)</em></p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">def</span></span> keyStates (<span class="hljs-name"><span class="hljs-builtin-name">atom</span></span> {}))</code></pre><p>Now, if I want to access the value of keyStates, I can de-rererence it thusly</p>
+<pre><code>(<span class="hljs-keyword">def</span> <span class="hljs-title">keyStates</span> (<span class="hljs-name"><span class="hljs-builtin-name">atom</span></span> {}))</code></pre><p>Now, if I want to access the value of keyStates, I can de-rererence it thusly</p>
 <p><em>De-reference an atom</em></p>
 <pre><code><span class="hljs-meta">@keystates</span></code></pre><p>I also wanted to know how to &quot;modify a single value of a map&quot;, for reasons that are about to become clear, the way to do this is</p>
 <p><em>Create a new map, with a single property changed</em></p>
@@ -99,7 +99,7 @@
 <p>The final piece of my jigsaw is the ability to change the value of this mutable atom, to do this I can use &#39;swap&#39;</p>
 <pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">swap!</span></span> myAtom (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [oldValue] newValue))</code></pre><p> So how about that setKeyState function?</p>
 <p><em>Set the new keyStates to be the same as the old keyStates, but with a new value for the current keycode</em></p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> setKeyState [code, value]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">setKeyState</span> [code, value]
   (<span class="hljs-name"><span class="hljs-builtin-name">swap!</span></span> keyStates assoc code value)
 )</code></pre><p>Swap will call assoc, passing in the old state and the other args specified (hey, this is quite functional!)</p>
 <p>Now I have a global state for my current input, which means I can ask questions of it and apply those answers to my state.</p>
@@ -143,32 +143,32 @@
 <p>We&#39;ve already looked at assoc, we recognise dec/inc and basically all I&#39;m doing is saying, &#39;return a new player with x changed, here is the new value of x, it&#39;s a modification of the current x&#39;</p>
 <p>I bet there is a tidier way of doing this actually, maybe a built-in but I came up with</p>
 <p><em>Please apply the specified function to the specified key in this map and return the result</em></p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> applyMod [m k func]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">applyMod</span> [m k func]
   (<span class="hljs-name"><span class="hljs-builtin-name">assoc</span></span> m k (<span class="hljs-name">func</span> (<span class="hljs-name">m</span> k)))
 )</code></pre><p><em>And in usage:</em></p>
 <pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">cond</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> left <span class="hljs-literal">true</span>) (<span class="hljs-name">applyMod</span> player <span class="hljs-symbol">:x</span> dec)
       (<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> right <span class="hljs-literal">true</span>) (<span class="hljs-name">applyMod</span> player <span class="hljs-symbol">:x</span> inc)
       <span class="hljs-symbol">:else</span> player</code></pre><p><strong>Paint our player Red</strong></p>
 <p>I said red square, and so far it&#39;s yellow, let&#39;s fix this problem.</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> drawSquare [[ctx width height] x y w h c]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">drawSquare</span> [[ctx width height] x y w h c]
   (<span class="hljs-name"><span class="hljs-builtin-name">set!</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">.</span></span> ctx -fillStyle) c)
   (<span class="hljs-name">.fillRect</span> ctx x y w h) 
 )
 
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> enemiesRender [ctx state]
+(<span class="hljs-keyword">defn</span> <span class="hljs-title">enemiesRender</span> [ctx state]
   (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [enemies (<span class="hljs-symbol">:enemies</span> state)]
     (<span class="hljs-name"><span class="hljs-builtin-name">doseq</span></span> [enemy enemies] 
       (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [{<span class="hljs-symbol">:keys</span> [x y w h]} enemy]
-        (<span class="hljs-name">drawSquare</span> ctx x y w h <span class="hljs-string">"#FF0"</span>)
+        (<span class="hljs-name">drawSquare</span> ctx x y w h <span class="hljs-string">&quot;#FF0&quot;</span>)
       )
     )
   )
 )
 
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> playerRender [ctx state]
+(<span class="hljs-keyword">defn</span> <span class="hljs-title">playerRender</span> [ctx state]
   (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [player (<span class="hljs-symbol">:player</span> state)]
     (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [{<span class="hljs-symbol">:keys</span> [x y w h]} player]
-      (<span class="hljs-name">drawSquare</span> ctx x y w h <span class="hljs-string">"#F00"</span>)
+      (<span class="hljs-name">drawSquare</span> ctx x y w h <span class="hljs-string">&quot;#F00&quot;</span>)
     )
   )
 )</code></pre><p>The drawing square function and repetition across my two types of entity still bugs me, but I figure I&#39;ll yet manage to tidy this up.</p>

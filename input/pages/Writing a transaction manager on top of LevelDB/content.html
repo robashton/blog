@@ -4,39 +4,39 @@
 <p>So, into the C# for a little experiment I wrote a very rudimentary transaction manager on top of ConcurrentDictionary.</p>
 <pre><code><span class="hljs-keyword">var</span> myStore = <span class="hljs-keyword">new</span> Storage(leveldb);
 myStore.Batch(<span class="hljs-function"><span class="hljs-params">accessor</span> =&gt;</span> {
-  <span class="hljs-keyword">var</span> doc = accessor.Get(<span class="hljs-string">"key1"</span>);
-  accessor.Put(<span class="hljs-string">"key2"</span>, <span class="hljs-string">"Hello"</span>);
+  <span class="hljs-keyword">var</span> doc = accessor.Get(<span class="hljs-string">&quot;key1&quot;</span>);
+  accessor.Put(<span class="hljs-string">&quot;key2&quot;</span>, <span class="hljs-string">&quot;Hello&quot;</span>);
 });</code></pre><p>What does this look like?</p>
-<pre><code><span class="hljs-keyword">public</span> void Batch(Action&lt;StorageAccessor&gt; actions) {
-  <span class="hljs-keyword">var</span> transaction = <span class="hljs-keyword">this</span>.CreateTransaction();
-  <span class="hljs-keyword">var</span> accessor = new StorageAccessor(<span class="hljs-keyword">this</span>, transaction);
+<pre><code><span class="hljs-keyword">public</span> <span class="hljs-built_in">void</span> <span class="hljs-function"><span class="hljs-title">Batch</span>(<span class="hljs-params">Action&lt;StorageAccessor&gt; actions</span>)</span> {
+  <span class="hljs-keyword">var</span> transaction = <span class="hljs-built_in">this</span>.CreateTransaction();
+  <span class="hljs-keyword">var</span> accessor = <span class="hljs-keyword">new</span> StorageAccessor(<span class="hljs-built_in">this</span>, transaction);
   <span class="hljs-keyword">try</span> {
     actions(accessor);
   } <span class="hljs-keyword">catch</span>(Exception ex) {
-    <span class="hljs-keyword">this</span>.RollbackTransaction(transaction);
+    <span class="hljs-built_in">this</span>.RollbackTransaction(transaction);
     <span class="hljs-keyword">throw</span>;
   }
-  <span class="hljs-keyword">this</span>.CommitTransaction(transaction);
+  <span class="hljs-built_in">this</span>.CommitTransaction(transaction);
 }</code></pre><p>Where the accessor simply calls the Get/Put/Delete methods on the storage and passes in the transaction associated with it.</p>
-<pre><code><span class="hljs-built_in">public</span> <span class="hljs-keyword">class</span> StorageAccessor {
-  private <span class="hljs-keyword">Storage</span> <span class="hljs-keyword">storage</span>;
-  private StorageTransaction <span class="hljs-keyword">transaction</span>;
+<pre><code><span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">StorageAccessor</span> </span>{
+  <span class="hljs-keyword">private</span> Storage storage;
+  <span class="hljs-keyword">private</span> StorageTransaction transaction;
 
-  <span class="hljs-built_in">public</span> StorageAccessor(<span class="hljs-keyword">Storage</span> <span class="hljs-keyword">storage</span>, StorageTransaction <span class="hljs-keyword">transaction</span>) {
-    this.storage = <span class="hljs-keyword">storage</span>;
-    this.<span class="hljs-keyword">transaction</span> = <span class="hljs-keyword">transaction</span>;
+  <span class="hljs-keyword">public</span> <span class="hljs-function"><span class="hljs-title">StorageAccessor</span>(<span class="hljs-params">Storage storage, StorageTransaction transaction</span>)</span> {
+    <span class="hljs-built_in">this</span>.storage = storage;
+    <span class="hljs-built_in">this</span>.transaction = transaction;
   }
 
-  <span class="hljs-built_in">public</span> <span class="hljs-keyword">Object</span> <span class="hljs-keyword">Get</span>(string id) {
-    <span class="hljs-keyword">return</span> this.<span class="hljs-keyword">storage</span>.<span class="hljs-keyword">Get</span>(id, this.<span class="hljs-keyword">transaction</span>);
+  <span class="hljs-keyword">public</span> <span class="hljs-built_in">Object</span> <span class="hljs-function"><span class="hljs-title">Get</span>(<span class="hljs-params"><span class="hljs-built_in">string</span> id</span>)</span> {
+    <span class="hljs-keyword">return</span> <span class="hljs-built_in">this</span>.storage.Get(id, <span class="hljs-built_in">this</span>.transaction);
   }
 
-  <span class="hljs-built_in">public</span> <span class="hljs-type">void</span> Put(string id, <span class="hljs-keyword">Object</span> obj) {
-    this.<span class="hljs-keyword">storage</span>.Put(id, obj, this.<span class="hljs-keyword">transaction</span>);
+  <span class="hljs-keyword">public</span> <span class="hljs-built_in">void</span> <span class="hljs-function"><span class="hljs-title">Put</span>(<span class="hljs-params"><span class="hljs-built_in">string</span> id, <span class="hljs-built_in">Object</span> obj</span>)</span> {
+    <span class="hljs-built_in">this</span>.storage.Put(id, obj, <span class="hljs-built_in">this</span>.transaction);
   }
 
-  <span class="hljs-built_in">public</span> <span class="hljs-type">void</span> <span class="hljs-keyword">Delete</span>(string id) {
-    this.<span class="hljs-keyword">storage</span>.<span class="hljs-keyword">Delete</span>(id, this.<span class="hljs-keyword">transaction</span>);
+  <span class="hljs-keyword">public</span> <span class="hljs-built_in">void</span> <span class="hljs-function"><span class="hljs-title">Delete</span>(<span class="hljs-params"><span class="hljs-built_in">string</span> id</span>)</span> {
+    <span class="hljs-built_in">this</span>.storage.Delete(id, <span class="hljs-built_in">this</span>.transaction);
   }
 }</code></pre><p>Where we then make a check to see if another transaction has modified that key in the meantime</p>
 <pre><code>public void <span class="hljs-constructor">Put(<span class="hljs-params">string</span> <span class="hljs-params">id</span>, Object <span class="hljs-params">obj</span>, StorageTransaction <span class="hljs-params">transaction</span>)</span> {
@@ -45,8 +45,8 @@ myStore.Batch(<span class="hljs-function"><span class="hljs-params">accessor</sp
       return transaction.Id;
     }, 
    <span class="hljs-function"> (<span class="hljs-params">key</span>, <span class="hljs-params">oldValue</span>) =&gt;</span> {
-    <span class="hljs-comment">// <span class="hljs-doctag">NOTE:</span> This doesn't handle the transaction doing multiple operations on the same key</span>
-    throw <span class="hljs-keyword">new</span> <span class="hljs-constructor">Exception(<span class="hljs-string">"This should be a concurrency exception but I'm lazy"</span>)</span>;
+    <span class="hljs-comment">// <span class="hljs-doctag">NOTE:</span> This doesn&#x27;t handle the transaction doing multiple operations on the same key</span>
+    throw <span class="hljs-keyword">new</span> <span class="hljs-constructor">Exception(<span class="hljs-string">&quot;This should be a concurrency exception but I&#x27;m lazy&quot;</span>)</span>;
   });
 }</code></pre><p>Obviously a real implementation needs to do things like keep modified information around so reads can go via that before hitting the LevelDB snapshot, but in essence you can build a pretty simple transaction manager providing your underlying storage does the hard work of managing atomicity of operations.</p>
 <p>Next up, back to the C++ as I look at what we&#39;re doing do about large values in RavenDB documents.</p>

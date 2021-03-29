@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -135,7 +136,7 @@
 
 <span class="hljs-title">addHandler</span> :: <span class="hljs-type">MessageHandler</span> -&gt; <span class="hljs-type">Process</span> <span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">Pid</span> -&gt; <span class="hljs-type">State</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">State</span>
 <span class="hljs-title">addHandler</span> handler self handlerPid state@{ handlers } = <span class="hljs-keyword">do</span>
-  void $ <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">"Adding handler ~p as it has connected"</span> handlerPid
+  void $ <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">&quot;Adding handler ~p as it has connected&quot;</span> handlerPid
   void $ <span class="hljs-type">Monitor</span>.pid handlerPid (\_ -&gt; self ! <span class="hljs-type">ClientDisconnected</span> handlerPid)
   pure $ state { handlers = <span class="hljs-type">Map</span>.insert handlerPid handler handlers }
 </code></pre>
@@ -149,7 +150,7 @@
 <span class="hljs-title">handleInfo</span> msg state@{ handlers  } = <span class="hljs-keyword">do</span>
   <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span>
      <span class="hljs-type">ClientDisconnected</span> handlerPid -&gt; <span class="hljs-keyword">do</span>
-        void $ <span class="hljs-type">Gen</span>.lift $ <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">"Removing ~p as it disconnected"</span> handlerPid
+        void $ <span class="hljs-type">Gen</span>.lift $ <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">&quot;Removing ~p as it disconnected&quot;</span> handlerPid
         pure $ <span class="hljs-type">CastNoReply</span> $ state { handlers = <span class="hljs-type">Map</span>.delete handlerPid handlers }
      <span class="hljs-type">Tick</span> -&gt; <span class="hljs-keyword">do</span>
         <span class="hljs-type">Gen</span>.lift $ sendData handlers

@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -89,124 +90,124 @@
 <p><strong>Un-needed semantic actions</strong></p>
 <p>In a few places in my OMeta I have expressions that look like this:</p>
 <pre><code>(
-  se<span class="hljs-string">q("allpages")</span> -&gt; <span class="hljs-string">"allpages"</span>
-| se<span class="hljs-string">q("none")</span> -&gt; <span class="hljs-string">"none"</span>
+  se<span class="hljs-string">q(&quot;allpages&quot;)</span> -&gt; <span class="hljs-string">&quot;allpages&quot;</span>
+| se<span class="hljs-string">q(&quot;none&quot;)</span> -&gt; <span class="hljs-string">&quot;none&quot;</span>
 )</code></pre><p>This is quite wasteful and can be written much more simply as </p>
 <pre><code>(
-  se<span class="hljs-string">q("allpages")</span> 
-| se<span class="hljs-string">q("none")</span>
+  se<span class="hljs-string">q(&quot;allpages&quot;)</span> 
+| se<span class="hljs-string">q(&quot;none&quot;)</span>
 )</code></pre><p>This is because by default the last expression will be returned anyway</p>
 <p>The same goes for this (ignoring that the Text primitive still needs some work)</p>
 <pre><code><span class="hljs-keyword">Text</span> =
-  &lt;    (    ~<span class="hljs-comment">'\''</span>
-      (    <span class="hljs-comment">'\\' anything</span>
+  &lt;    (    ~<span class="hljs-comment">&#x27;\&#x27;&#x27;</span>
+      (    <span class="hljs-comment">&#x27;\\&#x27; anything</span>
       |    letter
       )
     )*
   &gt;:<span class="hljs-keyword">text</span>
   -&gt; <span class="hljs-keyword">text</span></code></pre><p>Is much tidier if we get rid of the un-need semantic action because text will be returned anyway, and we can drop that named &#39;text&#39; variable too.</p>
-<pre><code><span class="hljs-built_in">Text</span> =
-  &lt;    (    ~<span class="hljs-string">'\''</span>
-      (    <span class="hljs-string">'\\'</span> anything
+<pre><code><span class="hljs-keyword">Text</span> =
+  &lt;    (    ~<span class="hljs-comment">&#x27;\&#x27;&#x27;</span>
+      (    <span class="hljs-comment">&#x27;\\&#x27; anything</span>
       |    letter
       )
     )*
   &gt;</code></pre><p>And</p>
 <pre><code>SelectOption =
-  seq(<span class="hljs-string">"$select="</span>)
+  seq(<span class="hljs-string">&quot;$select=&quot;</span>)
   (
-    <span class="hljs-string">"*"</span>                                 -&gt; <span class="hljs-string">'*'</span> 
-  | listOf(`PropertyPath, <span class="hljs-string">','</span>)<span class="hljs-symbol">:properties</span>  -&gt; { <span class="hljs-symbol">properties:</span> properties }
-  )<span class="hljs-symbol">:value</span> -&gt; { <span class="hljs-symbol">name:</span> <span class="hljs-string">"$select"</span>, <span class="hljs-symbol">value:</span> value }</code></pre><p>Is much better off without too</p>
-<pre><code><span class="hljs-type">SelectOption</span> =
-  seq(<span class="hljs-string">"$select="</span>)
+    <span class="hljs-string">&quot;*&quot;</span>                                 -&gt; <span class="hljs-string">&#x27;*&#x27;</span> 
+  | listOf(`PropertyPath, <span class="hljs-string">&#x27;,&#x27;</span>)<span class="hljs-symbol">:properties</span>  -&gt; { <span class="hljs-symbol">properties:</span> properties }
+  )<span class="hljs-symbol">:value</span> -&gt; { <span class="hljs-symbol">name:</span> <span class="hljs-string">&quot;$select&quot;</span>, <span class="hljs-symbol">value:</span> value }</code></pre><p>Is much better off without too</p>
+<pre><code>SelectOption =
+  seq(<span class="hljs-string">&quot;$select=&quot;</span>)
   (
-    <span class="hljs-string">"*"</span>
-  | listOf(<span class="hljs-type">`PropertyPath</span>, <span class="hljs-string">','</span>):properties  -&gt; { properties: properties }
-  ):<span class="hljs-keyword">value</span> -&gt; { name: <span class="hljs-string">"$select"</span>, <span class="hljs-keyword">value</span>: <span class="hljs-keyword">value</span> }</code></pre><p><strong>Stop repeating yourself!</strong></p>
+    <span class="hljs-string">&quot;*&quot;</span>
+  | listOf(`PropertyPath, <span class="hljs-string">&#x27;,&#x27;</span>)<span class="hljs-symbol">:properties</span>  -&gt; { <span class="hljs-symbol">properties:</span> properties }
+  )<span class="hljs-symbol">:value</span> -&gt; { <span class="hljs-symbol">name:</span> <span class="hljs-string">&quot;$select&quot;</span>, <span class="hljs-symbol">value:</span> value }</code></pre><p><strong>Stop repeating yourself!</strong></p>
 <p>OMeta uses memoisation so this isn&#39;t a big deal, but repeating yourself is annoying anyway and we can be far more expressive if we think about commonly matches constructs in our code.</p>
 <pre><code>(
-  se<span class="hljs-string">q(" asc")</span> -&gt; <span class="hljs-string">"asc"</span>
-| se<span class="hljs-string">q(" desc")</span> -&gt; <span class="hljs-string">"desc"</span>
+  se<span class="hljs-string">q(&quot; asc&quot;)</span> -&gt; <span class="hljs-string">&quot;asc&quot;</span>
+| se<span class="hljs-string">q(&quot; desc&quot;)</span> -&gt; <span class="hljs-string">&quot;desc&quot;</span>
 )?:order</code></pre><p>Here I&#39;m looking for a sequence of characters with &#39;space&#39; &#39;asc&#39; &#39;space&#39; and this would be far better written as</p>
 <pre><code>spaces
 (
-  se<span class="hljs-string">q("asc")</span>
-| se<span class="hljs-string">q("desc")</span>
-| -&gt; <span class="hljs-string">'desc'</span>
+  se<span class="hljs-string">q(&quot;asc&quot;)</span>
+| se<span class="hljs-string">q(&quot;desc&quot;)</span>
+| -&gt; <span class="hljs-string">&#x27;desc&#x27;</span>
 ):order</code></pre><p>And to boot I&#39;ve added in the default, which is &#39;desc&#39; so I don&#39;t need that optional &#39;?&#39; anymore.</p>
 <p>And how about this little one?</p>
-<pre><code><span class="hljs-function"><span class="hljs-title">listOf</span><span class="hljs-params">(`PropertyPath, <span class="hljs-string">','</span>)</span></span></code></pre><p>I use that in quite a few places in the code, better split it off into its own rule</p>
+<pre><code><span class="hljs-function"><span class="hljs-title">listOf</span><span class="hljs-params">(`PropertyPath, <span class="hljs-string">&#x27;,&#x27;</span>)</span></span></code></pre><p>I use that in quite a few places in the code, better split it off into its own rule</p>
 <pre><code><span class="hljs-attribute">PropertyPathList</span> = 
-  listOf(`PropertyPath, <span class="hljs-string">','</span>)</code></pre><p>And use that around the place instead!</p>
+  listOf(`PropertyPath, <span class="hljs-string">&#x27;,&#x27;</span>)</code></pre><p>And use that around the place instead!</p>
 <p><strong>Un-needed brackets</strong></p>
-<pre><code>  PathSegment:<span class="hljs-keyword">model</span> 
+<pre><code>  PathSegmen<span class="hljs-variable">t:model</span> 
   (
-    <span class="hljs-string">'?'</span>
-    ( listOf(`QueryOption, <span class="hljs-string">'&amp;'</span>):<span class="hljs-keyword">options</span>
+    <span class="hljs-string">&#x27;?&#x27;</span>
+    ( listOf(`QueryOption, <span class="hljs-string">&#x27;&amp;&#x27;</span>):<span class="hljs-keyword">options</span>
     )
   )?</code></pre><p>I do this in a few places, and while it causes no harm, OMeta is hard enough to read to the un-initiated without throwing brackets in all of the place</p>
-<pre><code>  PathSegment:<span class="hljs-keyword">model</span> 
+<pre><code>  PathSegmen<span class="hljs-variable">t:model</span> 
   (
-    <span class="hljs-string">'?'</span>
-    listOf(`QueryOption, <span class="hljs-string">'&amp;'</span>):<span class="hljs-keyword">options</span>
+    <span class="hljs-string">&#x27;?&#x27;</span>
+    listOf(`QueryOption, <span class="hljs-string">&#x27;&amp;&#x27;</span>):<span class="hljs-keyword">options</span>
   )?</code></pre><p>Not rocket science!</p>
 <p><strong>Custom matching methods</strong></p>
 <p>Admittedly I hacked this together in a rum-bar at 10pm, but I have this floating around in the code for dealing with <a href="/entries/parsing-those-pesky-filtering-functions-in-odata.html">filter methods</a></p>
 <pre><code>SingleArgMethodCall :name =
   se<span class="hljs-string">q(name)</span> 
-  <span class="hljs-string">'('</span> 
+  <span class="hljs-string">&#x27;(&#x27;</span> 
   spaces 
   FilterByExpression:one 
   spaces
-  <span class="hljs-string">')'</span> -&gt; { args: [ one ], method: name }
+  <span class="hljs-string">&#x27;)&#x27;</span> -&gt; { args: [ one ], method: name }
 ,
 
 TwoArgMethodCall :name = 
   se<span class="hljs-string">q(name)</span>
-  <span class="hljs-string">'('</span> 
+  <span class="hljs-string">&#x27;(&#x27;</span> 
   spaces 
   FilterByExpression:one 
   spaces 
-  <span class="hljs-string">','</span> 
+  <span class="hljs-string">&#x27;,&#x27;</span> 
   spaces 
   FilterByExpression:two 
   spaces 
-  <span class="hljs-string">')'</span> -&gt; { args: [ one, two ], method: name }
+  <span class="hljs-string">&#x27;)&#x27;</span> -&gt; { args: [ one, two ], method: name }
 , 
 
 ThreeArgMethodCall :name = 
   se<span class="hljs-string">q(name)</span>
-  <span class="hljs-string">'('</span> 
+  <span class="hljs-string">&#x27;(&#x27;</span> 
   spaces 
   FilterByExpression:one 
   spaces 
-  <span class="hljs-string">','</span> 
+  <span class="hljs-string">&#x27;,&#x27;</span> 
   spaces 
   FilterByExpression:two 
   spaces 
-  <span class="hljs-string">','</span>
+  <span class="hljs-string">&#x27;,&#x27;</span>
   spaces
   FilterByExpression:three 
   spaces 
-  <span class="hljs-string">')'</span> -&gt; { args: [ one, two, three ], method: name }
+  <span class="hljs-string">&#x27;)&#x27;</span> -&gt; { args: [ one, two, three ], method: name }
 , </code></pre><p>This is still better than doing the above individually for <em>every single supported method</em>, but it would be nice if we could do</p>
 <pre><code><span class="hljs-constructor">MethodCall(<span class="hljs-params">name</span>, <span class="hljs-params">arity</span>)</span></code></pre><p>Instead of having three different expressions in a non-expandable manner</p>
 <p>Well, first off - the beginning of this will looke lik</p>
 <pre><code>MethodCall <span class="hljs-symbol">:name</span> <span class="hljs-symbol">:arity</span> =
   seq(name)
-  <span class="hljs-string">'('</span>
+  <span class="hljs-string">&#x27;(&#x27;</span>
     numberOf(`FilterByExpression, arity)<span class="hljs-symbol">:args</span>
-  <span class="hljs-string">')'</span> -&gt; { <span class="hljs-symbol">args:</span> args, <span class="hljs-symbol">method:</span> name }
+  <span class="hljs-string">&#x27;)&#x27;</span> -&gt; { <span class="hljs-symbol">args:</span> args, <span class="hljs-symbol">method:</span> name }
 ,</code></pre><p>Except there is no function called numberOf.</p>
 <p>Extending our OMeta parser with custom functions is really easy though.</p>
 <pre><code>ODataParser.numberOf = function(rule, count, seperator) {
   <span class="hljs-keyword">var</span> ret = [];
   <span class="hljs-keyword">for</span>(<span class="hljs-keyword">var</span> i = <span class="hljs-number">1</span>; i &lt; count; i++) {
     ret.push(<span class="hljs-keyword">this</span>._apply(rule));
-    <span class="hljs-keyword">this</span>._apply(<span class="hljs-string">"spaces"</span>);
-    <span class="hljs-keyword">this</span>._applyWithArgs(<span class="hljs-string">'exactly'</span>, seperator)
-    <span class="hljs-keyword">this</span>._apply(<span class="hljs-string">"spaces"</span>);
+    <span class="hljs-keyword">this</span>._apply(<span class="hljs-string">&quot;spaces&quot;</span>);
+    <span class="hljs-keyword">this</span>._applyWithArgs(<span class="hljs-string">&#x27;exactly&#x27;</span>, seperator)
+    <span class="hljs-keyword">this</span>._apply(<span class="hljs-string">&quot;spaces&quot;</span>);
   }
   ret.push(<span class="hljs-keyword">this</span>._apply(rule));
   <span class="hljs-keyword">return</span> ret;
@@ -216,8 +217,8 @@ ThreeArgMethodCall :name =
 <pre><code>Number = &lt;digit+&gt;<span class="hljs-symbol">:d</span> -&gt; parseInt(d, <span class="hljs-number">10</span>),
   Number = &lt;digit+&gt;<span class="hljs-symbol">:d</span> -&gt; parseInt(d, <span class="hljs-number">10</span>),
   Text =
-    &lt;    (    ~<span class="hljs-string">'\''</span>
-        (    <span class="hljs-string">'\\'</span> anything
+    &lt;    (    ~<span class="hljs-string">&#x27;\&#x27;&#x27;</span>
+        (    <span class="hljs-string">&#x27;\\&#x27;</span> anything
         |    letter
         )
       )*
@@ -225,13 +226,13 @@ ThreeArgMethodCall :name =
   ,
 
   QuotedText =
-    <span class="hljs-string">'\''</span>
+    <span class="hljs-string">&#x27;\&#x27;&#x27;</span>
     <span class="hljs-symbol">Text:</span>t 
-    <span class="hljs-string">'\''</span> -&gt; t
+    <span class="hljs-string">&#x27;\&#x27;&#x27;</span> -&gt; t
   ,
 Text =
-  &lt;    (    ~<span class="hljs-string">'\''</span>
-      (    <span class="hljs-string">'\\'</span> anything
+  &lt;    (    ~<span class="hljs-string">&#x27;\&#x27;&#x27;</span>
+      (    <span class="hljs-string">&#x27;\\&#x27;</span> anything
       |    letter
       )
     )*
@@ -239,15 +240,15 @@ Text =
 ,</code></pre><p>and</p>
 <pre><code>ResourcePart =
   &lt;    (    letter
-    |    <span class="hljs-string">'_'</span>
+    |    <span class="hljs-string">&#x27;_&#x27;</span>
     )+
   &gt;:resourcePart
-  -&gt; resourcePart.replace(<span class="hljs-keyword">new</span> <span class="hljs-built_in">RegExp</span>(<span class="hljs-string">'_'</span>, <span class="hljs-string">'g'</span>), <span class="hljs-string">' '</span>)
+  -&gt; resourcePart.replace(<span class="hljs-keyword">new</span> <span class="hljs-built_in">RegExp</span>(<span class="hljs-string">&#x27;_&#x27;</span>, <span class="hljs-string">&#x27;g&#x27;</span>), <span class="hljs-string">&#x27; &#x27;</span>)
 ,
 
 ResourceName =
   &lt;    ResourcePart
-    (    <span class="hljs-string">'-'</span>
+    (    <span class="hljs-string">&#x27;-&#x27;</span>
       ResourcePart
     )*
   &gt;</code></pre><p>These are our primitives in the OData space, everything else is built up off of them and I&#39;ve been a bad person and not done them properly. (If anybody has bothered reading all the way up to here, you probably thought this at the time and maybe even commented about it)</p>
@@ -255,17 +256,17 @@ ResourceName =
 <p>Just what <em>is</em> Text? </p>
 <p><em>As part of the query string</em></p>
 <pre><code>OperationParam = 
-  <span class="hljs-type">Text</span>:<span class="hljs-type">name</span> <span class="hljs-string">'='</span> <span class="hljs-type">Text</span>:<span class="hljs-keyword">value</span> -&gt; { <span class="hljs-type">name</span>: <span class="hljs-type">name</span>, <span class="hljs-keyword">value</span>: <span class="hljs-keyword">value</span> }</code></pre><p><em>And inside quotes as a string literal</em></p>
+  <span class="hljs-built_in">Text</span>:<span class="hljs-built_in">name</span> <span class="hljs-string">&#x27;=&#x27;</span> <span class="hljs-built_in">Text</span>:value -&gt; { <span class="hljs-built_in">name</span>: <span class="hljs-built_in">name</span>, value: value }</code></pre><p><em>And inside quotes as a string literal</em></p>
 <pre><code>QuotedText =
-  '\''
-  Text:t 
-  '\'' -&gt; t
+  <span class="hljs-string">&#x27;\&#x27;&#x27;</span>
+  <span class="hljs-symbol">Text:</span>t 
+  <span class="hljs-string">&#x27;\&#x27;&#x27;</span> -&gt; t
 ,</code></pre><p><em>What are the rules?</em></p>
 <p>Well, if it&#39;s part of the query string, let&#39;s say it&#39;s the name of a parameter, it can be anything at all (except reserved characters from the Uri - these should be encoded). To solve this we need to read the <a href="http://tools.ietf.org/html/rfc3986">RFC</a></p>
-<pre><code> <span class="hljs-attr">reserved</span>    = gen-delims / sub-delims
- <span class="hljs-attr">gen-delims</span>  = <span class="hljs-string">":"</span> / <span class="hljs-string">"/"</span> / <span class="hljs-string">"?"</span> / <span class="hljs-string">"#"</span> / <span class="hljs-string">"["</span> / <span class="hljs-string">"]"</span> / <span class="hljs-string">"@"</span>
- <span class="hljs-attr">sub-delims</span>  = <span class="hljs-string">"!"</span> / <span class="hljs-string">"$"</span> / <span class="hljs-string">"&amp;"</span> / <span class="hljs-string">"'"</span> / <span class="hljs-string">"("</span> / <span class="hljs-string">")"</span>
-                         / <span class="hljs-string">"*"</span> / <span class="hljs-string">"+"</span> / <span class="hljs-string">","</span> / <span class="hljs-string">";"</span> / <span class="hljs-string">"="</span></code></pre><p>We should recognise most of these, although some of these are explicitly allowed in some uri schemes and according to this RFC that&#39;s okay. </p>
+<pre><code> reserved    = gen-delims / sub-delims
+ gen-delims  = <span class="hljs-string">&quot;:&quot;</span> <span class="hljs-regexp">/ &quot;/</span><span class="hljs-string">&quot; / &quot;</span>?<span class="hljs-string">&quot; / &quot;</span><span class="hljs-comment">#&quot; / &quot;[&quot; / &quot;]&quot; / &quot;@&quot;</span>
+ sub-delims  = <span class="hljs-string">&quot;!&quot;</span> <span class="hljs-regexp">/ &quot;$&quot; /</span> <span class="hljs-string">&quot;&amp;&quot;</span> <span class="hljs-regexp">/ &quot;&#x27;&quot; /</span> <span class="hljs-string">&quot;(&quot;</span> / <span class="hljs-string">&quot;)&quot;</span>
+                         <span class="hljs-regexp">/ &quot;*&quot; /</span> <span class="hljs-string">&quot;+&quot;</span> <span class="hljs-regexp">/ &quot;,&quot; /</span> <span class="hljs-string">&quot;;&quot;</span> / <span class="hljs-string">&quot;=&quot;</span></code></pre><p>We should recognise most of these, although some of these are explicitly allowed in some uri schemes and according to this RFC that&#39;s okay. </p>
 <p>Still, an implementation of this can look something like:</p>
 <pre><code>ReservedUriComponent  =
   GenDelim
@@ -273,11 +274,11 @@ ResourceName =
 ,
 
 GenDelim = 
-  <span class="hljs-string">":"</span> | <span class="hljs-string">"/"</span> | <span class="hljs-string">"?"</span> | <span class="hljs-string">"#"</span> | <span class="hljs-string">"["</span> | <span class="hljs-string">"]"</span> | <span class="hljs-string">"@"</span>
+  <span class="hljs-string">&quot;:&quot;</span> | <span class="hljs-string">&quot;/&quot;</span> | <span class="hljs-string">&quot;?&quot;</span> | <span class="hljs-string">&quot;#&quot;</span> | <span class="hljs-string">&quot;[&quot;</span> | <span class="hljs-string">&quot;]&quot;</span> | <span class="hljs-string">&quot;@&quot;</span>
 ,
 
 SubDelim = 
-  <span class="hljs-string">"!"</span> | '$' | '*' | <span class="hljs-string">"'"</span> | <span class="hljs-string">"&amp;"</span> | <span class="hljs-string">"("</span> | <span class="hljs-string">")"</span> | <span class="hljs-string">"+"</span> | <span class="hljs-string">","</span> | <span class="hljs-string">";"</span> | <span class="hljs-string">"="</span>
+  <span class="hljs-string">&quot;!&quot;</span> | &#x27;$&#x27; | &#x27;*&#x27; | <span class="hljs-string">&quot;&#x27;&quot;</span> | <span class="hljs-string">&quot;&amp;&quot;</span> | <span class="hljs-string">&quot;(&quot;</span> | <span class="hljs-string">&quot;)&quot;</span> | <span class="hljs-string">&quot;+&quot;</span> | <span class="hljs-string">&quot;,&quot;</span> | <span class="hljs-string">&quot;;&quot;</span> | <span class="hljs-string">&quot;=&quot;</span>
 ,
 
 Text =
@@ -288,47 +289,47 @@ Text =
 ,</code></pre><p>What I&#39;ll do, is explicitly deny all of these characters except in cases where I explicitly allow them (for example, the dollar symbol is allowed in built-in query params, brackets are allowed in expressions, quotes are allowed to denote string literals, etc)</p>
 <p>I can use this rule safely for quoted text as that rule explicitly allows quoted text:</p>
 <pre><code>QuotedText =
-  '\''
-  Text:t 
-  '\'' -&gt; t</code></pre><p> <strong>Resource paths</strong></p>
+  <span class="hljs-string">&#x27;\&#x27;&#x27;</span>
+  <span class="hljs-symbol">Text:</span>t 
+  <span class="hljs-string">&#x27;\&#x27;&#x27;</span> -&gt; t</code></pre><p> <strong>Resource paths</strong></p>
 <p> Same thing now goes here, and I can say that each part of a resource path is a UriComponent, explicitly disallowing spaces, separated by a &#39;/&#39;, so</p>
 <pre><code><span class="hljs-attribute">ResourceName</span> =
   &lt;(    
-    ~(ReservedUriComponent | <span class="hljs-string">' '</span>)
+    ~(ReservedUriComponent | <span class="hljs-string">&#x27; &#x27;</span>)
     anything
   )+
   &gt;:resourceName</code></pre><p>Much happier about all of this.</p>
 <p><strong>Decoding as we go</strong></p>
 <p>If somebody does give us some text that looks like this</p>
-<pre><code><span class="hljs-attr">foo</span>=<span class="hljs-string">'hello%20world'</span></code></pre><p>It would be nice if it was decoded for output</p>
-<pre><code><span class="hljs-type">Text</span> =
+<pre><code><span class="hljs-attr">foo</span>=<span class="hljs-string">&#x27;hello%20world&#x27;</span></code></pre><p>It would be nice if it was decoded for output</p>
+<pre><code>Text =
   &lt;
    (~ReservedUriComponent
    anything)*
-  &gt;:<span class="hljs-type">text</span> -&gt; decodeURIComponent(<span class="hljs-type">text</span>)
+  &gt;:<span class="hljs-function"><span class="hljs-title">text</span> -&gt;</span> decodeURIComponent(<span class="hljs-keyword">text</span>)
 ,</code></pre><p>We can indeed call arbitrary JS methods in our semantic output, good for us.</p>
 <p>We&#39;ll do the same for resource names too</p>
 <pre><code>ResourceName =
   &lt;(    
-    ~(ReservedUriComponent | <span class="hljs-string">' '</span>)
+    ~(ReservedUriComponent | <span class="hljs-string">&#x27; &#x27;</span>)
     anything
   )+
-  &gt;<span class="hljs-symbol">:resourceName</span> -&gt; decodeURIComponent(resourceName)</code></pre><p>I think if I was to go and do some of this again, I&#39;d have been explicit about Uri conformance from the start, but it hasn&#39;t caused too much damage so we&#39;re okay.</p>
+  &gt;:<span class="hljs-function"><span class="hljs-title">resourceName</span> -&gt;</span> decodeURIComponent(resourceName)</code></pre><p>I think if I was to go and do some of this again, I&#39;d have been explicit about Uri conformance from the start, but it hasn&#39;t caused too much damage so we&#39;re okay.</p>
 <p><strong>Supporting further primitives</strong></p>
 <p>At the moment we can parse integers with</p>
-<pre><code>Number = &lt;digit+&gt;<span class="hljs-symbol">:d</span> -&gt; parseInt(d, <span class="hljs-number">10</span>)</code></pre><p>But this is only half the story, we actually need to explicitly support decimals too</p>
-<pre><code><span class="hljs-keyword">Number</span> = <span class="hljs-keyword">Decimal</span> | <span class="hljs-keyword">Integer</span>
+<pre><code><span class="hljs-built_in">Number</span> = &lt;digit+&gt;:d -&gt; <span class="hljs-built_in">parseInt</span>(d, <span class="hljs-number">10</span>)</code></pre><p>But this is only half the story, we actually need to explicitly support decimals too</p>
+<pre><code><span class="hljs-built_in">Number</span> = Decimal | Integer
 ,
 
-<span class="hljs-keyword">Decimal</span> = 
+Decimal = 
   &lt;
     digit+
-    <span class="hljs-string">'.'</span>
+    <span class="hljs-string">&#x27;.&#x27;</span>
     digit+
-  &gt;:d     -&gt; new <span class="hljs-keyword">Number</span>(d)
+  &gt;:d     -&gt; <span class="hljs-keyword">new</span> <span class="hljs-built_in">Number</span>(d)
 , 
 
-<span class="hljs-keyword">Integer</span> = &lt;digit+&gt;:d -&gt; parseInt(d, <span class="hljs-number">10</span>)
+Integer = &lt;digit+&gt;:d -&gt; <span class="hljs-built_in">parseInt</span>(d, <span class="hljs-number">10</span>)
 ,</code></pre><p><strong>Semantic output</strong></p>
 <p>I&#39;m now much happier that we have our bases covered with the types that we support, and that I&#39;m not doing anything nefarious with OMeta, that leaves me with a final tidy-up task.</p>
 <p>In some cases, we&#39;re outputting to an array that states &#39;this is what you have, so now you know how to interpret it&#39;, this is quite a standard way of doing things in OMeta and particularly in the expression parsing space.</p>
@@ -336,11 +337,11 @@ Text =
 <p>This is useful for say, generating SQL based on the model that these chaps have defined in SBVR.</p>
 <p>Let&#39;s look at a tangible example where I&#39;ve gotten this weird:</p>
 <pre><code>SelectOption =
-  se<span class="hljs-string">q("$select=")</span>
+  se<span class="hljs-string">q(&quot;$select=&quot;)</span>
   (
-    <span class="hljs-string">"*"</span>                                 -&gt; <span class="hljs-string">'*'</span> 
+    <span class="hljs-string">&quot;*&quot;</span>                                 -&gt; <span class="hljs-string">&#x27;*&#x27;</span> 
   | PropertyPathList:properties  -&gt; { properties: properties }
-  ):value -&gt; { name: <span class="hljs-string">"$select"</span>, value: value }
+  ):value -&gt; { name: <span class="hljs-string">&quot;$select&quot;</span>, value: value }
 ,</code></pre><p>In one case, our semantic action is to return a string containing a single character *, and other case I return an object literal with a list of properties in it.</p>
 <p>I kinda want to go through and sort this out, but without using it in anger (say, for generating SQL), it&#39;s hard to say what a useful model will look like.</p>
 <p>I&#39;ve also made some mistakes in that I didn&#39;t refactor my tests as I went to eliminate duplication, so they&#39;re a bit coupled to the structure of the model.</p>
@@ -359,12 +360,12 @@ Text =
 <p>Because one of the main reasons for using OMeta (other than &quot;it&#39;s what they use for most parsing already&quot;), is the support for it in the editor that they use across the organisation.</p>
 <p>Hooking it up was a simple matter of grabbing some code already written to run OMeta against a third party editor, and adding support to the parser for this.</p>
 <p>To do this, I just have to add a method to my parser like so:</p>
-<pre><code>ODataParser._enableTokens = <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span> </span>{
-  OMeta._enableTokens.call(<span class="hljs-keyword">this</span>, [<span class="hljs-string">'Text'</span>, <span class="hljs-string">'ResourceName'</span>, <span class="hljs-string">'Number'</span>, <span class="hljs-string">'RecognisedOption'</span>, <span class="hljs-string">'FilterAndOperand'</span>, <span class="hljs-string">'FilterByOperand'</span>, <span class="hljs-string">'FilterRecognisedMathOperand'</span>]);
+<pre><code>ODataParser._enableTokens = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+  OMeta._enableTokens.call(<span class="hljs-built_in">this</span>, [<span class="hljs-string">&#x27;Text&#x27;</span>, <span class="hljs-string">&#x27;ResourceName&#x27;</span>, <span class="hljs-string">&#x27;Number&#x27;</span>, <span class="hljs-string">&#x27;RecognisedOption&#x27;</span>, <span class="hljs-string">&#x27;FilterAndOperand&#x27;</span>, <span class="hljs-string">&#x27;FilterByOperand&#x27;</span>, <span class="hljs-string">&#x27;FilterRecognisedMathOperand&#x27;</span>]);
 };</code></pre><p>You&#39;ll notice if you&#39;re observant, that I&#39;ve added a few more named types here, that&#39;s because otherwise I had no way of matching key words and therefore colouring them separately.</p>
 <p>Instead of</p>
-<pre><code>se<span class="hljs-string">q("add")</span></code></pre><p>I now have</p>
-<pre><code>FilterRecognisedMathOperand(<span class="hljs-string">"add"</span>)
+<pre><code>se<span class="hljs-string">q(&quot;add&quot;)</span></code></pre><p>I now have</p>
+<pre><code>FilterRecognisedMathOperand(<span class="hljs-string">&quot;add&quot;</span>)
 ,
 
 FilterRecognisedMathOperand :name = 

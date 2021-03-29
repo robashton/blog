@@ -1,24 +1,24 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Mon, 29 Mar 2021 16:21:49 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Encoding h264 with Nvidia]]></title><description><![CDATA[<p>This blog entry is part of my &quot;<a href="/entries/blogging-the-mundane.html">blog about mundane stuff</a>&quot; series.</p>
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Mon, 29 Mar 2021 16:44:20 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Encoding h264 with Nvidia]]></title><description><![CDATA[<p>This blog entry is part of my &quot;<a href="/entries/blogging-the-mundane.html">blog about mundane stuff</a>&quot; series.</p>
 <p>I covered my <a href="/entries/decoding-h264-with-nvidia.html">decoding</a> test before having a look at <a href="/entries/cuda-context-management-with-nvenc.html">context management</a>, so now it&#39;s time to look at re-encoding the h264 and demonstrating a round trip through the nvidia hardware.</p>
 <h1 id="what-we-have-already">What we have already</h1>
 <p>We had this workflow for testing</p>
 <pre><code>
   #workflow {
-    generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">"foo.ts"</span>&gt;&gt; },
+    generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">&quot;foo.ts&quot;</span>&gt;&gt; },
     processors = [
       #nvidia_decoder { name = decode, <span class="hljs-keyword">from</span> = { source, ?video_frames_with_stream_id(<span class="hljs-number">256</span>) } },
       #x264_encoder { name = encode, <span class="hljs-keyword">from</span> = decode },
-      #ts_writer { name = write, <span class="hljs-keyword">from</span> = encode, filename  = &lt;&lt;<span class="hljs-string">"out.ts"</span>&gt;&gt; }
+      #ts_writer { name = write, <span class="hljs-keyword">from</span> = encode, filename  = &lt;&lt;<span class="hljs-string">&quot;out.ts&quot;</span>&gt;&gt; }
     ]
   }
 
 </code></pre><p>and what I want is</p>
 <pre><code>  #workflow {
-    generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">"foo.ts"</span>&gt;&gt; },
+    generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">&quot;foo.ts&quot;</span>&gt;&gt; },
     processors = [
       #nvidia_decoder { name = decode, <span class="hljs-keyword">from</span> = { source, ?video_frames_with_stream_id(<span class="hljs-number">256</span>) } },
       #nvidia_encoder { name = encode, <span class="hljs-keyword">from</span> = decode },
-      #ts_writer { name = write, <span class="hljs-keyword">from</span> = encode, filename  = &lt;&lt;<span class="hljs-string">"out.ts"</span>&gt;&gt; }
+      #ts_writer { name = write, <span class="hljs-keyword">from</span> = encode, filename  = &lt;&lt;<span class="hljs-string">&quot;out.ts&quot;</span>&gt;&gt; }
     ]
   }
 </code></pre><p>In the decode entry we had a series of pointers to surfaces that we&#39;d pulled out of the decoder along with the corresponding timestamps, these are in NV12 planar format and byte-aligned (and I&#39;m storing all that information alongside the pointer to that surface in a struct so now we just need to see what the API looks like to turn this surface into h264 once again...)</p>
@@ -63,13 +63,13 @@
 <p>Unlike the decode stack, the encoder doesn&#39;t seem to be built <em>directly</em> on top of CUDA, it having the capability of instantiating on top of OpenGL/DirectX/Cuda as options (and then utilise surfaces from those systems). Because we&#39;re using the decoder (and planning on using CUDA to run upscaling algorithms and such), it makes sense to use CUDA for the encoder too.</p>
 <p>Because of this, we&#39;ll want to use our already-created CUDA context and pass this into the open session call.</p>
 <pre><code>
-  NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS encodeSessionExParams = { NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS_VER }<span class="hljs-comment">;</span>
-  encodeSessionExParams.device = ctx<span class="hljs-comment">;</span>
-  encodeSessionExParams.deviceType = NV_ENC_DEVICE_TYPE_CUDA<span class="hljs-comment">;</span>
-  encodeSessionExParams.apiVersion = NVENCAPI_VERSION<span class="hljs-comment">;</span>
-  void* encoder = NULL<span class="hljs-comment">;</span>
+  NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS <span class="hljs-attr">encodeSessionExParams</span> = { NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS_VER };
+  encodeSessionExParams.<span class="hljs-attr">device</span> = ctx;
+  encodeSessionExParams.<span class="hljs-attr">deviceType</span> = NV_ENC_DEVICE_TYPE_CUDA;
+  encodeSessionExParams.<span class="hljs-attr">apiVersion</span> = NVENCAPI_VERSION;
+  void* <span class="hljs-attr">encoder</span> = NULL;
 
-  nvenc.nvEncOpenEncodeSessionEx(&amp;encodeSessionExParams, &amp;encoder)<span class="hljs-comment">;</span>
+  nvenc.nvEncOpenEncodeSessionEx(&amp;encodeSessionExParams, &amp;encoder);
 </code></pre><p>Now, this doesn&#39;t do very much other than give us an encode session that isn&#39;t initialise - and to initialise it we need to tell it what form our desired output needs to take. It is entirely possible to spend a day or two wondering why this call gives you back &#39;NV_ENC_ERR_INVALID_PARAM&#39; if it&#39;s not set up correctly (and reading the sample code doesn&#39;t help because the configuration of the encoder happens across multiple files because of the way that the samples are written), the below seems to be the the minimum required..</p>
 <p>In the Real World (tm) we have an input surface with a known width/height from the decoder, here we&#39;ll hard code it along with the frame rate (I know my source is 25fps). In the Real World a load of these args will be passed in from Erlang, not C.</p>
 <pre><code class="language-c">
@@ -115,52 +115,52 @@
 <p>Most operations with CUDA expect there to be a CUDA context bound to the current thread. All operations against that CUDA context are serialized (unless those operations are bound to a specific stream, in which case they are serialized against that stream). That&#39;s it, that&#39;s the whole goal of &quot;context&quot; in CUDA, and we have more than one way of realising this in the API].</p>
 <h1 id="the-api">The API</h1>
 <p>I suspect this API has been subject to a bit of churn since CUDA was first realised and this would go some way to expaining the various ways of dealing with the context, starting off with the method that the samples tend to use..</p>
-<pre><code>  <span class="hljs-comment">//</span>
-  <span class="hljs-comment">// On startup</span>
-  <span class="hljs-comment">//</span>
+<pre><code>  <span class="hljs-regexp">//</span>
+  <span class="hljs-regexp">//</span> On startup
+  <span class="hljs-regexp">//</span>
 
-  cu<span class="hljs-constructor">CtxCreate(&amp;<span class="hljs-params">ctx</span>, <span class="hljs-params">flags</span>, <span class="hljs-params">dev</span>)</span>;
+  cuCtxCreate(&amp;ctx, flags, dev);
 
-  <span class="hljs-comment">//</span>
-  <span class="hljs-comment">// Repeat below until finished</span>
-  <span class="hljs-comment">//</span>
+  <span class="hljs-regexp">//</span>
+  <span class="hljs-regexp">//</span> Repeat below until finished
+  <span class="hljs-regexp">//</span>
 
-  cu<span class="hljs-constructor">CtxPushCurrent(<span class="hljs-params">ctx</span>)</span>;
+  cuCtxPushCurrent(ctx);
 
-  <span class="hljs-comment">// <span class="hljs-doctag">TODO:</span> some operation </span>
+  <span class="hljs-regexp">//</span> TODO: some operation 
 
-  cu<span class="hljs-constructor">CtxPopCurrent(NULL)</span>;
+  cuCtxPopCurrent(NULL);
 
-  <span class="hljs-comment">//</span>
-  <span class="hljs-comment">//  When finished</span>
-  <span class="hljs-comment">//</span>
+  <span class="hljs-regexp">//</span>
+  <span class="hljs-regexp">//</span>  When finished
+  <span class="hljs-regexp">//</span>
 
-  cu<span class="hljs-constructor">CtxDestroy(<span class="hljs-params">ctx</span>)</span>;
+  cuCtxDestroy(ctx);
 
 </code></pre><p>If we look at the API documentation for <a href="https://docs.nvidia.com/cuda/cuda-driver-api/group__CUDA__CTX.html#group__CUDA__CTX_1g65dc0012348bc84810e2103a40d8e2cf">cuCtxCreate</a>, the very firist sentence we see is &quot;In most cases it is recommended to use cuDevicePrimaryCtxRetain.&quot;</p>
 <p>So immediately on looking up the documentation for the API that the code samples use, we are told to use something else. Now - the way I understand this, is that you can create contexts within a section of your code and use <em>Push</em> and <em>Pop</em> when using that context, and then code being invoked whilst this context is valid can do the same and you can end up with a stack of contexts that works happily together. Some searching around this reveals that there are performance penalties or even limitations over the number of active contexts in an application at the same time (operations are serialized anyway) and what we <em>can</em> do is simply get hold of the primary context with</p>
-<pre><code>  <span class="hljs-comment">//</span>
-  <span class="hljs-comment">// On startup</span>
-  <span class="hljs-comment">//</span>
+<pre><code>  <span class="hljs-regexp">//</span>
+  <span class="hljs-regexp">//</span> On startup
+  <span class="hljs-regexp">//</span>
 
 
-  cu<span class="hljs-constructor">DevicePrimaryCtxRetain(&amp;<span class="hljs-params">ctx</span>, <span class="hljs-params">dev</span>)</span>;
+  cuDevicePrimaryCtxRetain(&amp;ctx, dev);
 
-  <span class="hljs-comment">//</span>
-  <span class="hljs-comment">// Repeat below until finished</span>
-  <span class="hljs-comment">//</span>
+  <span class="hljs-regexp">//</span>
+  <span class="hljs-regexp">//</span> Repeat below until finished
+  <span class="hljs-regexp">//</span>
 
-  cu<span class="hljs-constructor">CtxSetCurrent(&amp;<span class="hljs-params">ctx</span>)</span>;
+  cuCtxSetCurrent(&amp;ctx);
 
-  <span class="hljs-comment">// <span class="hljs-doctag">TODO:</span> some operation</span>
+  <span class="hljs-regexp">//</span> TODO: some operation
 
-  cu<span class="hljs-constructor">CtxSetCurrent(NULL)</span>;
+  cuCtxSetCurrent(NULL);
 
-  <span class="hljs-comment">//</span>
-  <span class="hljs-comment">//  When finished</span>
-  <span class="hljs-comment">//</span>
+  <span class="hljs-regexp">//</span>
+  <span class="hljs-regexp">//</span>  When finished
+  <span class="hljs-regexp">//</span>
 
-  cu<span class="hljs-constructor">DevicePrimaryCtxRelease(<span class="hljs-params">ctx</span>)</span>;
+  cuDevicePrimaryCtxRelease(ctx);
 
 </code></pre><p>Now some more disparate info found in the recesses of Google/Stackoverflow/Nvidia forums</p>
 <ul>
@@ -220,11 +220,11 @@
 <p>I&#39;ll take that second option because I already have all the code required to do this in Erlang in our proprietary workflow engine - a simplified example of the code I&#39;ll write to test my decoder appears below. (Working inside of a mature codebase has its advantages)</p>
 <pre><code class="language-erlang">
   #workflow {
-    generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">"foo.ts"</span>&gt;&gt; },
+    generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">&quot;foo.ts&quot;</span>&gt;&gt; },
     processors = [
       #nvidia_decoder { name = decode, from = { source, ?video_frames_with_stream_id(<span class="hljs-number">256</span>) } },
       #x264_encoder { name = encode, from = decode },
-      #ts_writer { name = write, from = encode, filename  = &lt;&lt;<span class="hljs-string">"out.ts"</span>&gt;&gt; }
+      #ts_writer { name = write, from = encode, filename  = &lt;&lt;<span class="hljs-string">&quot;out.ts&quot;</span>&gt;&gt; }
     ]
   }
 </code></pre>
@@ -293,7 +293,7 @@
 <pre><code class="language-c">
   <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> CUDAAPI <span class="hljs-title">decode_session_handle_video_sequence</span><span class="hljs-params">(<span class="hljs-keyword">void</span> *obj, CUVIDEOFORMAT* pVideoFormat)</span>
   </span>{
-    TRACE(<span class="hljs-string">"handle_video_sequence  \r\n"</span>);
+    TRACE(<span class="hljs-string">&quot;handle_video_sequence  \r\n&quot;</span>);
   }
 </code></pre>
 <p>Each of these callbacks present us with a <em>void\</em> obj<em>, which is the *pUserData</em> passed into the parser parameters on creation, we&#39;re using a struct here containing the parser and parameters, and it makes sense to stash the decoder in this struct too.</p>
@@ -438,19 +438,19 @@
 </code></pre>
 <p>If we wanted this in host memory, we&#39;d do a straight up malloc of (byte_width * byte_height) with a pitch of byte_width, and copy it out this way</p>
 <pre><code>
-  CUDA_MEMCPY2D m = { <span class="hljs-number">0</span> }<span class="hljs-comment">;</span>
-  CUresult cr<span class="hljs-comment">;</span>
+  CUDA_MEMCPY2D <span class="hljs-attr">m</span> = { <span class="hljs-number">0</span> };
+  CUresult cr;
 
-  m.srcMemoryType = CU_MEMORYTYPE_DEVICE<span class="hljs-comment">;</span>
-  m.srcDevice = (CUdeviceptr)srcFrame<span class="hljs-comment">;</span>
-  m.srcPitch = srcPitch<span class="hljs-comment">;</span>
-  m.dstMemoryType = CU_MEMORYTYPE_HOST<span class="hljs-comment">;</span>
-  m.dstHost = (CUdeviceptr)dstFrame<span class="hljs-comment">;</span>
-  m.dstPitch = <span class="hljs-keyword">byte_width;
-</span>  m.WidthInBytes = <span class="hljs-keyword">byte_width;
-</span>  m.Height = <span class="hljs-keyword">byte_height;
-</span>
-  cuMemcpy2D(&amp;m)<span class="hljs-comment">;</span>
+  m.<span class="hljs-attr">srcMemoryType</span> = CU_MEMORYTYPE_DEVICE;
+  m.<span class="hljs-attr">srcDevice</span> = (CUdeviceptr)srcFrame;
+  m.<span class="hljs-attr">srcPitch</span> = srcPitch;
+  m.<span class="hljs-attr">dstMemoryType</span> = CU_MEMORYTYPE_HOST;
+  m.<span class="hljs-attr">dstHost</span> = (CUdeviceptr)dstFrame;
+  m.<span class="hljs-attr">dstPitch</span> = byte_width;
+  m.<span class="hljs-attr">WidthInBytes</span> = byte_width;
+  m.<span class="hljs-attr">Height</span> = byte_height;
+
+  cuMemcpy2D(&amp;m);
 </code></pre><p>That data can then be fired into libx264 along with <em>pDispInfo-&gt;timestamp</em>, encoded and viewed with pleasure. I guess the next post I should  probably talk about CUDA context management before I get to the job of encoding or transforming this data and  maybe it&#39;s worth talking a little about how I&#39;m managing reference counted surfaces between Erlang and C as well as that&#39;s a whole world of fun after this.</p>
 <p>Mundane, but hopefully useful to me or somebody else in the future.</p>
 ]]></description><link>http://codeofrob.com/entries/decoding-h264-with-nvidia.html</link><guid isPermaLink="true">http://codeofrob.com/entries/decoding-h264-with-nvidia.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 12 Nov 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Exploring the NVIDIA code samples and docs]]></title><description><![CDATA[<p>This blog entry is part of my &quot;<a href="/entries/blogging-the-mundane.html">blog about mundane stuff</a>&quot; series.</p>
@@ -484,28 +484,28 @@ Options:
 -o             Output file path
 -outplanar     Convert output to planar format
 -gpu           Ordinal of GPU to use
--crop l,t,r,b  Crop rectangle <span class="hljs-keyword">in</span> left,top,right,bottom (ignored <span class="hljs-keyword">for</span> <span class="hljs-keyword">case</span> <span class="hljs-number">0</span>)
--resize WxH    Resize to dimension W times H (ignored <span class="hljs-keyword">for</span> <span class="hljs-keyword">case</span> <span class="hljs-number">0</span>)
+-crop l,t,r,b  Crop rectangle in left,top,right,bottom (ignored for case 0)
+-resize WxH    Resize to dimension W times H (ignored for case 0)
 
 Decoder Capability
 
-GPU <span class="hljs-keyword">in</span> use: GeForce GTX <span class="hljs-number">1050</span>
-Codec  JPEG   BitDepth  <span class="hljs-number">8</span>   ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">32768</span>  MaxHeight  <span class="hljs-number">16384</span>  MaxMBCount  <span class="hljs-number">67108864</span>  MinWidth  <span class="hljs-number">64</span>   MinHeight  <span class="hljs-number">64</span>   SurfaceFormat  NV12
-Codec  MPEG1  BitDepth  <span class="hljs-number">8</span>   ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">4080</span>   MaxHeight  <span class="hljs-number">4080</span>   MaxMBCount  <span class="hljs-number">65280</span>     MinWidth  <span class="hljs-number">48</span>   MinHeight  <span class="hljs-number">16</span>   SurfaceFormat  NV12
-Codec  MPEG2  BitDepth  <span class="hljs-number">8</span>   ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">4080</span>   MaxHeight  <span class="hljs-number">4080</span>   MaxMBCount  <span class="hljs-number">65280</span>     MinWidth  <span class="hljs-number">48</span>   MinHeight  <span class="hljs-number">16</span>   SurfaceFormat  NV12
-Codec  MPEG4  BitDepth  <span class="hljs-number">8</span>   ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">2032</span>   MaxHeight  <span class="hljs-number">2032</span>   MaxMBCount  <span class="hljs-number">8192</span>      MinWidth  <span class="hljs-number">48</span>   MinHeight  <span class="hljs-number">16</span>   SurfaceFormat  NV12
-Codec  H264   BitDepth  <span class="hljs-number">8</span>   ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">4096</span>   MaxHeight  <span class="hljs-number">4096</span>   MaxMBCount  <span class="hljs-number">65536</span>     MinWidth  <span class="hljs-number">48</span>   MinHeight  <span class="hljs-number">16</span>   SurfaceFormat  NV12
-Codec  HEVC   BitDepth  <span class="hljs-number">8</span>   ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">8192</span>   MaxHeight  <span class="hljs-number">8192</span>   MaxMBCount  <span class="hljs-number">262144</span>    MinWidth  <span class="hljs-number">144</span>  MinHeight  <span class="hljs-number">144</span>  SurfaceFormat  NV12
-Codec  HEVC   BitDepth  <span class="hljs-number">10</span>  ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">8192</span>   MaxHeight  <span class="hljs-number">8192</span>   MaxMBCount  <span class="hljs-number">262144</span>    MinWidth  <span class="hljs-number">144</span>  MinHeight  <span class="hljs-number">144</span>  SurfaceFormat  NV12 P016
-Codec  HEVC   BitDepth  <span class="hljs-number">12</span>  ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">8192</span>   MaxHeight  <span class="hljs-number">8192</span>   MaxMBCount  <span class="hljs-number">262144</span>    MinWidth  <span class="hljs-number">144</span>  MinHeight  <span class="hljs-number">144</span>  SurfaceFormat  NV12 P016
-Codec  HEVC   BitDepth  <span class="hljs-number">8</span>   ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">4</span>:<span class="hljs-number">4</span>  Supported  <span class="hljs-number">0</span>  MaxWidth  <span class="hljs-number">0</span>      MaxHeight  <span class="hljs-number">0</span>      MaxMBCount  <span class="hljs-number">0</span>         MinWidth  <span class="hljs-number">0</span>    MinHeight  <span class="hljs-number">0</span>    SurfaceFormat  N/A
-Codec  HEVC   BitDepth  <span class="hljs-number">10</span>  ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">4</span>:<span class="hljs-number">4</span>  Supported  <span class="hljs-number">0</span>  MaxWidth  <span class="hljs-number">0</span>      MaxHeight  <span class="hljs-number">0</span>      MaxMBCount  <span class="hljs-number">0</span>         MinWidth  <span class="hljs-number">0</span>    MinHeight  <span class="hljs-number">0</span>    SurfaceFormat  N/A
-Codec  HEVC   BitDepth  <span class="hljs-number">12</span>  ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">4</span>:<span class="hljs-number">4</span>  Supported  <span class="hljs-number">0</span>  MaxWidth  <span class="hljs-number">0</span>      MaxHeight  <span class="hljs-number">0</span>      MaxMBCount  <span class="hljs-number">0</span>         MinWidth  <span class="hljs-number">0</span>    MinHeight  <span class="hljs-number">0</span>    SurfaceFormat  N/A
-Codec  VC1    BitDepth  <span class="hljs-number">8</span>   ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">2032</span>   MaxHeight  <span class="hljs-number">2032</span>   MaxMBCount  <span class="hljs-number">8192</span>      MinWidth  <span class="hljs-number">48</span>   MinHeight  <span class="hljs-number">16</span>   SurfaceFormat  NV12
-Codec  VP8    BitDepth  <span class="hljs-number">8</span>   ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">0</span>  MaxWidth  <span class="hljs-number">0</span>      MaxHeight  <span class="hljs-number">0</span>      MaxMBCount  <span class="hljs-number">0</span>         MinWidth  <span class="hljs-number">0</span>    MinHeight  <span class="hljs-number">0</span>    SurfaceFormat  N/A
-Codec  VP9    BitDepth  <span class="hljs-number">8</span>   ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">8192</span>   MaxHeight  <span class="hljs-number">8192</span>   MaxMBCount  <span class="hljs-number">262144</span>    MinWidth  <span class="hljs-number">128</span>  MinHeight  <span class="hljs-number">128</span>  SurfaceFormat  NV12
-Codec  VP9    BitDepth  <span class="hljs-number">10</span>  ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">8192</span>   MaxHeight  <span class="hljs-number">8192</span>   MaxMBCount  <span class="hljs-number">262144</span>    MinWidth  <span class="hljs-number">128</span>  MinHeight  <span class="hljs-number">128</span>  SurfaceFormat  NV12 P016
-Codec  VP9    BitDepth  <span class="hljs-number">12</span>  ChromaFormat  <span class="hljs-number">4</span>:<span class="hljs-number">2</span>:<span class="hljs-number">0</span>  Supported  <span class="hljs-number">1</span>  MaxWidth  <span class="hljs-number">8192</span>   MaxHeight  <span class="hljs-number">8192</span>   MaxMBCount  <span class="hljs-number">262144</span>    MinWidth  <span class="hljs-number">128</span>  MinHeight  <span class="hljs-number">128</span>  SurfaceFormat  NV12 P016
+GPU in use: GeForce GTX 1050
+Codec  JPEG   BitDepth <span class="hljs-number"> 8 </span>  ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 32768 </span> MaxHeight <span class="hljs-number"> 16384 </span> MaxMBCount <span class="hljs-number"> 67108864 </span> MinWidth <span class="hljs-number"> 64 </span>  MinHeight <span class="hljs-number"> 64 </span>  SurfaceFormat  NV12
+Codec  MPEG1  BitDepth <span class="hljs-number"> 8 </span>  ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 4080 </span>  MaxHeight <span class="hljs-number"> 4080 </span>  MaxMBCount <span class="hljs-number"> 65280 </span>    MinWidth <span class="hljs-number"> 48 </span>  MinHeight <span class="hljs-number"> 16 </span>  SurfaceFormat  NV12
+Codec  MPEG2  BitDepth <span class="hljs-number"> 8 </span>  ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 4080 </span>  MaxHeight <span class="hljs-number"> 4080 </span>  MaxMBCount <span class="hljs-number"> 65280 </span>    MinWidth <span class="hljs-number"> 48 </span>  MinHeight <span class="hljs-number"> 16 </span>  SurfaceFormat  NV12
+Codec  MPEG4  BitDepth <span class="hljs-number"> 8 </span>  ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 2032 </span>  MaxHeight <span class="hljs-number"> 2032 </span>  MaxMBCount <span class="hljs-number"> 8192 </span>     MinWidth <span class="hljs-number"> 48 </span>  MinHeight <span class="hljs-number"> 16 </span>  SurfaceFormat  NV12
+Codec  H264   BitDepth <span class="hljs-number"> 8 </span>  ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 4096 </span>  MaxHeight <span class="hljs-number"> 4096 </span>  MaxMBCount <span class="hljs-number"> 65536 </span>    MinWidth <span class="hljs-number"> 48 </span>  MinHeight <span class="hljs-number"> 16 </span>  SurfaceFormat  NV12
+Codec  HEVC   BitDepth <span class="hljs-number"> 8 </span>  ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 8192 </span>  MaxHeight <span class="hljs-number"> 8192 </span>  MaxMBCount <span class="hljs-number"> 262144 </span>   MinWidth <span class="hljs-number"> 144 </span> MinHeight <span class="hljs-number"> 144 </span> SurfaceFormat  NV12
+Codec  HEVC   BitDepth <span class="hljs-number"> 10 </span> ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 8192 </span>  MaxHeight <span class="hljs-number"> 8192 </span>  MaxMBCount <span class="hljs-number"> 262144 </span>   MinWidth <span class="hljs-number"> 144 </span> MinHeight <span class="hljs-number"> 144 </span> SurfaceFormat  NV12 P016
+Codec  HEVC   BitDepth <span class="hljs-number"> 12 </span> ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 8192 </span>  MaxHeight <span class="hljs-number"> 8192 </span>  MaxMBCount <span class="hljs-number"> 262144 </span>   MinWidth <span class="hljs-number"> 144 </span> MinHeight <span class="hljs-number"> 144 </span> SurfaceFormat  NV12 P016
+Codec  HEVC   BitDepth <span class="hljs-number"> 8 </span>  ChromaFormat  4:4:4  Supported <span class="hljs-number"> 0 </span> MaxWidth <span class="hljs-number"> 0 </span>     MaxHeight <span class="hljs-number"> 0 </span>     MaxMBCount <span class="hljs-number"> 0 </span>        MinWidth <span class="hljs-number"> 0 </span>   MinHeight <span class="hljs-number"> 0 </span>   SurfaceFormat  N/A
+Codec  HEVC   BitDepth <span class="hljs-number"> 10 </span> ChromaFormat  4:4:4  Supported <span class="hljs-number"> 0 </span> MaxWidth <span class="hljs-number"> 0 </span>     MaxHeight <span class="hljs-number"> 0 </span>     MaxMBCount <span class="hljs-number"> 0 </span>        MinWidth <span class="hljs-number"> 0 </span>   MinHeight <span class="hljs-number"> 0 </span>   SurfaceFormat  N/A
+Codec  HEVC   BitDepth <span class="hljs-number"> 12 </span> ChromaFormat  4:4:4  Supported <span class="hljs-number"> 0 </span> MaxWidth <span class="hljs-number"> 0 </span>     MaxHeight <span class="hljs-number"> 0 </span>     MaxMBCount <span class="hljs-number"> 0 </span>        MinWidth <span class="hljs-number"> 0 </span>   MinHeight <span class="hljs-number"> 0 </span>   SurfaceFormat  N/A
+Codec  VC1    BitDepth <span class="hljs-number"> 8 </span>  ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 2032 </span>  MaxHeight <span class="hljs-number"> 2032 </span>  MaxMBCount <span class="hljs-number"> 8192 </span>     MinWidth <span class="hljs-number"> 48 </span>  MinHeight <span class="hljs-number"> 16 </span>  SurfaceFormat  NV12
+Codec  VP8    BitDepth <span class="hljs-number"> 8 </span>  ChromaFormat  4:2:0  Supported <span class="hljs-number"> 0 </span> MaxWidth <span class="hljs-number"> 0 </span>     MaxHeight <span class="hljs-number"> 0 </span>     MaxMBCount <span class="hljs-number"> 0 </span>        MinWidth <span class="hljs-number"> 0 </span>   MinHeight <span class="hljs-number"> 0 </span>   SurfaceFormat  N/A
+Codec  VP9    BitDepth <span class="hljs-number"> 8 </span>  ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 8192 </span>  MaxHeight <span class="hljs-number"> 8192 </span>  MaxMBCount <span class="hljs-number"> 262144 </span>   MinWidth <span class="hljs-number"> 128 </span> MinHeight <span class="hljs-number"> 128 </span> SurfaceFormat  NV12
+Codec  VP9    BitDepth <span class="hljs-number"> 10 </span> ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 8192 </span>  MaxHeight <span class="hljs-number"> 8192 </span>  MaxMBCount <span class="hljs-number"> 262144 </span>   MinWidth <span class="hljs-number"> 128 </span> MinHeight <span class="hljs-number"> 128 </span> SurfaceFormat  NV12 P016
+Codec  VP9    BitDepth <span class="hljs-number"> 12 </span> ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 8192 </span>  MaxHeight <span class="hljs-number"> 8192 </span>  MaxMBCount <span class="hljs-number"> 262144 </span>   MinWidth <span class="hljs-number"> 128 </span> MinHeight <span class="hljs-number"> 128 </span> SurfaceFormat  NV12 P016
 </code></pre><p>Honestly it&#39;s kinda impressive how much my nearly three year old laptop is capable of, dedicated hardware decode of 4k HEVC? Sure thing... </p>
 <h1 id="the-sample-code-then">The sample code then</h1>
 <p>The sample code is essentially boils down to a pile of projects under &#39;AppEncode&#39;, &#39;AppDecode&#39;, and &#39;AppTranscode&#39; directories - in theory demonstrating in isolation how to do those tasks, I say in theory because all of the examples are effectively a main(int argc, char** arg) that parse the command line and then spin up the shared code in the NvDecoder/NvEncoder directories.</p>
@@ -524,16 +524,16 @@ Codec  VP9    BitDepth  <span class="hljs-number">12</span>  ChromaFormat  <span
 <p>The first thing I needed to do was update the kernel to latest and survey what the state of Nvidia drivers/etc is in this world having not looked at it for a couple of years. The answer is &#39;in a state of flux&#39; (<em>when isn&#39;t it?</em>), but it looks like we&#39;ve finally got sensible offloading of the GPU built in and in theory we can run an X session off-screen for doing rendering and such on that GPU without draining the battery just because I was silly enough to open vim inside a terminal emulator. </p>
 <p>The support for the encode/decode functionality is built into these drivers in the form of dynamically loaded libraries and they need to be set up properly before anything will work. On Windows this probably just means running an EXE, on MacOS it probably means dragging an icon onto another icon and on Nixos I need configure the drivers with the information of where to find the hardware and how I want it to operate.</p>
 <p>I had been lying to ACPI to get my touchpad working with Nvidia disabled, but now comes the time to tell the truth once more..</p>
-<pre><code>    <span class="hljs-keyword">boot.kernelParams </span>= [ <span class="hljs-string">"acpi_osi=Linux"</span> ]<span class="hljs-comment">;</span></code></pre><p>Hey NVIDIA, this is where my hardware is (located using lspci)</p>
-<pre><code>  hardware.nvidia.prime.nvidiaBusId = <span class="hljs-string">"PCI:1:0:0"</span><span class="hljs-comment">;</span>
-  hardware.nvidia.prime.intelBusId = <span class="hljs-string">"PCI:0:2:0"</span><span class="hljs-comment">;</span></code></pre><p>And I want the official drivers pls, blacklist nouveau - don&#39;t even think about it pal.</p>
-<pre><code>  hardware.nvidia.modesetting.<span class="hljs-attr">enable</span> = <span class="hljs-literal">true</span>;
-  hardware.nvidia.prime.offload.<span class="hljs-attr">enable</span> = <span class="hljs-literal">true</span>;
-  hardware.nvidia.<span class="hljs-attr">nvidiaPersistenced</span> = <span class="hljs-literal">true</span>;
+<pre><code>    <span class="hljs-attr">boot.kernelParams</span> = [ <span class="hljs-string">&quot;acpi_osi=Linux&quot;</span> ]<span class="hljs-comment">;</span></code></pre><p>Hey NVIDIA, this is where my hardware is (located using lspci)</p>
+<pre><code>  <span class="hljs-attr">hardware.nvidia.prime.nvidiaBusId</span> = <span class="hljs-string">&quot;PCI:1:0:0&quot;</span><span class="hljs-comment">;</span>
+  <span class="hljs-attr">hardware.nvidia.prime.intelBusId</span> = <span class="hljs-string">&quot;PCI:0:2:0&quot;</span><span class="hljs-comment">;</span></code></pre><p>And I want the official drivers pls, blacklist nouveau - don&#39;t even think about it pal.</p>
+<pre><code>  <span class="hljs-attr">hardware.nvidia.modesetting.enable</span> = <span class="hljs-literal">true</span><span class="hljs-comment">;</span>
+  <span class="hljs-attr">hardware.nvidia.prime.offload.enable</span> = <span class="hljs-literal">true</span><span class="hljs-comment">;</span>
+  <span class="hljs-attr">hardware.nvidia.nvidiaPersistenced</span> = <span class="hljs-literal">true</span><span class="hljs-comment">;</span>
 
-  services.xserver.<span class="hljs-attr">videoDrivers</span> = [ <span class="hljs-string">"nvidia"</span> ];
-  boot.<span class="hljs-attr">kernelModules</span> = [ <span class="hljs-string">"nvidia-uvm"</span> <span class="hljs-string">"nvidia-drm"</span> ];
-  boot.<span class="hljs-attr">blacklistedKernelModules</span> = [ <span class="hljs-string">"nouveau"</span> ];</code></pre><p>And also the X11 packages for this stuff</p>
+  <span class="hljs-attr">services.xserver.videoDrivers</span> = [ <span class="hljs-string">&quot;nvidia&quot;</span> ]<span class="hljs-comment">;</span>
+  <span class="hljs-attr">boot.kernelModules</span> = [ <span class="hljs-string">&quot;nvidia-uvm&quot;</span> <span class="hljs-string">&quot;nvidia-drm&quot;</span> ]<span class="hljs-comment">;</span>
+  <span class="hljs-attr">boot.blacklistedKernelModules</span> = [ <span class="hljs-string">&quot;nouveau&quot;</span> ]<span class="hljs-comment">;</span></code></pre><p>And also the X11 packages for this stuff</p>
 <pre><code>  environment.systemPackages = with pkgs<span class="hljs-comment">; [</span>
     linuxPackages.nvidia_x11
   ]<span class="hljs-comment">;</span></code></pre><p>And may as well get the opengl stuff set up while we&#39;re here, although it&#39;s not strictly useful for the encodes it&#39;s good for testing the hardware itself.</p>
@@ -554,24 +554,24 @@ Codec  VP9    BitDepth  <span class="hljs-number">12</span>  ChromaFormat  <span
 <p>I don&#39;t tend to install SDKs or even development tools and such in my global environment, it nearly always ends up being the case that I need a different version of something for one project or another and because I&#39;m on Nixos I just use Nix shells for the individual projects and their development requirements <a href="https://purerl-cookbook.readthedocs.io/en/latest/devenv/nix.html">(Something I have written a bit about)</a></p>
 <p>It turns out I just need to add these packages to my environment and I&#39;m good to go, I already have nvidia_x11, but I &#39;add&#39; it again here so I can use it to generate some environment variables later on in the shell.nix so everything lines up.</p>
 <pre><code>
-  cudatoolkit
-  nvidia-video-sdk
-  linuxPackages<span class="hljs-selector-class">.nvidia_x11</span>
+  <span class="hljs-attribute">cudatoolkit</span>
+  <span class="hljs-attribute">nvidia</span>-video-sdk
+  <span class="hljs-attribute">linuxPackages</span>.nvidia_x<span class="hljs-number">11</span>
 </code></pre><p>As a bonus, I also go and add these because it&#39;ll make the code samples build and run properly (and as code samples typically seem to be the main entrance to SDKs like this that&#39;s a helpful thing.</p>
-<pre><code>    <span class="hljs-attribute">cmake</span>
+<pre><code><span class="hljs-code">    cmake
     pkgconfig
     gcc8
     ffmpeg-full
-</code></pre><p>As a further bonus, I go and add <em>gdb</em> to this list because I literally don&#39;t have any development tools on my host OS and I&#39;m bound to cause a few SIGSEGVs over the next couple of weeks that need debugging.</p>
+</span></code></pre><p>As a further bonus, I go and add <em>gdb</em> to this list because I literally don&#39;t have any development tools on my host OS and I&#39;m bound to cause a few SIGSEGVs over the next couple of weeks that need debugging.</p>
 <p>The cuda toolkit doesn&#39;t (at time of writing) work with the modern version of GCC on my OS so I needed to explicitly pull GCC8 and set that in the environment so that when I&#39;m building code with our standard makefiles we&#39;ll do the right thing.</p>
-<pre><code>  shellHook = <span class="hljs-string">''</span>
-    <span class="hljs-built_in">export</span> CUDA_PATH=<span class="hljs-variable">${pkgs.cudatoolkit}</span>
-    <span class="hljs-built_in">export</span> LD_LIBRARY_PATH=<span class="hljs-variable">${pkgs.linuxPackages.nvidia_x11}</span>/lib
-    <span class="hljs-built_in">export</span> EXTRA_LDFLAGS=<span class="hljs-string">"-L/lib -L<span class="hljs-variable">${pkgs.linuxPackages.nvidia_x11}</span>/lib"</span>
-    <span class="hljs-built_in">export</span> EXTRA_CCFLAGS=<span class="hljs-string">"-I/usr/include"</span>
-    <span class="hljs-built_in">export</span> CC=<span class="hljs-variable">${pkgs.gcc8}</span>/bin/gcc
-    <span class="hljs-built_in">export</span> CXX=<span class="hljs-variable">${pkgs.gcc8}</span>/bin/g++
-  <span class="hljs-string">''</span>;</code></pre><p>Anyway, that&#39;s my setup - seeing as I&#39;ve made it to 1000 words already I&#39;ll leave the next post of &quot;exploring the samples, SDK surface area, documentation, etc&quot; to the next one. mundane <em>and</em> wordy, everybody&#39;s favourite.</p>
+<pre><code>  shellHook = <span class="hljs-string">&#x27;&#x27;</span>
+    <span class="hljs-builtin-name">export</span> <span class="hljs-attribute">CUDA_PATH</span>=<span class="hljs-variable">${pkgs.cudatoolkit}</span>
+    <span class="hljs-builtin-name">export</span> <span class="hljs-attribute">LD_LIBRARY_PATH</span>=<span class="hljs-variable">${pkgs.linuxPackages.nvidia_x11}</span>/lib
+    <span class="hljs-builtin-name">export</span> <span class="hljs-attribute">EXTRA_LDFLAGS</span>=<span class="hljs-string">&quot;-L/lib -L<span class="hljs-variable">${pkgs.linuxPackages.nvidia_x11}</span>/lib&quot;</span>
+    <span class="hljs-builtin-name">export</span> <span class="hljs-attribute">EXTRA_CCFLAGS</span>=<span class="hljs-string">&quot;-I/usr/include&quot;</span>
+    <span class="hljs-builtin-name">export</span> <span class="hljs-attribute">CC</span>=<span class="hljs-variable">${pkgs.gcc8}</span>/bin/gcc
+    <span class="hljs-builtin-name">export</span> <span class="hljs-attribute">CXX</span>=<span class="hljs-variable">${pkgs.gcc8}</span>/bin/g++
+  <span class="hljs-string">&#x27;&#x27;</span>;</code></pre><p>Anyway, that&#39;s my setup - seeing as I&#39;ve made it to 1000 words already I&#39;ll leave the next post of &quot;exploring the samples, SDK surface area, documentation, etc&quot; to the next one. mundane <em>and</em> wordy, everybody&#39;s favourite.</p>
 ]]></description><link>http://codeofrob.com/entries/getting-started-with-nvenc.html</link><guid isPermaLink="true">http://codeofrob.com/entries/getting-started-with-nvenc.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 05 Nov 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Blogging the mundane]]></title><description><![CDATA[<p>I was having a chat with a few friends over a glass or two of whisky the other evening (over Google Hangouts or whatever it is called these days) and the subject turned to whether any of us had become lazy about our online output as time had gone on and as we were getting old. (All of us really).</p>
 <p><strong>&quot;Why don&#39;t you blog any more?&quot;</strong></p>
 <p>My own personal answer is quite simply that I don&#39;t think anybody actually cares about anything I do these days, a vanishingly small number of people want to hear about anything to do with Erlang, an even smaller number of people have any interest in Purescript and the intersection of those two subjects doesn&#39;t do very much to increase the number of people willing to click a link with any of this content behind it. It&#39;s somewhat disheartening to write pages upon pages of documentation that nobody is going to care about until it&#39;s gotten so stale it&#39;s now useless. (See also: <a href="https://purerl-cookbook.readthedocs.io/en/latest/">The Purerl Cookbook</a>).</p>
@@ -650,7 +650,7 @@ cool_api:do_something().
 <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">State</span> = {}</span>
 
 <span class="hljs-title">serverName</span> :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span> <span class="hljs-type">Atom</span>
-<span class="hljs-title">serverName</span> = <span class="hljs-type">Local</span> $ atom <span class="hljs-string">"listener"</span>
+<span class="hljs-title">serverName</span> = <span class="hljs-type">Local</span> $ atom <span class="hljs-string">&quot;listener&quot;</span>
 
 <span class="hljs-title">startLink</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
 <span class="hljs-title">startLink</span> =
@@ -706,7 +706,7 @@ cool_api:do_something().
 <span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">Tick</span> | <span class="hljs-type">DoSomething</span> <span class="hljs-type">Atom</span></span>
 
 <span class="hljs-title">serverName</span> :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
-<span class="hljs-title">serverName</span> = <span class="hljs-type">Local</span> $ atom <span class="hljs-string">"listener"</span>
+<span class="hljs-title">serverName</span> = <span class="hljs-type">Local</span> $ atom <span class="hljs-string">&quot;listener&quot;</span>
 
 <span class="hljs-title">startLink</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
 <span class="hljs-title">startLink</span> =
@@ -794,7 +794,7 @@ cool_api:do_something().
 
 <span class="hljs-title">addHandler</span> :: <span class="hljs-type">MessageHandler</span> -&gt; <span class="hljs-type">Process</span> <span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">Pid</span> -&gt; <span class="hljs-type">State</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">State</span>
 <span class="hljs-title">addHandler</span> handler self handlerPid state@{ handlers } = <span class="hljs-keyword">do</span>
-  void $ <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">"Adding handler ~p as it has connected"</span> handlerPid
+  void $ <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">&quot;Adding handler ~p as it has connected&quot;</span> handlerPid
   void $ <span class="hljs-type">Monitor</span>.pid handlerPid (\_ -&gt; self ! <span class="hljs-type">ClientDisconnected</span> handlerPid)
   pure $ state { handlers = <span class="hljs-type">Map</span>.insert handlerPid handler handlers }
 </code></pre>
@@ -808,7 +808,7 @@ cool_api:do_something().
 <span class="hljs-title">handleInfo</span> msg state@{ handlers  } = <span class="hljs-keyword">do</span>
   <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span>
      <span class="hljs-type">ClientDisconnected</span> handlerPid -&gt; <span class="hljs-keyword">do</span>
-        void $ <span class="hljs-type">Gen</span>.lift $ <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">"Removing ~p as it disconnected"</span> handlerPid
+        void $ <span class="hljs-type">Gen</span>.lift $ <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">&quot;Removing ~p as it disconnected&quot;</span> handlerPid
         pure $ <span class="hljs-type">CastNoReply</span> $ state { handlers = <span class="hljs-type">Map</span>.delete handlerPid handlers }
      <span class="hljs-type">Tick</span> -&gt; <span class="hljs-keyword">do</span>
         <span class="hljs-type">Gen</span>.lift $ sendData handlers
@@ -942,7 +942,7 @@ cool_api:do_something().
           _ &lt;- streamBody (stringToBinary $ writeJSON msg) req
           pure $ <span class="hljs-type">LoopOk</span> req state)
     <span class="hljs-keyword">where</span>
-          streamEvents = tuple2 <span class="hljs-string">"application/json"</span> (\req state -&gt; <span class="hljs-keyword">do</span>
+          streamEvents = tuple2 <span class="hljs-string">&quot;application/json&quot;</span> (\req state -&gt; <span class="hljs-keyword">do</span>
                          req2 &lt;- streamReply (<span class="hljs-type">StatusCode</span> <span class="hljs-number">200</span>) <span class="hljs-type">Map</span>.empty req
                          <span class="hljs-type">Rest</span>.switchHandler <span class="hljs-type">LoopHandler</span> req2 state)
 </code></pre>
@@ -1028,7 +1028,7 @@ cool_api:do_something().
   }</span>
 
   serverName :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
-  serverName = <span class="hljs-type">Local</span> $ atom <span class="hljs-string">"my_server"</span>
+  serverName = <span class="hljs-type">Local</span> $ atom <span class="hljs-string">&quot;my_server&quot;</span>
 
   startLink :: <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
   startLink = <span class="hljs-type">Gen</span>.startLink init handleInfo
@@ -1077,7 +1077,7 @@ cool_api:do_something().
     <span class="hljs-keyword">if</span>
       Self =:= Pid -&gt; Self;
       <span class="hljs-literal">true</span> -&gt;
-        exit(Self, {error, &lt;&lt;<span class="hljs-string">"Gen.self was called from an external process, this is not allowed"</span>&gt;&gt;})
+        exit(Self, {error, &lt;&lt;<span class="hljs-string">&quot;Gen.self was called from an external process, this is not allowed&quot;</span>&gt;&gt;})
     <span class="hljs-keyword">end</span>
   <span class="hljs-keyword">end</span>.
 
@@ -1124,7 +1124,7 @@ cool_api:do_something().
 <span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">BookMsg</span> <span class="hljs-type">BookEvent</span> </span>
 
 <span class="hljs-title">serverName</span> :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
-<span class="hljs-title">serverName</span> = <span class="hljs-type">Local</span> $ atom <span class="hljs-string">"handle_info_example"</span>
+<span class="hljs-title">serverName</span> = <span class="hljs-type">Local</span> $ atom <span class="hljs-string">&quot;handle_info_example&quot;</span>
 
 <span class="hljs-title">startLink</span> :: <span class="hljs-type">BookWatchingStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
 <span class="hljs-title">startLink</span> args =
@@ -1146,13 +1146,13 @@ cool_api:do_something().
 <span class="hljs-title">handleBookEvent</span> ev state =
   <span class="hljs-keyword">case</span> ev <span class="hljs-keyword">of</span>
     <span class="hljs-type">BookCreated</span> isbn -&gt; <span class="hljs-keyword">do</span>
-      _ &lt;- <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">"Book created ~p"</span> isbn
+      _ &lt;- <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">&quot;Book created ~p&quot;</span> isbn
       pure $ <span class="hljs-type">CastNoReply</span> state
     <span class="hljs-type">BookDeleted</span> isbn -&gt; <span class="hljs-keyword">do</span>
-      _ &lt;- <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">"Book deleted ~p"</span> isbn
+      _ &lt;- <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">&quot;Book deleted ~p&quot;</span> isbn
       pure $ <span class="hljs-type">CastNoReply</span> state
     <span class="hljs-type">BookUpdated</span> isbn -&gt; <span class="hljs-keyword">do</span>
-      _ &lt;- <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">"Book updated ~p"</span> isbn
+      _ &lt;- <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">&quot;Book updated ~p&quot;</span> isbn
       pure $ <span class="hljs-type">CastNoReply</span> state
 </code></pre>
 <p>I&#39;ll insert another item to the list of &#39;new things&#39; to the bullet points currently being traversed as my next post will be about the corresponding message handling implementation in <a href="https://github.com/id3as/purescript-erl-stetson">Stetson</a>, which unsurprisingly uses the State monad to improve our lives there as well. Once you learn how to use a hammer, everything looks like a nail I guess.</p>

@@ -18,30 +18,30 @@
 <pre><code>Add        Addition                /Products?<span class="hljs-symbol">$</span>filter=Price add <span class="hljs-number">5</span> <span class="hljs-keyword">gt</span> <span class="hljs-number">10</span>
 Sub        Subtraction             /Products?<span class="hljs-symbol">$</span>filter=Price sub <span class="hljs-number">5</span> <span class="hljs-keyword">gt</span> <span class="hljs-number">10</span>
 Mul        Multiplication          /Products?<span class="hljs-symbol">$</span>filter=Price mul <span class="hljs-number">2</span> <span class="hljs-keyword">gt</span> <span class="hljs-number">2000</span>
-<span class="hljs-built-in">Div</span>        Division                /Products?<span class="hljs-symbol">$</span>filter=Price <span class="hljs-built-in">div</span> <span class="hljs-number">2</span> <span class="hljs-keyword">gt</span> <span class="hljs-number">4</span>
-<span class="hljs-built-in">Mod</span>        Modulo                  /Products?<span class="hljs-symbol">$</span>filter=Price <span class="hljs-built-in">mod</span> <span class="hljs-number">2</span> <span class="hljs-keyword">eq</span> <span class="hljs-number">0</span></code></pre><p>Ah yes,</p>
+<span class="hljs-built_in">Div</span>        Division                /Products?<span class="hljs-symbol">$</span>filter=Price <span class="hljs-built_in">div</span> <span class="hljs-number">2</span> <span class="hljs-keyword">gt</span> <span class="hljs-number">4</span>
+<span class="hljs-built_in">Mod</span>        Modulo                  /Products?<span class="hljs-symbol">$</span>filter=Price <span class="hljs-built_in">mod</span> <span class="hljs-number">2</span> <span class="hljs-keyword">eq</span> <span class="hljs-number">0</span></code></pre><p>Ah yes,</p>
 <p>Now, these are all the same, but operator precedence is important so the order in which we want to go through them is:</p>
 <ul>
 <li>Add/Sub</li>
 <li>Mul/Div/Mod</li>
 </ul>
 <p>This is very similar to how we implemented And/Or although I&#39;ll write a few tests to make sure I get it right.</p>
-<pre><code>test(<span class="hljs-string">"/some/resource?$filterby=Price add 5 gt 10"</span>, <span class="hljs-string">"OData"</span>, function(<span class="hljs-name">result</span>) {
+<pre><code><span class="hljs-function"><span class="hljs-title">test</span><span class="hljs-params">(<span class="hljs-string">&quot;/some/resource?$filterby=Price add 5 gt 10&quot;</span>, <span class="hljs-string">&quot;OData&quot;</span>, function(result)</span></span> {
 
-  it(<span class="hljs-string">"A filter should be present"</span>, function() {
-     assert.notEqual(<span class="hljs-name">result</span>.options.$filterby, null)
+  it(<span class="hljs-string">&quot;A filter should be present&quot;</span>, function() {
+     assert<span class="hljs-selector-class">.notEqual</span>(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$filterby</span>, null)
   })
-  it(<span class="hljs-string">"Filter should be an instance of 'gt'"</span>, function() {
-     assert.equal(<span class="hljs-name">result</span>.options.$filterby[<span class="hljs-number">0</span>], <span class="hljs-string">"gt"</span>)
+  it(<span class="hljs-string">&quot;Filter should be an instance of &#x27;gt&#x27;&quot;</span>, function() {
+     assert<span class="hljs-selector-class">.equal</span>(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$filterby</span><span class="hljs-selector-attr">[0]</span>, <span class="hljs-string">&quot;gt&quot;</span>)
   })
-  it(<span class="hljs-string">"lhr should be Price add 5"</span>, function() {
-     var rhs = result.options.$filterby[<span class="hljs-number">1</span>] 
-     assert.equal(<span class="hljs-name">rhs</span>[<span class="hljs-number">0</span>], <span class="hljs-string">"add"</span>)
-     assert.equal(<span class="hljs-name">rhs</span>[<span class="hljs-number">1</span>].name, <span class="hljs-string">"Price"</span>)
-     assert.equal(<span class="hljs-name">rhs</span>[<span class="hljs-number">2</span>], <span class="hljs-number">5</span>)
+  it(<span class="hljs-string">&quot;lhr should be Price add 5&quot;</span>, function() {
+     <span class="hljs-selector-tag">var</span> rhs = result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$filterby</span><span class="hljs-selector-attr">[1]</span> 
+     assert<span class="hljs-selector-class">.equal</span>(rhs<span class="hljs-selector-attr">[0]</span>, <span class="hljs-string">&quot;add&quot;</span>)
+     assert<span class="hljs-selector-class">.equal</span>(rhs<span class="hljs-selector-attr">[1]</span><span class="hljs-selector-class">.name</span>, <span class="hljs-string">&quot;Price&quot;</span>)
+     assert<span class="hljs-selector-class">.equal</span>(rhs<span class="hljs-selector-attr">[2]</span>, <span class="hljs-number">5</span>)
   })
-  it(<span class="hljs-string">"rhr should be 10"</span>, function() {
-     assert.equal(<span class="hljs-name">result</span>.options.$filterby[<span class="hljs-number">2</span>], <span class="hljs-number">10</span>)
+  it(<span class="hljs-string">&quot;rhr should be 10&quot;</span>, function() {
+     assert<span class="hljs-selector-class">.equal</span>(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$filterby</span><span class="hljs-selector-attr">[2]</span>, <span class="hljs-number">10</span>)
   })
 })</code></pre><p>This tells us that our &#39;add&#39; operator has higher precedence than the comparisons (which makes sense). This&#39;ll mean we want to sneak it in somewhere after those comparisons. (Assuming in this scheme that And/Or have a higher precedence than add, and it seems to be that way)</p>
 <pre><code>FilterLogicalExpression =
@@ -60,28 +60,28 @@ FilterAddExpression =
 FilterAddOperand =
   spaces
   (
-    seq(<span class="hljs-string">"add"</span>)
-  | seq(<span class="hljs-string">"sub"</span>)
+    seq(<span class="hljs-string">&quot;add&quot;</span>)
+  | seq(<span class="hljs-string">&quot;sub&quot;</span>)
   ):<span class="hljs-built_in">op</span> 
   spaces -&gt; <span class="hljs-built_in">op</span>
 ,</code></pre><p>Simples, we insert it in the pipeline between &quot;LogicalExpression&quot; and &quot;Checking the value&quot; (Literal values have the highest precedence because they don&#39;t require any work)</p>
 <p>And because Mul/etc have a higher precedence than Add, this exactly the same</p>
-<pre><code>test(<span class="hljs-string">"/some/resource?$filterby=Price mul 5 gt 10"</span>, <span class="hljs-string">"OData"</span>, function(<span class="hljs-name">result</span>) {
+<pre><code><span class="hljs-function"><span class="hljs-title">test</span><span class="hljs-params">(<span class="hljs-string">&quot;/some/resource?$filterby=Price mul 5 gt 10&quot;</span>, <span class="hljs-string">&quot;OData&quot;</span>, function(result)</span></span> {
 
-  it(<span class="hljs-string">"A filter should be present"</span>, function() {
-     assert.notEqual(<span class="hljs-name">result</span>.options.$filterby, null)
+  it(<span class="hljs-string">&quot;A filter should be present&quot;</span>, function() {
+     assert<span class="hljs-selector-class">.notEqual</span>(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$filterby</span>, null)
   })
-  it(<span class="hljs-string">"Filter should be an instance of 'gt'"</span>, function() {
-     assert.equal(<span class="hljs-name">result</span>.options.$filterby[<span class="hljs-number">0</span>], <span class="hljs-string">"gt"</span>)
+  it(<span class="hljs-string">&quot;Filter should be an instance of &#x27;gt&#x27;&quot;</span>, function() {
+     assert<span class="hljs-selector-class">.equal</span>(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$filterby</span><span class="hljs-selector-attr">[0]</span>, <span class="hljs-string">&quot;gt&quot;</span>)
   })
-  it(<span class="hljs-string">"lhr should be Price add 5"</span>, function() {
-     var lhs = result.options.$filterby[<span class="hljs-number">1</span>] 
-     assert.equal(<span class="hljs-name">lhs</span>[<span class="hljs-number">0</span>], <span class="hljs-string">"mul"</span>)
-     assert.equal(<span class="hljs-name">lhs</span>[<span class="hljs-number">1</span>].name, <span class="hljs-string">"Price"</span>)
-     assert.equal(<span class="hljs-name">lhs</span>[<span class="hljs-number">2</span>], <span class="hljs-number">5</span>)
+  it(<span class="hljs-string">&quot;lhr should be Price add 5&quot;</span>, function() {
+     <span class="hljs-selector-tag">var</span> lhs = result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$filterby</span><span class="hljs-selector-attr">[1]</span> 
+     assert<span class="hljs-selector-class">.equal</span>(lhs<span class="hljs-selector-attr">[0]</span>, <span class="hljs-string">&quot;mul&quot;</span>)
+     assert<span class="hljs-selector-class">.equal</span>(lhs<span class="hljs-selector-attr">[1]</span><span class="hljs-selector-class">.name</span>, <span class="hljs-string">&quot;Price&quot;</span>)
+     assert<span class="hljs-selector-class">.equal</span>(lhs<span class="hljs-selector-attr">[2]</span>, <span class="hljs-number">5</span>)
   })
-  it(<span class="hljs-string">"rhr should be 10"</span>, function() {
-     assert.equal(<span class="hljs-name">result</span>.options.$filterby[<span class="hljs-number">2</span>], <span class="hljs-number">10</span>)
+  it(<span class="hljs-string">&quot;rhr should be 10&quot;</span>, function() {
+     assert<span class="hljs-selector-class">.equal</span>(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$filterby</span><span class="hljs-selector-attr">[2]</span>, <span class="hljs-number">10</span>)
   })
 })</code></pre><p>Like so</p>
 <pre><code>FilterAddExpression =
@@ -100,67 +100,67 @@ FilterMulExpression =
 <pre><code>FilterMulOperand =
   spaces
   (
-    se<span class="hljs-string">q("mul")</span>
-  | se<span class="hljs-string">q("div")</span>
-  | se<span class="hljs-string">q("mod")</span>
+    se<span class="hljs-string">q(&quot;mul&quot;)</span>
+  | se<span class="hljs-string">q(&quot;div&quot;)</span>
+  | se<span class="hljs-string">q(&quot;mod&quot;)</span>
   ):op 
   spaces -&gt; op
 ,</code></pre><p>Like I have been doing, or when I write the following test, it will fail.</p>
-<pre><code>test(<span class="hljs-string">"/some/resource?$filterby=Price div Price mul 5 gt 10"</span>, <span class="hljs-string">"OData"</span>, function(<span class="hljs-name">result</span>) {
-    console.log(<span class="hljs-name">JSON</span>.stringify(<span class="hljs-name">result</span>))
+<pre><code><span class="hljs-function"><span class="hljs-title">test</span><span class="hljs-params">(<span class="hljs-string">&quot;/some/resource?$filterby=Price div Price mul 5 gt 10&quot;</span>, <span class="hljs-string">&quot;OData&quot;</span>, function(result)</span></span> {
+    console<span class="hljs-selector-class">.log</span>(JSON<span class="hljs-selector-class">.stringify</span>(result))
 
-  it(<span class="hljs-string">"A filter should be present"</span>, function() {
-     assert.notEqual(<span class="hljs-name">result</span>.options.$filterby, null)
+  it(<span class="hljs-string">&quot;A filter should be present&quot;</span>, function() {
+     assert<span class="hljs-selector-class">.notEqual</span>(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$filterby</span>, null)
   })
-  it(<span class="hljs-string">"Filter should be an instance of 'gt'"</span>, function() {
-     assert.equal(<span class="hljs-name">result</span>.options.$filterby[<span class="hljs-number">0</span>], <span class="hljs-string">"gt"</span>)
+  it(<span class="hljs-string">&quot;Filter should be an instance of &#x27;gt&#x27;&quot;</span>, function() {
+     assert<span class="hljs-selector-class">.equal</span>(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$filterby</span><span class="hljs-selector-attr">[0]</span>, <span class="hljs-string">&quot;gt&quot;</span>)
   })
-  var lexpr = result.options.$filterby[<span class="hljs-number">1</span>] 
+  <span class="hljs-selector-tag">var</span> lexpr = result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$filterby</span><span class="hljs-selector-attr">[1]</span> 
 
-  it(<span class="hljs-string">"should be Price div {expr}"</span>, function() {
-    assert.equal(<span class="hljs-name">lexpr</span>[<span class="hljs-number">0</span>], <span class="hljs-string">"div"</span>)
-    assert.equal(<span class="hljs-name">lexpr</span>[<span class="hljs-number">1</span>].name, <span class="hljs-string">"Price"</span>)
-  })
-
-  it(<span class="hljs-string">"should be Price mul 5"</span>, function() {
-    assert.equal(<span class="hljs-name">lexpr</span>[<span class="hljs-number">2</span>][<span class="hljs-number">0</span>], <span class="hljs-string">"mul"</span>)
-    assert.equal(<span class="hljs-name">lexpr</span>[<span class="hljs-number">2</span>][<span class="hljs-number">1</span>].name, <span class="hljs-string">"Price"</span>)
-    assert.equal(<span class="hljs-name">lexpr</span>[<span class="hljs-number">2</span>][<span class="hljs-number">2</span>], <span class="hljs-number">5</span>)
+  it(<span class="hljs-string">&quot;should be Price div {expr}&quot;</span>, function() {
+    assert<span class="hljs-selector-class">.equal</span>(lexpr<span class="hljs-selector-attr">[0]</span>, <span class="hljs-string">&quot;div&quot;</span>)
+    assert<span class="hljs-selector-class">.equal</span>(lexpr<span class="hljs-selector-attr">[1]</span><span class="hljs-selector-class">.name</span>, <span class="hljs-string">&quot;Price&quot;</span>)
   })
 
-  it(<span class="hljs-string">"rhr should be 10"</span>, function() {
-     assert.equal(<span class="hljs-name">result</span>.options.$filterby[<span class="hljs-number">2</span>], <span class="hljs-number">10</span>)
+  it(<span class="hljs-string">&quot;should be Price mul 5&quot;</span>, function() {
+    assert<span class="hljs-selector-class">.equal</span>(lexpr<span class="hljs-selector-attr">[2]</span><span class="hljs-selector-attr">[0]</span>, <span class="hljs-string">&quot;mul&quot;</span>)
+    assert<span class="hljs-selector-class">.equal</span>(lexpr<span class="hljs-selector-attr">[2]</span><span class="hljs-selector-attr">[1]</span><span class="hljs-selector-class">.name</span>, <span class="hljs-string">&quot;Price&quot;</span>)
+    assert<span class="hljs-selector-class">.equal</span>(lexpr<span class="hljs-selector-attr">[2]</span><span class="hljs-selector-attr">[2]</span>, <span class="hljs-number">5</span>)
+  })
+
+  it(<span class="hljs-string">&quot;rhr should be 10&quot;</span>, function() {
+     assert<span class="hljs-selector-class">.equal</span>(result<span class="hljs-selector-class">.options</span>.<span class="hljs-variable">$filterby</span><span class="hljs-selector-attr">[2]</span>, <span class="hljs-number">10</span>)
   })
 })</code></pre><p>What will happen here is we&#39;ll get</p>
 <pre><code>[
-  <span class="hljs-symbol">'gt</span>',
+  <span class="hljs-symbol">&#x27;gt</span>&#x27;,
   [
-    <span class="hljs-symbol">'mul</span>',
+    <span class="hljs-symbol">&#x27;mul</span>&#x27;,
     [
-      <span class="hljs-symbol">'div</span>', <span class="hljs-symbol">'Price</span>', <span class="hljs-symbol">'Price</span>'
+      <span class="hljs-symbol">&#x27;div</span>&#x27;, <span class="hljs-symbol">&#x27;Price</span>&#x27;, <span class="hljs-symbol">&#x27;Price</span>&#x27;
     ],
     <span class="hljs-number">5</span>
   ],
   <span class="hljs-number">10</span>
 ]</code></pre><p>When what we clearly want is</p>
 <pre><code>[
-  <span class="hljs-symbol">'gt</span>',
+  <span class="hljs-symbol">&#x27;gt</span>&#x27;,
   [
-    <span class="hljs-symbol">'div</span>',
-    <span class="hljs-symbol">'Price</span>',
+    <span class="hljs-symbol">&#x27;div</span>&#x27;,
+    <span class="hljs-symbol">&#x27;Price</span>&#x27;,
     [
-      <span class="hljs-symbol">'mul</span>', <span class="hljs-symbol">'Price</span>', <span class="hljs-symbol">'5</span>'
+      <span class="hljs-symbol">&#x27;mul</span>&#x27;, <span class="hljs-symbol">&#x27;Price</span>&#x27;, <span class="hljs-symbol">&#x27;5</span>&#x27;
     ]
   ],
   <span class="hljs-number">10</span>
 ]</code></pre><p>Or if you like</p>
-<pre><code>( (price / price) * <span class="hljs-number">5</span> ) &gt; <span class="hljs-number">10</span></code></pre><p>Instead of</p>
-<pre><code>( Price / (price * <span class="hljs-number">5</span>)  ) &gt; <span class="hljs-number">10</span></code></pre><p>Which is a little bit different to say the least!</p>
+<pre><code>( (<span class="hljs-built_in">price</span> / <span class="hljs-built_in">price</span>) * <span class="hljs-number">5</span> ) &gt; <span class="hljs-number">10</span></code></pre><p>Instead of</p>
+<pre><code>( <span class="hljs-built_in">Price</span> / (<span class="hljs-built_in">price</span> * <span class="hljs-number">5</span>)  ) &gt; <span class="hljs-number">10</span></code></pre><p>Which is a little bit different to say the least!</p>
 <p>So, explicit operation order is what we want, and here is how get it:</p>
 <p><strong>One massively explicit set of operator precedences...</strong></p>
 <pre><code>FilterByOption = 
-  se<span class="hljs-string">q("$filterby=")</span>
-  FilterByExpression:expr -&gt; { name: <span class="hljs-string">"$filterby"</span>, value: expr }
+  se<span class="hljs-string">q(&quot;$filterby=&quot;)</span>
+  FilterByExpression:expr -&gt; { name: <span class="hljs-string">&quot;$filterby&quot;</span>, value: expr }
 ,
 
 FilterByExpression =
@@ -180,35 +180,35 @@ FilterByExpression =
 ,</code></pre><p><em>Then we descend through our mathematical operators in reverse precedence order</em></p>
 <pre><code>FilterSubExpression =
   FilterSubExpression:lhs
-  spaces se<span class="hljs-string">q("sub")</span> spaces
-  FilterAddExpression:rhs -&gt; [ <span class="hljs-string">"sub"</span>, lhs, rhs ]
+  spaces se<span class="hljs-string">q(&quot;sub&quot;)</span> spaces
+  FilterAddExpression:rhs -&gt; [ <span class="hljs-string">&quot;sub&quot;</span>, lhs, rhs ]
 | FilterAddExpression
 ,
 
 FilterAddExpression =
   FilterAddExpression:lhs
-  spaces se<span class="hljs-string">q("add")</span> spaces
-  FilterModExpression:rhs -&gt; [ <span class="hljs-string">"add"</span>, lhs, rhs ]
+  spaces se<span class="hljs-string">q(&quot;add&quot;)</span> spaces
+  FilterModExpression:rhs -&gt; [ <span class="hljs-string">&quot;add&quot;</span>, lhs, rhs ]
 | FilterModExpression
 ,
 
 FilterModExpression =
   FilterModExpression:lhs
-  spaces se<span class="hljs-string">q("mod")</span> spaces
-  FilterDivExpression:rhs -&gt; [ <span class="hljs-string">"mod"</span>, lhs, rhs ]
+  spaces se<span class="hljs-string">q(&quot;mod&quot;)</span> spaces
+  FilterDivExpression:rhs -&gt; [ <span class="hljs-string">&quot;mod&quot;</span>, lhs, rhs ]
 | FilterDivExpression
 ,
 FilterDivExpression =
   FilterDivExpression:lhs
-  spaces se<span class="hljs-string">q("div")</span> spaces
-  FilterMulExpression:rhs -&gt; [ <span class="hljs-string">"div"</span>, lhs, rhs ]
+  spaces se<span class="hljs-string">q(&quot;div&quot;)</span> spaces
+  FilterMulExpression:rhs -&gt; [ <span class="hljs-string">&quot;div&quot;</span>, lhs, rhs ]
 | FilterMulExpression
 ,
 
 FilterMulExpression =
   FilterMulExpression:lhs
-  spaces se<span class="hljs-string">q("mul")</span> spaces
-  FilterByValue:rhs -&gt; [ <span class="hljs-string">"mul"</span>, lhs, rhs ]
+  spaces se<span class="hljs-string">q(&quot;mul&quot;)</span> spaces
+  FilterByValue:rhs -&gt; [ <span class="hljs-string">&quot;mul&quot;</span>, lhs, rhs ]
 | FilterByValue
 ,
 
@@ -221,10 +221,10 @@ FilterByValue =
 
 FilterNegateExpression = 
   spaces
-  se<span class="hljs-string">q("not")</span>
+  se<span class="hljs-string">q(&quot;not&quot;)</span>
   spaces
   (
     FilterByValue
-  | <span class="hljs-string">'('</span> spaces FilterByExpression:expr spaces <span class="hljs-string">')'</span> -&gt; expr
-  ):value -&gt;  [ <span class="hljs-string">"not"</span>, value ]
+  | <span class="hljs-string">&#x27;(&#x27;</span> spaces FilterByExpression:expr spaces <span class="hljs-string">&#x27;)&#x27;</span> -&gt; expr
+  ):value -&gt;  [ <span class="hljs-string">&quot;not&quot;</span>, value ]
 ,</code></pre><p>How cool is that??!!? That&#39;s pretty much the whole shebang wrapped up as far as expressing parsing goes, and now I can go trigger mad with nested and/or/sub/mul/etc - with the exception of the precedence operators which I&#39;ll add next!</p>

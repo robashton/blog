@@ -54,17 +54,17 @@
     <span class="hljs-class"><span class="hljs-keyword">newtype</span> <span class="hljs-type">State</span> = <span class="hljs-type">State</span> {}</span>
 
     startLink :: <span class="hljs-type">EffectFn1</span> <span class="hljs-type">String</span> <span class="hljs-type">GenServer</span>.<span class="hljs-type">StartLinkResult</span>  
-    startLink = <span class="hljs-type">GenServer</span>.startLink (tuple2 (atom <span class="hljs-string">"local"</span>) (atom <span class="hljs-string">"testServer"</span>)) (atom <span class="hljs-string">"testServer@ps"</span>)
+    startLink = <span class="hljs-type">GenServer</span>.startLink (tuple2 (atom <span class="hljs-string">&quot;local&quot;</span>) (atom <span class="hljs-string">&quot;testServer&quot;</span>)) (atom <span class="hljs-string">&quot;testServer@ps&quot;</span>)
 
     init :: <span class="hljs-type">EffectFn1</span> <span class="hljs-type">String</span> (<span class="hljs-type">Tuple2</span> <span class="hljs-type">Atom</span> <span class="hljs-type">State</span>)
     init = mkEffectFn1 \args -&gt;  <span class="hljs-keyword">do</span>
-      _ &lt;- log $ <span class="hljs-string">"Gen server started with args: "</span> &lt;&gt; args
-      pure $ tuple2 (atom <span class="hljs-string">"ok"</span>) (<span class="hljs-type">State</span> {})
+      _ &lt;- log $ <span class="hljs-string">&quot;Gen server started with args: &quot;</span> &lt;&gt; args
+      pure $ tuple2 (atom <span class="hljs-string">&quot;ok&quot;</span>) (<span class="hljs-type">State</span> {})
 </code></pre>
 <p>In this case, we&#39;ve decided our start args are a string and we&#39;ll just log that out on startup, and we return a newtype with a record containing our gen server state from the init function, and of course we can just plug this into a standard Erlang supervision tree and we&#39;ll end up with a gen server running which if sent any messages will simply crash :).</p>
 <pre><code class="language-erlang">
     init([]) -&gt;
-        {ok, { {one_for_all, <span class="hljs-number">0</span>, <span class="hljs-number">1</span>}, [ #{ start =&gt; { testServer@ps, startLink, [&lt;&lt;<span class="hljs-string">"Your args"</span>&gt;&gt;] },
+        {ok, { {one_for_all, <span class="hljs-number">0</span>, <span class="hljs-number">1</span>}, [ #{ start =&gt; { testServer@ps, startLink, [&lt;&lt;<span class="hljs-string">&quot;Your args&quot;</span>&gt;&gt;] },
                                          type =&gt; worker,
                                          id =&gt; test_server
                                        }

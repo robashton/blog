@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -99,7 +100,7 @@
 <pre><code class="language-erlang">
    { ok, C } = eredis:start_link(ConnectionString),
 
-   eredis:q(C, [ &lt;&lt;<span class="hljs-string">"SET"</span>&gt;&gt;, &lt;&lt;<span class="hljs-string">"key"</span>&gt;&gt;, &lt;&lt;<span class="hljs-string">"value"</span>&gt;&gt; ]).
+   eredis:q(C, [ &lt;&lt;<span class="hljs-string">&quot;SET&quot;</span>&gt;&gt;, &lt;&lt;<span class="hljs-string">&quot;key&quot;</span>&gt;&gt;, &lt;&lt;<span class="hljs-string">&quot;value&quot;</span>&gt;&gt; ]).
 </code></pre>
 <p>So what we want to do is surface this meaningfully to Purescript is define some foreign imports in our <em>Redis.purs</em>, which map onto their native counterparts in our <em>Redis.erl.</em></p>
 <pre><code class="language-haskell">
@@ -144,11 +145,11 @@
 </code></pre>
 <p>Purescript knows how to turn our obj into JSON so we&#39;ll do that there, and then use a foreign function that takes just the primitive objects for use within Erlang with eredis.</p>
 <pre><code class="language-erlang">
-<span class="hljs-keyword">-define</span><span class="hljs-params">(SET(Key, Value)</span>, [ &lt;&lt;"SET"&gt;&gt;, Key, Value ]).
+<span class="hljs-keyword">-define</span><span class="hljs-params">(SET(Key, Value)</span>, [ &lt;&lt;&quot;SET&quot;&gt;&gt;, Key, Value ]).
 
 <span class="hljs-function"><span class="hljs-title">put_</span><span class="hljs-params">(Id, Data, Pid)</span> -&gt;</span>
   <span class="hljs-keyword">fun</span>() -&gt;
-      { ok, &lt;&lt;<span class="hljs-string">"OK"</span>&gt;&gt;} = eredis:q(Pid, ?SET(Id, Data)),
+      { ok, &lt;&lt;<span class="hljs-string">&quot;OK&quot;</span>&gt;&gt;} = eredis:q(Pid, ?SET(Id, Data)),
       ok
   <span class="hljs-keyword">end</span>.
 </code></pre>

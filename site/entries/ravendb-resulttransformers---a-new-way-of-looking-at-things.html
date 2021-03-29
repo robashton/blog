@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -93,47 +94,47 @@
                         }
          }
     }</code></pre><p>How about defining it separately like this?</p>
-<pre><code>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-symbol">Ponies</span> : <span class="hljs-symbol">AbstractIndexCreationTask</span>&lt;<span class="hljs-symbol">Pony</span>&gt;
+<pre><code>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">Ponies</span> : <span class="hljs-title">AbstractIndexCreationTask</span>&lt;<span class="hljs-title">Pony</span>&gt;
     {
-         <span class="hljs-keyword">public</span> Ponies()
+         <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">Ponies</span>(<span class="hljs-params"></span>)</span>
          {
               Map = ponies =&gt;
             <span class="hljs-keyword">from</span> pony <span class="hljs-keyword">in</span> ponies
-                            select new {
+                            <span class="hljs-keyword">select</span> <span class="hljs-keyword">new</span> {
                                 pony.Name,
                                 pony.Colour,
                                 pony.Trampstamp
                             }
          }
     }</code></pre><p>And</p>
-<pre><code><span class="hljs-built_in">public</span> <span class="hljs-keyword">class</span> PonyWithPetViewModel 
+<pre><code><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">PonyWithPetViewModel</span> 
     {
-        <span class="hljs-built_in">public</span> string PonyId { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }
-        <span class="hljs-built_in">public</span> string <span class="hljs-type">Name</span> { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }
-        <span class="hljs-built_in">public</span> string PetName { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }
-        <span class="hljs-built_in">public</span> string PetSpecies { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }
+        <span class="hljs-keyword">public</span> <span class="hljs-built_in">string</span> PonyId { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }
+        <span class="hljs-keyword">public</span> <span class="hljs-built_in">string</span> Name { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }
+        <span class="hljs-keyword">public</span> <span class="hljs-built_in">string</span> PetName { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }
+        <span class="hljs-keyword">public</span> <span class="hljs-built_in">string</span> PetSpecies { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }
     }
 
 
-    <span class="hljs-built_in">public</span> <span class="hljs-keyword">class</span> PoniesWithPets : AbstractTransformerCreationTask&lt;Pony&gt;
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">PoniesWithPets</span> : <span class="hljs-title">AbstractTransformerCreationTask</span>&lt;<span class="hljs-title">Pony</span>&gt;
     {
-         <span class="hljs-built_in">public</span> PoniesWithPets()
+         <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">PoniesWithPets</span>(<span class="hljs-params"></span>)</span>
          {
               TransformResults = ponies =&gt; 
                         <span class="hljs-keyword">from</span> pony <span class="hljs-keyword">in</span> ponies
-                        let pet = <span class="hljs-keyword">database</span>.<span class="hljs-keyword">Load</span>&lt;Pet&gt;(pony.PetId)
-                        <span class="hljs-keyword">select</span> <span class="hljs-built_in">new</span> {
+                        <span class="hljs-keyword">let</span> pet = database.Load&lt;Pet&gt;(pony.PetId)
+                        <span class="hljs-keyword">select</span> <span class="hljs-keyword">new</span> {
                             PonyId = pony.Id
-                            <span class="hljs-type">Name</span> = pony.Name,
+                            Name = pony.Name,
                             PetName = pet.Name,
                             PetSpecies = pet.Species
                         }
          }
     }</code></pre><p>Then, to get a list of ponies with pets in that view model format, we can simply supply the transformer want to use as part of the query</p>
-<pre><code>    session.Query&lt;Pony&gt;<span class="hljs-params">()</span>
-                 <span class="hljs-string">.Where</span><span class="hljs-params">(<span class="hljs-attr">pony</span> =&gt; pony.<span class="hljs-attr">Name</span> == "Pinkie Pie")</span>
-                 <span class="hljs-string">.TransformWith</span>&lt;PoniesWithPets, PonyWithPetViewModel&gt;
-                 <span class="hljs-string">.ToList</span><span class="hljs-params">()</span></code></pre><p>This is much tidier, and allows us to use transformers to elegantly create view models across any index providing the input is sane enough, it also removes some of the complexity around indexes. Look - we didn&#39;t even specify an index for this query and yet we were able to use a transformer on it, dynamic index win!</p>
+<pre><code>    session.Query&lt;Pony&gt;<span class="hljs-literal">()</span>
+                 .<span class="hljs-constructor">Where(<span class="hljs-params">pony</span> =&gt; <span class="hljs-params">pony</span>.Name <span class="hljs-operator">==</span> <span class="hljs-string">&quot;Pinkie Pie&quot;</span>)</span>
+                 .TransformWith&lt;PoniesWithPets, PonyWithPetViewModel&gt;
+                 .<span class="hljs-constructor">ToList()</span></code></pre><p>This is much tidier, and allows us to use transformers to elegantly create view models across any index providing the input is sane enough, it also removes some of the complexity around indexes. Look - we didn&#39;t even specify an index for this query and yet we were able to use a transformer on it, dynamic index win!</p>
 <p>This actually took a couple of days to implement, but I still have four days of work at Hibernating Rhinos so hopefully more coming soon!</p>
 </div>
       <div id="links">

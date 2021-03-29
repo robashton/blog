@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -82,7 +83,7 @@
 <li><a href="/entries/impatiently-learning-cascalog---part-3.html">Part 3</a></li>
 </ul>
 <p>I&#39;ve opened up the source for part4 and it is doing something a bit different so I guess I should be a little less impatient and have a look at the tutorial to see what I&#39;m looking at...</p>
-<pre><code>Today's lesson takes <span class="hljs-keyword">that</span> same Word Count app <span class="hljs-keyword">and</span> expands <span class="hljs-keyword">on</span> <span class="hljs-keyword">it</span> <span class="hljs-keyword">to</span> implement a stop <span class="hljs-built_in">words</span> filter.</code></pre><p>There is some waffle about the TF-IDF algorithm doing some of this for us, but we might want to do it ourselves because of swear-words. I suppose I should go and read about TD-IDF at some point but for now I&#39;m going to move on with this Cascalog stuff and accept that stuff exists and I don&#39;t know about it yet.</p>
+<pre><code>Today&#x27;s lesson takes <span class="hljs-keyword">that</span> same Word Count app <span class="hljs-keyword">and</span> expands <span class="hljs-keyword">on</span> <span class="hljs-keyword">it</span> <span class="hljs-keyword">to</span> implement a stop <span class="hljs-built_in">words</span> filter.</code></pre><p>There is some waffle about the TF-IDF algorithm doing some of this for us, but we might want to do it ourselves because of swear-words. I suppose I should go and read about TD-IDF at some point but for now I&#39;m going to move on with this Cascalog stuff and accept that stuff exists and I don&#39;t know about it yet.</p>
 <h1 id="left-join">Left join</h1>
 <p>Feasibly we could write a custom filter method and check if a word is valid, but that&#39;s going to be a bit of a ball-ache. So, we&#39;re told that we&#39;re doing a left-join between the two sets of data.</p>
 <p>That&#39;s an interesting notion to me because we&#39;re in the world of Map/Reduce and that&#39;s not something I&#39;m used to reading in this world.</p>
@@ -110,7 +111,7 @@
 <p>The major difference between the files I&#39;m looking at here (the stop file, and the rain file) is that the rain file has two columns and the stop file has one column so it has to just be the fact that I used the same name here that made the magic happen.</p>
 <p>I don&#39;t find any of this intuitive - but I can take it at face value once more and accept that it works if I do it this way. My urge to go and see how this stuff is implemented is growing and there are only two more stages of this tutorial left for me to follow.</p>
 <p>The complete query looks like this by the way</p>
-<pre><code class="language-clojure">(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> -main [in out stop &amp; args]
+<pre><code class="language-clojure">(<span class="hljs-keyword">defn</span> <span class="hljs-title">-main</span> [in out stop &amp; args]
   (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [rain (<span class="hljs-name">hfs-delimited</span> in <span class="hljs-symbol">:skip-header?</span> <span class="hljs-literal">true</span>)
         stop (<span class="hljs-name">hfs-delimited</span> stop <span class="hljs-symbol">:skip-header?</span> <span class="hljs-literal">true</span>)]
     (<span class="hljs-name">?&lt;-</span> (<span class="hljs-name">hfs-delimited</span> out)
@@ -122,12 +123,12 @@
          (<span class="hljs-name">c/count</span> ?count))))</code></pre>
 <p>Running the demo with</p>
 <pre><code>~<span class="hljs-regexp">/build/</span>hadoop-<span class="hljs-number">1.2</span>.<span class="hljs-number">1</span><span class="hljs-regexp">/bin/</span>hadoop jar target<span class="hljs-regexp">/impatient.jar data/</span>rain.txt output<span class="hljs-regexp">/wc data/</span>en.stop</code></pre><p>Seems to yield in a sensible word count being generated like so</p>
-<pre><code>air             <span class="hljs-number">1</span>
-area            <span class="hljs-number">4</span>
-australia       <span class="hljs-number">1</span>
-broken          <span class="hljs-number">1</span>
-california's    <span class="hljs-number">1</span>
-cause           <span class="hljs-number">1</span></code></pre><p>etc</p>
+<pre><code><span class="hljs-attribute">air</span>             <span class="hljs-number">1</span>
+<span class="hljs-attribute">area</span>            <span class="hljs-number">4</span>
+<span class="hljs-attribute">australia</span>       <span class="hljs-number">1</span>
+<span class="hljs-attribute">broken</span>          <span class="hljs-number">1</span>
+<span class="hljs-attribute">california</span>&#x27;s    <span class="hljs-number">1</span>
+<span class="hljs-attribute">cause</span>           <span class="hljs-number">1</span></code></pre><p>etc</p>
 <p>So, I guess the lesson here is that you can do joins between generators by using the same field name when running them. Neato.</p>
 <p>At this point I have to go away for the weekend to get drunk in a field, so I&#39;ll have to skip the rest of the tutorial and start work on something real at the Mastodon C office.</p>
 </div>

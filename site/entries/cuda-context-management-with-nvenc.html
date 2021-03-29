@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -73,52 +74,52 @@
 <p>Most operations with CUDA expect there to be a CUDA context bound to the current thread. All operations against that CUDA context are serialized (unless those operations are bound to a specific stream, in which case they are serialized against that stream). That&#39;s it, that&#39;s the whole goal of &quot;context&quot; in CUDA, and we have more than one way of realising this in the API].</p>
 <h1 id="the-api">The API</h1>
 <p>I suspect this API has been subject to a bit of churn since CUDA was first realised and this would go some way to expaining the various ways of dealing with the context, starting off with the method that the samples tend to use..</p>
-<pre><code>  <span class="hljs-comment">//</span>
-  <span class="hljs-comment">// On startup</span>
-  <span class="hljs-comment">//</span>
+<pre><code>  <span class="hljs-regexp">//</span>
+  <span class="hljs-regexp">//</span> On startup
+  <span class="hljs-regexp">//</span>
 
-  cu<span class="hljs-constructor">CtxCreate(&amp;<span class="hljs-params">ctx</span>, <span class="hljs-params">flags</span>, <span class="hljs-params">dev</span>)</span>;
+  cuCtxCreate(&amp;ctx, flags, dev);
 
-  <span class="hljs-comment">//</span>
-  <span class="hljs-comment">// Repeat below until finished</span>
-  <span class="hljs-comment">//</span>
+  <span class="hljs-regexp">//</span>
+  <span class="hljs-regexp">//</span> Repeat below until finished
+  <span class="hljs-regexp">//</span>
 
-  cu<span class="hljs-constructor">CtxPushCurrent(<span class="hljs-params">ctx</span>)</span>;
+  cuCtxPushCurrent(ctx);
 
-  <span class="hljs-comment">// <span class="hljs-doctag">TODO:</span> some operation </span>
+  <span class="hljs-regexp">//</span> TODO: some operation 
 
-  cu<span class="hljs-constructor">CtxPopCurrent(NULL)</span>;
+  cuCtxPopCurrent(NULL);
 
-  <span class="hljs-comment">//</span>
-  <span class="hljs-comment">//  When finished</span>
-  <span class="hljs-comment">//</span>
+  <span class="hljs-regexp">//</span>
+  <span class="hljs-regexp">//</span>  When finished
+  <span class="hljs-regexp">//</span>
 
-  cu<span class="hljs-constructor">CtxDestroy(<span class="hljs-params">ctx</span>)</span>;
+  cuCtxDestroy(ctx);
 
 </code></pre><p>If we look at the API documentation for <a href="https://docs.nvidia.com/cuda/cuda-driver-api/group__CUDA__CTX.html#group__CUDA__CTX_1g65dc0012348bc84810e2103a40d8e2cf">cuCtxCreate</a>, the very firist sentence we see is &quot;In most cases it is recommended to use cuDevicePrimaryCtxRetain.&quot;</p>
 <p>So immediately on looking up the documentation for the API that the code samples use, we are told to use something else. Now - the way I understand this, is that you can create contexts within a section of your code and use <em>Push</em> and <em>Pop</em> when using that context, and then code being invoked whilst this context is valid can do the same and you can end up with a stack of contexts that works happily together. Some searching around this reveals that there are performance penalties or even limitations over the number of active contexts in an application at the same time (operations are serialized anyway) and what we <em>can</em> do is simply get hold of the primary context with</p>
-<pre><code>  <span class="hljs-comment">//</span>
-  <span class="hljs-comment">// On startup</span>
-  <span class="hljs-comment">//</span>
+<pre><code>  <span class="hljs-regexp">//</span>
+  <span class="hljs-regexp">//</span> On startup
+  <span class="hljs-regexp">//</span>
 
 
-  cu<span class="hljs-constructor">DevicePrimaryCtxRetain(&amp;<span class="hljs-params">ctx</span>, <span class="hljs-params">dev</span>)</span>;
+  cuDevicePrimaryCtxRetain(&amp;ctx, dev);
 
-  <span class="hljs-comment">//</span>
-  <span class="hljs-comment">// Repeat below until finished</span>
-  <span class="hljs-comment">//</span>
+  <span class="hljs-regexp">//</span>
+  <span class="hljs-regexp">//</span> Repeat below until finished
+  <span class="hljs-regexp">//</span>
 
-  cu<span class="hljs-constructor">CtxSetCurrent(&amp;<span class="hljs-params">ctx</span>)</span>;
+  cuCtxSetCurrent(&amp;ctx);
 
-  <span class="hljs-comment">// <span class="hljs-doctag">TODO:</span> some operation</span>
+  <span class="hljs-regexp">//</span> TODO: some operation
 
-  cu<span class="hljs-constructor">CtxSetCurrent(NULL)</span>;
+  cuCtxSetCurrent(NULL);
 
-  <span class="hljs-comment">//</span>
-  <span class="hljs-comment">//  When finished</span>
-  <span class="hljs-comment">//</span>
+  <span class="hljs-regexp">//</span>
+  <span class="hljs-regexp">//</span>  When finished
+  <span class="hljs-regexp">//</span>
 
-  cu<span class="hljs-constructor">DevicePrimaryCtxRelease(<span class="hljs-params">ctx</span>)</span>;
+  cuDevicePrimaryCtxRelease(ctx);
 
 </code></pre><p>Now some more disparate info found in the recesses of Google/Stackoverflow/Nvidia forums</p>
 <ul>

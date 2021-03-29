@@ -22,34 +22,34 @@
 <p>The initial blast of <a href="https://github.com/id3as/purescript-erl-stetson">Stetson</a> was thrown up around <a href="https://github.com/ninenines/cowboy">Cowboy</a> with the express goal of &quot;getting me started on our first client project written in Purerl&quot;. As such it wasn&#39;t fancy and routing/dispatch looked like this.</p>
 <pre><code class="language-haskell">
 <span class="hljs-type">Stetson</span>.configure
-    # <span class="hljs-type">Stetson</span>.route <span class="hljs-string">"/api/books"</span> books
-    # <span class="hljs-type">Stetson</span>.route <span class="hljs-string">"/api/books/:isbn"</span> book
-    # <span class="hljs-type">Stetson</span>.static <span class="hljs-string">"/assets/[...]"</span> (<span class="hljs-type">PrivDir</span> <span class="hljs-string">"demo_ps"</span> <span class="hljs-string">"www/assets"</span>)
-    # <span class="hljs-type">Stetson</span>.static <span class="hljs-string">"/[...]"</span> (<span class="hljs-type">PrivFile</span> <span class="hljs-string">"demo_ps"</span> <span class="hljs-string">"www/index.html"</span>)
+    # <span class="hljs-type">Stetson</span>.route <span class="hljs-string">&quot;/api/books&quot;</span> books
+    # <span class="hljs-type">Stetson</span>.route <span class="hljs-string">&quot;/api/books/:isbn&quot;</span> book
+    # <span class="hljs-type">Stetson</span>.static <span class="hljs-string">&quot;/assets/[...]&quot;</span> (<span class="hljs-type">PrivDir</span> <span class="hljs-string">&quot;demo_ps&quot;</span> <span class="hljs-string">&quot;www/assets&quot;</span>)
+    # <span class="hljs-type">Stetson</span>.static <span class="hljs-string">&quot;/[...]&quot;</span> (<span class="hljs-type">PrivFile</span> <span class="hljs-string">&quot;demo_ps&quot;</span> <span class="hljs-string">&quot;www/index.html&quot;</span>)
 </code></pre>
 <p>Where a handler operating over  &#39;id&#39; to get a specific item might look like this</p>
 <pre><code class="language-haskell">
 <span class="hljs-title">book</span> :: <span class="hljs-type">StetsonHandler</span> (<span class="hljs-type">Maybe</span> <span class="hljs-type">Book</span>)
 <span class="hljs-title">book</span> = 
   <span class="hljs-type">Rest</span>.handler (\req -&gt; <span class="hljs-keyword">do</span>
-                          <span class="hljs-keyword">let</span> id = binding (atom <span class="hljs-string">"isbn"</span>) req
+                          <span class="hljs-keyword">let</span> id = binding (atom <span class="hljs-string">&quot;isbn&quot;</span>) req
                           book &lt;- maybe (pure <span class="hljs-type">Nothing</span>) <span class="hljs-type">BookLibrary</span>.findByIsbn id
                           <span class="hljs-type">Rest</span>.initResult req book)
     # <span class="hljs-type">Rest</span>.allowedMethods (\req state -&gt; <span class="hljs-type">Rest</span>.result (<span class="hljs-type">Stetson</span>.<span class="hljs-type">HEAD</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">PUT</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">DELETE</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">GET</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">OPTIONS</span> : nil) req state)
     # <span class="hljs-type">Rest</span>.resourceExists (\req state -&gt; 
                              <span class="hljs-type">Rest</span>.result (isJust state) 
-                             (maybe (setBody <span class="hljs-string">"This book does not exist"</span> req) (\_ -&gt; req) state)
+                             (maybe (setBody <span class="hljs-string">&quot;This book does not exist&quot;</span> req) (\_ -&gt; req) state)
                              state)
     # <span class="hljs-type">Rest</span>.deleteResource (\req state -&gt; <span class="hljs-keyword">do</span>
                               _ &lt;- maybe (pure unit) (\book -&gt; <span class="hljs-type">BookLibrary</span>.delete book.isbn) state
                               <span class="hljs-type">Rest</span>.result true req state)
     # <span class="hljs-type">Rest</span>.contentTypesProvided (\req state -&gt; <span class="hljs-type">Rest</span>.result (jsonWriter : nil) req state)
-    # <span class="hljs-type">Rest</span>.contentTypesAccepted (\req state -&gt; <span class="hljs-type">Rest</span>.result ((tuple2 <span class="hljs-string">"application/json"</span> acceptJson) : nil) req state)
+    # <span class="hljs-type">Rest</span>.contentTypesAccepted (\req state -&gt; <span class="hljs-type">Rest</span>.result ((tuple2 <span class="hljs-string">&quot;application/json&quot;</span> acceptJson) : nil) req state)
 </code></pre>
 <p>Urgh, so we&#39;ve got <em>:isbn</em> as a binding in our route, which we&#39;re pulling out as a <em>Maybe String</em> in our init handler, more hand waving here than at a Tory party conference. To compound matters, our client is building these urls like so</p>
 <pre><code class="language-haskell">
 <span class="hljs-title">getBook</span> :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Maybe</span> <span class="hljs-type">Book</span>
-<span class="hljs-title">getBook</span> id = fetchJson <span class="hljs-string">"/api/books/"</span> &lt;&gt; id
+<span class="hljs-title">getBook</span> id = fetchJson <span class="hljs-string">&quot;/api/books/&quot;</span> &lt;&gt; id
 </code></pre>
 <p>This was fine for a year or so, but once you&#39;ve got a few real applications running on top of this stuff and a great many URLs indeed you start running into issues where typos, incorrect types, etc start rearing their head - especially if you&#39;re making changes. (Quiet down at the back if you mention rest, url discovery and client independence to me I&#39;ll throw something at you, this isn&#39;t that).</p>
 <p>Thankfully, we have <a href="http://twitter.com/nwolverson">nwolverson</a> working with us and he&#39;s unafraid of the wonders of <a href="https://pursuit.purerl.fun/packages/typelevel-prelude/3.0.0/docs/Type.Data.Symbol">Data.Symbol.SProxy</a> and spent a chunk of time re-working <a href="https://github.com/natefaubion/purescript-routing-duplex">routing-duplex</a> from the client world so that it compiles/works/is-usable in the world of Purerl and Stetson.  Did I ever mention that the great thing about re-purposing an existing language/toolset for Erlang is that code already exists for most things you&#39;d want to do in that language? I&#39;ll mention it again here because it&#39;s pretty great.</p>
@@ -68,18 +68,18 @@
 <p>Using the type RouteDuplex&#39; with this ADT, we are required  to fill out each of the options with a path with the args expected  in the ADT. None  of these  are optional and we&#39;ll get type errors (more on this in a bit) if we don&#39;t supply all of the args or routes expected.</p>
 <pre><code>
 -- | This combinator transforms a codec over `String` into one that operates on the `Isbn` type.
-<span class="hljs-title">isbn ::</span> RouteDuplex' String -&gt; RouteDuplex' Isbn
+<span class="hljs-title">isbn ::</span> RouteDuplex&#x27; String -&gt; RouteDuplex&#x27; Isbn
 isbn = asNewtype
 
-<span class="hljs-title">apiRoute ::</span> RouteDuplex' Route
-apiRoute = path <span class="hljs-string">""</span> $ sum
-  { <span class="hljs-string">"Books"</span>: <span class="hljs-string">"api"</span> / <span class="hljs-string">"books"</span> / noArgs
-  , <span class="hljs-string">"Book"</span>: <span class="hljs-string">"api"</span> / <span class="hljs-string">"books"</span> / isbn segment
-  , <span class="hljs-string">"EventsWs"</span>: <span class="hljs-string">"api"</span> / <span class="hljs-string">"events"</span> / <span class="hljs-string">"ws"</span>
-  , <span class="hljs-string">"EventsFirehose"</span>: <span class="hljs-string">"api"</span> / <span class="hljs-string">"events"</span> / <span class="hljs-string">"firehose"</span>
-  , <span class="hljs-string">"Assets"</span> : <span class="hljs-string">"assets"</span> / rest
-  , <span class="hljs-string">"Index"</span> : noArgs
-  , <span class="hljs-string">"Index2"</span> : segment / rest
+<span class="hljs-title">apiRoute ::</span> RouteDuplex&#x27; Route
+apiRoute = path <span class="hljs-string">&quot;&quot;</span> $ sum
+  { <span class="hljs-string">&quot;Books&quot;</span>: <span class="hljs-string">&quot;api&quot;</span> / <span class="hljs-string">&quot;books&quot;</span> / noArgs
+  , <span class="hljs-string">&quot;Book&quot;</span>: <span class="hljs-string">&quot;api&quot;</span> / <span class="hljs-string">&quot;books&quot;</span> / isbn segment
+  , <span class="hljs-string">&quot;EventsWs&quot;</span>: <span class="hljs-string">&quot;api&quot;</span> / <span class="hljs-string">&quot;events&quot;</span> / <span class="hljs-string">&quot;ws&quot;</span>
+  , <span class="hljs-string">&quot;EventsFirehose&quot;</span>: <span class="hljs-string">&quot;api&quot;</span> / <span class="hljs-string">&quot;events&quot;</span> / <span class="hljs-string">&quot;firehose&quot;</span>
+  , <span class="hljs-string">&quot;Assets&quot;</span> : <span class="hljs-string">&quot;assets&quot;</span> / rest
+  , <span class="hljs-string">&quot;Index&quot;</span> : noArgs
+  , <span class="hljs-string">&quot;Index2&quot;</span> : segment / rest
   }
 
 </code></pre><p>Note that our Newtype &#39;isbn&#39; is an integrated part of both of these APIs, <em>Book</em> is a route that is available over <em>api/books/:isbn</em> where <em>:isbn</em> is of type <em>Isbn</em>. No messing around; yes it&#39;s just a newtype in this case, but there is nothing stopping us doing more elaborate parsing here into more complicated types. We can&#39;t accidentally miss any routes off, those strings are checked against the record at compile type thanks to the magic of SProxy and such.</p>
@@ -89,13 +89,13 @@ apiRoute = path <span class="hljs-string">""</span> $ sum
 <span class="hljs-title">_</span> &lt;- <span class="hljs-type">Stetson</span>.configure
     # <span class="hljs-type">Stetson</span>.routes
       <span class="hljs-type">Routes</span>.apiRoute {
-          <span class="hljs-string">"Book"</span>: book
-        , <span class="hljs-string">"Books"</span>: books
-        , <span class="hljs-string">"EventsWs"</span>: eventsWs
-        , <span class="hljs-string">"EventsFirehose"</span>: eventsFirehose
-        , <span class="hljs-string">"Assets"</span>: <span class="hljs-type">PrivDir</span> <span class="hljs-string">"demo_ps"</span> <span class="hljs-string">"www/assets"</span>
-        , <span class="hljs-string">"Index"</span>: <span class="hljs-type">PrivFile</span> <span class="hljs-string">"demo_ps"</span> <span class="hljs-string">"www/index.html"</span>
-        , <span class="hljs-string">"Index2"</span>: (\(_ :: <span class="hljs-type">String</span>)  -&gt; <span class="hljs-type">PrivFile</span> <span class="hljs-string">"demo_ps"</span> <span class="hljs-string">"www/index.html"</span>)
+          <span class="hljs-string">&quot;Book&quot;</span>: book
+        , <span class="hljs-string">&quot;Books&quot;</span>: books
+        , <span class="hljs-string">&quot;EventsWs&quot;</span>: eventsWs
+        , <span class="hljs-string">&quot;EventsFirehose&quot;</span>: eventsFirehose
+        , <span class="hljs-string">&quot;Assets&quot;</span>: <span class="hljs-type">PrivDir</span> <span class="hljs-string">&quot;demo_ps&quot;</span> <span class="hljs-string">&quot;www/assets&quot;</span>
+        , <span class="hljs-string">&quot;Index&quot;</span>: <span class="hljs-type">PrivFile</span> <span class="hljs-string">&quot;demo_ps&quot;</span> <span class="hljs-string">&quot;www/index.html&quot;</span>
+        , <span class="hljs-string">&quot;Index2&quot;</span>: (\(_ :: <span class="hljs-type">String</span>)  -&gt; <span class="hljs-type">PrivFile</span> <span class="hljs-string">&quot;demo_ps&quot;</span> <span class="hljs-string">&quot;www/index.html&quot;</span>)
       }
 
 </code></pre>
@@ -110,13 +110,13 @@ apiRoute = path <span class="hljs-string">""</span> $ sum
     # <span class="hljs-type">Rest</span>.allowedMethods (\req state -&gt; <span class="hljs-type">Rest</span>.result (<span class="hljs-type">Stetson</span>.<span class="hljs-type">HEAD</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">PUT</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">DELETE</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">GET</span> : <span class="hljs-type">Stetson</span>.<span class="hljs-type">OPTIONS</span> : nil) req state)
     # <span class="hljs-type">Rest</span>.resourceExists (\req state -&gt;
                              <span class="hljs-type">Rest</span>.result (isJust state)
-                             (maybe (setBody <span class="hljs-string">"This book does not exist"</span> req) (\_ -&gt; req) state)
+                             (maybe (setBody <span class="hljs-string">&quot;This book does not exist&quot;</span> req) (\_ -&gt; req) state)
                              state)
     # <span class="hljs-type">Rest</span>.deleteResource (\req state -&gt; <span class="hljs-keyword">do</span>
                               _ &lt;- maybe (pure unit) (\book -&gt; <span class="hljs-type">BookLibrary</span>.delete book.isbn) state
                               <span class="hljs-type">Rest</span>.result true req state)
     # <span class="hljs-type">Rest</span>.contentTypesProvided (\req state -&gt; <span class="hljs-type">Rest</span>.result (jsonWriter : nil) req state)
-    # <span class="hljs-type">Rest</span>.contentTypesAccepted (\req state -&gt; <span class="hljs-type">Rest</span>.result ((tuple2 <span class="hljs-string">"application/json"</span> acceptJson) : nil) req state)
+    # <span class="hljs-type">Rest</span>.contentTypesAccepted (\req state -&gt; <span class="hljs-type">Rest</span>.result ((tuple2 <span class="hljs-string">&quot;application/json&quot;</span> acceptJson) : nil) req state)
 </code></pre>
 <p>Say what now? Because we define</p>
 <pre><code class="language-haskell">
@@ -124,46 +124,46 @@ apiRoute = path <span class="hljs-string">""</span> $ sum
 </code></pre>
 <p>in our Routes ADT, we have </p>
 <pre><code class="language-haskell">
-  , <span class="hljs-string">"Book"</span>: <span class="hljs-string">"api"</span> / <span class="hljs-string">"books"</span> / isbn segment
+  , <span class="hljs-string">&quot;Book&quot;</span>: <span class="hljs-string">&quot;api&quot;</span> / <span class="hljs-string">&quot;books&quot;</span> / isbn segment
 </code></pre>
 <p>in our RouteDuplex definition, and we have</p>
 <pre><code class="language-haskell">
-  <span class="hljs-string">"Book"</span>: book
+  <span class="hljs-string">&quot;Book&quot;</span>: book
 </code></pre>
 <p>In our Stetson routes, the compiler knows that &#39;book&#39; needs to be a function that accepts an &#39;Isbn&#39; and returns a StetsonHandler. So what if I change the type of &#39;book&#39; to integer? to integer? to integer? to integer?</p>
 <pre><code class="language-haskell">  book :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">StetsonHandler</span> (<span class="hljs-type">Maybe</span> <span class="hljs-type">Book</span>)
   book id =</code></pre>
-<pre><code><span class="hljs-builtin-name">Error</span> found:
-<span class="hljs-keyword">in</span> module BookWeb
+<pre><code><span class="hljs-keyword">Error </span>found:
+in module BookWeb
 at src/BookWeb.purs:122:58 - 122:60 (line 122, column 58 - line 122, column 60)
 
-  Could <span class="hljs-keyword">not</span> match<span class="hljs-built_in"> type
-</span>
+  Could not match type
+
     Int
 
-  with<span class="hljs-built_in"> type
-</span>
+  with type
+
     Isbn
 </code></pre><p>hot damn yes, and what if I do a typo in my handlers?</p>
 <pre><code class="language-haskell">
       <span class="hljs-type">Routes</span>.apiRoute {
-          <span class="hljs-string">"B00k"</span>: book
-        , <span class="hljs-string">"Books"</span>: books
-        , <span class="hljs-string">"EventsWs"</span>: eventsWs
+          <span class="hljs-string">&quot;B00k&quot;</span>: book
+        , <span class="hljs-string">&quot;Books&quot;</span>: books
+        , <span class="hljs-string">&quot;EventsWs&quot;</span>: eventsWs
 </code></pre>
 <p>Well</p>
 <pre><code>
-  Could <span class="hljs-keyword">not</span> match<span class="hljs-built_in"> type
-</span>
-    ( <span class="hljs-string">"Book"</span> :: t0
-    <span class="hljs-built_in">..</span>.
+  Could <span class="hljs-literal">not</span> <span class="hljs-keyword">match</span> <span class="hljs-keyword">type</span>
+
+    ( <span class="hljs-string">&quot;Book&quot;</span> <span class="hljs-type">:: t0</span>
+    <span class="hljs-params">...</span>
     | t1
     )
 
-  with<span class="hljs-built_in"> type
-</span>
-    ( <span class="hljs-string">"Assets"</span> :: StaticAssetLocation
-    , <span class="hljs-string">"B00k"</span> :: Isbn -&gt; StetsonHandler Unit (Maybe <span class="hljs-built_in">..</span>.)
+  <span class="hljs-keyword">with</span> <span class="hljs-keyword">type</span>
+
+    ( <span class="hljs-string">&quot;Assets&quot;</span> <span class="hljs-type">:: StaticAssetLocation</span>
+    , <span class="hljs-string">&quot;B00k&quot;</span> <span class="hljs-type">:: Isbn</span> -&gt; StetsonHandler Unit (Maybe <span class="hljs-params">...</span>)
 </code></pre><p>You get the picture, by up-front defining the routes and the types they expect as input to the handler functions, we&#39;ve just done away with the handwaving and given ourselves a pile of safety.</p>
 <p><em>On the client</em></p>
 <p>Remember our <em>getBook :: String -&gt; Maybe Book</em>? </p>

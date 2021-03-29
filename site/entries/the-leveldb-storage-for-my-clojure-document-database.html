@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -76,63 +77,63 @@
 </ul>
 <p>All of the code for the LevelDB storage can be found in the file <em>levelstorage.clj</em> and it clocks in at just under 100 lines of code which isn&#39;t too shabby at all.</p>
 <p>LevelDB is actually a native code project, and I found myself using a wrapper that some folks have kindly written and open sourced for Java, thus we have the first of our Java Interop imports in this database.</p>
-<pre><code>(:import (org<span class="hljs-selector-class">.iq80</span><span class="hljs-selector-class">.leveldb</span> Options ReadOptions WriteOptions DBIterator)
-          (org<span class="hljs-selector-class">.fusesource</span><span class="hljs-selector-class">.leveldbjni</span> JniDBFactory)
-          (java<span class="hljs-selector-class">.io</span> File)
-          (java<span class="hljs-selector-class">.nio</span> ByteBuffer)))</code></pre><p>Lovely lovely classes.</p>
+<pre><code>(:<span class="hljs-keyword">import</span> (<span class="hljs-title">org</span>.<span class="hljs-title">iq80</span>.<span class="hljs-title">leveldb</span> <span class="hljs-type">Options</span> <span class="hljs-type">ReadOptions</span> <span class="hljs-type">WriteOptions</span> <span class="hljs-type">DBIterator</span>)
+          (org.fusesource.leveldbjni <span class="hljs-type">JniDBFactory</span>)
+          (java.io <span class="hljs-type">File</span>)
+          (java.nio <span class="hljs-type">ByteBuffer</span>)))</code></pre><p>Lovely lovely classes.</p>
 <p>I mentioned in the previous entry that we ended up with some simple protocols describing what we expect from our storage implementation</p>
 <p><strong>storageops.clj</strong></p>
-<pre><code>(<span class="hljs-name">defprotocol</span> Reader
-  (<span class="hljs-name">open-iterator</span> [<span class="hljs-name">this</span>])
-  (<span class="hljs-name">from-db</span> [<span class="hljs-name">this</span> id]))
+<pre><code>(<span class="hljs-keyword">defprotocol</span> <span class="hljs-title">Reader</span>
+  (<span class="hljs-name">open-iterator</span> [this])
+  (<span class="hljs-name">from-db</span> [this id]))
 
-(<span class="hljs-name">defprotocol</span> Writer
-  (<span class="hljs-name">commit!</span> [<span class="hljs-name">this</span>]))
+(<span class="hljs-keyword">defprotocol</span> <span class="hljs-title">Writer</span>
+  (<span class="hljs-name">commit!</span> [this]))
 
-(<span class="hljs-name">defprotocol</span> Iterator
-  (<span class="hljs-name">seek!</span> [<span class="hljs-name">this</span> k])
-  (<span class="hljs-name">as-seq</span> [<span class="hljs-name">this</span>]))
+(<span class="hljs-keyword">defprotocol</span> <span class="hljs-title">Iterator</span>
+  (<span class="hljs-name">seek!</span> [this k])
+  (<span class="hljs-name">as-seq</span> [this]))
 
-(<span class="hljs-name">defprotocol</span> Storage
-  (<span class="hljs-name">ensure-transaction</span> [<span class="hljs-name">this</span>]))</code></pre><p>In the <em>levelstorage.clj</em>, these are implemented as thinly as possible before farming out the actual work to pure clojure methods, thus we have</p>
+(<span class="hljs-keyword">defprotocol</span> <span class="hljs-title">Storage</span>
+  (<span class="hljs-name">ensure-transaction</span> [this]))</code></pre><p>In the <em>levelstorage.clj</em>, these are implemented as thinly as possible before farming out the actual work to pure clojure methods, thus we have</p>
 <p>Our core storage record</p>
-<pre><code>(<span class="hljs-name">defrecord</span> LevelStorage [<span class="hljs-name">path</span> db]
+<pre><code>(<span class="hljs-keyword">defrecord</span> <span class="hljs-title">LevelStorage</span> [path db]
   java.io.Closeable
   Reader
   Storage
-  (<span class="hljs-name">ensure-transaction</span> [<span class="hljs-name">ops</span>]
-    (<span class="hljs-name">debug</span> <span class="hljs-string">"Opening transaction"</span>)
-    (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [<span class="hljs-name">options</span> (<span class="hljs-name">ReadOptions.</span>)
-          snapshot (<span class="hljs-name">.getSnapshot</span> (<span class="hljs-name">:db</span> ops))]
+  (<span class="hljs-name">ensure-transaction</span> [ops]
+    (<span class="hljs-name">debug</span> <span class="hljs-string">&quot;Opening transaction&quot;</span>)
+    (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [options (<span class="hljs-name">ReadOptions.</span>)
+          snapshot (<span class="hljs-name">.getSnapshot</span> (<span class="hljs-symbol">:db</span> ops))]
       (<span class="hljs-name">.snapshot</span> options snapshot)
-      (<span class="hljs-name">LevelTransaction.</span> (<span class="hljs-name">:db</span> ops) options (<span class="hljs-name">:path</span> ops))))
-  (<span class="hljs-name">from-db</span> [<span class="hljs-name">this</span> id] (<span class="hljs-name">from-storage</span> this id))
-  (<span class="hljs-name">open-iterator</span> [<span class="hljs-name">this</span>] (<span class="hljs-name">get-iterator</span> this))
-  (<span class="hljs-name">close</span> [<span class="hljs-name">this</span>]
+      (<span class="hljs-name">LevelTransaction.</span> (<span class="hljs-symbol">:db</span> ops) options (<span class="hljs-symbol">:path</span> ops))))
+  (<span class="hljs-name">from-db</span> [this id] (<span class="hljs-name">from-storage</span> this id))
+  (<span class="hljs-name">open-iterator</span> [this] (<span class="hljs-name">get-iterator</span> this))
+  (<span class="hljs-name">close</span> [this]
     (<span class="hljs-name">.close</span> db)
-    nil))</code></pre><p>Our transaction record</p>
-<pre><code>(<span class="hljs-name">defrecord</span> LevelTransaction [<span class="hljs-name">db</span> options path]
+    <span class="hljs-literal">nil</span>))</code></pre><p>Our transaction record</p>
+<pre><code>(defrecord LevelTransaction [db options path]
   java.io.Closeable
   Writer
   Reader
-  (<span class="hljs-name">open-iterator</span> [<span class="hljs-name">this</span>] (<span class="hljs-name">get-iterator</span> this))
-  (<span class="hljs-name">from-db</span> [<span class="hljs-name">this</span> id] (<span class="hljs-name">from-storage</span> this id))
-  (<span class="hljs-name">commit!</span> [<span class="hljs-name">this</span>] (<span class="hljs-name">commit!</span> this))
-  (<span class="hljs-name">close</span> [<span class="hljs-name">this</span>]
-    (<span class="hljs-name">.close</span> (<span class="hljs-name">.snapshot</span> options))))</code></pre><p>And our iterator</p>
-<pre><code>(<span class="hljs-name">defrecord</span> LevelIterator [<span class="hljs-name">inner</span>]
+  (<span class="hljs-keyword">open</span>-iterator [<span class="hljs-keyword">this</span>] (<span class="hljs-keyword">get</span>-iterator <span class="hljs-keyword">this</span>))
+  (from-db [<span class="hljs-keyword">this</span> id] (from-storage <span class="hljs-keyword">this</span> id))
+  (commit! [<span class="hljs-keyword">this</span>] (commit! <span class="hljs-keyword">this</span>))
+  (close [<span class="hljs-keyword">this</span>]
+    (.close (.snapshot options))))</code></pre><p>And our iterator</p>
+<pre><code>(<span class="hljs-keyword">defrecord</span> <span class="hljs-title">LevelIterator</span> [inner]
   java.io.Closeable
   Iterator
-  (<span class="hljs-name">seek!</span> [<span class="hljs-name">this</span> value] (<span class="hljs-name">.seek</span> inner (<span class="hljs-name">to-db</span> value)))
-  (<span class="hljs-name">as-seq</span> [<span class="hljs-name">this</span>]
-    (<span class="hljs-name">-&gt;&gt;</span> (<span class="hljs-name">iterator-seq</span> inner) (<span class="hljs-name"><span class="hljs-builtin-name">map</span></span> expand-iterator-str)))
-  (<span class="hljs-name">close</span> [<span class="hljs-name">this</span>] (<span class="hljs-name">.close</span> inner)))</code></pre><p>First off, we can see that all these records implement &quot;Closeable&quot;, this is so that they can be used within the <em>with-open</em> built-in macro, which ensures that anything opened gets closed, regardless of exceptions or whatever.</p>
+  (<span class="hljs-name">seek!</span> [this value] (<span class="hljs-name">.seek</span> inner (<span class="hljs-name">to-db</span> value)))
+  (<span class="hljs-name">as-seq</span> [this]
+    (<span class="hljs-name"><span class="hljs-builtin-name">-&gt;&gt;</span></span> (<span class="hljs-name">iterator-seq</span> inner) (<span class="hljs-name"><span class="hljs-builtin-name">map</span></span> expand-iterator-str)))
+  (<span class="hljs-name">close</span> [this] (<span class="hljs-name">.close</span> inner)))</code></pre><p>First off, we can see that all these records implement &quot;Closeable&quot;, this is so that they can be used within the <em>with-open</em> built-in macro, which ensures that anything opened gets closed, regardless of exceptions or whatever.</p>
 <p>We can also see that the transaction and storage implement the same methods and farm the actual work out to pretty much the same functions.</p>
 <p><strong>Getting an object</strong></p>
 <p>This is the method called by both the transaction and storage records</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> from-storage [ops id]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">from-storage</span> [ops id]
   (<span class="hljs-name">from-db</span> (<span class="hljs-name">safe-get</span> (<span class="hljs-symbol">:db</span> ops) (<span class="hljs-name">to-db</span> id) (<span class="hljs-symbol">:options</span> ops))))</code></pre><p>And safe-get looks like this</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> safe-get [db k options]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">safe-get</span> [db k options]
   (<span class="hljs-name"><span class="hljs-builtin-name">try</span></span>
     (<span class="hljs-name"><span class="hljs-builtin-name">if</span></span> options
       (<span class="hljs-name">.get</span> db k options)
@@ -140,7 +141,7 @@
     (<span class="hljs-name">catch</span> Exception e
       <span class="hljs-literal">nil</span>)))</code></pre><p>Options are what LevelDB use to do things within a transaction/snapshot. This could have been a multi-method, but I felt the if statement kept things pretty expressive and easy to follow.</p>
 <p>That from-db thing is for the conversion of a byte array into a nice clojure data structure:</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> from-db [v]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">from-db</span> [v]
   (<span class="hljs-name"><span class="hljs-builtin-name">if</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">nil?</span></span> v) <span class="hljs-literal">nil</span>
   (<span class="hljs-name"><span class="hljs-builtin-name">with-open</span></span> [reader (<span class="hljs-name">java.io.PushbackReader.</span>
                           (<span class="hljs-name">clojure.java.io/reader</span>
@@ -154,8 +155,8 @@
   { <span class="hljs-symbol">:k</span> (<span class="hljs-name">from-db</span> (<span class="hljs-name">.getKey</span> i))
     <span class="hljs-symbol">:v</span> (<span class="hljs-name">from-db</span> (<span class="hljs-name">.getValue</span> i)) })</code></pre><p><strong>Committing a transaction</strong></p>
 <p>Well you can see that the transaction just calls commit with itself</p>
-<pre><code>(<span class="hljs-name">commit!</span> [<span class="hljs-name">this</span>] (<span class="hljs-name">commit!</span> this))</code></pre><p>And has some pretty simple logic for calling &quot;delete&quot; or &quot;put&quot; depending on the contents of the transaction</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> commit! [{<span class="hljs-symbol">:keys</span> [db cache] <span class="hljs-symbol">:as</span> tx}]
+<pre><code>(commit! [<span class="hljs-keyword">this</span>] (commit! <span class="hljs-keyword">this</span>))</code></pre><p>And has some pretty simple logic for calling &quot;delete&quot; or &quot;put&quot; depending on the contents of the transaction</p>
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">commit!</span> [{<span class="hljs-symbol">:keys</span> [db cache] <span class="hljs-symbol">:as</span> tx}]
   (<span class="hljs-name"><span class="hljs-builtin-name">with-open</span></span> [batch (<span class="hljs-name">.createWriteBatch</span> db)]
       (<span class="hljs-name"><span class="hljs-builtin-name">doseq</span></span> [[id value] cache]
         (<span class="hljs-name"><span class="hljs-builtin-name">if</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> value <span class="hljs-symbol">:deleted</span>)
@@ -164,7 +165,7 @@
       (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [wo (<span class="hljs-name">WriteOptions.</span>)]
         (<span class="hljs-name">.sync</span> wo <span class="hljs-literal">true</span>)
         (<span class="hljs-name">.write</span> db batch wo))))</code></pre><p>Again, we have a to-db function there, this just does the opposite of the from-db function shown above</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> from-db [v]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">from-db</span> [v]
   (<span class="hljs-name"><span class="hljs-builtin-name">if</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">nil?</span></span> v) <span class="hljs-literal">nil</span>
   (<span class="hljs-name"><span class="hljs-builtin-name">with-open</span></span> [reader (<span class="hljs-name">java.io.PushbackReader.</span>
                           (<span class="hljs-name">clojure.java.io/reader</span>

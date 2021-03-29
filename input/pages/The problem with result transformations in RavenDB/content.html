@@ -3,18 +3,18 @@
 <p>What is this feature intersection? Well, we have a <em>lot</em> of features around indexes and queries now, and they&#39;re all touching and overlapping in all sorts of strange ways - this is hardly surprising, it happens to many well-used software projects with feature requests flying in every day and so many awesome ideas to implement.</p>
 <p>The problem that result transformations were initially trying to solve (and I know, I helped implement them in a hotel lobby with Ayende a couple of years ago), were the question of &quot;joins&quot; across documents. Well - this worked well, and had the added bonus of being able to define the exact result shape coming back from RavenDB (pre-forming entire view models in a single query as it were).</p>
 <p>That&#39;s great, and now we have the ability to do what we did yesterday with yet another feature, load document in map, like so:</p>
-<pre><code>    public class Ponies : AbstractIndexCreationTask&lt;Pony&gt;
+<pre><code>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">Ponies</span> : <span class="hljs-title">AbstractIndexCreationTask</span>&lt;<span class="hljs-title">Pony</span>&gt;
     {
-         public Ponies()
+         <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">Ponies</span>(<span class="hljs-params"></span>)</span>
          {
-                Map = from pony <span class="hljs-keyword">in</span> ponies
-                            let pet = LoadDocument(pony.id)
-                            select new {
-                                pony<span class="hljs-selector-class">.Name</span>,
-                                pony<span class="hljs-selector-class">.Colour</span>,
-                                pony<span class="hljs-selector-class">.Trampstamp</span>.
-                                PetName = pet<span class="hljs-selector-class">.Name</span>.
-                                PetSpecies = pet<span class="hljs-selector-class">.Species</span>
+                Map = <span class="hljs-keyword">from</span> pony <span class="hljs-keyword">in</span> ponies
+                            <span class="hljs-keyword">let</span> pet = LoadDocument(pony.id)
+                            <span class="hljs-keyword">select</span> <span class="hljs-keyword">new</span> {
+                                pony.Name,
+                                pony.Colour,
+                                pony.Trampstamp.
+                                PetName = pet.Name.
+                                PetSpecies = pet.Species
                             }
          }
     }</code></pre><p>This is kinda cool, although it has implications in complexity when it comes to the indexing and re-indexing of documents that isn&#39;t what this blog entry is about.</p>

@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -77,34 +78,34 @@
 </ul>
 <p>Well, if I want lots of squares I&#39;m going to have to look at some means of representing collections in Clojure and my searches take me to <a href="http://clojuredocs.org/clojure_core/clojure.core/seq">Sequences</a></p>
 <p>To create a sequence, I can do something like this</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> createSeq []
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">createSeq</span> []
   (<span class="hljs-name"><span class="hljs-builtin-name">for</span></span> [x [<span class="hljs-number">0</span> <span class="hljs-number">1</span> <span class="hljs-number">2</span> <span class="hljs-number">3</span>]]
     x
   )
 )</code></pre><p>Which returns me a sequence containing 0 1 2 3, an important point here is (at least I think), is that this sequence is <em>lazy</em>, it has not been executed yet. </p>
 <p>Now, my collection of invaders will actually be 2D, so what I can actually do is</p>
-<pre><code>(<span class="hljs-name">defn</span> createSeq []
-  (<span class="hljs-name">for</span> [<span class="hljs-name">x</span> [<span class="hljs-name">0</span> <span class="hljs-number">1</span> <span class="hljs-number">2</span> <span class="hljs-number">3</span>] y [<span class="hljs-name">0</span> <span class="hljs-number">1</span> <span class="hljs-number">2</span> <span class="hljs-number">3</span>]]
-    [<span class="hljs-name">x</span> y]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">createSeq</span> []
+  (<span class="hljs-name"><span class="hljs-builtin-name">for</span></span> [x [<span class="hljs-number">0</span> <span class="hljs-number">1</span> <span class="hljs-number">2</span> <span class="hljs-number">3</span>] y [<span class="hljs-number">0</span> <span class="hljs-number">1</span> <span class="hljs-number">2</span> <span class="hljs-number">3</span>]]
+    [x y]
   )
 )</code></pre><p>Which returns me a sequence containing lots of [x y] pairs, so [0 0] [0 1] [0 2] etc.</p>
 <p>Of course, there are functions for me here, so I can make a range</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> createSeq []
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">createSeq</span> []
   (<span class="hljs-name"><span class="hljs-builtin-name">for</span></span> [x (<span class="hljs-name"><span class="hljs-builtin-name">range</span></span> <span class="hljs-number">0</span> <span class="hljs-number">100</span> <span class="hljs-number">10</span>) 
         y (<span class="hljs-name"><span class="hljs-builtin-name">range</span></span> <span class="hljs-number">0</span> <span class="hljs-number">100</span> <span class="hljs-number">10</span>)]
     [x y]
   )
 )</code></pre><p>Pretty nifty if I do say so myself, so what I can start with if I want to draw a grid of yellow squares is something like</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> initState []
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">initState</span> []
  (<span class="hljs-name"><span class="hljs-builtin-name">for</span></span> [x (<span class="hljs-name"><span class="hljs-builtin-name">range</span></span> <span class="hljs-number">0</span> <span class="hljs-number">100</span> <span class="hljs-number">10</span>)
        y (<span class="hljs-name"><span class="hljs-builtin-name">range</span></span> <span class="hljs-number">0</span> <span class="hljs-number">100</span> <span class="hljs-number">10</span>)]
    [x y]
  )
 )</code></pre><p>And I can call my initial tick method, passing in this state</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> ^<span class="hljs-symbol">:export</span> init []
+<pre><code>(<span class="hljs-keyword">defn</span> ^<span class="hljs-symbol">:export</span> <span class="hljs-title">init</span> []
   (<span class="hljs-name">tick</span> (<span class="hljs-name">initState</span>)) 
 )</code></pre><p>And then loop through this</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> tick [enemies]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">tick</span> [enemies]
   (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [ctx (<span class="hljs-name">context</span>)] 
     (<span class="hljs-name">clearScreen</span> ctx) 
     (<span class="hljs-name"><span class="hljs-builtin-name">doseq</span></span> [[x y] enemies] (<span class="hljs-name">drawSquare</span> ctx x y <span class="hljs-number">5</span> <span class="hljs-number">5</span>))

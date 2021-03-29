@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -79,7 +80,7 @@
 <p><strong>Mutating lots of state</strong></p>
 <p>Thing is, what I can&#39;t do is pop into that sequence and start <em>changing</em> state, what I want to do each frame is (I think), create a <em>new</em> sequence and pass that into the next call of &#39;tick&#39;, <em>erk</em>.</p>
 <p>Well, actually this shouldn&#39;t be such a big deal, how about creating a method that takes in a sequence and returns a new sequence where each item is slightly different from the original?</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> doLogic [enemies]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">doLogic</span> [enemies]
   (<span class="hljs-name"><span class="hljs-builtin-name">for</span></span> [[x y] enemies]
     [(<span class="hljs-name"><span class="hljs-builtin-name">inc</span></span> x) y]
   )
@@ -90,21 +91,21 @@
 <p><strong>Making our invaders move left to right and back again</strong></p>
 <p>Well, the first thing I actually need to do is set up my invaders properly in some sort of known &#39;game space&#39;, this isn&#39;t really related to the functional programming bit so I&#39;m going to pretty much side-step over it by modifying the code and explaining what I&#39;ve done. (normally I&#39;d use a camera system and be a bit more clever, but not the point of this exercise)</p>
 <p><em>The first thing I&#39;ve done is moved the ctx call outside of tick</em></p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> ^<span class="hljs-symbol">:export</span> init []
+<pre><code>(<span class="hljs-keyword">defn</span> ^<span class="hljs-symbol">:export</span> <span class="hljs-title">init</span> []
   (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [ctx (<span class="hljs-name">context</span>)] 
     (<span class="hljs-name">tick</span> ctx (<span class="hljs-name">initState</span>)) 
   )
 )</code></pre><p>And actually, I&#39;m going to specify the width and height as 640x480 and hard-code the whole thing</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> ^<span class="hljs-symbol">:export</span> init []
+<pre><code>(<span class="hljs-keyword">defn</span> ^<span class="hljs-symbol">:export</span> <span class="hljs-title">init</span> []
   (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [ctx (<span class="hljs-name">context</span> <span class="hljs-number">640</span> <span class="hljs-number">480</span>)] 
     (<span class="hljs-name">tick</span> ctx (<span class="hljs-name">initState</span>)) 
   )
 )
 
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> context [width height]
-  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [target (<span class="hljs-name">.getElementById</span> js/document <span class="hljs-string">"target"</span>)]
+(<span class="hljs-keyword">defn</span> <span class="hljs-title">context</span> [width height]
+  (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [target (<span class="hljs-name">.getElementById</span> js/document <span class="hljs-string">&quot;target&quot;</span>)]
     [
-      (<span class="hljs-name">.getContext</span> target <span class="hljs-string">"2d"</span>) 
+      (<span class="hljs-name">.getContext</span> target <span class="hljs-string">&quot;2d&quot;</span>) 
       (<span class="hljs-name"><span class="hljs-builtin-name">set!</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">.</span></span> target -width) width)
       (<span class="hljs-name"><span class="hljs-builtin-name">set!</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">.</span></span> target -height) height)
     ]
@@ -116,7 +117,7 @@
    [(<span class="hljs-name"><span class="hljs-builtin-name">*</span></span> x <span class="hljs-number">30</span>) (<span class="hljs-name"><span class="hljs-builtin-name">*</span></span> y <span class="hljs-number">30</span>) <span class="hljs-number">20</span> <span class="hljs-number">20</span>]
  )
 )</code></pre><p>I&#39;m also now including a width and height with each of my little invaders, which means I&#39;ll need to modify my logic function</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> doLogic [enemies]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">doLogic</span> [enemies]
   (<span class="hljs-name"><span class="hljs-builtin-name">for</span></span> [[x y w h] enemies]
     [(<span class="hljs-name"><span class="hljs-builtin-name">inc</span></span> x) y w h]
   )
@@ -134,7 +135,7 @@
    )
  ]
 )</code></pre><p>Okay, so now initState will return a vector containing a direction (1), and a sequence of enemies. I&#39;m really not confortable with these arbitrary lists of state so I&#39;ll look for some way to make them tidier shortly I think.</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> tick [ctx state]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">tick</span> [ctx state]
   (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [[dir enemies] state]
     (<span class="hljs-name">clearScreen</span> ctx) 
     (<span class="hljs-name"><span class="hljs-builtin-name">doseq</span></span> [[x y w h] enemies] (<span class="hljs-name">drawSquare</span> ctx x y w h))
@@ -169,12 +170,12 @@
   ]
 )</code></pre><p>We&#39;ll ask another function what the next direction is going to be, if the current direction is &#39;1&#39;, we&#39;ll inc x, anx if the current direction is not 1, we&#39;ll dec x.</p>
 <p>I can implement getNextDirection like so, taking in current and enemies</p>
-<pre><code>(<span class="hljs-name">defn</span> getNextDirection [<span class="hljs-name">current</span> enemies]
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> getNextDirection [current enemies]
   (<span class="hljs-name"><span class="hljs-builtin-name">if</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> current <span class="hljs-number">1</span>)
-    (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [<span class="hljs-name">right</span> (<span class="hljs-name"><span class="hljs-builtin-name">apply</span></span> max (<span class="hljs-name"><span class="hljs-builtin-name">map</span></span> (<span class="hljs-name">fn</span> [[<span class="hljs-name">x</span> y w h] e] x) enemies))]
+    (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [right (<span class="hljs-name"><span class="hljs-builtin-name">apply</span></span> max (<span class="hljs-name"><span class="hljs-builtin-name">map</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [[x y w h] e] x) enemies))]
       (<span class="hljs-name"><span class="hljs-builtin-name">if</span></span>(<span class="hljs-name"><span class="hljs-builtin-name">&gt;</span></span> right <span class="hljs-number">600</span>) <span class="hljs-number">-1</span> <span class="hljs-number">1</span>)
     )
-    (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [<span class="hljs-name">left</span> (<span class="hljs-name"><span class="hljs-builtin-name">apply</span></span> min (<span class="hljs-name"><span class="hljs-builtin-name">map</span></span> (<span class="hljs-name">fn</span> [[<span class="hljs-name">x</span> y w h] e] x) enemies))]
+    (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [left (<span class="hljs-name"><span class="hljs-builtin-name">apply</span></span> min (<span class="hljs-name"><span class="hljs-builtin-name">map</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">fn</span></span> [[x y w h] e] x) enemies))]
       (<span class="hljs-name"><span class="hljs-builtin-name">if</span></span>(<span class="hljs-name"><span class="hljs-builtin-name">&lt;</span></span> left <span class="hljs-number">0</span>) <span class="hljs-number">1</span> <span class="hljs-number">-1</span>)
     )
   )

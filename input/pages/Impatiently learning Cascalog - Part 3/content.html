@@ -4,14 +4,14 @@
 <li><a href="/entries/impatiently-learning-cascalog---part-2.html">Part 2</a></li>
 </ul>
 <p>Part 3 seems to be pretty simple, adding a custom function to scrub text - written in a style I can actually understand thanks to the Clojure I&#39;ve written so far.</p>
-<pre><code class="language-clojure">(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> scrub-text [s]
-  <span class="hljs-string">"trim open whitespaces and lower case"</span>
+<pre><code class="language-clojure">(<span class="hljs-keyword">defn</span> <span class="hljs-title">scrub-text</span> [s]
+  <span class="hljs-string">&quot;trim open whitespaces and lower case&quot;</span>
   ((<span class="hljs-name"><span class="hljs-builtin-name">comp</span></span> s/trim s/lower-case) s))</code></pre>
 <p>The main point of this step of the guide seems to be about data sanitisation, and why you would use custom functions to do that - rather than anything new relating specifically to Cascalog.</p>
 <p>Being able to use vanilla Clojure functions to manipulate data comes with some benefits, the main one being that we can test this stuff independently and then import it into the Cascalog query where we know at least that bit works. </p>
 <p>This is pretty important because tidying up edge cases is generally a rather iterative process and you want the feedback loop to be fast (I can get behind that notion)</p>
 <p>This is used in the following manner</p>
-<pre><code class="language-clojure">(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> -main [in out &amp; args]
+<pre><code class="language-clojure">(<span class="hljs-keyword">defn</span> <span class="hljs-title">-main</span> [in out &amp; args]
   (<span class="hljs-name">?&lt;-</span> (<span class="hljs-name">hfs-delimited</span> out)
        [?word ?count]
        ((<span class="hljs-name">hfs-delimited</span> in <span class="hljs-symbol">:skip-header?</span> <span class="hljs-literal">true</span>) _ ?line)

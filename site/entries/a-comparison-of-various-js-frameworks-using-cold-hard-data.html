@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -84,29 +85,29 @@
 <h1 id="number-of-questions-and-unanswered-questions-on-stackoverflow">Number of questions and unanswered questions on StackOverflow</h1>
 <p>The Stackoverflow guys are amazing, and <a href="http://data.stackexchange.com/stackoverflow/queries">provide querying capabilities right there on their site</a>, which means I can get some numbers right off the bat for the various frameworks</p>
 <p>I ended up with the following parameterised query to get my data</p>
-<pre><code class="language-sql">    <span class="hljs-keyword">DECLARE</span> @TagName <span class="hljs-built_in">varchar</span>(<span class="hljs-number">128</span>) = <span class="hljs-string">'%##TagName##%'</span>
+<pre><code class="language-sql">    <span class="hljs-keyword">DECLARE</span> <span class="hljs-variable">@TagName</span> <span class="hljs-type">varchar</span>(<span class="hljs-number">128</span>) <span class="hljs-operator">=</span> <span class="hljs-string">&#x27;%##TagName##%&#x27;</span>
 
-    <span class="hljs-keyword">SELECT</span> <span class="hljs-keyword">COUNT</span>(*) <span class="hljs-keyword">from</span> Posts P
+    <span class="hljs-keyword">SELECT</span> <span class="hljs-built_in">COUNT</span>(<span class="hljs-operator">*</span>) <span class="hljs-keyword">from</span> Posts P
     <span class="hljs-keyword">WHERE</span> P.Id <span class="hljs-keyword">IN</span> (
       <span class="hljs-keyword">SELECT</span> <span class="hljs-keyword">DISTINCT</span>(PostId) <span class="hljs-keyword">from</span> PostTags 
       <span class="hljs-keyword">WHERE</span> PostTags.TagId <span class="hljs-keyword">In</span> (
-        <span class="hljs-keyword">SELECT</span> <span class="hljs-keyword">Id</span> <span class="hljs-keyword">From</span> Tags <span class="hljs-keyword">Where</span> TagName <span class="hljs-keyword">LIKE</span> @TagName
+        <span class="hljs-keyword">SELECT</span> Id <span class="hljs-keyword">From</span> Tags <span class="hljs-keyword">Where</span> TagName <span class="hljs-keyword">LIKE</span> <span class="hljs-variable">@TagName</span>
       )
     )
 
-    <span class="hljs-keyword">SELECT</span> <span class="hljs-keyword">COUNT</span>(*) <span class="hljs-keyword">from</span> Posts P
+    <span class="hljs-keyword">SELECT</span> <span class="hljs-built_in">COUNT</span>(<span class="hljs-operator">*</span>) <span class="hljs-keyword">from</span> Posts P
     <span class="hljs-keyword">WHERE</span> P.Id <span class="hljs-keyword">IN</span> (
       <span class="hljs-keyword">SELECT</span> <span class="hljs-keyword">DISTINCT</span>(PostId) <span class="hljs-keyword">from</span> PostTags 
       <span class="hljs-keyword">WHERE</span> PostTags.TagId <span class="hljs-keyword">In</span> (
-        <span class="hljs-keyword">SELECT</span> <span class="hljs-keyword">Id</span> <span class="hljs-keyword">From</span> Tags <span class="hljs-keyword">Where</span> TagName <span class="hljs-keyword">LIKE</span> @TagName
+        <span class="hljs-keyword">SELECT</span> Id <span class="hljs-keyword">From</span> Tags <span class="hljs-keyword">Where</span> TagName <span class="hljs-keyword">LIKE</span> <span class="hljs-variable">@TagName</span>
       )
-    ) <span class="hljs-keyword">AND</span> P.AcceptedAnswerId <span class="hljs-keyword">IS</span> <span class="hljs-keyword">NOT</span> <span class="hljs-literal">NULL</span>
+    ) <span class="hljs-keyword">AND</span> P.AcceptedAnswerId <span class="hljs-keyword">IS</span> <span class="hljs-keyword">NOT</span> <span class="hljs-keyword">NULL</span>
 
-    <span class="hljs-keyword">SELECT</span> <span class="hljs-keyword">SUM</span>(P.AnswerCount) <span class="hljs-keyword">from</span> Posts P
+    <span class="hljs-keyword">SELECT</span> <span class="hljs-built_in">SUM</span>(P.AnswerCount) <span class="hljs-keyword">from</span> Posts P
     <span class="hljs-keyword">WHERE</span> P.Id <span class="hljs-keyword">IN</span> (
       <span class="hljs-keyword">SELECT</span> <span class="hljs-keyword">DISTINCT</span>(PostId) <span class="hljs-keyword">from</span> PostTags 
       <span class="hljs-keyword">WHERE</span> PostTags.TagId <span class="hljs-keyword">In</span> (
-        <span class="hljs-keyword">SELECT</span> <span class="hljs-keyword">Id</span> <span class="hljs-keyword">From</span> Tags <span class="hljs-keyword">Where</span> TagName <span class="hljs-keyword">LIKE</span> @TagName
+        <span class="hljs-keyword">SELECT</span> Id <span class="hljs-keyword">From</span> Tags <span class="hljs-keyword">Where</span> TagName <span class="hljs-keyword">LIKE</span> <span class="hljs-variable">@TagName</span>
       )
     )</code></pre>
 <p>Doing this meant I got all the questions with all the tags in the eco-system around that framework, and the data I want is</p>

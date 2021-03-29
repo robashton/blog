@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -88,26 +89,26 @@
 <p>Etags are sortable by design, in my rough and ready document database the etag is just an integer that I increase every time I add a new document.</p>
 <p>Now, when writing and reading from the database, we need to be able to differentiate between types of key in the database, and ordering for each of these types is set by the key.</p>
 <p><em>For example, reading a document</em></p>
-<pre><code><span class="hljs-meta">#<span class="hljs-meta-keyword">define</span> DOCPREFIX <span class="hljs-meta-string">"/docs/"</span></span>
-<span class="hljs-meta">#<span class="hljs-meta-keyword">define</span> ETAGPREFIX <span class="hljs-meta-string">"/etags/"</span></span>
+<pre><code><span class="hljs-meta">#<span class="hljs-meta-keyword">define</span> DOCPREFIX <span class="hljs-meta-string">&quot;/docs/&quot;</span></span>
+<span class="hljs-meta">#<span class="hljs-meta-keyword">define</span> ETAGPREFIX <span class="hljs-meta-string">&quot;/etags/&quot;</span></span>
 
 
-<span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">Get</span><span class="hljs-params">(<span class="hljs-built_in">std</span>::<span class="hljs-built_in">string</span> id, <span class="hljs-built_in">std</span>::<span class="hljs-built_in">string</span>* doc)</span> </span>{
-  <span class="hljs-built_in">std</span>::<span class="hljs-built_in">stringstream</span> st;
+<span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">Get</span><span class="hljs-params">(std::string id, std::string* doc)</span> </span>{
+  std::stringstream st;
   st &lt;&lt; DOCPREFIX;
   st &lt;&lt; id;
-  <span class="hljs-built_in">std</span>::<span class="hljs-built_in">string</span> key = st.str();
-  <span class="hljs-keyword">this</span>-&gt;lastStatus = <span class="hljs-keyword">this</span>-&gt;db-&gt;Get(leveldb::ReadOptions(), key, doc);
+  std::string key = st.<span class="hljs-built_in">str</span>();
+  <span class="hljs-keyword">this</span>-&gt;lastStatus = <span class="hljs-keyword">this</span>-&gt;db-&gt;<span class="hljs-built_in">Get</span>(leveldb::<span class="hljs-built_in">ReadOptions</span>(), key, doc);
 }</code></pre><p>So I&#39;m sticking a prefix in front of each key to denote what sort of key it is, yay.</p>
 <p>That means that my secondary index of etags will end up looking like this</p>
-<pre><code>/etags/<span class="hljs-number">0</span> -&gt; /docs/<span class="hljs-number">1</span>
-/etags/<span class="hljs-number">1</span> -&gt; /docs/<span class="hljs-number">5</span>
-/etags/<span class="hljs-number">2</span> -&gt; /docs/<span class="hljs-number">4</span>
-/etags/<span class="hljs-number">3</span> -&gt; /docs/<span class="hljs-number">6</span>
-/etags/<span class="hljs-number">4</span> -&gt; /docs/<span class="hljs-number">3</span>
-/etags/<span class="hljs-number">6</span> -&gt; /docs/<span class="hljs-number">7</span>
-/etags/<span class="hljs-number">8</span> -&gt; /docs/<span class="hljs-number">12</span>
-/etags/<span class="hljs-number">9</span> -&gt; /docs/<span class="hljs-number">5</span></code></pre><p>When I want to index documents newer than /etags/5, I can do</p>
+<pre><code><span class="hljs-regexp">/etags/</span><span class="hljs-number">0</span> -&gt; <span class="hljs-regexp">/docs/</span><span class="hljs-number">1</span>
+<span class="hljs-regexp">/etags/</span><span class="hljs-number">1</span> -&gt; <span class="hljs-regexp">/docs/</span><span class="hljs-number">5</span>
+<span class="hljs-regexp">/etags/</span><span class="hljs-number">2</span> -&gt; <span class="hljs-regexp">/docs/</span><span class="hljs-number">4</span>
+<span class="hljs-regexp">/etags/</span><span class="hljs-number">3</span> -&gt; <span class="hljs-regexp">/docs/</span><span class="hljs-number">6</span>
+<span class="hljs-regexp">/etags/</span><span class="hljs-number">4</span> -&gt; <span class="hljs-regexp">/docs/</span><span class="hljs-number">3</span>
+<span class="hljs-regexp">/etags/</span><span class="hljs-number">6</span> -&gt; <span class="hljs-regexp">/docs/</span><span class="hljs-number">7</span>
+<span class="hljs-regexp">/etags/</span><span class="hljs-number">8</span> -&gt; <span class="hljs-regexp">/docs/</span><span class="hljs-number">12</span>
+<span class="hljs-regexp">/etags/</span><span class="hljs-number">9</span> -&gt; <span class="hljs-regexp">/docs/</span><span class="hljs-number">5</span></code></pre><p>When I want to index documents newer than /etags/5, I can do</p>
 <pre><code><span class="hljs-built_in">int</span> <span class="hljs-constructor">IndexNewDocumentsNewerThan(<span class="hljs-params">int</span> <span class="hljs-params">etag</span>)</span> {
   std::stringstream st;
   st &lt;&lt; ETAGPREFIX;
@@ -115,7 +116,7 @@
   std::<span class="hljs-built_in">string</span> startkey = st.str<span class="hljs-literal">()</span>;
 
   leveldb::Iterator* it = this-&gt;db-&gt;<span class="hljs-constructor">NewIterator(<span class="hljs-params">leveldb</span>::ReadOptions()</span>);
-  for (it-&gt;<span class="hljs-constructor">Seek(<span class="hljs-params">startkey</span>)</span>; it-&gt;<span class="hljs-constructor">Valid()</span><span class="hljs-operator"> &amp;&amp; </span>this-&gt;<span class="hljs-constructor">IsEtagKey(<span class="hljs-params">it</span>-&gt;<span class="hljs-params">key</span>()</span>.<span class="hljs-constructor">ToString()</span>); it-&gt;<span class="hljs-constructor">Next()</span>) {
+  <span class="hljs-keyword">for</span> (it-&gt;<span class="hljs-constructor">Seek(<span class="hljs-params">startkey</span>)</span>; it-&gt;<span class="hljs-constructor">Valid()</span><span class="hljs-operator"> &amp;&amp; </span>this-&gt;<span class="hljs-constructor">IsEtagKey(<span class="hljs-params">it</span>-&gt;<span class="hljs-params">key</span>()</span>.<span class="hljs-constructor">ToString()</span>); it-&gt;<span class="hljs-constructor">Next()</span>) {
     std::<span class="hljs-built_in">string</span> document = it-&gt;value<span class="hljs-literal">()</span>.<span class="hljs-constructor">ToString()</span>;
     <span class="hljs-constructor">IndexDocument(<span class="hljs-params">value</span>)</span>;
   }

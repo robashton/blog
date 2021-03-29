@@ -28,9 +28,9 @@
 <span class="hljs-keyword">-compile</span><span class="hljs-params">(nowarn_shadow_vars)</span>.
 <span class="hljs-keyword">-compile</span><span class="hljs-params">(nowarn_unused_vars)</span>.
 <span class="hljs-keyword">-compile</span><span class="hljs-params">(no_auto_import)</span>.
-<span class="hljs-keyword">-file</span><span class="hljs-params">(<span class="hljs-string">"src/BookApp.purs"</span>, <span class="hljs-number">8</span>)</span>.
+<span class="hljs-keyword">-file</span><span class="hljs-params">(<span class="hljs-string">&quot;src/BookApp.purs&quot;</span>, <span class="hljs-number">8</span>)</span>.
 <span class="hljs-function"><span class="hljs-title">start</span><span class="hljs-params">()</span> -&gt;</span> (pinto_app@ps:simpleStart((bookSup@ps:startLink()))).
-<span class="hljs-keyword">-file</span><span class="hljs-params">(<span class="hljs-string">"src/BookApp.purs"</span>, <span class="hljs-number">8</span>)</span>.
+<span class="hljs-keyword">-file</span><span class="hljs-params">(<span class="hljs-string">&quot;src/BookApp.purs&quot;</span>, <span class="hljs-number">8</span>)</span>.
 <span class="hljs-function"><span class="hljs-title">start</span><span class="hljs-params">(_@<span class="hljs-number">0</span>,_@<span class="hljs-number">1</span>)</span> -&gt;</span> ((pinto_app@ps:simpleStart((bookSup@ps:startLink())))(_@<span class="hljs-number">0</span>, _@<span class="hljs-number">1</span>)).</code></pre>
 <p>If get rid of the cruft, that&#39;s essentially just</p>
 <pre><code class="language-erlang"><span class="hljs-keyword">-module</span><span class="hljs-params">(bookApp@ps)</span>.
@@ -44,7 +44,7 @@
 <span class="hljs-comment">-- [[ imports redacted ]]</span>
 
 <span class="hljs-title">startLink</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Pinto</span>.<span class="hljs-type">StartLinkResult</span>
-<span class="hljs-title">startLink</span> = <span class="hljs-type">Sup</span>.startLink <span class="hljs-string">"book_sup"</span> init
+<span class="hljs-title">startLink</span> = <span class="hljs-type">Sup</span>.startLink <span class="hljs-string">&quot;book_sup&quot;</span> init
 
 <span class="hljs-title">init</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">SupervisorSpec</span>
 <span class="hljs-title">init</span> = <span class="hljs-keyword">do</span>
@@ -54,12 +54,12 @@
                 # supervisorStrategy <span class="hljs-type">OneForOne</span>
                 # supervisorChildren ( ( buildChild
                                        # childType <span class="hljs-type">Worker</span>
-                                       # childId <span class="hljs-string">"book_web"</span>
+                                       # childId <span class="hljs-string">&quot;book_web&quot;</span>
                                        # childStart <span class="hljs-type">BookWeb</span>.startLink  { webPort } )
                                        : 
                                        ( buildChild
                                        # childType <span class="hljs-type">Worker</span>
-                                       # childId <span class="hljs-string">"book_library"</span>
+                                       # childId <span class="hljs-string">&quot;book_library&quot;</span>
                                        # childStart <span class="hljs-type">BookLibrary</span>.startLink { connectionString } )
                                         : nil)</code></pre>
 <p><em>Sup.startLink</em> is a Pinto helper that&#39;ll end up calling our usual <em>supervisor:start_link</em> under the hood, with our <em>init</em> function being invoked within the context of that created supervisor and returning a supervisor spec when invoked. </p>
@@ -67,7 +67,7 @@
 <p>Now, let&#39;s break down one of these gen servers to see what we can see - we&#39;ll have to do this piece-meal as there is a lot to uncover. We&#39;ll be looking at <em>BookLibrary.purs</em>, invoked above in the second child of the supervision tree with BookLibrary.startLink and the code for which is shown below..</p>
 <pre><code class="language-haskell">
 <span class="hljs-title">serverName</span> :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span>
-<span class="hljs-title">serverName</span> = <span class="hljs-type">ServerName</span> <span class="hljs-string">"book_library"</span>
+<span class="hljs-title">serverName</span> = <span class="hljs-type">ServerName</span> <span class="hljs-string">&quot;book_library&quot;</span>
 
 <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">BookLibraryStartArgs</span> = {
   <span class="hljs-title">connectionString</span> :: <span class="hljs-type">ConnectionString</span>
@@ -128,7 +128,7 @@
 <p>This is a bit unwieldy, lacks any notion of type safety across the calls being made, but is still pleasantly relatable to the Purescript variant.</p>
 <pre><code class="language-haskell">
 <span class="hljs-title">serverName</span> :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span>
-<span class="hljs-title">serverName</span> = <span class="hljs-type">ServerName</span> <span class="hljs-string">"book_library"</span>
+<span class="hljs-title">serverName</span> = <span class="hljs-type">ServerName</span> <span class="hljs-string">&quot;book_library&quot;</span>
 
 <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">BookLibraryStartArgs</span> = {
   <span class="hljs-title">connectionString</span> :: <span class="hljs-type">ConnectionString</span>

@@ -12,7 +12,7 @@ markdown.setOptions({
   gfm: true,
   highlight: function(code, lang) {
     if(lang)
-      return highlighter.highlight(lang, code).value
+      return highlighter.highlight(code, { language: lang }).value
     else
       return highlighter.highlightAuto(code).value
   }

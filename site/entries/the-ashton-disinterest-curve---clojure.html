@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -86,13 +87,13 @@
 <h1 id="the-path-towards-erlang">The path towards Erlang</h1>
 <p>So okay; simplifying things a lot - you either need to pass file handles (or something that represents them, so handle handles) up to the users of your library for short lived access or wrap up long lived resources in core.async blocks to manage concurrent access to them.</p>
 <p>This ends up looking like this (keeping most of the code out of the core.async block so it can be tested in the REPL easily)</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> go-index-head [_ {<span class="hljs-symbol">:keys</span> [command-channel] <span class="hljs-symbol">:as</span> engine}]
-  (<span class="hljs-name">debug</span> <span class="hljs-string">"being asked to start"</span>)
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">go-index-head</span> [_ {<span class="hljs-symbol">:keys</span> [command-channel] <span class="hljs-symbol">:as</span> engine}]
+  (<span class="hljs-name">debug</span> <span class="hljs-string">&quot;being asked to start&quot;</span>)
   (<span class="hljs-name">go</span>
     (<span class="hljs-name"><span class="hljs-builtin-name">loop</span></span> [state (<span class="hljs-name">initial-state</span> engine)]
     (<span class="hljs-name"><span class="hljs-builtin-name">if-let</span></span> [{<span class="hljs-symbol">:keys</span> [cmd data]} (<span class="hljs-name">&lt;!</span> command-channel)]
      (<span class="hljs-name"><span class="hljs-builtin-name">do</span></span>
-      (<span class="hljs-name">debug</span> <span class="hljs-string">"handling index loop command"</span> cmd)
+      (<span class="hljs-name">debug</span> <span class="hljs-string">&quot;handling index loop command&quot;</span> cmd)
        (<span class="hljs-name"><span class="hljs-builtin-name">recur</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">case</span></span> cmd
          <span class="hljs-symbol">:schedule-indexing</span> (<span class="hljs-name">main-indexing-process</span> state)
          <span class="hljs-symbol">:notify-finished-indexing</span> (<span class="hljs-name">main-indexing-process-ended</span> state)
@@ -100,7 +101,7 @@
          <span class="hljs-symbol">:chaser-finished</span> (<span class="hljs-name">finish-chaser</span> state data)
          <span class="hljs-symbol">:storage-request</span> (<span class="hljs-name">storage-request</span> state data))))
       (<span class="hljs-name"><span class="hljs-builtin-name">do</span></span>
-        (<span class="hljs-name">debug</span> <span class="hljs-string">"being asked to shut down"</span>)
+        (<span class="hljs-name">debug</span> <span class="hljs-string">&quot;being asked to shut down&quot;</span>)
         (<span class="hljs-name">wait-for-main-indexing</span> state)
         (<span class="hljs-name">wait-for-chasers</span> state)
         (<span class="hljs-name">close-open-indexes</span> state))))))</code></pre><p>Basically re-invent actors but without decent error handling, supervision trees, named processes... So yeah - Clojure, glorious syntax, clever libraries, great data structures, but it&#39;s not Erlang for getting things done in the kind of projects I&#39;m working on at the moment.</p>

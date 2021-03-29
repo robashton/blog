@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -78,28 +79,28 @@
 <p><em>this is a traditional function call</em></p>
 <pre><code><span class="hljs-function"><span class="hljs-title">foo</span><span class="hljs-params">(x, y)</span></span></code></pre><p><em>this is a Clojure function call</em></p>
 <pre><code>(<span class="hljs-name">foo</span> x y)</code></pre><p><em>this is a traditional function definition</em></p>
-<pre><code>function foo(<span class="hljs-symbol">x</span>, <span class="hljs-symbol">y</span>) {
-   console.log(<span class="hljs-symbol">x</span>, <span class="hljs-symbol">y</span>)
+<pre><code><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">foo</span><span class="hljs-params">(x, y)</span> {</span>
+   console.<span class="hljs-built_in">log</span>(<span class="hljs-keyword">x</span>, <span class="hljs-keyword">y</span>)
 }</code></pre><p><em>this is a Clojure function definition</em></p>
-<pre><code>(<span class="hljs-name">defn</span> foo [<span class="hljs-name">x</span>, y]
-  (<span class="hljs-name"><span class="hljs-builtin-name">log</span></span> x y)
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">foo</span> [x, y]
+  (<span class="hljs-name">log</span> x y)
 )</code></pre><p>This should be enough to get us started at least. Apparently some of these things we put after the first paren are not only functions, but special forms or macros - but as I haven&#39;t learned anything about them yet, I&#39;m happy in my world of pretending they&#39;re all just functions.</p>
 <p>So, how am I going to start off in my happy world of Clojurescript? I need to create an HTML5 Canvas Context so I can do  things with it, and in order to do that I need to need to wait for the DOM ready event and oh oh oh - oh dear, <em>all of this looks like it might be hard because these are all external systems to my happy ClojureScript world and will involve some initial pain - oh well I wanted to learn how to do something practical and nearly all things practical are going to involve talking to external systems so I&#39;d better get the pain over with *</em>OH IT HURTS IT HURTS.***</p>
 <p>Ahem.</p>
 <h2 id="getting-a-function-called-on-start-up">Getting a function called on start-up</h2>
 <p>Ever the pragmatist, rather than re-implement the standard fuzz around this stuff in Clojure, or pull in jQuery or anything I&#39;d do in JS, we&#39;ll just go with the body onload event, and rely on it calling a global function that I export from my game.js.</p>
 <pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">ns</span></span> game) 
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> ^<span class="hljs-symbol">:export</span> init [] 
+(<span class="hljs-keyword">defn</span> ^<span class="hljs-symbol">:export</span> <span class="hljs-title">init</span> [] 
 
 ) </code></pre><p>Given a body declaration of something like</p>
-<pre><code>&lt;body <span class="hljs-attribute">onload</span>=<span class="hljs-string">"game.init();"</span>&gt;</code></pre><p>That funky export thing just tells the Google Closure compiler not to mangle the name of the function (the ClojureScript compiler runs output through Closure - yes, that is confusing when you read it out loud).</p>
+<pre><code>&lt;body <span class="hljs-attribute">onload</span>=<span class="hljs-string">&quot;game.init();&quot;</span>&gt;</code></pre><p>That funky export thing just tells the Google Closure compiler not to mangle the name of the function (the ClojureScript compiler runs output through Closure - yes, that is confusing when you read it out loud).</p>
 <p>How do I test it works? Well inside my init function, let&#39;s access our first native object and see what the syntax is for that.</p>
-<pre><code>(.log js<span class="hljs-built_in">/console </span><span class="hljs-string">"Hello World"</span>)</code></pre><p>Actually not too bad, &quot;Please call .log - which exists on the object js/console, and pass in &quot;Hello World&quot; as parameters.</p>
+<pre><code>(.<span class="hljs-keyword">log</span> js/console <span class="hljs-string">&quot;Hello World&quot;</span>)</code></pre><p>Actually not too bad, &quot;Please call .log - which exists on the object js/console, and pass in &quot;Hello World&quot; as parameters.</p>
 <p>Great - so I&#39;m now printing hello world, how are we going to draw a square to our canvas? Well first we&#39;ll need a context object, and in order to get that context object, we&#39;ll have to get a canvas object and call a method on it - this will mean having a variable of some sort from which we can gain other functionality.</p>
 <h2 id="introducing-some-more-syntax">Introducing some more syntax.</h2>
 <p><em>Traditional variable declaration</em></p>
 <pre><code><span class="hljs-attribute">var x</span> = 0;</code></pre><p><em>Clojurescript variable declaration</em></p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [<span class="hljs-name">x</span> <span class="hljs-number">0</span>] 
+<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [x <span class="hljs-number">0</span>] 
   (<span class="hljs-name">doStuff</span> x)
 )</code></pre><p>So, two things here - we have this &#39;let&#39; thing, into which you pass in a vector of key-value pairs (x and 0 in this case, so x = 0), and then a body of code doing things with those values.</p>
 <p>Ah yes, Clojure has vectors, which are square brackets which contain a bunch of things. (parens are just lists of things, hence &#39;LISP&#39; apparently). The difference between the two? Well, for my purposes right now, one has square brackets and the other has parentheses - I&#39;m sure it will become clearer in the future.</p>
@@ -108,14 +109,14 @@
 <pre><code>  (<span class="hljs-name"><span class="hljs-builtin-name">ns</span></span> game)
 
 
-  (<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> drawSquare []
-    (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [target (<span class="hljs-name">.getElementById</span> js/document <span class="hljs-string">"target"</span>)
-          context (<span class="hljs-name">.getContext</span> target <span class="hljs-string">"2d"</span>)]
+  (<span class="hljs-keyword">defn</span> <span class="hljs-title">drawSquare</span> []
+    (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [target (<span class="hljs-name">.getElementById</span> js/document <span class="hljs-string">&quot;target&quot;</span>)
+          context (<span class="hljs-name">.getContext</span> target <span class="hljs-string">&quot;2d&quot;</span>)]
        (<span class="hljs-name">.fillRect</span> context <span class="hljs-number">0</span> <span class="hljs-number">0</span> <span class="hljs-number">100</span> <span class="hljs-number">100</span>)
     )
   )
 
-  (<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> ^<span class="hljs-symbol">:export</span> init []
+  (<span class="hljs-keyword">defn</span> ^<span class="hljs-symbol">:export</span> <span class="hljs-title">init</span> []
      (<span class="hljs-name">drawSquare</span>)
   )</code></pre><ul>
 <li>Create a function called drawSquare, taking in no parameters</li>

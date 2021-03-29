@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
     <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/assets/css/style_responsive.css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -73,21 +74,21 @@
 <p>We had this workflow for testing</p>
 <pre><code>
   #workflow {
-    generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">"foo.ts"</span>&gt;&gt; },
+    generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">&quot;foo.ts&quot;</span>&gt;&gt; },
     processors = [
       #nvidia_decoder { name = decode, <span class="hljs-keyword">from</span> = { source, ?video_frames_with_stream_id(<span class="hljs-number">256</span>) } },
       #x264_encoder { name = encode, <span class="hljs-keyword">from</span> = decode },
-      #ts_writer { name = write, <span class="hljs-keyword">from</span> = encode, filename  = &lt;&lt;<span class="hljs-string">"out.ts"</span>&gt;&gt; }
+      #ts_writer { name = write, <span class="hljs-keyword">from</span> = encode, filename  = &lt;&lt;<span class="hljs-string">&quot;out.ts&quot;</span>&gt;&gt; }
     ]
   }
 
 </code></pre><p>and what I want is</p>
 <pre><code>  #workflow {
-    generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">"foo.ts"</span>&gt;&gt; },
+    generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">&quot;foo.ts&quot;</span>&gt;&gt; },
     processors = [
       #nvidia_decoder { name = decode, <span class="hljs-keyword">from</span> = { source, ?video_frames_with_stream_id(<span class="hljs-number">256</span>) } },
       #nvidia_encoder { name = encode, <span class="hljs-keyword">from</span> = decode },
-      #ts_writer { name = write, <span class="hljs-keyword">from</span> = encode, filename  = &lt;&lt;<span class="hljs-string">"out.ts"</span>&gt;&gt; }
+      #ts_writer { name = write, <span class="hljs-keyword">from</span> = encode, filename  = &lt;&lt;<span class="hljs-string">&quot;out.ts&quot;</span>&gt;&gt; }
     ]
   }
 </code></pre><p>In the decode entry we had a series of pointers to surfaces that we&#39;d pulled out of the decoder along with the corresponding timestamps, these are in NV12 planar format and byte-aligned (and I&#39;m storing all that information alongside the pointer to that surface in a struct so now we just need to see what the API looks like to turn this surface into h264 once again...)</p>
@@ -132,13 +133,13 @@
 <p>Unlike the decode stack, the encoder doesn&#39;t seem to be built <em>directly</em> on top of CUDA, it having the capability of instantiating on top of OpenGL/DirectX/Cuda as options (and then utilise surfaces from those systems). Because we&#39;re using the decoder (and planning on using CUDA to run upscaling algorithms and such), it makes sense to use CUDA for the encoder too.</p>
 <p>Because of this, we&#39;ll want to use our already-created CUDA context and pass this into the open session call.</p>
 <pre><code>
-  NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS encodeSessionExParams = { NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS_VER }<span class="hljs-comment">;</span>
-  encodeSessionExParams.device = ctx<span class="hljs-comment">;</span>
-  encodeSessionExParams.deviceType = NV_ENC_DEVICE_TYPE_CUDA<span class="hljs-comment">;</span>
-  encodeSessionExParams.apiVersion = NVENCAPI_VERSION<span class="hljs-comment">;</span>
-  void* encoder = NULL<span class="hljs-comment">;</span>
+  NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS <span class="hljs-attr">encodeSessionExParams</span> = { NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS_VER };
+  encodeSessionExParams.<span class="hljs-attr">device</span> = ctx;
+  encodeSessionExParams.<span class="hljs-attr">deviceType</span> = NV_ENC_DEVICE_TYPE_CUDA;
+  encodeSessionExParams.<span class="hljs-attr">apiVersion</span> = NVENCAPI_VERSION;
+  void* <span class="hljs-attr">encoder</span> = NULL;
 
-  nvenc.nvEncOpenEncodeSessionEx(&amp;encodeSessionExParams, &amp;encoder)<span class="hljs-comment">;</span>
+  nvenc.nvEncOpenEncodeSessionEx(&amp;encodeSessionExParams, &amp;encoder);
 </code></pre><p>Now, this doesn&#39;t do very much other than give us an encode session that isn&#39;t initialise - and to initialise it we need to tell it what form our desired output needs to take. It is entirely possible to spend a day or two wondering why this call gives you back &#39;NV_ENC_ERR_INVALID_PARAM&#39; if it&#39;s not set up correctly (and reading the sample code doesn&#39;t help because the configuration of the encoder happens across multiple files because of the way that the samples are written), the below seems to be the the minimum required..</p>
 <p>In the Real World (tm) we have an input surface with a known width/height from the decoder, here we&#39;ll hard code it along with the frame rate (I know my source is 25fps). In the Real World a load of these args will be passed in from Erlang, not C.</p>
 <pre><code class="language-c">
