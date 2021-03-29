@@ -61,7 +61,7 @@
 </code></pre>
 <pre><code class="language-erlang">  { ok, Result } = dotnet:run_app_from_assembly(<span class="hljs-string">&quot;priv/acme.dll&quot;</span>, <span class="hljs-string">&quot;Acme.HelloApp&quot;</span>, #{ x =&gt; <span class="hljs-number">5</span>, y =&gt; <span class="hljs-number">5</span> }),
   ?LOG(Result). <span class="hljs-comment">%% 10</span></code></pre>
-<p>Not a problem. The observant reader will notice that not only is the casing automatically adjusted (Erlang is typically <em>snake_case</em>, and dotnet is typically <em>PascalCase</em>) but return type of Start is just a plain ol&#39; object, and the same thing applies there, return anything you like and it&#39;ll get converted into something that Erlang will understand.</p>
+<p>Not a problem. The observant reader will notice that not only is the casing automatically adjusted (Erlang is typically <em>snake_case</em>, and dotnet is typically <em>PascalCase</em>) but return type of Start is just a plain ol&#39; object, and the same thing applies there, return anything you like and it&#39;ll get converted into something that Erlang will understand. Records on records? Not a problem.</p>
 <pre><code class="language-csharp">
   <span class="hljs-keyword">public</span> <span class="hljs-keyword">record</span> <span class="hljs-title">ComplexReturnValue</span> {
     <span class="hljs-keyword">public</span> AnotherComplexValue Why { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">init</span>; }
@@ -167,19 +167,19 @@ handle_info(Msg, State) -&gt;
   <span class="hljs-comment">%% 11</span>
   ?LOG(gen_server:call(Pid, <span class="hljs-number">6</span>)),
 </code></pre>
-<p>In Erlang we&#39;d have a state record that needs returning as part of the handle_info callback, but that is because Erlang doesn&#39;t have mutation. Dotnet is somewhat fuller featured in this regard and we can just store our state on a member variable and forgo the extra steps required.</p>
+<p>In Erlang we&#39;d have a state record that needs returning as part of the handle_info callback, but that is because Erlang doesn&#39;t have mutation. Dotnet is somewhat fuller featured in this regard and we can just store our state on a member variable and forgo the extra steps required to dance around immutable structures.</p>
 <p><em>Pattern Matching in Dotnet</em></p>
 <p>Now you&#39;ll notice that our IHandleInfo/IHandleCall interfaces are generic and take the input shape expected, but it&#39;s really common in Erlang for a handle_info call to take a multitude of shapes and perform pattern matching based on those shapes to perform the correct block of logic.</p>
 <p>Consider this code written in Erlang</p>
 <pre><code class="language-erlang">
-<span class="hljs-function"><span class="hljs-title">handle_info</span><span class="hljs-params">({tell_me, Pid}, State = #state { value = Value })</span> -&gt;</span> 
+handle_info({tell_me, Pid}, State = #state { value = Value }) -&gt; 
   Pid ! Value,
   {noreply, State};
-<span class="hljs-function"><span class="hljs-title">handle_info</span><span class="hljs-params">({op, {add, X}), State = #state { value = Value }) -&gt; 
+handle_info({op, {add, X}}), State = #state { value = Value }) -&gt; 
   {noreply, State#state { value = Value + X }};
-handle_info({op, {mul, X}), State = #state { value = Value }) -&gt; 
+handle_info({op, {mul, X}}), State = #state { value = Value }) -&gt; 
   {noreply, State#state { value = Value * X }}.
-</span></span></code></pre>
+</code></pre>
 <p>This code either receives a <em>{ atom(), pid() }</em>, or <em>{ atom(), { atom(), integer() }}</em>, we don&#39;t have union types in dotnet so can&#39;t map this across cleanly - or <em>can we</em>. C# has some semblance of pattern matching these days as any good scripting language should - what if we just request &#39;Object&#39; as our message type instead?</p>
 <pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">MyCoolGenServer</span> : <span class="hljs-title">IHandleInfo</span>&lt;<span class="hljs-title">Object</span>&gt; {
   <span class="hljs-keyword">private</span> <span class="hljs-built_in">int</span> <span class="hljs-keyword">value</span> = <span class="hljs-number">0</span>;

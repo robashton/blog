@@ -107,7 +107,7 @@ The observant reader will notice that we're using a dotnet *Tuple<Int, Int>* her
   ?LOG(Result). %% 10
 ```
 
-Not a problem. The observant reader will notice that not only is the casing automatically adjusted (Erlang is typically *snake_case*, and dotnet is typically *PascalCase*) but return type of Start is just a plain ol' object, and the same thing applies there, return anything you like and it'll get converted into something that Erlang will understand.
+Not a problem. The observant reader will notice that not only is the casing automatically adjusted (Erlang is typically *snake_case*, and dotnet is typically *PascalCase*) but return type of Start is just a plain ol' object, and the same thing applies there, return anything you like and it'll get converted into something that Erlang will understand. Records on records? Not a problem.
 
 
 ```csharp
@@ -261,7 +261,7 @@ public class AdditionApp : IApp {
 
 ```
 
-In Erlang we'd have a state record that needs returning as part of the handle_info callback, but that is because Erlang doesn't have mutation. Dotnet is somewhat fuller featured in this regard and we can just store our state on a member variable and forgo the extra steps required.
+In Erlang we'd have a state record that needs returning as part of the handle_info callback, but that is because Erlang doesn't have mutation. Dotnet is somewhat fuller featured in this regard and we can just store our state on a member variable and forgo the extra steps required to dance around immutable structures.
 
 *Pattern Matching in Dotnet*
 
@@ -274,9 +274,9 @@ Consider this code written in Erlang
 handle_info({tell_me, Pid}, State = #state { value = Value }) -> 
   Pid ! Value,
   {noreply, State};
-handle_info({op, {add, X}), State = #state { value = Value }) -> 
+handle_info({op, {add, X}}), State = #state { value = Value }) -> 
   {noreply, State#state { value = Value + X }};
-handle_info({op, {mul, X}), State = #state { value = Value }) -> 
+handle_info({op, {mul, X}}), State = #state { value = Value }) -> 
   {noreply, State#state { value = Value * X }}.
 
 ```
