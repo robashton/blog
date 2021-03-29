@@ -387,7 +387,7 @@ In a similar vein, that also means that APIs that involve messages being sent ba
   }
 ```
 
-And this would allow us to write a gen server which connects to a udp sockets and writes everything it receives to disk. (Assuming we've wrapped file:open/etc the same way as we just did with UDP)
+And this would allow us to write a gen server which connects to a udp socket and writes everything it receives to disk. (Assuming we've wrapped file:open/etc the same way as we just did with UDP)
 
 ```csharp
 
