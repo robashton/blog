@@ -1,0 +1,419 @@
+<p>At work we are in the middle of a wholescale re-imagining of how we build our software, after writing a heap of control/management plane logic in <a href="https://www.purescript.org/">Purescript</a> over the last couple of years (<a href="https://purerl-cookbook.readthedocs.io/en/latest/">Compiled to Erlang</a> of course), using <a href="https://github.com/id3as/purescript-erl-stetson">Stetson</a> and <a href="https://github.com/id3as/purescript-erl-pinto/">Pinto</a> we&#39;re stepping back to consider next steps. Some team members are <a href="https://github.com/id3as/purescript-erl-pinto/pull/15">dusting off</a> Pinto and fixing some of the niggles we&#39;ve put off because we&#39;ve been too busy building actual software and others are deep into a re-think of our more core technologies. Principally that is the capturing of video/audio sources, the transformation of this content into other versions of that content and the swift dispatch of that aforementioned video/audio content (yes, like all software it can be boiled down to moving bytes from one place to another..).</p>
+<p>All in all it&#39;s good fun and I&#39;m discovering things about programming in Purescript that I never thought I&#39;d be capable of learning, never mind having the time to spend learning - one of the biggest &#39;<em>woah hang on</em>&#39; moments has to have been some of the things we&#39;re managing to push into the type system via what was our initial use of Data.Variant and then the rabbit-hole we fell down as we started bashing typeclasses out to validate even more at compile time and avoid some of the potential runtime issues we would usually devote our valuable time/money avoiding by adding complexity to the runtime code itelf.</p>
+<h1 id="a-common-issue">A common issue</h1>
+<p>A standard hilarity in what we do is that there are not only multiple flavours of media content floating around out there, but within those multitude of flavours there are almost infinite sub-variations of those flavours and a large part of our efforts can be summarised as getting those flavours into a common format internally so we can process them with a lot of the same code. Even once we&#39;ve converted data into its raw format there are still plenty of different colour spaces, pixel formats, various means of laying out bytes in memory so that they can be processed one way or another by various libraries and boy do we have a lot of code to do those things and therefore end up still needing to convert between them as a workflow does its job.</p>
+<p>One of the interesting findings when pulling old code into our new workspace was how much of that code was duplicated about the place becaue you could never really trust the content you were getting was indeed one thing or another, while we have <em>incredibly</em> rich metadata attached to each and every frame of data we process that we can use to decision on, all of that decision is at runtime and it&#39;s often easier to just shuffle some bytes about than insist up front that everything be one thing or another.</p>
+<p>Wouldn&#39;t it be nice if we could just not do that any more? Express in the type system based on metadata within the content itself that certain code is only meant to be invoked with content that fits a certain structure.</p>
+<p><em>I only want that thing... or that thing</em></p>
+<p>It&#39;s entirely possible using plain ol&#39; records and ADTs to express nearly all of the concepts in the world and this is definitely the first place we&#39;d go to when modelling within a problem space. Let&#39;s exit our own domain for the rest of this blog post because it&#39;s too vast and also I don&#39;t want to be copying and pasting code from our codebase in order to explain it. Let&#39;s find something new to talk about.</p>
+<p>Imagine if you will, <del>a burrito</del> a childrens puzzle toy. Square pegs, round holes - you know how it goes, and a factory that produces these things in a pipeline, and let&#39;s model that with ADTs and functions the easiest way we can think of - if we can allow a certain amount of leeway here for the rest of the blog post because this domain is a lot simpler than the one we have at in the office and falls into the classic &#39;<em>making up a contrived problem in order to explain a solution that doesn&#39;t exactly fit the old problem</em>&#39; trap that is common for this sort of blog post.</p>
+<p>We might start off with something that looks like this.</p>
+<pre><code class="language-haskell">
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">PuzzlePiece</span> </span>
+    = { maxWidth :: <span class="hljs-type">Int</span>
+      , maxHeight :: <span class="hljs-type">Int</span>
+      , shape :: <span class="hljs-type">PuzzleShape</span>
+      , colour :: <span class="hljs-type">PuzzlePaintJob</span>
+      }
+
+  <span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">PuzzleShape</span> = <span class="hljs-type">Square</span> { <span class="hljs-title">size</span> :: <span class="hljs-type">Int</span> }</span>
+                   | <span class="hljs-type">Circle</span> { radius :: <span class="hljs-type">Int</span> }
+                   | <span class="hljs-type">Rectangle</span> { width :: <span class="hljs-type">Int</span>, height :: <span class="hljs-type">Int</span> }
+                   | <span class="hljs-type">Crescent</span> { radius :: <span class="hljs-type">Int</span>, arc :: <span class="hljs-type">Int</span> }
+                   | <span class="hljs-type">Triangle</span> { length :: <span class="hljs-type">Int</span> }
+
+  <span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">PuzzlePaintJob</span> = <span class="hljs-type">Unpainted</span></span>
+                      | <span class="hljs-type">Painted</span> <span class="hljs-type">Colour</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Colour</span> = <span class="hljs-type">Red</span> | <span class="hljs-type">Green</span> | <span class="hljs-type">Blue</span> | <span class="hljs-type">Yellow</span></span>
+
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Box</span> = <span class="hljs-type">List</span> <span class="hljs-type">PuzzlePiece</span></span>
+</code></pre>
+<p>Hopefully this is a sufficiently simple example of some code where we have attributes that are common to all objects, and then attributes that only exist when the objects are in one state or another. Now let&#39;s imagine that we want to construct a workflow out of the following functions. </p>
+<pre><code class="language-haskell">
+  buildSquare :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span>
+  buildSquare size = { maxWidth: size 
+                     , maxHeight: size 
+                     , shape: <span class="hljs-type">Square</span> { size }
+                     , colour: <span class="hljs-type">Unpainted</span>
+                     }
+
+  buildCircle :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span>
+  buildCircle radius = { maxWidth: radius*<span class="hljs-number">2</span> 
+                       , maxHeight: radius*<span class="hljs-number">2</span>
+                       , shape: <span class="hljs-type">Circle</span> { radius }
+                       , colour: <span class="hljs-type">Unpainted</span>
+                       }
+
+  buildRectangle :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span>
+  buildRectangle width height = { maxWidth: width 
+                                , maxHeight: height 
+                                , shape: <span class="hljs-type">Rectangle</span> { width, height }
+                                , colour: <span class="hljs-type">Unpainted</span> 
+                                }
+
+  buildCrescent ::  <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span>
+  buildCrescent radius arc = { maxWidth: radius*<span class="hljs-number">2</span> 
+                             , maxHeight: radius 
+                             , shape: <span class="hljs-type">Crescent</span> { radius, arc }
+                             , colour: <span class="hljs-type">Unpainted</span> 
+                             }
+
+  buildTriangle :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span>
+  buildTriangle length = { maxWidth: length
+                         , maxHeight: floor $ ((toNumber length) * <span class="hljs-number">1.7</span>) / <span class="hljs-number">2.0</span>
+                         , shape: <span class="hljs-type">Triangle</span> { length }
+                         , colour: <span class="hljs-type">Unpainted</span> 
+                         }
+
+  paintQuad :: <span class="hljs-type">Colour</span> -&gt; <span class="hljs-type">PuzzlePiece</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">PuzzlePiece</span>
+  paintQuad = throw <span class="hljs-string">"calculate how much paint we need here and take it"</span>
+
+  paintRound :: <span class="hljs-type">Colour</span> -&gt; <span class="hljs-type">PuzzlePiece</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">PuzzlePiece</span>
+  paintRound = throw <span class="hljs-string">"calculate how much paint we need here and take it"</span>
+
+  paintTriangle :: <span class="hljs-type">Colour</span> -&gt; <span class="hljs-type">PuzzlePiece</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">PuzzlePiece</span>
+  paintTriangle = throw <span class="hljs-string">"calculate how much paint we need here and take it"</span>
+
+  pack :: <span class="hljs-type">PuzzlePiece</span> -&gt; <span class="hljs-type">Box</span> -&gt; <span class="hljs-type">Box</span>
+  pack = (:)
+
+  emptyBox :: <span class="hljs-type">Box</span>
+  emptyBox = <span class="hljs-type">Nil</span>
+</code></pre>
+<p>Our workflow needs to (for some reason), construct a puzzle box from a sequence of these functions, consuming paint from some sort of central system as it goes..</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">buildPuzzleBox</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Box</span> 
+<span class="hljs-title">buildPuzzleBox</span> = <span class="hljs-keyword">do</span>
+  redSquare &lt;- paintQuad <span class="hljs-type">Red</span> $ buildSquare <span class="hljs-number">100</span>
+  yellowRectangle &lt;- paintQuad <span class="hljs-type">Yellow</span> $ buildRectangle <span class="hljs-number">25</span> <span class="hljs-number">50</span>
+  greenCircle &lt;- paintRound <span class="hljs-type">Green</span> $ buildCircle <span class="hljs-number">50</span>
+  blueTriangle &lt;- paintTriangle <span class="hljs-type">Blue</span> $ buildTriangle <span class="hljs-number">23</span>
+  pure $ pack redSquare 
+        $ pack yellowRectangle
+        $ pack greenCircle 
+        $ pack blueTriangle
+        $ emptyBox
+
+</code></pre>
+<p>So for the purposes of this post, we&#39;ve got a variety of different types of shape, and a smaller number of functions to go and do &#39;some work&#39; with those shapes, and some of those functions support more than one of the shapes.</p>
+<p>A wise and learned person might look at this and say &quot;<em>hey what</em>, you&#39;re losing what the actual shape of the puzzle piece is when you contruct that puzzle piece, how on earth are you going to validate that you are indeed passing in the appropriate shape to the appropriate function and not trying to write code that paints a triangle as if it&#39;s a rectangle&quot; and yes that is indeed a bit of an issue when you&#39;re working with concrete types and ADTs - at some point you&#39;ll want to only operate on a subset of the ADT and then you&#39;ve got a problem.</p>
+<pre><code class="language-haskell">
+  <span class="hljs-comment">-- "TODO": Calculate paint amount based on rect..</span>
+  paintQuad :: <span class="hljs-type">Colour</span> -&gt; <span class="hljs-type">PuzzlePiece</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">PuzzlePiece</span>
+  paintQuad colour p@{ shape: (<span class="hljs-type">Rectangle</span> rect) } = pure $ p { colour = <span class="hljs-type">Painted</span> colour }
+  paintQuad colour p@{ shape: (<span class="hljs-type">Square</span> square) } = pure $ p { colour = <span class="hljs-type">Painted</span> colour }
+  paintQuad _ _ =  unsafeCrashWith <span class="hljs-string">"Bad argument: expected one of the rectangles!"</span>
+
+  <span class="hljs-comment">-- "TODO": Calculate paint amount based on arc/radius..</span>
+  paintRound :: <span class="hljs-type">Colour</span> -&gt; <span class="hljs-type">PuzzlePiece</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">PuzzlePiece</span>
+  paintRound colour p@{ shape: (<span class="hljs-type">Crescent</span> crescent) } = pure $ p { colour = <span class="hljs-type">Painted</span> colour }
+  paintRound colour p@{ shape: (<span class="hljs-type">Circle</span> circle) } = pure $ p { colour = <span class="hljs-type">Painted</span> colour }
+  paintRound _ _ =  unsafeCrashWith <span class="hljs-string">"Bad argument: expected one of the round pieces!"</span>
+
+  <span class="hljs-comment">-- <span class="hljs-doctag">TODO:</span> Calculate paint amount based on triangle area..</span>
+  paintTriangle :: <span class="hljs-type">Colour</span> -&gt; <span class="hljs-type">PuzzlePiece</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">PuzzlePiece</span>
+  paintTriangle colour p@{ shape: (<span class="hljs-type">Triangle</span> triangle) } = pure $ p { colour = <span class="hljs-type">Painted</span> colour }
+  paintTriangle _ _ =  unsafeCrashWith <span class="hljs-string">"Bad argument: expected one of the triangle pieces!"</span>
+</code></pre>
+<p>So there&#39;s our imagined problem in a nutshell, by allowing the stuffing of square pegs into round holes we&#39;re going to end up with runtime errors if we aren&#39;t careful. We should at this point look at what the common solutions to this are in our codebases...</p>
+<p><em>Just have a single &#39;paint&#39; method that knows how to paint all the things</em></p>
+<p>Yup, definitely - if the domain is fixed and small then this is the real solution to this problem, thanks blog post over, let&#39;s get back to work, thanks for reading!</p>
+<p><em>Have a typeclass for Paintable and make have things implement it</em></p>
+<p>Not a bad idea, but the issue then becomes &#39;what if I want to write <em>other</em> code that just does things with these structures?&#39; I either need to declare the instances for the typeclases next to the definitions or I need to declare them alongside the typeclass definition; this again doesn&#39;t scale beyond the initial example once we start writing real code where we don&#39;t know all of our types.. You also can&#39;t have heterogenous lists containing implementors of a typeclass so this is not typically a good solution for this sort of imagined scenario (And isn&#39;t, as far as I can tell, what typeclasses are for anyway).</p>
+<p><em>Sub modules, sub types</em></p>
+<p>This is probably the most common approach to ensuring safety of sorts across a larger project where certain modules only take a subset of the overall model - re-expressing parts of that model to make their inputs and outputs concrete and obvious. If you force code consumers to create or transform/select aspects of a model. There is a benefit that further code can always be written without impinging on those sub modules because the addition of new types doesn&#39;t automatically mean having to add clauses to the functions of those sub modules..</p>
+<pre><code class="language-haskell">
+<span class="hljs-keyword">module</span> Quad <span class="hljs-keyword">where</span>
+
+  paint :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">Colour</span> -&gt; { colour :: <span class="hljs-type">PuzzlePaintJob</span> | a } -&gt; { width :: <span class="hljs-type">Int</span>, height :: <span class="hljs-type">Int</span> } -&gt; <span class="hljs-type">Effect</span> { colour :: <span class="hljs-type">PuzzlePaintJob</span> | a }
+  paint colour i { width, height } = <span class="hljs-keyword">do</span>
+    _ &lt;- drainPaint colour (width * height)
+    pure $ i { colour = <span class="hljs-type">Painted</span> colour }
+
+</code></pre>
+<p>Of course this then means that whilst some records can remain intact, a certain amount of mapping is required to contract the concrete types down into the right input shape required by these sub modules.. and then indeed using case statements or functions to expand the types so we can do that in the first place.</p>
+<pre><code class="language-haskell">
+  <span class="hljs-keyword">case</span> obj.shape <span class="hljs-keyword">of</span>
+    <span class="hljs-type">Square</span> s -&gt; <span class="hljs-type">Quad</span>.paint <span class="hljs-type">Yellow</span> obj { width: s.size, height: s.size }
+    <span class="hljs-type">Rect</span> r -&gt; <span class="hljs-type">Quad</span>.paint <span class="hljs-type">Yellow</span> obj r
+    <span class="hljs-type">Triangle</span> t -&gt; <span class="hljs-type">Triangle</span>.paint <span class="hljs-type">Yellow</span> obj { o: t.length, a: t.length, h: t.length }
+    _ -&gt; etc
+</code></pre>
+<p>Typically the easier understood solutions tend towards the &#39;make things more concrete&#39; side of things which is a <em>good thing</em> for a lot of code and most of the time is the right thing to do.</p>
+<p>Once you&#39;ve firmly placed your boots in the realm of &#39;<em>we have thousands of these, and they all take different subsets of these few dozen dimensions</em>&#39; then this still might be the right approach as burdensome as it is, it is at least simple and &#39;just code&#39; - but we know better and we know that there is a concept floating around out there, a solution in search of a problem to solve and that solution looks like <a href="https://github.com/natefaubion/purescript-variant">Data.Variant</a>.</p>
+<h1 id="datavariant-101">Data.Variant 101</h1>
+<p>Now it&#39;s not immediately apparent (unless you&#39;re already way ahead of me) how this ties into our problem here, but we&#39;ll continue to work towards that...</p>
+<pre><code class="language-haskell">
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">KnownShapes</span> = ( <span class="hljs-title">rect</span> :: { <span class="hljs-title">width</span> :: <span class="hljs-type">Int</span>, <span class="hljs-title">height</span> :: <span class="hljs-type">Int</span> }
+                     , <span class="hljs-title">circle</span> :: { <span class="hljs-title">radius</span> :: <span class="hljs-type">Int</span> }
+                     , <span class="hljs-title">square</span> :: { <span class="hljs-title">size</span> :: <span class="hljs-type">Int</span> }
+                     , <span class="hljs-title">triangle</span> :: { <span class="hljs-title">length</span> :: <span class="hljs-type">Int</span> }
+                     )</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">PuzzlePiece</span> </span>
+    = { maxWidth :: <span class="hljs-type">Int</span>
+      , maxHeight :: <span class="hljs-type">Int</span>
+      , shape :: <span class="hljs-type">Variant</span> <span class="hljs-type">KnownShapes</span>
+      , colour :: <span class="hljs-type">PuzzlePaintJob</span>
+      }
+</code></pre>
+<p>To support the use of this variant, we&#39;ll need to define a bunch of helper functions using SProxy (don&#39;t worry about it, it just lets you do compile time stuff with strings)</p>
+<pre><code class="language-haskell">
+  _rect = (<span class="hljs-type">SProxy</span> :: <span class="hljs-type">SProxy</span> <span class="hljs-string">"rect"</span>)
+  _circle = (<span class="hljs-type">SProxy</span> :: <span class="hljs-type">SProxy</span> <span class="hljs-string">"circle"</span>)
+  _square = (<span class="hljs-type">SProxy</span> :: <span class="hljs-type">SProxy</span> <span class="hljs-string">"square"</span>)
+  _triangle = (<span class="hljs-type">SProxy</span> :: <span class="hljs-type">SProxy</span> <span class="hljs-string">"triangle"</span>)
+
+  rect :: { width :: <span class="hljs-type">Int</span>, height :: <span class="hljs-type">Int</span> } -&gt; <span class="hljs-type">Variant</span> <span class="hljs-type">KnownShapes</span>
+  rect = inj _rect
+
+  circle :: { radius :: <span class="hljs-type">Int</span> } -&gt; <span class="hljs-type">Variant</span> <span class="hljs-type">KnownShapes</span>
+  circle = inj _circle
+
+  square :: { size :: <span class="hljs-type">Int</span> } -&gt; <span class="hljs-type">Variant</span> <span class="hljs-type">KnownShapes</span>
+  square = inj _square
+
+  triangle :: { length :: <span class="hljs-type">Int</span> } -&gt; <span class="hljs-type">Variant</span> <span class="hljs-type">KnownShapes</span>
+  triangle = inj _triangle
+
+</code></pre>
+<p>So what we&#39;ve got is a row type with the symbols &#39;rect/circle/square/triangle&#39; and the means of constructing instances of that variant via our helper functions, that mean we can re-write our construction functions using these building blocks</p>
+<pre><code class="language-haskell">
+  buildSquare :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span>
+  buildSquare size = { maxWidth: size 
+                     , maxHeight: size 
+                     , shape: square { size }
+                     , colour: <span class="hljs-type">Unpainted</span>
+                     }
+
+  buildCircle :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span>
+  buildCircle radius = { maxWidth: radius*<span class="hljs-number">2</span> 
+                       , maxHeight: radius*<span class="hljs-number">2</span>
+                       , shape: circle { radius }
+                       , colour: <span class="hljs-type">Unpainted</span>
+                       }
+
+  buildRectangle :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span>
+  buildRectangle width height = { maxWidth: width 
+                                , maxHeight: height 
+                                , shape: rect { width, height }
+                                , colour: <span class="hljs-type">Unpainted</span> 
+                                }
+
+  buildTriangle :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span>
+  buildTriangle length = { maxWidth: length
+                         , maxHeight: floor $ ((toNumber length) * <span class="hljs-number">1.7</span>) / <span class="hljs-number">2.0</span>
+                         , shape: triangle { length }
+                         , colour: <span class="hljs-type">Unpainted</span> 
+</code></pre>
+<p>Now those &#39;paint&#39; functions... oh sadness! We still need an unsafe crash because our PuzzlePiece defines a &#39;Shape&#39; as <em>anything</em> in the List of &#39;<em>KnownShapes</em>&#39;</p>
+<pre><code class="language-haskell">
+  paintQuad :: Colour -&gt; PuzzlePiece -&gt; Effect PuzzlePiece
+  paintQuad colour p@{ shape } = do
+    let selector = default (unsafeCrashWith "Not supported" :: Int)
+                      # on _rect (\r -&gt; r.width * r.height)
+                      # on _square (\s -&gt; s.size * s.size)
+    _ &lt;- drainPaint colour $ selector shape
+    pure $ p { colour = Painted colour }
+</code></pre>
+<p>Data.Variant <em>allows</em> us to express that an object could be one of several things at runtime, using row types and symbols to get the compiler to tell us if we&#39;re not exhaustively checking all options at compile time. The crux of it being that if a function can take a <em>superset</em> of of the values you <em>know</em> you could have, then it&#39;s always going to be safe to call that function. In our example above defining every puzzle piece as being possibly &#39;one of these items from this superset&#39; isn&#39;t buying us anything over just using an ADT.</p>
+<p>Well in order to do this, we&#39;re going to have to allow the parameterisation of the Variant being held to represent <em>shape</em> and flow that through to the existing types.</p>
+<pre><code class="language-haskell">
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">PuzzlePiece</span> knownShapes</span>
+    = { maxWidth :: <span class="hljs-type">Int</span>
+      , maxHeight :: <span class="hljs-type">Int</span>
+      , shape :: <span class="hljs-type">Variant</span> knownShapes
+      , colour :: <span class="hljs-type">PuzzlePaintJob</span>
+      }
+
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Box</span> knownShapes = <span class="hljs-type">List</span> (<span class="hljs-type">PuzzlePiece</span> <span class="hljs-title">knownShapes</span>)</span>
+</code></pre>
+<p>In this example, we&#39;re not locking down our known shapes to anything at all (!!), but if were to parameterise this PuzzlePiece with a concrete type (KnownShapes) then we&#39;d be saying &quot;This could be any of the values in KnownShapes&quot;. </p>
+<pre><code class="language-haskell">
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">APuzzlePieceOfAnyKnownShape</span> = <span class="hljs-type">PuzzlePiece</span> <span class="hljs-type">KnownShapes</span></span>
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">ABoxOfPuzzlePiecesOfAnyKnownShape</span> = <span class="hljs-type">Box</span> <span class="hljs-type">KnownShapes</span> </span>
+</code></pre>
+<p>Similarly, if we were to define a type for &#39;only things that are quadrilaterals&#39; and parameterise with that..? The list can <em>only</em> contain values that are contained within that variant.</p>
+<pre><code class="language-haskell">
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Quadrilaterals</span> = ( <span class="hljs-title">rect</span> :: { <span class="hljs-title">width</span> :: <span class="hljs-type">Int</span>, <span class="hljs-title">height</span> :: <span class="hljs-type">Int</span> }
+                        , <span class="hljs-title">square</span> :: { <span class="hljs-title">size</span> :: <span class="hljs-type">Int</span> }
+                        )</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">OnlyQuads</span> = <span class="hljs-type">PuzzlePiece</span> <span class="hljs-type">Quadrilaterals</span></span>
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">ListOfOnlyQuads</span> = <span class="hljs-type">Box</span> <span class="hljs-type">Quadrilaterals</span></span>
+</code></pre>
+<p>Absolutely <em>crucially</em> here, if we have functions that can take a superset of this list then they are <em>absolutely safe</em> to call.</p>
+<p>Before we proceed let&#39;s tidy the definitions up of what our shapes are as we&#39;re about to write the same type definition over and over again repeatedly unless we do! Instead of inline record syntax, we define some type aliases and use them in our row definition for &#39;possible values of KnownShapes&#39;</p>
+<pre><code class="language-haskell">
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Rect</span> = { <span class="hljs-title">width</span> :: <span class="hljs-type">Int</span>, <span class="hljs-title">height</span> :: <span class="hljs-type">Int</span> }</span>
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Circle</span> = { <span class="hljs-title">radius</span> :: <span class="hljs-type">Int</span> }</span>
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Square</span> = { <span class="hljs-title">size</span> :: <span class="hljs-type">Int</span> }</span>
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Triangle</span> = { <span class="hljs-title">length</span> :: <span class="hljs-type">Int</span> }</span>
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Crescent</span> = { <span class="hljs-title">radius</span> :: <span class="hljs-type">Int</span>, <span class="hljs-title">arc</span> :: <span class="hljs-type">Number</span> }</span>
+
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">KnownShapes</span> = ( <span class="hljs-title">rect</span> :: <span class="hljs-type">Rect</span>
+                     , <span class="hljs-title">circle</span> :: <span class="hljs-type">Circle</span>
+                     , <span class="hljs-title">square</span> :: <span class="hljs-type">Square</span> 
+                     , <span class="hljs-title">triangle</span> :: <span class="hljs-type">Triangle</span>
+                     , <span class="hljs-title">crescent</span> :: <span class="hljs-type">Crescent</span>
+                     )</span></code></pre>
+<p>With this done, we can make some super concrete definitions for the code responsible for constructing shapes for our puzzle box...</p>
+<pre><code class="language-haskell">
+  _rect = (<span class="hljs-type">SProxy</span> :: <span class="hljs-type">SProxy</span> <span class="hljs-string">"rect"</span>)
+  _circle = (<span class="hljs-type">SProxy</span> :: <span class="hljs-type">SProxy</span> <span class="hljs-string">"circle"</span>)
+  _square = (<span class="hljs-type">SProxy</span> :: <span class="hljs-type">SProxy</span> <span class="hljs-string">"square"</span>)
+  _triangle = (<span class="hljs-type">SProxy</span> :: <span class="hljs-type">SProxy</span> <span class="hljs-string">"triangle"</span>)
+  _triangle = (<span class="hljs-type">SProxy</span> :: <span class="hljs-type">SProxy</span> <span class="hljs-string">"crescent"</span>)
+
+  rect :: <span class="hljs-type">Rect</span> -&gt; <span class="hljs-type">Variant</span> ( rect :: <span class="hljs-type">Rect</span> )
+  rect = inj _rect
+
+  circle :: <span class="hljs-type">Circle</span> -&gt; <span class="hljs-type">Variant</span> ( circle :: <span class="hljs-type">Circle</span> )
+  circle = inj _circle
+
+  square :: <span class="hljs-type">Square</span> -&gt; <span class="hljs-type">Variant</span> ( square :: <span class="hljs-type">Square</span> )
+  square = inj _square
+
+  triangle :: <span class="hljs-type">Triangle</span> -&gt; <span class="hljs-type">Variant</span> ( triangle :: <span class="hljs-type">Triangle</span> )
+  triangle = inj _triangle
+
+  crescent :: <span class="hljs-type">Crescent</span> -&gt; <span class="hljs-type">Variant</span> ( crescent :: <span class="hljs-type">Crescent</span> )
+  crescent inj _crescent
+</code></pre>
+<p>So now if we want to talk about creating a variant that can be a rect... that&#39;s all it can be, it can&#39;t be anything else, this can follow all the way down into our factory functions for creating our container shapes.</p>
+<pre><code class="language-haskell">
+  buildSquare :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span> ( square :: <span class="hljs-type">Square</span> )
+  buildSquare size = { maxWidth: size 
+                     , maxHeight: size 
+                     , shape: square { size }
+                     , colour: <span class="hljs-type">Unpainted</span>
+                     }
+
+  buildCircle :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span> ( circle :: <span class="hljs-type">Circle</span> )
+  buildCircle radius = { maxWidth: radius*<span class="hljs-number">2</span> 
+                       , maxHeight: radius*<span class="hljs-number">2</span>
+                       , shape: circle { radius }
+                       , colour: <span class="hljs-type">Unpainted</span>
+                       }
+
+  buildRectangle :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span> ( rect :: <span class="hljs-type">Rect</span> )
+  buildRectangle width height = { maxWidth: width 
+                                , maxHeight: height 
+                                , shape: rect { width, height }
+                                , colour: <span class="hljs-type">Unpainted</span> 
+                                }
+
+  buildTriangle :: <span class="hljs-type">Int</span> -&gt; <span class="hljs-type">PuzzlePiece</span> ( triangle :: <span class="hljs-type">Triangle</span> )
+  buildTriangle length = { maxWidth: length
+                         , maxHeight: floor $ ((toNumber length) * <span class="hljs-number">1.7</span>) / <span class="hljs-number">2.0</span>
+                         , shape: triangle { length }
+                         , colour: <span class="hljs-type">Unpainted</span> 
+                         }
+</code></pre>
+<p>So holy moly, what we now have is a pile of functions that tell you <em>exactly</em> what they create and if you&#39;re working with these specific types there can be no ambiguity. So how on earth do we use them? Well as mentioned already, being &quot;correct&quot; in thi world is all about ensuring you only ever pass objects into functions that take a superset of the possible values for that object. Being incredibly specific as above, each of the functions that build our puzzle pieces are all a subset of the total set of &quot;KnownShapes&quot;, but it&#39;s equally possible for them to be a subset of other subsets of that superset.</p>
+<p>How about re-defining our paintQuads function to only take the shapes that are quads..</p>
+<pre><code class="language-haskell">
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">QuadShapes</span> = ( <span class="hljs-title">rect</span> :: <span class="hljs-type">Rect</span>
+                    , <span class="hljs-title">square</span> :: <span class="hljs-type">Square</span> 
+                    )</span>
+
+  paintQuad :: <span class="hljs-type">Colour</span> -&gt; <span class="hljs-type">PuzzlePiece</span> <span class="hljs-type">QuadShapes</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">PuzzlePiece</span> <span class="hljs-type">QuadShapes</span>)
+  paintQuad colour p@{ shape } = <span class="hljs-keyword">do</span>
+    <span class="hljs-keyword">let</span> selector = case_ 
+                    # on _rect (\r -&gt; r.width * r.height)
+                    # on _square (\s -&gt; s.size * s.size)
+    _ &lt;- drainPaint colour $ selector shape
+    pure $ p { colour = <span class="hljs-type">Painted</span> colour }
+</code></pre>
+<p>Wahey, gone is the unsafe crash, it is no longer possible to pass in variants containing the wrong type of data because at compile time the build will stop you. Now we have a whole other bit of fun on our hands, how do we go and call this function?</p>
+<p>We have a <em>&#39;PuzzlePiece ( square :: Square )&#39;</em>, and the function accepts <em>&#39;PuzzlePiece ( rect :: Rect, square :: Square )&#39;</em>. These are not the same thing and attempting to call this function directly will result in the following compiler error..</p>
+<pre><code class="language-haskell">  redSquare &lt;- paintQuad <span class="hljs-type">Red</span> $ buildSquare <span class="hljs-number">100</span></code></pre>
+<pre><code>
+  Could <span class="hljs-keyword">not</span> match<span class="hljs-built_in"> type
+</span>
+    ( <span class="hljs-built_in">..</span>. )
+
+  with<span class="hljs-built_in"> type
+</span>
+    ( rect :: { height :: Int
+              , width :: Int
+              }
+    <span class="hljs-built_in">..</span>.
+    )
+</code></pre><p>Rude but somewhat understandable, the types don&#39;t match - and even though <em>we</em> know we&#39;ll never have a value of &#39;rect :: Rect&#39; in our variant, the function <em>accepts</em> something that might and therefore we need to <em>expand</em> our type in order to say &quot;This <em>could</em> be a rect or a square, even though we totally know it&#39;s a square&quot;... Thankfully this is a common problem and one with a solution inside of Data.Variant itself.</p>
+<pre><code class="language-haskell">  <span class="hljs-comment">-- | Every `Variant lt` can be cast to some `Variant gt` as long as `lt` is a</span>
+  <span class="hljs-comment">-- | subset of `gt`.</span>
+  expand
+    ∷ <span class="hljs-keyword">forall</span> lt a gt
+    . <span class="hljs-type">R</span>.<span class="hljs-type">Union</span> lt a gt
+    =&gt; <span class="hljs-type">Variant</span> lt
+    -&gt; <span class="hljs-type">Variant</span> gt
+  expand = unsafeCoerce</code></pre>
+<p>What in the.. is this even? Well - it turns out that you can use typeclass constraints to do more than simply check if something has &quot;implemented Eq&quot; (who knew?!), in this case we&#39;re checking that an instance of the typeclass R.Union exists for our two variants, where R.Union is checking if the rows in &#39;lt&#39; are a subset of the rows in &#39;gt&#39;. Read that a couple of times if you don&#39;t get it, it took me a couple of goes too even though to anybody who already understands it it&#39;s incredibly &#39;simple&#39;.</p>
+<p>Now, we don&#39;t have a <em>Variant of lt</em> exactly, we have a <em>Record of lt</em>, that itself contains a <em>Variant of lt</em>, this is somewhat dull as it means we can&#39;t just go ahead and call &#39;expand&#39; in our broken function. Naively we might attempt something like this for this is <em>spiritually</em> what we are <em>trying</em> to do..</p>
+<pre><code class="language-haskell">
+<span class="hljs-title">expandPuzzlePiece</span> :: <span class="hljs-keyword">forall</span> lt gt. <span class="hljs-type">PuzzlePiece</span> lt -&gt; <span class="hljs-type">PuzzlePiece</span> gt
+<span class="hljs-title">expandPuzzlePiece</span> = p = p { shape = expand p.shape }
+</code></pre>
+<p>But this won&#39;t work, trying to change the type of something that&#39;s paramterised by the type of the containing record... doesn&#39;t <em>actually</em> make any sense. <em>expand</em> doesn&#39;t actually <em>do</em> anything, the data is exactly the same.. no, all we really want to achieve here is to tell the compiler &quot;I know I said that it was a PuzzlePiece of lt, but actually it&#39;s a PuzzlePiece of gt and that is a safe assertion to make because lt is a subset of gt&quot;, we could therefore just go and write...</p>
+<pre><code class="language-haskell">  expandPP
+    ∷ <span class="hljs-keyword">forall</span> lt a gt
+    . <span class="hljs-type">R</span>.<span class="hljs-type">Union</span> lt a gt
+    =&gt; <span class="hljs-type">PuzzlePiece</span> lt
+    -&gt; <span class="hljs-type">PuzzlePiece</span> gt
+  expandPP = unsafeCoerce
+</code></pre>
+<p>This will certainly work and allow me to do</p>
+<pre><code class="language-haskell">  redSquare &lt;- paintQuad <span class="hljs-type">Red</span> $ expandPP $ buildSquare <span class="hljs-number">100</span></code></pre>
+<p>That&#39;s kinda neat, and allows us to go off and write even more of our painting pipeline..</p>
+<pre><code class="language-haskell">  redSquare &lt;- paintQuad <span class="hljs-type">Red</span> $ expandPP $ buildSquare <span class="hljs-number">100</span>
+  yellowRectangle &lt;- paintQuad <span class="hljs-type">Yellow</span> $ expandPP $ (buildRectangle <span class="hljs-number">25</span> <span class="hljs-number">50</span>) 
+  greenCircle &lt;- paintRound <span class="hljs-type">Green</span> $ expandPP $ buildCircle <span class="hljs-number">50</span>
+  blueTriangle &lt;- paintTriangle <span class="hljs-type">Blue</span> $ buildTriangle <span class="hljs-number">23</span></code></pre>
+<p>But now we have <em>another</em> problem, our next line of code wants to stuff all these painted shapes into a single list of type &#39;PuzzlePiece KnownShapes&#39;, but what we have here is a collection of  PuzzlePiece (RoundShapes), PuzzlePiece (QuadShapes), etc.. All of those are <em>subsets</em> of that superset &quot;KnownShapes&quot;, so we could go ahead and write the code like this...</p>
+<pre><code class="language-haskell">
+  buildPuzzleBox ::<span class="hljs-type">Effect</span> (<span class="hljs-type">Box</span> <span class="hljs-type">KnownShapes</span>)
+  buildPuzzleBox = <span class="hljs-keyword">do</span>
+    redSquare &lt;- paintQuad <span class="hljs-type">Red</span> $ expandPP $ buildSquare <span class="hljs-number">100</span>
+    yellowRectangle &lt;- paintQuad <span class="hljs-type">Yellow</span> $ expandPP $ (buildRectangle <span class="hljs-number">25</span> <span class="hljs-number">50</span>) 
+    greenCircle &lt;- paintRound <span class="hljs-type">Green</span> $ expandPP $ buildCircle <span class="hljs-number">50</span>
+    blueTriangle &lt;- paintTriangle <span class="hljs-type">Blue</span> $ buildTriangle <span class="hljs-number">23</span>
+    pure $ pack (expandPP redSquare)
+          $ pack (expandPP yellowRectangle)
+          $ pack (expandPP greenCircle)
+          $ pack (expandPP blueTriangle)
+          $ emptyBox
+</code></pre>
+<p>The phrase we&#39;ve started using for code like this is &quot;that&#39;s absolutely honking&quot;. It turns out that if you use concrete types everywhere and rely on expansion to slowly widen the possible variants a type could hold then 50% of the code you write ends up being calls to various forms of &#39;expand&#39; (It&#39;s possible to write a generic expandRowTypes function that can take any (#Type -&gt; Type) and do the subset check so you can convert things like (List lt -&gt; List gt) without having to write an expandList function but it turns out that it&#39;s not a great way to build a codebase. No - a better (in our opinion) idea is to leave the types of the variants alone and use more typeclass constraints to make sure that calls to functions are safe and reduce the need to actually change the types of the objects.</p>
+<p>Take our <em>paintQuad</em> function for example, there isn&#39;t actually a good reason for us to be changing the type of <em>PuzzlePiece a</em> just to call this function. If I have a <em>PuzzlePiece ( square :: Square )</em> I should be able to just check that ( square :: Square ) is indeed a subset of QuadShapes in that function head itself and return exactly the same type I was given in the first place.</p>
+<p>The answer becomes &quot;Scrap the expands and add appropriate type constraints to the function being called and then parameterise <em>that</em>&quot;. In essence what we want is</p>
+<pre><code class="language-haskell">  paintQuad :: <span class="hljs-keyword">forall</span> quadShape. 
+               <span class="hljs-type">R</span>.<span class="hljs-type">Union</span> quadShape a <span class="hljs-type">QuadShapes</span> =&gt;
+               <span class="hljs-type">Colour</span> -&gt; <span class="hljs-type">PuzzlePiece</span> quadShape -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">PuzzlePiece</span> quadShape)</code></pre>
+<p>In this manner, we&#39;re not going to be changing the type of what we&#39;re given in this function, just doing the right thing based on the current value and then passing it on.</p>
+<p>We seeing as we don&#39;t need to do anything to the content of the variant itself, we can expand the type at the last moment before running it through Data.Variant&#39;s <em>case_</em> function and know this is safe because we have defined our union in the type signature.</p>
+<pre><code class="language-haskell">
+  paintQuad :: <span class="hljs-keyword">forall</span> shape a. 
+               <span class="hljs-type">R</span>.<span class="hljs-type">Union</span> shape a <span class="hljs-type">QuadShapes</span> =&gt;
+               <span class="hljs-type">Colour</span> -&gt; <span class="hljs-type">PuzzlePiece</span> shape -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">PuzzlePiece</span> shape)
+  paintQuad colour p@{ shape } = <span class="hljs-keyword">do</span>
+    <span class="hljs-keyword">let</span> selector = case_ 
+                    # on _rect (\r -&gt; r.width * r.height)
+                    # on _square (\s -&gt; s.size * s.size)
+    _ &lt;- drainPaint colour $ selector $ (expand shape :: <span class="hljs-type">Variant</span> <span class="hljs-type">QuadShapes</span>)
+    pure $ p { colour = <span class="hljs-type">Painted</span> colour }
+</code></pre>
+<p>Wahey, rewriting all of the paintXXX functions with this union suddenly means half of the expands can be removed from our workflow..</p>
+<pre><code class="language-haskell">  buildPuzzleBox ::<span class="hljs-type">Effect</span> (<span class="hljs-type">Box</span> <span class="hljs-type">KnownShapes</span>)
+  buildPuzzleBox = <span class="hljs-keyword">do</span>
+    redSquare &lt;- paintQuad <span class="hljs-type">Red</span> $ buildSquare <span class="hljs-number">100</span>
+    yellowRectangle &lt;- paintQuad <span class="hljs-type">Yellow</span> $ (buildRectangle <span class="hljs-number">25</span> <span class="hljs-number">50</span>) 
+    greenCircle &lt;- paintRound <span class="hljs-type">Green</span> $ buildCircle <span class="hljs-number">50</span>
+    blueTriangle &lt;- paintTriangle <span class="hljs-type">Blue</span> $ buildTriangle <span class="hljs-number">23</span>
+    pure $ pack (expandPP redSquare)
+          $ pack (expandPP yellowRectangle)
+          $ pack (expandPP greenCircle)
+          $ pack (expandPP blueTriangle)
+          $ emptyBox</code></pre>
+<p>The key learning here is that we should only be expanding when totally necessary (usually at the edges of the domain using these variants when things need to be concrete again). As soon as we widen a type, we can&#39;t contract it (safely) because there are no guarantees that it can&#39;t contain a value that doesn&#39;t exist in the contracted type.</p>
