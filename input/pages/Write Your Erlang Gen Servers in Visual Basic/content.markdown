@@ -486,6 +486,9 @@ Now while all the examples in this blog entry are written in C# (as that appears
     End Class
 ```
 
-That's all it took, I'll be following this blog entry up with how any of this works so subscribe to the RSS (lol) if you want to read that, technical stuff that you don't need to know in order to appreciate the 'it just works' nature of this integration if that's all you wanted.
+That's all it took, I'll be following this blog entry up with how any of this works at all - so subscribe to the RSS (lol) if you want to read that, that'll be all the technical stuff that you don't know you needed to know in order to appreciate the 'it just works' nature of this integration if that's all you wanted.
 
-Take a look over at the Github for actual [Getting Started](https://github.com/robashton/erlang.net) notes, there will no doubt be tweaks required but it should be enough for us to make some progress at least.
+Take a look over at the Github for the actual [Getting Started](https://github.com/robashton/erlang.net/wiki/Getting-Started) notes, there will no doubt be tweaks required but it should be enough for us to make some progress at least.
+
+
+Also no guarantees it works on Windows, pull requests are open.
