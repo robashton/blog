@@ -463,7 +463,7 @@ And then we have the following behaviours
 - Invoking *sys:terminate(Pid, 'arse')* on c1,c2,c3 or even s1 will result in every single process in the tree being restarted
 - Invoking *sys:terminate(Pid, 'arse')* on sc1, sc2, sc3 will only result in that single process being restarted
 
-By restarted, we mean that callback above (the penis operator () =>) being invoked once again. Args can be captured and passed in here if required, it's just closures all the way down.
+By restarted, we mean that callback above (the stubby lambda ()=>) being invoked once again. Args can be captured and passed in here if required, it's just closures all the way down.
 
 *Conclusion* 
 
