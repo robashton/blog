@@ -1,0 +1,89 @@
+<p>Hot on the heels of my last post about <a href="/entries/write-your-erlang-gen-servers-in-visual-basic.html">integrating Dotnet with Erlang</a>, I was asked by a friend &quot;Hey that looks really cool, we&#39;re stuck with Elixir at work currently - is there a migration path for us?</p>
+<p>Well I&#39;m glad you asked, <a href="https://github.com/robashton/erlang.net">Erlang.NET</a> does indeed work with Elixir and to prove it, I&#39;ve <a href="https://github.com/robashton/elixir.net">built a skeleton application</a> over on Github.</p>
+<h1 id="what-does-it-look-like">What does it look like?</h1>
+<p>Well, first of all let me say that I&#39;ve never worked with Elixir before, I don&#39;t generally like to get my hands dirty with legacy techologies, and I was never a huge fan of Ruby, so the idea of writing my Erlang with Ruby syntax never appealed either, but for science...</p>
+<p>Let&#39;s say I&#39;ve got an application in Elixir</p>
+<pre><code class="language-elixir">    { ok, result } = add_these_numbers(<span class="hljs-number">5</span>,<span class="hljs-number">3</span>)
+    IO.puts <span class="hljs-string">&quot;What a result: <span class="hljs-subst">#{result}</span>&quot;</span></code></pre>
+<p>And I&#39;m not satisfied with the way in which Elixirs adds these numbers together, but I do have some C# that does this much better?</p>
+<p>Well, first off we add the Erlang.NET dependency to our mix.exs</p>
+<pre><code class="language-elixir">  <span class="hljs-function"><span class="hljs-keyword">defp</span> <span class="hljs-title">deps</span></span> <span class="hljs-keyword">do</span>
+    [
+      {<span class="hljs-symbol">:dotnet</span>, <span class="hljs-symbol">git:</span> <span class="hljs-string">&quot;https://github.com/robashton/erlang.net.git&quot;</span>, <span class="hljs-symbol">branch:</span> <span class="hljs-string">&quot;master&quot;</span>}
+    ]</code></pre>
+<p>And make sure that the dotnet application is going to start along with our own</p>
+<pre><code class="language-elixir">  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">application</span></span> <span class="hljs-keyword">do</span>
+      [
+        <span class="hljs-symbol">extra_applications:</span> [<span class="hljs-symbol">:logger</span>, <span class="hljs-symbol">:dotnet</span>],
+        <span class="hljs-symbol">mod:</span> {Eg, []},
+      ]
+  <span class="hljs-keyword">end</span></code></pre>
+<p>Rather than use Nuget and get Yet Another Package Manager on my machine, I chose to use Mix for this project to get my dependencies and just write some MSBuild because it&#39;s a really powerful way of defining builds in Dotnet and can do pretty much anything we ask of it. I created a dotnet project in the &#39;cs&#39; directory of my Alixer project that looks like this.</p>
+<pre><code class="language-xml"><span class="hljs-tag">&lt;<span class="hljs-name">Project</span> <span class="hljs-attr">Sdk</span>=<span class="hljs-string">&quot;Microsoft.NET.Sdk&quot;</span>&gt;</span>
+
+  <span class="hljs-tag">&lt;<span class="hljs-name">PropertyGroup</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">TargetFramework</span>&gt;</span>net5.0<span class="hljs-tag">&lt;/<span class="hljs-name">TargetFramework</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">EnableDynamicLoading</span>&gt;</span>true<span class="hljs-tag">&lt;/<span class="hljs-name">EnableDynamicLoading</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">CopyLocalLockFileAssemblies</span>&gt;</span>true<span class="hljs-tag">&lt;/<span class="hljs-name">CopyLocalLockFileAssemblies</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">PropertyGroup</span>&gt;</span>
+
+  <span class="hljs-tag">&lt;<span class="hljs-name">ItemGroup</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">ProjectReference</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">&quot;../deps/dotnet/cslib/Erlang.csproj&quot;</span> /&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">Content</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">&quot;../deps/dotnet/priv/liberldotnet.so&quot;</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">CopyToOutputDirectory</span>&gt;</span>PreserveNewest<span class="hljs-tag">&lt;/<span class="hljs-name">CopyToOutputDirectory</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">Content</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">ItemGroup</span>&gt;</span>
+
+<span class="hljs-tag">&lt;/<span class="hljs-name">Project</span>&gt;</span></code></pre>
+<p>This means I need to configure the Erlang dotnet application to use the assemblies from the built location, no worries</p>
+<pre><code class="language-elixir"><span class="hljs-keyword">import</span> Config
+
+config <span class="hljs-symbol">:dotnet</span>,
+  <span class="hljs-symbol">runtime_config:</span> to_charlist(<span class="hljs-string">&quot;cs/bin/Debug/net5.0/Eg.runtimeconfig.json&quot;</span>),
+  <span class="hljs-symbol">runtime_dll:</span> to_charlist(<span class="hljs-string">&quot;cs/bin/Debug/net5.0/Erlang.dll&quot;</span>)</code></pre>
+<p>Whew, Elixering sure is <em>hard work</em> I can see why you&#39;d want to move away from it! Almost there though.</p>
+<p>Anyway, this means I can use my far better function in dotnet by writing a class</p>
+<pre><code class="language-csharp">    public class App : IApp&lt;Tuple&lt;int, int&gt;&gt;
+    {
+      public Object Start(Tuple&lt;int, int&gt; t) {
+        return t.Item1 + t.Item2;
+      }
+    }</code></pre>
+<p>And call this from Elixir like so</p>
+<pre><code class="language-elixir">    { <span class="hljs-symbol">:ok</span>, result } = <span class="hljs-symbol">:dotnet</span>.run_app_from_assembly(to_charlist(<span class="hljs-string">&quot;cs/bin/Debug/net5.0/Eg.dll&quot;</span>), to_charlist(<span class="hljs-string">&quot;Eg.App&quot;</span>), { <span class="hljs-number">5</span>, <span class="hljs-number">3</span> })
+    IO.puts <span class="hljs-string">&quot;What a result: <span class="hljs-subst">#{result}</span>&quot;</span></code></pre>
+<p>Far better than the original, although for some reason Elixir likes to use byte arrays for its strings when dotnet wants char lists so we have to do some conversion to get from the legacy elixir.</p>
+<p>This of course allows us to then use gen servers written in dotnet, and over time we can move away from alikser altogether.</p>
+<pre><code class="language-elixir"> <span class="hljs-symbol">:dotnet</span>.run_app_from_assembly(to_charlist(<span class="hljs-string">&quot;cs/bin/Debug/net5.0/Eg.dll&quot;</span>), to_charlist(<span class="hljs-string">&quot;Eg.Gen&quot;</span>), %{ <span class="hljs-symbol">:foo</span> =&gt; <span class="hljs-number">1</span>, <span class="hljs-symbol">:bar</span> =&gt; <span class="hljs-number">2</span> })</code></pre>
+<pre><code class="language-csharp">    <span class="hljs-keyword">public</span> <span class="hljs-keyword">record</span> <span class="hljs-title">GenArgs</span> {
+        <span class="hljs-keyword">public</span> <span class="hljs-built_in">int</span> Foo { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">init</span>; }
+        <span class="hljs-keyword">public</span> <span class="hljs-built_in">int</span> Bar { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">init</span>; }
+    }
+
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">MyGen</span> : <span class="hljs-title">IHandleCall</span>&lt;<span class="hljs-title">Atom</span>&gt; { 
+      GenArgs args;
+
+      <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">MyGen</span>(<span class="hljs-params">GenArgs args</span>)</span> {
+        <span class="hljs-keyword">this</span>.args = args;
+      }
+
+      <span class="hljs-function"><span class="hljs-keyword">public</span> HandleCallResult <span class="hljs-title">HandleCall</span>(<span class="hljs-params">HandleCallContext ctx, Atom picker</span>)</span> {
+        <span class="hljs-keyword">switch</span>(picker) {
+          <span class="hljs-keyword">case</span> <span class="hljs-string">&quot;foo&quot;</span>: 
+            <span class="hljs-keyword">return</span> ctx.Reply(<span class="hljs-keyword">this</span>.args.Foo);
+          <span class="hljs-keyword">case</span> <span class="hljs-string">&quot;bar&quot;</span>: 
+            <span class="hljs-keyword">return</span> ctx.Reply(<span class="hljs-keyword">this</span>.args.Bar);
+          <span class="hljs-literal">default</span>:
+            <span class="hljs-keyword">return</span> ctx.Reply(<span class="hljs-keyword">new</span> Atom(<span class="hljs-string">&quot;nope&quot;</span>));
+        }
+      }
+    }
+
+
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">Gen</span> : <span class="hljs-title">IApp</span>&lt;<span class="hljs-title">GenArgs</span>&gt;
+    {
+      <span class="hljs-function"><span class="hljs-keyword">public</span> Object <span class="hljs-title">Start</span>(<span class="hljs-params">GenArgs args</span>)</span> {
+        <span class="hljs-keyword">return</span> GenServer.StartLink(() =&gt; <span class="hljs-keyword">new</span> MyGen(args));
+      }
+    }</code></pre>
+<p>I hope this answers the question and helps with people struggling to move away from their legacy elixir projects, always happy to help.</p>
