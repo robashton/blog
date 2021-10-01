@@ -84,8 +84,8 @@ db.<span class="hljs-constructor">Put(<span class="hljs-params">string</span> <s
 <p>No problem, I fork the original project and set about addding Byte array support and then notice something.</p>
 <p><em>The bindings are using the C API for LevelDB</em> (which makes sense if you&#39;re going to support cross platform C#), but more importantly the C API looks something like this:</p>
 <pre><code><span class="hljs-built_in">char</span>* leveldb<span class="hljs-constructor">_get(<span class="hljs-params">char</span><span class="hljs-operator">*</span> <span class="hljs-params">key</span>)</span></code></pre><p>See that return result? That&#39;s a malloc, what does the LevelDB C# code do?</p>
-<pre><code> <span class="hljs-keyword">var</span> <span class="hljs-keyword">value</span> = Marshal.PtrToStringAnsi(valuePtr, (<span class="hljs-built_in">int</span>) valueLength);
- <span class="hljs-keyword">return</span> <span class="hljs-keyword">value</span>;</code></pre><p>Ignoring the <a href="https://github.com/meebey/leveldb-sharp/issues/2">memory leak</a>, as it&#39;s a known issue and an easy mistake to make, we can see we&#39;re copying the data out of the unmanaged array into a managed string via the PtrToStringAnsi call.</p>
+<pre><code> <span class="hljs-built_in">var</span> value = Marshal.PtrToStringAnsi(valuePtr, (<span class="hljs-built_in">int</span>) valueLength);
+ <span class="hljs-keyword">return</span> value;</code></pre><p>Ignoring the <a href="https://github.com/meebey/leveldb-sharp/issues/2">memory leak</a>, as it&#39;s a known issue and an easy mistake to make, we can see we&#39;re copying the data out of the unmanaged array into a managed string via the PtrToStringAnsi call.</p>
 <p>What does the C api do?</p>
 <pre><code>Status s = db-&gt;rep-&gt;<span class="hljs-constructor">Get(<span class="hljs-params">options</span>-&gt;<span class="hljs-params">rep</span>, Slice(<span class="hljs-params">key</span>, <span class="hljs-params">keylen</span>)</span>, &amp;tmp);
 <span class="hljs-keyword">if</span> (s.ok<span class="hljs-literal">()</span>) {

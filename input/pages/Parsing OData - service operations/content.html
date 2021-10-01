@@ -22,30 +22,30 @@
 })</code></pre><p>I might then solve it by simply adding this to the end of my main expression</p>
 <pre><code>OData = (
   (
-    <span class="hljs-name">PathSegment</span><span class="hljs-symbol">:model</span> 
+<span class="hljs-symbol">    PathSegment:</span>model 
     (
-      &#x27;?&#x27;
-      OperationParam<span class="hljs-symbol">:param</span>
+      <span class="hljs-string">&#x27;?&#x27;</span>
+<span class="hljs-symbol">      OperationParam:</span>param
     )?</code></pre><p>Where</p>
 <pre><code>OperationParam = 
-  <span class="hljs-built_in">Text</span>:<span class="hljs-built_in">name</span> <span class="hljs-string">&#x27;=&#x27;</span> <span class="hljs-built_in">Text</span>:value -&gt; { <span class="hljs-built_in">name</span>: <span class="hljs-built_in">name</span>, value: value }
+  <span class="hljs-type">Text</span>:<span class="hljs-type">name</span> <span class="hljs-string">&#x27;=&#x27;</span> <span class="hljs-type">Text</span>:<span class="hljs-keyword">value</span> -&gt; { <span class="hljs-type">name</span>: <span class="hljs-type">name</span>, <span class="hljs-keyword">value</span>: <span class="hljs-keyword">value</span> }
 ,</code></pre><p>(Text is a hack so I&#39;m not putting that here until I&#39;ve defined what it actually is - similar to my kerfuffle over resource names earlier)</p>
 <p>To build up the model we can do some inline code like so:</p>
 <pre><code>OData = (
   (
-    PathSegment:model 
+    <span class="hljs-name">PathSegment</span><span class="hljs-symbol">:model</span> 
     (
-      <span class="hljs-string">&#x27;?&#x27;</span>
-      OperationParam:<span class="hljs-built_in">param</span>
+      &#x27;?&#x27;
+      OperationParam<span class="hljs-symbol">:param</span>
     )?
   ) -&gt; { 
-          <span class="hljs-keyword">if</span>(<span class="hljs-built_in">param</span>) {
+          if(<span class="hljs-name">param</span>) {
            model.args = {}
-           model.args[<span class="hljs-built_in">param</span>.<span class="hljs-built_in">name</span>] = <span class="hljs-built_in">param</span>.value;
+           model.args[param.name] = param.value<span class="hljs-comment">;</span>
           }
          return model
        }
-  | <span class="hljs-string">&#x27;/&#x27;</span>
+  | &#x27;/&#x27;
 ) </code></pre><p>This will have the desired effect to an extent, of course it won&#39;t pass this test:</p>
 <pre><code><span class="hljs-function"><span class="hljs-title">test</span><span class="hljs-params">(<span class="hljs-string">&quot;/method(1)/child?foo=bar&amp;foz=baz&quot;</span>, function(result)</span></span> {
   it(<span class="hljs-string">&quot;should have &#x27;foo&#x27; specified&quot;</span>, function() {
@@ -64,20 +64,20 @@
     )?</code></pre><p>With an appropriate loop to build up the list</p>
 <pre><code>OData = (
   (
-    <span class="hljs-name">PathSegment</span><span class="hljs-symbol">:model</span> 
+    PathSegment:model 
     (
-      &#x27;?&#x27;
-      listOf(`OperationParam, &#x27;&amp;&#x27;)<span class="hljs-symbol">:params</span>
+      <span class="hljs-string">&#x27;?&#x27;</span>
+      listOf(`OperationParam, <span class="hljs-string">&#x27;&amp;&#x27;</span>):<span class="hljs-keyword">params</span>
     )?
   ) -&gt; { 
-          if(<span class="hljs-name">params</span>) {
+          <span class="hljs-keyword">if</span>(<span class="hljs-keyword">params</span>) {
            model.args = {}
-           for(<span class="hljs-name">var</span> i in params)
-             model.args[params[i].name] = params[i].value<span class="hljs-comment">;</span>
+           <span class="hljs-keyword">for</span>(<span class="hljs-keyword">var</span> i <span class="hljs-keyword">in</span> <span class="hljs-keyword">params</span>)
+             model.args[<span class="hljs-keyword">params</span>[i].name] = <span class="hljs-keyword">params</span>[i].<span class="hljs-keyword">value</span>;
           }
-         return model
+         <span class="hljs-keyword">return</span> model
        }
-  | &#x27;/&#x27;
+  | <span class="hljs-string">&#x27;/&#x27;</span>
 ) </code></pre><p>Now, a few things getting wrong with this whole implementation so far...</p>
 <ul>
 <li>There is a semantic difference between a Service Operation and a Resource look-up, I&#39;m not expressing this in the model</li>

@@ -36,9 +36,9 @@
     )*
   &gt;:<span class="hljs-keyword">text</span>
   -&gt; <span class="hljs-keyword">text</span></code></pre><p>Is much tidier if we get rid of the un-need semantic action because text will be returned anyway, and we can drop that named &#39;text&#39; variable too.</p>
-<pre><code><span class="hljs-keyword">Text</span> =
-  &lt;    (    ~<span class="hljs-comment">&#x27;\&#x27;&#x27;</span>
-      (    <span class="hljs-comment">&#x27;\\&#x27; anything</span>
+<pre><code><span class="hljs-built_in">Text</span> =
+  &lt;    (    ~<span class="hljs-string">&#x27;\&#x27;&#x27;</span>
+      (    <span class="hljs-string">&#x27;\\&#x27;</span> anything
       |    letter
       )
     )*
@@ -71,13 +71,13 @@
 <pre><code><span class="hljs-attribute">PropertyPathList</span> = 
   listOf(`PropertyPath, <span class="hljs-string">&#x27;,&#x27;</span>)</code></pre><p>And use that around the place instead!</p>
 <p><strong>Un-needed brackets</strong></p>
-<pre><code>  PathSegmen<span class="hljs-variable">t:model</span> 
+<pre><code>  PathSegment:<span class="hljs-keyword">model</span> 
   (
     <span class="hljs-string">&#x27;?&#x27;</span>
     ( listOf(`QueryOption, <span class="hljs-string">&#x27;&amp;&#x27;</span>):<span class="hljs-keyword">options</span>
     )
   )?</code></pre><p>I do this in a few places, and while it causes no harm, OMeta is hard enough to read to the un-initiated without throwing brackets in all of the place</p>
-<pre><code>  PathSegmen<span class="hljs-variable">t:model</span> 
+<pre><code>  PathSegment:<span class="hljs-keyword">model</span> 
   (
     <span class="hljs-string">&#x27;?&#x27;</span>
     listOf(`QueryOption, <span class="hljs-string">&#x27;&amp;&#x27;</span>):<span class="hljs-keyword">options</span>
@@ -186,11 +186,11 @@ ResourceName =
 <p>Just what <em>is</em> Text? </p>
 <p><em>As part of the query string</em></p>
 <pre><code>OperationParam = 
-  <span class="hljs-built_in">Text</span>:<span class="hljs-built_in">name</span> <span class="hljs-string">&#x27;=&#x27;</span> <span class="hljs-built_in">Text</span>:value -&gt; { <span class="hljs-built_in">name</span>: <span class="hljs-built_in">name</span>, value: value }</code></pre><p><em>And inside quotes as a string literal</em></p>
+  <span class="hljs-type">Text</span>:<span class="hljs-type">name</span> <span class="hljs-string">&#x27;=&#x27;</span> <span class="hljs-type">Text</span>:<span class="hljs-keyword">value</span> -&gt; { <span class="hljs-type">name</span>: <span class="hljs-type">name</span>, <span class="hljs-keyword">value</span>: <span class="hljs-keyword">value</span> }</code></pre><p><em>And inside quotes as a string literal</em></p>
 <pre><code>QuotedText =
-  <span class="hljs-string">&#x27;\&#x27;&#x27;</span>
-  <span class="hljs-symbol">Text:</span>t 
-  <span class="hljs-string">&#x27;\&#x27;&#x27;</span> -&gt; t
+  &#x27;\&#x27;&#x27;
+  Text:t 
+  &#x27;\&#x27;&#x27; -&gt; t
 ,</code></pre><p><em>What are the rules?</em></p>
 <p>Well, if it&#39;s part of the query string, let&#39;s say it&#39;s the name of a parameter, it can be anything at all (except reserved characters from the Uri - these should be encoded). To solve this we need to read the <a href="http://tools.ietf.org/html/rfc3986">RFC</a></p>
 <pre><code> reserved    = gen-delims / sub-delims
@@ -219,9 +219,9 @@ Text =
 ,</code></pre><p>What I&#39;ll do, is explicitly deny all of these characters except in cases where I explicitly allow them (for example, the dollar symbol is allowed in built-in query params, brackets are allowed in expressions, quotes are allowed to denote string literals, etc)</p>
 <p>I can use this rule safely for quoted text as that rule explicitly allows quoted text:</p>
 <pre><code>QuotedText =
-  <span class="hljs-string">&#x27;\&#x27;&#x27;</span>
-  <span class="hljs-symbol">Text:</span>t 
-  <span class="hljs-string">&#x27;\&#x27;&#x27;</span> -&gt; t</code></pre><p> <strong>Resource paths</strong></p>
+  &#x27;\&#x27;&#x27;
+  Text:t 
+  &#x27;\&#x27;&#x27; -&gt; t</code></pre><p> <strong>Resource paths</strong></p>
 <p> Same thing now goes here, and I can say that each part of a resource path is a UriComponent, explicitly disallowing spaces, separated by a &#39;/&#39;, so</p>
 <pre><code><span class="hljs-attribute">ResourceName</span> =
   &lt;(    
@@ -232,11 +232,11 @@ Text =
 <p><strong>Decoding as we go</strong></p>
 <p>If somebody does give us some text that looks like this</p>
 <pre><code><span class="hljs-attr">foo</span>=<span class="hljs-string">&#x27;hello%20world&#x27;</span></code></pre><p>It would be nice if it was decoded for output</p>
-<pre><code>Text =
+<pre><code><span class="hljs-type">Text</span> =
   &lt;
    (~ReservedUriComponent
    anything)*
-  &gt;:<span class="hljs-function"><span class="hljs-title">text</span> -&gt;</span> decodeURIComponent(<span class="hljs-keyword">text</span>)
+  &gt;:<span class="hljs-type">text</span> -&gt; decodeURIComponent(<span class="hljs-type">text</span>)
 ,</code></pre><p>We can indeed call arbitrary JS methods in our semantic output, good for us.</p>
 <p>We&#39;ll do the same for resource names too</p>
 <pre><code>ResourceName =
@@ -244,7 +244,7 @@ Text =
     ~(ReservedUriComponent | <span class="hljs-string">&#x27; &#x27;</span>)
     anything
   )+
-  &gt;:<span class="hljs-function"><span class="hljs-title">resourceName</span> -&gt;</span> decodeURIComponent(resourceName)</code></pre><p>I think if I was to go and do some of this again, I&#39;d have been explicit about Uri conformance from the start, but it hasn&#39;t caused too much damage so we&#39;re okay.</p>
+  &gt;<span class="hljs-symbol">:resourceName</span> -&gt; decodeURIComponent(resourceName)</code></pre><p>I think if I was to go and do some of this again, I&#39;d have been explicit about Uri conformance from the start, but it hasn&#39;t caused too much damage so we&#39;re okay.</p>
 <p><strong>Supporting further primitives</strong></p>
 <p>At the moment we can parse integers with</p>
 <pre><code><span class="hljs-built_in">Number</span> = &lt;digit+&gt;:d -&gt; <span class="hljs-built_in">parseInt</span>(d, <span class="hljs-number">10</span>)</code></pre><p>But this is only half the story, we actually need to explicitly support decimals too</p>
@@ -290,8 +290,8 @@ Integer = &lt;digit+&gt;:d -&gt; <span class="hljs-built_in">parseInt</span>(d, 
 <p>Because one of the main reasons for using OMeta (other than &quot;it&#39;s what they use for most parsing already&quot;), is the support for it in the editor that they use across the organisation.</p>
 <p>Hooking it up was a simple matter of grabbing some code already written to run OMeta against a third party editor, and adding support to the parser for this.</p>
 <p>To do this, I just have to add a method to my parser like so:</p>
-<pre><code>ODataParser._enableTokens = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-  OMeta._enableTokens.call(<span class="hljs-built_in">this</span>, [<span class="hljs-string">&#x27;Text&#x27;</span>, <span class="hljs-string">&#x27;ResourceName&#x27;</span>, <span class="hljs-string">&#x27;Number&#x27;</span>, <span class="hljs-string">&#x27;RecognisedOption&#x27;</span>, <span class="hljs-string">&#x27;FilterAndOperand&#x27;</span>, <span class="hljs-string">&#x27;FilterByOperand&#x27;</span>, <span class="hljs-string">&#x27;FilterRecognisedMathOperand&#x27;</span>]);
+<pre><code>ODataParser._enableTokens = <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span> </span>{
+  OMeta._enableTokens.call(<span class="hljs-keyword">this</span>, [<span class="hljs-string">&#x27;Text&#x27;</span>, <span class="hljs-string">&#x27;ResourceName&#x27;</span>, <span class="hljs-string">&#x27;Number&#x27;</span>, <span class="hljs-string">&#x27;RecognisedOption&#x27;</span>, <span class="hljs-string">&#x27;FilterAndOperand&#x27;</span>, <span class="hljs-string">&#x27;FilterByOperand&#x27;</span>, <span class="hljs-string">&#x27;FilterRecognisedMathOperand&#x27;</span>]);
 };</code></pre><p>You&#39;ll notice if you&#39;re observant, that I&#39;ve added a few more named types here, that&#39;s because otherwise I had no way of matching key words and therefore colouring them separately.</p>
 <p>Instead of</p>
 <pre><code>se<span class="hljs-string">q(&quot;add&quot;)</span></code></pre><p>I now have</p>

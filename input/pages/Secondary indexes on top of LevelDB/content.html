@@ -39,18 +39,18 @@
 <span class="hljs-regexp">/etags/</span><span class="hljs-number">6</span> -&gt; <span class="hljs-regexp">/docs/</span><span class="hljs-number">7</span>
 <span class="hljs-regexp">/etags/</span><span class="hljs-number">8</span> -&gt; <span class="hljs-regexp">/docs/</span><span class="hljs-number">12</span>
 <span class="hljs-regexp">/etags/</span><span class="hljs-number">9</span> -&gt; <span class="hljs-regexp">/docs/</span><span class="hljs-number">5</span></code></pre><p>When I want to index documents newer than /etags/5, I can do</p>
-<pre><code><span class="hljs-built_in">int</span> <span class="hljs-constructor">IndexNewDocumentsNewerThan(<span class="hljs-params">int</span> <span class="hljs-params">etag</span>)</span> {
+<pre><code>int IndexNewDocumentsNewerThan(int etag) {
   std::stringstream st;
   st &lt;&lt; ETAGPREFIX;
   st &lt;&lt; etag;
-  std::<span class="hljs-built_in">string</span> startkey = st.str<span class="hljs-literal">()</span>;
+  std::string startkey = st.str();
 
-  leveldb::Iterator* it = this-&gt;db-&gt;<span class="hljs-constructor">NewIterator(<span class="hljs-params">leveldb</span>::ReadOptions()</span>);
-  <span class="hljs-keyword">for</span> (it-&gt;<span class="hljs-constructor">Seek(<span class="hljs-params">startkey</span>)</span>; it-&gt;<span class="hljs-constructor">Valid()</span><span class="hljs-operator"> &amp;&amp; </span>this-&gt;<span class="hljs-constructor">IsEtagKey(<span class="hljs-params">it</span>-&gt;<span class="hljs-params">key</span>()</span>.<span class="hljs-constructor">ToString()</span>); it-&gt;<span class="hljs-constructor">Next()</span>) {
-    std::<span class="hljs-built_in">string</span> document = it-&gt;value<span class="hljs-literal">()</span>.<span class="hljs-constructor">ToString()</span>;
-    <span class="hljs-constructor">IndexDocument(<span class="hljs-params">value</span>)</span>;
+  leveldb::Iterator* <span class="hljs-literal">it</span> = <span class="hljs-built_in">this</span>-&gt;db-&gt;NewIterator(leveldb::ReadOptions());
+  <span class="hljs-keyword">for</span> (<span class="hljs-literal">it</span>-&gt;Seek(startkey); <span class="hljs-literal">it</span>-&gt;Valid() &amp;&amp; <span class="hljs-built_in">this</span>-&gt;IsEtagKey(<span class="hljs-literal">it</span>-&gt;key().ToString()); <span class="hljs-literal">it</span>-&gt;Next()) {
+    std::string <span class="hljs-built_in">document</span> = <span class="hljs-literal">it</span>-&gt;value().ToString();
+    IndexDocument(value);
   }
-  delete it;
+  <span class="hljs-keyword">delete</span> <span class="hljs-literal">it</span>;
 }</code></pre><p>Building up other indexes is a trivial matter of making sure we have a suitable ordering in place, and queries are simply a matter of building up these keys appropriately.</p>
 <p>With all of this, I think we have enough information to go and build persistence for RavenDB on top of LevelDB (and then test test test, performance performance performance etc).</p>
 <p>If you want to check out the spikes and playarounds with LevelDB, you can find them on my <a href="https://github.com/robashton/leveldb-play">Github</a></p>

@@ -4,7 +4,7 @@ let
     builtins.fetchGit {
       name = "nixpkgs-pinned";
       url = "https://github.com/NixOS/nixpkgs.git";
-      rev = "cc6cf0a96a627e678ffc996a8f9d1416200d6c81";
+      rev = "e5f945b13b3f6a39ec9fbb66c9794b277dc32aa1";
     };
 
 

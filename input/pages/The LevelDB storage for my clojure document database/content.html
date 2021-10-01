@@ -7,7 +7,7 @@
 </ul>
 <p>All of the code for the LevelDB storage can be found in the file <em>levelstorage.clj</em> and it clocks in at just under 100 lines of code which isn&#39;t too shabby at all.</p>
 <p>LevelDB is actually a native code project, and I found myself using a wrapper that some folks have kindly written and open sourced for Java, thus we have the first of our Java Interop imports in this database.</p>
-<pre><code>(:<span class="hljs-keyword">import</span> (<span class="hljs-title">org</span>.<span class="hljs-title">iq80</span>.<span class="hljs-title">leveldb</span> <span class="hljs-type">Options</span> <span class="hljs-type">ReadOptions</span> <span class="hljs-type">WriteOptions</span> <span class="hljs-type">DBIterator</span>)
+<pre><code>(:<span class="hljs-keyword">import</span> (org.iq80.leveldb <span class="hljs-type">Options</span> <span class="hljs-type">ReadOptions</span> <span class="hljs-type">WriteOptions</span> <span class="hljs-type">DBIterator</span>)
           (org.fusesource.leveldbjni <span class="hljs-type">JniDBFactory</span>)
           (java.io <span class="hljs-type">File</span>)
           (java.nio <span class="hljs-type">ByteBuffer</span>)))</code></pre><p>Lovely lovely classes.</p>
@@ -42,15 +42,15 @@
   (<span class="hljs-name">close</span> [this]
     (<span class="hljs-name">.close</span> db)
     <span class="hljs-literal">nil</span>))</code></pre><p>Our transaction record</p>
-<pre><code>(defrecord LevelTransaction [db options path]
+<pre><code>(<span class="hljs-keyword">defrecord</span> <span class="hljs-title">LevelTransaction</span> [db options path]
   java.io.Closeable
   Writer
   Reader
-  (<span class="hljs-keyword">open</span>-iterator [<span class="hljs-keyword">this</span>] (<span class="hljs-keyword">get</span>-iterator <span class="hljs-keyword">this</span>))
-  (from-db [<span class="hljs-keyword">this</span> id] (from-storage <span class="hljs-keyword">this</span> id))
-  (commit! [<span class="hljs-keyword">this</span>] (commit! <span class="hljs-keyword">this</span>))
-  (close [<span class="hljs-keyword">this</span>]
-    (.close (.snapshot options))))</code></pre><p>And our iterator</p>
+  (<span class="hljs-name">open-iterator</span> [this] (<span class="hljs-name">get-iterator</span> this))
+  (<span class="hljs-name">from-db</span> [this id] (<span class="hljs-name">from-storage</span> this id))
+  (<span class="hljs-name">commit!</span> [this] (<span class="hljs-name">commit!</span> this))
+  (<span class="hljs-name">close</span> [this]
+    (<span class="hljs-name">.close</span> (<span class="hljs-name">.snapshot</span> options))))</code></pre><p>And our iterator</p>
 <pre><code>(<span class="hljs-keyword">defrecord</span> <span class="hljs-title">LevelIterator</span> [inner]
   java.io.Closeable
   Iterator
@@ -81,7 +81,7 @@
 <p>The difficulty with iterator-seq, is that if you were to call it on something that kept a native handle (such as the above), the lazy nature of Clojure makes it very easy to write code that by accident doesn&#39;t evaluate until after the handle is closed.</p>
 <p>By pushing this into a Closeable object and providing an as-seq method, we make the consumers responsible for evaluating the sequence and closing the resource in the correct order.</p>
 <p><em>expand-iterator</em> seemed like a sensible notion, as the iterator returns a weird object with getKey and getValue which have byte arrays and aren&#39;t very friendly to consuming code.</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> expand-iterator-str [i]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">expand-iterator-str</span> [i]
   { <span class="hljs-symbol">:k</span> (<span class="hljs-name">from-db</span> (<span class="hljs-name">.getKey</span> i))
     <span class="hljs-symbol">:v</span> (<span class="hljs-name">from-db</span> (<span class="hljs-name">.getValue</span> i)) })</code></pre><p><strong>Committing a transaction</strong></p>
 <p>Well you can see that the transaction just calls commit with itself</p>

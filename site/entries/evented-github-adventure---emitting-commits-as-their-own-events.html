@@ -94,31 +94,31 @@
      ]
    }
 }</code></pre><p>Let&#39;s say I want to build up projections off the the stream of commits, in each of my projections I&#39;d have to write the following code</p>
-<pre><code><span class="hljs-keyword">from</span>Stream(<span class="hljs-string">&quot;github&quot;</span>)
+<pre><code>fromStream(<span class="hljs-string">&quot;github&quot;</span>)
   .when({
-    <span class="hljs-string">&quot;$init&quot;</span>: function(<span class="hljs-keyword">state</span>, ev) {
-      return {}
+    <span class="hljs-string">&quot;$init&quot;</span>: function(state, <span class="hljs-built_in">ev</span>) {
+      <span class="hljs-built_in">return</span> {}
     },
-    <span class="hljs-string">&quot;PushEvent&quot;</span>: function(<span class="hljs-keyword">state</span>, ev) {
-      <span class="hljs-keyword">for</span>(var i = <span class="hljs-number">0</span> ; i <span class="hljs-variable">&lt; ev.body.payload.commits.length; i++) {
-        var commit = ev.body.payload.commits[i]
-        var repo = ev.body.repo
+    <span class="hljs-string">&quot;PushEvent&quot;</span>: function(state, <span class="hljs-built_in">ev</span>) {
+      <span class="hljs-keyword">for</span>(<span class="hljs-built_in">var</span> i = <span class="hljs-number">0</span> ; i &lt; <span class="hljs-built_in">ev</span>.body.payload.commits.<span class="hljs-built_in">length</span>; i++) {
+        <span class="hljs-built_in">var</span> commit = <span class="hljs-built_in">ev</span>.body.payload.commits[i]
+        <span class="hljs-built_in">var</span> repo = <span class="hljs-built_in">ev</span>.body.repo
 
-        // do stuff
+        // <span class="hljs-keyword">do</span> stuff
       }
     }
-  })</span></code></pre><p>This doesn&#39;t cause a huge problem, but it is irritating having to do this for every projection and if I particularly cared about CPU it&#39;s also unnecessary work to be doing.</p>
+  })</code></pre><p>This doesn&#39;t cause a huge problem, but it is irritating having to do this for every projection and if I particularly cared about CPU it&#39;s also unnecessary work to be doing.</p>
 <p>It would be much better if I could just have a stream of commits to read from when creating these projections.</p>
-<pre><code><span class="hljs-function"><span class="hljs-title">fromStream</span><span class="hljs-params">(<span class="hljs-string">&quot;github-commits&quot;</span>)</span></span>
-  <span class="hljs-selector-class">.when</span>({
-    <span class="hljs-string">&quot;$init&quot;</span>: function(state, ev) {
+<pre><code><span class="hljs-keyword">from</span>Stream(<span class="hljs-string">&quot;github-commits&quot;</span>)
+  .when({
+    <span class="hljs-string">&quot;$init&quot;</span>: function(<span class="hljs-keyword">state</span>, ev) {
 
     },
-    <span class="hljs-string">&quot;Commit&quot;</span>: function(state, ev) {
-      <span class="hljs-selector-tag">var</span> commit = ev<span class="hljs-selector-class">.body</span><span class="hljs-selector-class">.commit</span>
-      <span class="hljs-selector-tag">var</span> repo = ev<span class="hljs-selector-class">.body</span><span class="hljs-selector-class">.repo</span>
+    <span class="hljs-string">&quot;Commit&quot;</span>: function(<span class="hljs-keyword">state</span>, ev) {
+      var commit = ev.body.commit
+      var repo = ev.body.repo
 
-      <span class="hljs-comment">// Do stuff</span>
+      // Do stuff
     }
   })</code></pre><p>Well in fact we can, and that&#39;s a good place to use the &#39;emit&#39; function. Let&#39;s say we have our original projection which loops over those commits:</p>
 <pre><code>fromStream(<span class="hljs-string">&quot;github&quot;</span>)

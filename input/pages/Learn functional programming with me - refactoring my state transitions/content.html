@@ -19,13 +19,13 @@
 <li>The time since we last fired a bullet</li>
 </ul>
 <p>Not too complicated:</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> initBullets []
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">initBullets</span> []
   {
     <span class="hljs-symbol">:lastFiringTicks</span> <span class="hljs-number">0</span>
     <span class="hljs-symbol">:active</span> ()
   }
 )</code></pre><p>Of course, this has made a bit of a mockery out of my bullets logic...</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> bulletsLogic [state]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">bulletsLogic</span> [state]
   (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [player (<span class="hljs-symbol">:player</span> state)
         bullets (<span class="hljs-symbol">:bullets</span> state)
         existingBullets 
@@ -66,7 +66,7 @@
   )
 )</code></pre><p>How about moving the bullets, and then passing whatever the state is after that point to the tryAndFire function, and then returning the state of that to the outside world?</p>
 <p>Moving the bullets becomes a matter of calling assoc on each bullet with a modified y, this is much nicer than having to copy across each property of the bullet.</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> moveBullets [state]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">moveBullets</span> [state]
   (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [bullets (<span class="hljs-symbol">:bullets</span> state)
         active (<span class="hljs-symbol">:active</span> bullets)]
     (<span class="hljs-name"><span class="hljs-builtin-name">assoc</span></span> state <span class="hljs-symbol">:bullets</span> 
@@ -78,7 +78,7 @@
     )
   )
 )</code></pre><p>And trying to fire becomes a matter of adding an item to the list, or just returning original state</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> tryAndFire [state]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">tryAndFire</span> [state]
   (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [bullets (<span class="hljs-symbol">:bullets</span> state)
         active (<span class="hljs-symbol">:active</span> bullets)
         player (<span class="hljs-symbol">:player</span> state)]
@@ -107,7 +107,7 @@
     <span class="hljs-keyword">state</span>
   )
 )</code></pre><p>Keeping the activity of firing to its own little function</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> fire [state]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">fire</span> [state]
   (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [bullets (<span class="hljs-symbol">:bullets</span> state)
         active (<span class="hljs-symbol">:active</span> bullets)
         player (<span class="hljs-symbol">:player</span> state)]
@@ -152,7 +152,7 @@
 <p><strong>Updating nested data with assoc-in</strong></p>
 <p>I don&#39;t like all the nested assocs, so I hit up the Clojure docs now I&#39;m not on a plane and discover &#39;assoc-in&#39; and &#39;get-in&#39;, which do pretty much what you&#39;d expect.</p>
 <p>Instead of</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> fire [state]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">fire</span> [state]
   (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [bullets (<span class="hljs-symbol">:bullets</span> state)
         active (<span class="hljs-symbol">:active</span> bullets)
         player (<span class="hljs-symbol">:player</span> state)]
@@ -178,20 +178,20 @@
 )</code></pre><p>So I&#39;ve done that everywhere it makes sense to as it makes the code more readable.</p>
 <p><strong>Applying that time limiter</strong></p>
 <p>So, what kicked off my re-factoring efforts was the addition of a little bit of state to my map ala</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> initBullets []
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">initBullets</span> []
   {
     <span class="hljs-symbol">:lastFiringTicks</span> <span class="hljs-number">0</span>
     <span class="hljs-symbol">:active</span> ()
   }
 )</code></pre><p>How to use this? Well, the algorithm goes something like this</p>
-<pre><code>Is lastTicks nonZero? 
+<pre><code><span class="hljs-keyword">Is</span> lastTicks nonZero? 
   Increase lastTicks
-  is lastTicks equal <span class="hljs-keyword">to</span> firing rate?
-    <span class="hljs-builtin-name">Set</span> lastTicks <span class="hljs-keyword">to</span> Zero
+  <span class="hljs-keyword">is</span> lastTicks equal <span class="hljs-keyword">to</span> firing rate?
+    <span class="hljs-keyword">Set</span> lastTicks <span class="hljs-keyword">to</span> Zero
 
 Are we trying <span class="hljs-keyword">to</span> fire? 
-  <span class="hljs-literal">Yes</span>? Is lastTicks 0?
-    <span class="hljs-literal">Yes</span>? Fire, increase lastTicks</code></pre><p>So we have two steps</p>
+  Yes? <span class="hljs-keyword">Is</span> lastTicks <span class="hljs-number">0</span>?
+    Yes? Fire, increase lastTicks</code></pre><p>So we have two steps</p>
 <ul>
 <li>UpdateFiringTicks</li>
 <li>TryAndFire</li>

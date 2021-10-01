@@ -74,22 +74,22 @@
 <p>First things first, I need to clear my screen in between frames or I&#39;m going to keep on having an ugly black smear instead of a moving black square, in JS this would look like.</p>
 <pre><code><span class="hljs-built_in">context</span>.clearRect(<span class="hljs-number">0</span>, <span class="hljs-number">0</span>, <span class="hljs-built_in">width</span>, <span class="hljs-built_in">height</span>);</code></pre><p>Not rocket science, right?</p>
 <p>Well, right now, I have the function for drawing a square, which gets the context and draws a square, this looks like</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> drawSquare [x y w h]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">drawSquare</span> [x y w h]
   (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [target (<span class="hljs-name">.getElementById</span> js/document <span class="hljs-string">&quot;target&quot;</span>)
         context (<span class="hljs-name">.getContext</span> target <span class="hljs-string">&quot;2d&quot;</span>)]
     (<span class="hljs-name">.fillRect</span> context x y w h)
   )
 )</code></pre><p>Great, but in order to have the moving square, I&#39;m going need that context more than once, and making multiple requests to get the context is a bad idea because it means lots of calls to the DOM (slow).</p>
 <p>Clearly this means I&#39;m going to need three functions for my purposes:</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> clearScreen [ctx]
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">clearScreen</span> [ctx]
   (<span class="hljs-name">.clearRect</span> ctx <span class="hljs-number">0</span> <span class="hljs-number">0</span> WIDTH HEIGHT)
 )
 
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> drawRect [ctx x y w h]
+(<span class="hljs-keyword">defn</span> <span class="hljs-title">drawRect</span> [ctx x y w h]
   (<span class="hljs-name">.fillRect</span> ctx x y w h)
 )
 
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> context []
+(<span class="hljs-keyword">defn</span> <span class="hljs-title">context</span> []
   (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [target (<span class="hljs-name">.getElementById</span> js/document <span class="hljs-string">&quot;target&quot;</span>)]
   (<span class="hljs-name">.getContext</span> target <span class="hljs-string">&quot;2d&quot;</span>))
 )</code></pre><p>Meaning I can do</p>
@@ -102,13 +102,13 @@
 <p>Okay - so first things first, how do I get attributes from an HTML element? HTML elements? Attributes? These aren&#39;t Clojure concepts - I can do a quick Google and see that this is possible:</p>
 <pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">.</span></span> target -width)</code></pre><p>According to the Wiki on Clojurescript, this is just part of the &quot;host interop&quot; featureset - I&#39;m not entirely sure how this maps to typical Clojure.</p>
 <p>Now - this still means I have the problem of how to get these out of a function, in JS I&#39;d probably have something like</p>
-<pre><code>var Rendering = function(element) {
+<pre><code><span class="hljs-keyword">var</span> Rendering = function(element) {
   <span class="hljs-keyword">this</span>.context = element.getContext(<span class="hljs-string">&#x27;2d&#x27;</span>);
-  <span class="hljs-keyword">this</span>.<span class="hljs-built_in">width</span> = element.<span class="hljs-built_in">width</span>;
-  <span class="hljs-keyword">this</span>.<span class="hljs-built_in">height</span> = element.<span class="hljs-built_in">height</span>;
+  <span class="hljs-keyword">this</span>.width = element.width;
+  <span class="hljs-keyword">this</span>.height = element.height;
 }</code></pre><p>Or something trite like that (see my other canvas codes in Github for what this actually looks like).</p>
 <p>Can&#39;t do this here as far as I know, turns out I can return a vector, or a list or a set or something from a function (duh), so I can do something like</p>
-<pre><code>(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> context []
+<pre><code>(<span class="hljs-keyword">defn</span> <span class="hljs-title">context</span> []
   (<span class="hljs-name"><span class="hljs-builtin-name">let</span></span> [target (<span class="hljs-name">.getElementById</span> js/document <span class="hljs-string">&quot;target&quot;</span>)
     [
       (<span class="hljs-name">.getContext</span> target <span class="hljs-string">&quot;2d&quot;</span>)

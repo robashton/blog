@@ -77,16 +77,16 @@ myStore.Batch(<span class="hljs-function"><span class="hljs-params">accessor</sp
   <span class="hljs-keyword">var</span> doc = accessor.Get(<span class="hljs-string">&quot;key1&quot;</span>);
   accessor.Put(<span class="hljs-string">&quot;key2&quot;</span>, <span class="hljs-string">&quot;Hello&quot;</span>);
 });</code></pre><p>What does this look like?</p>
-<pre><code><span class="hljs-keyword">public</span> <span class="hljs-built_in">void</span> <span class="hljs-function"><span class="hljs-title">Batch</span>(<span class="hljs-params">Action&lt;StorageAccessor&gt; actions</span>)</span> {
-  <span class="hljs-keyword">var</span> transaction = <span class="hljs-built_in">this</span>.CreateTransaction();
-  <span class="hljs-keyword">var</span> accessor = <span class="hljs-keyword">new</span> StorageAccessor(<span class="hljs-built_in">this</span>, transaction);
+<pre><code><span class="hljs-keyword">public</span> void Batch(Action&lt;StorageAccessor&gt; actions) {
+  <span class="hljs-keyword">var</span> transaction = <span class="hljs-keyword">this</span>.CreateTransaction();
+  <span class="hljs-keyword">var</span> accessor = new StorageAccessor(<span class="hljs-keyword">this</span>, transaction);
   <span class="hljs-keyword">try</span> {
     actions(accessor);
   } <span class="hljs-keyword">catch</span>(Exception ex) {
-    <span class="hljs-built_in">this</span>.RollbackTransaction(transaction);
+    <span class="hljs-keyword">this</span>.RollbackTransaction(transaction);
     <span class="hljs-keyword">throw</span>;
   }
-  <span class="hljs-built_in">this</span>.CommitTransaction(transaction);
+  <span class="hljs-keyword">this</span>.CommitTransaction(transaction);
 }</code></pre><p>Where the accessor simply calls the Get/Put/Delete methods on the storage and passes in the transaction associated with it.</p>
 <pre><code><span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">StorageAccessor</span> </span>{
   <span class="hljs-keyword">private</span> Storage storage;
