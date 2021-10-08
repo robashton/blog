@@ -1,49 +1,199 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Fri, 01 Oct 2021 12:05:21 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Purerl - three years on]]></title><description><![CDATA[<p>It has been about three years since I first sat in a hotel in Lithuania throwing together the first versions of <a href="https://github.com/id3as/purescript-erl-pinto">purescript-erl-pinto</a> and <a href="https://github.com/id3as/purescript-erl-stetson">purescript-erl-stetson</a> so that I could get started on a project for one of our clients.</p>
-<p>Quite a lot of code has been written against those projects internally and over time various improvements/patterns have been discovered within core libraries such as <a href="https://github.com/purerl/purescript-erl-process">purescript-erl-process</a>, a heap of Erlang specific packages have been written and released, another mountain of packages have been ported across from Purescript and indeed Pinto and Stetson have been upgraded by various colleagues as our understanding of what we need them to do has evolved.</p>
-<p>I have updated the <a href="https://purerl-cookbook.readthedocs.io/">purerl cookbook</a> for these latest releases but felt it worthwhile highlighting some of the changes in a rare blog post.</p>
-<p>Who Am I? A question of &#39;self&#39;</p>
-<hr>
-<p>An increasing number of <em>Module.self</em> functions started showing up in our code as various monads writen around various typed processes wanted to expose the concept of </p>
-<pre><code class="language-haskell"><span class="hljs-title">self</span> :: <span class="hljs-keyword">forall</span> msg. <span class="hljs-type">MyCoolMonad</span> msg (<span class="hljs-type">Process</span> msg)</code></pre>
-<p>This inevitably meant we ended up with the wrong &#39;self&#39; imported at the wrong time, or needing multiple &#39;selfs&#39;  (GenServer.self, Loop.self, WebSocket.self, etc) in a single module which... got irritating at best and confusing at worst.</p>
-<p>We now have the following typeclasses available to us in the <em>purescript-erl-process</em> package.</p>
-<pre><code class="language-haskell"><span class="hljs-class">
-<span class="hljs-keyword">class</span> <span class="hljs-type">HasProcess</span> b a <span class="hljs-keyword">where</span></span>
-  getProcess :: a -&gt; <span class="hljs-type">Process</span> b
-<span class="hljs-class">
-<span class="hljs-keyword">class</span> <span class="hljs-type">HasPid</span> a <span class="hljs-keyword">where</span></span>
-  getPid :: a -&gt; <span class="hljs-type">Pid</span>
-<span class="hljs-class">
-<span class="hljs-keyword">class</span> <span class="hljs-type">HasSelf</span> (<span class="hljs-title">x</span> :: <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span>) a | x -&gt; a <span class="hljs-keyword">where</span></span>
-  self :: x (<span class="hljs-type">Process</span> a)
-</code></pre>
-<p>The first two are not particularly hard to understand, some types will be able to give us pids or processes if we have an instance of them already.</p>
-<p>For example any <em>Process msg</em> will clearly have an untyped pid underlying it, a Process simply being a newtype around Pid with a phantom message type.</p>
-<pre><code class="language-haskell"><span class="hljs-class">
-<span class="hljs-keyword">instance</span> processHasPid :: <span class="hljs-type">Raw</span>.<span class="hljs-type">HasPid</span> (<span class="hljs-type">Process</span> <span class="hljs-title">b</span>) <span class="hljs-keyword">where</span></span>
-  getPid (<span class="hljs-type">Process</span> pid) = pid
-</code></pre>
-<p>And funnily enough Pids also have Pids</p>
-<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">instance</span> pidHasPid :: <span class="hljs-type">HasPid</span> <span class="hljs-type">Pid</span> <span class="hljs-keyword">where</span></span>
-  getPid = identity</code></pre>
-<p>This makes it possible to write a function around the general concept of &#39;something that has a pid&#39; without having to go through contortions to get hold of a pid from what can often be quite the stack of newtypes. </p>
-<pre><code class="language-haskell"><span class="hljs-title">subscribe</span> :: <span class="hljs-keyword">forall</span> <span class="hljs-type">HasPid</span> a =&gt; a -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span></code></pre>
-<p>This is less useful than its <em>HasProcess msg</em> counterpart, which expresses not only that a process can be gotten hold of, but that it can only receive certain types of message.</p>
-<pre><code class="language-haskell"><span class="hljs-title">subscribe</span> :: <span class="hljs-keyword">forall</span> <span class="hljs-type">HasProcess</span> msg process =&gt; process -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span></code></pre>
-<p>These are all very well and good for the cases where the code already has hold of some sort of reference to a running process via <em>Process.spawnLink</em>, <em>GenServer.startLink</em> or similar, but very often the code being written is being executed <em>inside</em> one of these processes and the common pattern in Erlang is the trustworthy call to &#39;self&#39; as mentioned at the start of this section.</p>
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Thu, 07 Oct 2021 16:53:27 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Purerl - three years on]]></title><description><![CDATA[<p>It has been about three years since I first sat in a hotel in Lithuania throwing together the first versions of <a href="https://github.com/id3as/purescript-erl-pinto">purescript-erl-pinto</a> and <a href="https://github.com/id3as/purescript-erl-stetson">purescript-erl-stetson</a> so that we could get started on a project for one of our clients.</p>
+<p>Quite a lot of code has been written against those projects internally by colleagues and myself and over time:</p>
+<ul>
+<li>Various improvements/patterns have been discovered within core libraries such as <a href="https://github.com/purerl/purescript-erl-process">purescript-erl-process</a>. </li>
+<li>A heap of Erlang specific packages have been written and released</li>
+<li>Another mountain of packages have been ported across from Purescript </li>
+<li>Pinto and Stetson have been upgraded repeatedly by various colleagues as our understanding of what we need them to do has evolved.</li>
+</ul>
+<p>The <a href="https://purerl-cookbook.readthedocs.io/">purerl cookbook</a> has been updated for these latest releases, as has the <a href="https://github.com/id3as/demo-ps">demo-ps</a> but felt it worthwhile highlighting some of the changes in a few (of my increasingly rare) blog posts.</p>
+<p>In this post we&#39;ll be looking at Processes and the concept of &#39;self&#39;</p>
+<h1 id="processes">Processes</h1>
+<p>A common practise in Erlang codebases is to spawn a new process and use its Pid for communication.</p>
+<pre><code class="language-erlang"><span class="hljs-function"><span class="hljs-title">example</span><span class="hljs-params">()</span> -&gt;</span>
+  Pid = spawn_link(fun receive_message/0)
+  Pid ! hi.
+
+<span class="hljs-function"><span class="hljs-title">receive_message</span><span class="hljs-params">()</span> -&gt;</span>
+  <span class="hljs-keyword">receive</span>
+    SomeMessage -&gt; 
+      ?PRINT(<span class="hljs-string">&quot;Got a message&quot;</span>),
+      ok
+   <span class="hljs-keyword">end</span>.</code></pre>
+<p>In Purerl, the type <em>Pid</em> lives in <em>Erl.Process.Raw</em> and is just an imported foreign type</p>
+<pre><code class="language-haskell"><span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> data <span class="hljs-type">Pid</span> :: <span class="hljs-type">Type</span></code></pre>
+<p>This typically isn&#39;t used to any great amount except in some specific FFI cases, it being far better generally to use the types found in <em>Erl.Process</em> which have the phantom type <em>msg</em> floating around meaning all the sends and receives are limited to the types of message that that process has declared it will receive. <em>Process msg</em> itself is just a newtype around Raw.Pid of course.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">newtype</span> <span class="hljs-type">Process</span> (<span class="hljs-title">a</span> :: <span class="hljs-type">Type</span>)</span>
+  = <span class="hljs-type">Process</span> <span class="hljs-type">Raw</span>.<span class="hljs-type">Pid</span></code></pre>
+<p>To create a typed process, one could call <em>spawnLink</em> and provide a callback which will be executed in the process created in that underlying call to <em>spawn_link</em> in Erlang. A change made fairly early on in development was to change this callback from something that took some context, to something that operated inside <em>ProcessM msg r</em>, with the context being provided by that monad - this will become important later on in this blog entry so I&#39;ll demonstrate this here.</p>
+<h2 id="the-old-way">The old way</h2>
+<p>&quot;Given a callback that accepts a <em>SpawnLinkContext</em> typed around <em>msg</em>, run that callback inside a new process and return that new process, also typed around <em>msg</em>&quot;</p>
+<pre><code class="language-haskell"><span class="hljs-title">spawnLink</span> :: <span class="hljs-keyword">forall</span> msg. (<span class="hljs-type">SpawnLinkContext</span> msg -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>) -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Process</span> msg)</code></pre>
+<p>That context then provided the means of receiving messages, being defined as something like</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">SpawnLinkContext</span> msg = </span>
+  { receive :: <span class="hljs-type">Effect</span> msg 
+  , receiveWithTimeout :: <span class="hljs-type">Timeout</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Maybe</span> msg)
+  }</code></pre>
+<p>Thus, the Erlang example, re-written in Purerl would have looked something like this</p>
+<pre><code class="language-haskell"><span class="hljs-title">example</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">example</span> = <span class="hljs-keyword">do</span>
+  pid &lt;- spawnLink receiveMessage
+  pid ! <span class="hljs-string">&quot;hi&quot;</span>
+
+<span class="hljs-title">receiveMessage</span> :: <span class="hljs-type">SpawnLinkContext</span> <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">receiveMessage</span> c = <span class="hljs-keyword">do</span> 
+  msg &lt;- c.receive
+  log <span class="hljs-string">&quot;Got a message&quot;</span></code></pre>
+<h2 id="the-new-way">The new way</h2>
+<p>&quot;Evaluate the given code in the context of a <em>ProcessM</em> typed around <em>msg</em>&quot;</p>
+<pre><code class="language-haskell"><span class="hljs-title">spawnLink</span> :: <span class="hljs-keyword">forall</span> msg. <span class="hljs-type">ProcessM</span> msg <span class="hljs-type">Unit</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Process</span> msg)</code></pre>
+<p>And quite simply, any calls to receive/etc are defined as functions that operate inside ProcessM, again all typed around <em>msg</em></p>
+<pre><code class="language-haskell"><span class="hljs-title">receive</span> :: <span class="hljs-keyword">forall</span> msg. <span class="hljs-type">ProcessM</span> msg msg
+<span class="hljs-title">receive</span> = <span class="hljs-type">ProcessM</span> <span class="hljs-type">Raw</span>.receive</code></pre>
+<p>This cuts down on the cruft somewhat, as instead of having to pass a context everywhere, one can simply write functions in that context, re-writing that initial example now looks like this (Note that the log call needs lifting into <em>ProcessM</em> because it is written as an <em>Effect</em>)</p>
+<pre><code class="language-haskell"><span class="hljs-title">example</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">example</span> = <span class="hljs-keyword">do</span>
+  pid &lt;- spawnLink receiveMessage
+  pid ! <span class="hljs-string">&quot;hi&quot;</span>
+
+<span class="hljs-title">receiveMessage</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">String</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">receiveMessage</span> = <span class="hljs-keyword">do</span> 
+  msg &lt;- receive
+  liftEffect $ log <span class="hljs-string">&quot;Got a message&quot;</span></code></pre>
+<h2 id="extending-this-model">Extending this model</h2>
+<p>It turns out that this is quite a nice pattern for representing the different <em>types</em> of process available in Erlang (OTP, Cowboy and indeed our own application code), consider:</p>
+<ul>
+<li>Cowboy Loop handlers</li>
+<li>Cowboy Websocket handlers</li>
+<li>OTP gen_server</li>
+<li>OTP supervisor</li>
+<li>OTP gen_statem</li>
+</ul>
+<p>All of these could be ran as <em>ProcessM</em>, except they have more types associated with them <em>and</em> various functions available designed for use in those specific contexts, for example in the simple case of cowboy..</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">WebSocketInfoHandler</span> msg state</span>
+  = msg -&gt; state -&gt; <span class="hljs-type">WebSocketResult</span> msg (<span class="hljs-type">WebSocketCallResult</span> state)</code></pre>
+<p>We have the types <em>msg</em> and <em>state</em> in our type because the callbacks involved tend to take <em>state</em> and there is a callback (<em>info</em>) for messages received by the loop handler typed around <em>msg</em></p>
+<p>In the more complicated case of an OTP GenServer, this looks like this</p>
+<pre><code>type C<span class="hljs-literal">all</span>Fn reply cont stop msg <span class="hljs-keyword">state</span>
+  = From reply -&gt; <span class="hljs-keyword">state</span> -&gt; ResultT cont stop msg <span class="hljs-keyword">state</span> (C<span class="hljs-literal">all</span>Result reply cont stop <span class="hljs-keyword">state</span>)</code></pre><p>Most operations take place inside that <em>ResultT</em> which encodes the <em>cont</em>, <em>stop</em>, <em>msg</em>, and <em>state</em> types for use with our operations. (<em>cont</em> being the message that can be received by <em>handle_continue</em>, <em>stop</em> being a custom stop reason, <em>msg</em> being messages received by <em>handle_info</em> and <em>state</em> being the state of the gen server).</p>
+<p>We also end up with our own contexts in our own codebases for specific process types around common units of business logic. </p>
+<h2 id="common-functionality">Common Functionality</h2>
+<p>In most of these cases, just like with <em>Process.spawnLink</em>, something gets returned that represents the started process - for example the GenServer.</p>
+<pre><code class="language-haskell"><span class="hljs-title">startLink</span> :: <span class="hljs-keyword">forall</span> cont stop msg state. 
+  (<span class="hljs-type">ServerSpec</span> cont stop msg state) 
+  -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">StartLinkResult</span> (<span class="hljs-type">ServerPid</span> cont stop msg state))</code></pre>
+<p>Here we have a <em>ServerPid cont stop msg state</em> returned to the caller - again keeping a lot of useful information around to help us make calls into a GenServer but the type we&#39;re interested in here is <em>msg</em>. Most generic APIs will be written around the concept of a <em>Process msg</em> and what we have here is a <em>ServerPid cont stop msg state</em></p>
+<p>The logical step here is to expose</p>
+<pre><code class="language-haskell"><span class="hljs-title">toProcess</span> :: <span class="hljs-type">ServerPid</span> cont stop msg state -&gt; <span class="hljs-type">Process</span> msg</code></pre>
+<p>It turns out that this is a very common operation and so a typeclass is born and added to Erl.Process for everybody to implement when writing this kind of code.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-type">HasProcess</span> b a <span class="hljs-keyword">where</span></span>
+  getProcess :: a -&gt; <span class="hljs-type">Process</span> b</code></pre>
+<p>In fact, two typeclasses are born because some APIs only need a Pid after all.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-type">HasPid</span> a <span class="hljs-keyword">where</span></span>
+  getPid :: a -&gt; <span class="hljs-type">Pid</span></code></pre>
+<p>Most functions that take a <em>Process msg</em> therefore don&#39;t actually care about it <em>being</em> a <em>Process msg</em>, but only that a <em>Process msg</em> can be gotten from the type</p>
+<pre><code class="language-haskell"><span class="hljs-title">callMe</span> :: <span class="hljs-keyword">forall</span> p msg. 
+  <span class="hljs-type">HasProcess</span> msg p =&gt; 
+  p -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span></code></pre>
+<p>And now all of those custom types can be used with a whole suite of APIs without having to unpack a convoluted structure of newtypes.</p>
+<h2 id="self">Self</h2>
+<p>There is one more common operation that has been ignored so far, and that is the concept of self. An incredibly common thing in Erlang is to invoke <em>self</em> to get the Pid of the current process.</p>
 <pre><code class="language-erlang">Self = self(),
-api:subscribe(Self)</code></pre>
-<p>With the addition of HasSelf to most of the common process containers across Erl.Process, Stetson, and Pinto, this becomes a case of the following - regardless of what the process container is being used in that case.</p>
-<pre><code class="language-haskell"><span class="hljs-title">subscribe</span> =&lt;&lt; self</code></pre>
-<p><em>self</em> being a typed pid of <code>Process msg</code>, and subscribe being be a call that takes a <code>Process msg</code>, it becomes hard to subscribe to messages that the code cannnot actually receive in whatever <em>handleInfo</em>, <em>wsInfo</em>, <em>loopInfo</em> callback or call to <em>receive</em> that whichever process container being used exposes for that purpose.</p>
-<p>Most subscribe calls don&#39;t actually look like this - as it&#39;s more convenient in most cases to accept a callback that  allows the lifting of messages into a different type more convenient foo the subscriber.</p>
-<pre><code class="language-haskell"><span class="hljs-title">subscribe</span> :: <span class="hljs-keyword">forall</span> msg. (msg -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>) -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
-<span class="hljs-title">subscribe</span> cb = ...</code></pre>
-<p>Thus, a call to a subscribe function will very often look like this</p>
-<pre><code class="language-haskell"><span class="hljs-title">me</span> &lt;- self
-<span class="hljs-title">subscribe</span> $ send me &lt;&lt;&lt; <span class="hljs-type">Msg</span></code></pre>
-<p>Which reads very well indeed. </p>
-<p>While this <em>is</em> the predominant pattern across existing code, this subscribe call <em>is</em> taking an <em>(msg -&gt; Effect Unit)</em> callback. This isn&#39;t ideal because it means the user can execute arbitary code in the API&#39;s process - that&#39;s a pretty obnoxious (and dangerous) thing to allow but with the typeclasses that are now available, it is actually possible to write a function that subscribes whichever process we&#39;re in to a set of messages, given some means of lifting the message type into the appropriate container and therefore limiting the damage that can be done.</p>
+some_api:call_me(Self)</code></pre>
+<p>For a while, we started having <em>self</em> methods on every module that exported some monad in which process logic could be evalulated, and this would return the full type of the process (complete with <em>cont</em>, <em>stop</em>, <em>state</em>, etc). There were a lot of <em>self</em> functions being exported and imported and in 99.99% of all cases they were immediately followed by a call to <em>getProcess</em> using the <em>HasProcess</em> typeclass implementation for that system.</p>
+<pre><code class="language-haskell">(me :: <span class="hljs-type">Process</span> <span class="hljs-type">MyMsg</span>) &lt;- getProcess &lt;$&gt; <span class="hljs-type">GenServer</span>.self</code></pre>
+<p>What does <em>self</em> mean then? The correct answer is as written above, but the correct answer isn&#39;t always the nicest answer - it was very rare that we would need anything from <em>self</em> other than the current <em>Process msg</em> and we were running into issues in modules that had code for more than one of these contexts in them, whose self are we using anyway?</p>
+<p>The answer was to be pragmatic and create a typeclass for &#39;<em>any m</em>&#39; that allowed that &#39;<em>m</em>&#39; to export a <em>Process msg</em></p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-type">HasSelf</span> (<span class="hljs-title">m</span> :: <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span>) msg | m -&gt; msg <span class="hljs-keyword">where</span></span>
+  self :: m (<span class="hljs-type">Process</span> msg)</code></pre>
+<p>For the case of anything running inside a <em>ProcessM</em>, this isn&#39;t any more complicated than calling Raw.self to get the current pid and wrapping it up with the relevant newtypes</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">instance</span> selfProcessM :: <span class="hljs-type">HasSelf</span> (<span class="hljs-type">ProcessM</span> <span class="hljs-title">a</span>) a <span class="hljs-keyword">where</span></span>
+  self :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">ProcessM</span> a (<span class="hljs-type">Process</span> a)
+  self = <span class="hljs-type">ProcessM</span> $ <span class="hljs-type">Process</span> &lt;$&gt; <span class="hljs-type">Raw</span>.self</code></pre>
+<p>Similar implementations then exist for Pinto/Stetson contexts, allowing code to simply call <em>Process.self</em> from practically anywhere to get a typed <em>Process msg</em> valid for the current context.</p>
+<pre><code class="language-haskell"><span class="hljs-type">SomeApi</span>.callMe &lt;&lt;&lt; self</code></pre>
+<p>All typed, all safe, nobody sent messages they can&#39;t handle - living the dream.</p>
+<hr>
+<h1 id="subscriptions">Subscriptions</h1>
+<p>Two blog posts in a week? Unheard of - following on from last week&#39;s blockbuster smash hit epic &quot;<a href="/">Purerl Updates - Processes and Self</a>&quot;, today we have an entry describing our current thoughts on subscriptions in a Purerl world.</p>
+<p>A standard procedure in Erlang, is to invoke an API that then proceeds to send messages back to the invoking process.</p>
+<pre><code class="language-erlang">some_api:subscribe()</code></pre>
+<p>More often or not, an overload will be provided allowing a Pid to be passed in, in case you didn&#39;t want it sending to <em>self</em>.</p>
+<pre><code class="language-erlang">some_api:subscribe(Pid)</code></pre>
+<p>We could write a function that looks like this in Purescript (using the typeclasses explored in the previous blog entry).</p>
+<pre><code class="language-haskell"><span class="hljs-keyword">module</span> SomeApi <span class="hljs-keyword">where</span>
+
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">HelloWorld</span> | <span class="hljs-type">Goodbye</span></span>
+
+<span class="hljs-title">subscribe</span> :: <span class="hljs-keyword">forall</span> process. 
+  <span class="hljs-type">HasProcess</span> <span class="hljs-type">Msg</span> process =&gt; 
+  process -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">subscribe</span> = ...
+</code></pre>
+<p>In this, we are saying &quot;Given a process that accepts <em>Msg</em>, then the subscription will send <em>msg</em> to you.</p>
+<pre><code class="language-haskell"><span class="hljs-title">workerLoop</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">SomeApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">workerLoop</span> = <span class="hljs-keyword">do</span>
+  msg &lt;- receive
+  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span> 
+    <span class="hljs-type">HelloWorld</span> -&gt; ...
+    <span class="hljs-type">Goodbye</span> -&gt; ...
+
+<span class="hljs-title">main</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">main</span> = <span class="hljs-keyword">do</span> 
+  process &lt;- spawnLink workerLoop
+  <span class="hljs-type">SomeApi</span>.subscribe process</code></pre>
+<p>This isn&#39;t great, typically we don&#39;t write processes this way - processes usually not only want to subscribe to messages from external sources, but also send themselves messages, typically they&#39;ll achieve that by lifting messages into a process specific data type.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">ProcessMsg</span> </span>
+  = <span class="hljs-type">ApiMsg</span> <span class="hljs-type">SomeApi</span>.<span class="hljs-type">Msg</span>
+  | <span class="hljs-type">Tick</span>
+
+<span class="hljs-title">workerLoop</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">ProcessMsg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">workerLoop</span> = ...
+</code></pre>
+<p>Calling <em>SomeApi.subscribe</em> with this process will result in a compiler error because SomeApi.Msg is the wrong type.</p>
+<h2 id="emitters">Emitters</h2>
+<p>The pattern we&#39;ve been using up until now to side-step this is for subscription calls to take in a blank cheque in the form of <em>msg -&gt; Effect Unit</em>, allowing the caller to decide what to do with messages on that subscription.</p>
+<pre><code class="language-haskell"><span class="hljs-keyword">module</span> SomeApi <span class="hljs-keyword">where</span>
+
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">HelloWorld</span> | <span class="hljs-type">Goodbye</span></span>
+
+<span class="hljs-title">subscribe</span> :: (<span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>) -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">subscribe</span> = ...
+</code></pre>
+<p>Subscription could then look like this</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">ProcessMsg</span> </span>
+  = <span class="hljs-type">ApiMsg</span> <span class="hljs-type">SomeApi</span>.<span class="hljs-type">Msg</span>
+  | <span class="hljs-type">Tick</span>
+
+<span class="hljs-title">main</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">main</span> = <span class="hljs-keyword">do</span> 
+  process &lt;- spawnLink workerLoop
+  <span class="hljs-type">SomeApi</span>.subscribe $ send process &lt;&lt;&lt; <span class="hljs-type">ApiMsg</span></code></pre>
+<p>More commonly the use of some form of <em>self</em> would be used inside the process itself, as it makes little sense for one process to subscribe on behalf of another.</p>
+<pre><code class="language-haskell"><span class="hljs-title">workerLoop</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">SomeApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">workerLoop</span> = <span class="hljs-keyword">do</span>
+  msg &lt;- receive
+  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span> 
+    <span class="hljs-type">HelloWorld</span> -&gt; ...
+    <span class="hljs-type">Goodbye</span> -&gt; ...
+
+<span class="hljs-title">startWorker</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">SomeApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">startWorker</span> = <span class="hljs-keyword">do</span>
+  me &lt;- self
+  liftEffect $ <span class="hljs-type">SomeApi</span>.subscribe $ send me &lt;&lt;&lt; <span class="hljs-type">ApiMsg</span>
+  workerLoop
+
+<span class="hljs-title">main</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">main</span> = <span class="hljs-keyword">do</span> 
+  _ &lt;- spawnLink workerLoop
+</code></pre>
+<p>This <em>works</em> and is elegant - and indeed for about two years this has been The Way. Our codebase is/was littered with <em>send me &lt;&lt;&lt; Msg</em>, but in hindsight this isn&#39;t great.</p>
+<p>Why not? The problem with <em>Effect Unit</em> is that it can do anything. <em>ANYTHING</em>. The problem with passing an <em>Effect Unit</em> is that it can do that &quot;anything&quot; within the context of a completely different process. This can cause problems.</p>
+<p><em>Errors</em>: What happens if the Effect Unit causes an exception? Who crashes? The remote process? Who does that affect? Anybody else who is currently subscribed? How do they find out? Are they in the right supervision tree for this not to be a problem? Can we just swallow the exception? How does the caller find out that it crashed? Oh dear.</p>
+<p><em>Interference</em>: What if this is in a message loop doing other things? What if the <em>Effect Unit</em> takes up precious time? What happens to the backlog? What happens to anything awaiting a message with a timeout? </p>
+<p>While the reality is that while nearly all our callbacks are implemented as <em>send me &lt;&lt;&lt; Msg</em>, as our codebases grow and we do more and more of these things, somebody is eventually going to cause problems with the above and we&#39;ll be looking at hilarious (and needless) debug sessions as a result. If not us - then somebody else using Purerl (and our numbers <em>are</em> growing...).</p>
+<h2 id="hasself-to-the-rescue">HasSelf to the rescue</h2>
+<p>HasSelf was added fairly recently and makes it possible to write code that operates inside any monad provided it has an implementation of &#39;self&#39;.</p>
 <pre><code class="language-haskell"><span class="hljs-title">saferSubscribe</span> ::
   <span class="hljs-keyword">forall</span> m msg.
   <span class="hljs-type">MonadEffect</span> m =&gt;
@@ -53,24 +203,124 @@ api:subscribe(Self)</code></pre>
   me :: (<span class="hljs-type">Process</span> msg) &lt;- self
   liftEffect $ subscribe $ send me &lt;&lt;&lt; f
   pure unit</code></pre>
-<p>And thus, our call to this becomes</p>
-<pre><code class="language-haskell"><span class="hljs-title">saferSubscribe</span> <span class="hljs-type">Msg</span></code></pre>
-<p>And if we really need to be able to provide a process, instead of relying on <em>HasSelf</em> (for example, sending messages to a child process)</p>
+<p>Adding onto that, we need to assert that we can evaluate effects in this monad (MonadEffect m =&gt;) in order to actually issue the subscription and suddenly our call to this becomes</p>
+<pre><code class="language-haskell"><span class="hljs-title">workerLoop</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">SomeApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">workerLoop</span> = <span class="hljs-keyword">do</span>
+  msg &lt;- receive
+  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span> 
+    <span class="hljs-type">HelloWorld</span> -&gt; ...
+    <span class="hljs-type">Goodbye</span> -&gt; ...
+
+<span class="hljs-title">startWorker</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">SomeApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">startWorker</span> = <span class="hljs-keyword">do</span>
+  <span class="hljs-type">SomeApi</span>.saferSubscribe <span class="hljs-type">ApiMsg</span>
+  workerLoop
+
+<span class="hljs-title">main</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">main</span> = <span class="hljs-keyword">do</span> 
+  _ &lt;- spawnLink workerLoop
+</code></pre>
+<p>Note: The liftEffect is gone, as is the call to &#39;self&#39;, the API looks a <em>lot</em> more like the original Erlang and is safer while we&#39;re at it. </p>
+<p>Because it&#39;s no longer a blank cheque, we should probably provide a second method (just like in Erlang) that takes a process to send messages to instead of simply relying on &#39;self&#39;.</p>
 <pre><code class="language-haskell"><span class="hljs-title">saferSubscribeTo</span> ::
   <span class="hljs-keyword">forall</span> msg.
   <span class="hljs-type">Process</span> msg -&gt; (<span class="hljs-type">Msg</span> -&gt; msg) -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
 <span class="hljs-title">saferSubscribeTo</span> p f = <span class="hljs-keyword">do</span> subscribe $ send p &lt;&lt;&lt; f</code></pre>
-<p>There is a chance that this may end up being formalised at some point.</p>
-<p>Erl.Process Upgrades</p>
-<hr>
-<p>Stetson Upgrades</p>
-<hr>
-<p>Pinto Upgrades</p>
-<hr>
-<p>New Erlang Packages</p>
-<hr>
-<p>Ported Purescript Packages</p>
-<hr>
+<p>This is how most of our subscriptions now look across Pinto/our own code/etc. It&#39;s safer for everybody concerned and fits well with the ethos of &#39;trying to look like the Erlang APIs most of this stuff is built on top of&#39;.</p>
+<h1 id="untagged-unions--erlang-messages">Untagged Unions + Erlang Messages</h1>
+<p>Yes, another blog post about Purerl, following on from</p>
+<ul>
+<li><a href="/">Purerl Updates - Processes and Self</a></li>
+<li><a href="/">Purerl Updates - Subscriptions</a></li>
+</ul>
+<p>We are now here to talk about untagged unions and how they can be used when dealing with legacy messages being sent to our process and why we might want to do something differently at all.</p>
+<p>Consider a dependency to a legacy Erlang library that has a subscribe call that sends us messages</p>
+<pre><code class="language-erlang">legacy_api:subscribe(),
+
+<span class="hljs-keyword">receive</span> 
+  { data, Bin } -&gt; ..
+  { err, Reason } -&gt; ..
+  eof -&gt; ..
+</code></pre>
+<p>It isn&#39;t possible to subcribe to this in Purescript without doing <em>something</em> to unpack those Erlang types. We could have</p>
+<pre><code class="language-haskell"><span class="hljs-title">workerLoop</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">Foreign</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">workerLoop</span> = <span class="hljs-keyword">do</span>
+  msg &lt;- receive
+  <span class="hljs-keyword">case</span> (<span class="hljs-type">LegacyApi</span>.unpack msg) <span class="hljs-keyword">of</span> 
+    <span class="hljs-type">Err</span> err -&gt; ...
+    <span class="hljs-type">Data</span> bin -&gt; ...
+    <span class="hljs-type">Fin</span> -&gt; ...
+
+<span class="hljs-title">startWorker</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">Foreign</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">startWorker</span> = <span class="hljs-keyword">do</span>
+  <span class="hljs-type">LegacyApi</span>.subscribe
+  workerLoop
+</code></pre>
+<p>Simply leaving it to the caller to know that the Foreign needs running through the API again in order to decipher it.</p>
+<p>We could also use the MessageRouter in Pinto to spin up another process that knows how to do this for us so this translation is already done once we&#39;re in user code</p>
+<pre><code class="language-haskell"><span class="hljs-keyword">import</span> Pinto.MessageRouter <span class="hljs-keyword">as</span> MR
+
+<span class="hljs-title">workerLoop</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">LegacyApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">workerLoop</span> = <span class="hljs-keyword">do</span>
+  msg &lt;- receive
+  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span> 
+    <span class="hljs-type">Err</span> err -&gt; ...
+    <span class="hljs-type">Data</span> bin -&gt; ...
+    <span class="hljs-type">Fin</span> -&gt; ...
+
+<span class="hljs-title">startWorker</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">LegacyApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">startWorker</span> = <span class="hljs-keyword">do</span>
+  me &lt;- self
+  <span class="hljs-type">MR</span>.startRouter <span class="hljs-type">LegacyApi</span>.subscribe <span class="hljs-type">LegacyApi</span>.unsubscribe (self self &lt;&lt;&lt; <span class="hljs-type">LegacyApi</span>.unpack)
+  workerLoop</code></pre>
+<p>This is a viable solution for <em>most</em> scenarios because it is easy to understand, reasonably lightweight, allows us to accept more than one kind of message, etc. It incur the &quot;cost&quot; of spinning up another process, and it does incur the cost of doubling the number of messages being sent for a single interaction.</p>
+<p>Usually this isn&#39;t a problem (or more - if doubling the messages or processes is going to cause you issues, then it&#39;s possible that the codebase already has issues anyway!). </p>
+<p>Having said all of that, for FFI around existing Erlang where there are there are numerous variants, writing mapping code in Erlang could be rather error prone (and passing in constructors from Purescript gets tiresome after half a dozen) - it starts to make sense to instead try to describe the data types &quot;in place&quot; in Purescript using something formal.</p>
+<p>For this, there is the package <a href="https://github.com/id3as/purescript-erl-untagged-union">purescript-untagged-union</a>.</p>
+<p>Now, two of these values are directly representable in Purescript because of the way in which types are represented in Erlang under the hood.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">LegacyMsg</span> </span>
+  = <span class="hljs-type">Err</span> <span class="hljs-type">Binary</span>
+  | <span class="hljs-type">Data</span> <span class="hljs-type">Binary</span></code></pre>
+<p>We can let the untagged unions library know that underlying data maps onto this with an instance of RuntimeType that describes it</p>
+<pre><code class="language-haskell">instance legacyMsg_runtimeType ::
+  RuntimeType
+    LegacyMsg
+    (RTOption (RTTuple2 (RTLiteralAtom &quot;err&quot;) RTBinary)
+               RTTuple2 (RTLiteralAtom &quot;data&quot; RTBinary))</code></pre>
+<p>Come to think of it, that &#39;err&#39; is horrible, we&#39;re in Purescript and there is no reason to have such an ugly constructor - how about renaming it during mapping?</p>
+<pre><code class="language-haskell">data LegacyMsg 
+  = Error Binary
+  | Data Binary
+
+instance legacyMsg_runtimeType ::
+  RuntimeType
+    LegacyMsg
+    (RTOption (RTTuple2 (RTLiteralAtomConvert &quot;err&quot; &quot;error&quot;) RTBinary)
+               RTTuple2 (RTLiteralAtom &quot;data&quot; RTBinary))</code></pre>
+<p>We still have that atom all by itself however, the atom &#39;fin&#39; isn&#39;t representable as a Purescript type, it is only an Atom but we&#39;d like still like to be able to receive it! </p>
+<p>Well, we can build a type that represents our incoming messages, including that atom.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">Union</span> |$| <span class="hljs-type">AtomSymbol</span>.<span class="hljs-type">Atom</span> &quot;fin&quot; |+| <span class="hljs-type">LegacyMsg</span> |+| <span class="hljs-type">Nil</span></span></code></pre>
+<p>And then all that is left is to use this in a process that can receive these messages</p>
+<pre><code class="language-haskell"><span class="hljs-title">workerLoop</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">LegacyApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">workerLoop</span> = <span class="hljs-keyword">do</span>
+  msg &lt;- receive
+  ( case_ 
+      # on (\(m&#x27; :: <span class="hljs-type">LegacyMsg</span>) -&gt;
+          <span class="hljs-keyword">case</span> m&#x27; <span class="hljs-keyword">of</span> 
+            <span class="hljs-type">Err</span> err -&gt; ...
+            <span class="hljs-type">Data</span> bin -&gt; ...
+        )
+      # on (\(_ :: <span class="hljs-type">AtomSymbol</span>.<span class="hljs-type">Atom</span> <span class="hljs-string">&quot;fin&quot;</span>) -&gt;
+            ...
+        )
+  ) msg
+
+<span class="hljs-title">startWorker</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">LegacyApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">startWorker</span> = <span class="hljs-keyword">do</span>
+  <span class="hljs-type">LegacyApi</span>.subscribe 
+  workerLoop</code></pre>
+<p>This needs to be exhaustive or we will get a compile error which is super cool. </p>
+<p>All of this works without an additional process or a fumbly mapping layer. It&#39;s not perfect and relies on actually getting the type description correct but this at least presents a way of doing it without writing error-prone Erlang, which can be useful when dealing with APIs that have a whole array of random structures.</p>
 ]]></description><link>http://codeofrob.com/entries/purerl---three-years-on.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purerl---three-years-on.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 06 Apr 2021 09:30:00 GMT</pubDate></item><item><title><![CDATA[Write Your Erlang Gen Servers in Visual Basic]]></title><description><![CDATA[<p>TLDR: <a href="https://github.com/robashton/erlang.net">Erlang.NET Released on Github</a></p>
 <p>I&#39;ve been working in Erlang now for nearly a decade and for the last year or two we have been investigating what it would take to start writing a <em>lot</em> more of that Erlang in Purescript instead because in theory working in a sensibly typed language means fewer bugs means fewer support calls means more time spent working on features which can be sold and therefore this is good for profit margins.</p>
 <p>Well let me tell you - it blows, we have lost weeks trying to write typeclasses around row types to confirm that &#39;this chunk of binary is good to go into this piece of code that just wants a chunk of binary&#39; and months pontificating over whether an attribute should be declared at the type-level or merely at runtime and whilst progress has been made, it has been a slow and painful exercise.</p>
