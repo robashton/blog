@@ -1,0 +1,93 @@
+<p>Yes, another blog post about Purerl, following on from</p>
+<ul>
+<li><a href="/entries/purerl-updates---processes-and-self.html">Purerl Updates - Processes and Self</a></li>
+<li><a href="/entries/purerl-updates---subscriptions.html">Purerl Updates - Subscriptions</a></li>
+</ul>
+<p>We are now here to talk about untagged unions and how they can be used when dealing with legacy messages being sent to our process and why we might want to do something differently at all.</p>
+<p>Consider a dependency to a legacy Erlang library that has a subscribe call that sends us messages</p>
+<pre><code class="language-erlang">legacy_api:subscribe(),
+
+<span class="hljs-keyword">receive</span> 
+  { data, Bin } -&gt; ..
+  { err, Reason } -&gt; ..
+  eof -&gt; ..
+</code></pre>
+<p>It isn&#39;t possible to subcribe to this in Purescript without doing <em>something</em> to unpack those Erlang types. We could have</p>
+<pre><code class="language-haskell"><span class="hljs-title">workerLoop</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">Foreign</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">workerLoop</span> = <span class="hljs-keyword">do</span>
+  msg &lt;- receive
+  <span class="hljs-keyword">case</span> (<span class="hljs-type">LegacyApi</span>.unpack msg) <span class="hljs-keyword">of</span> 
+    <span class="hljs-type">Err</span> err -&gt; ...
+    <span class="hljs-type">Data</span> bin -&gt; ...
+    <span class="hljs-type">Fin</span> -&gt; ...
+
+<span class="hljs-title">startWorker</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">Foreign</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">startWorker</span> = <span class="hljs-keyword">do</span>
+  <span class="hljs-type">LegacyApi</span>.subscribe
+  workerLoop
+</code></pre>
+<p>Simply leaving it to the caller to know that the Foreign needs running through the API again in order to decipher it.</p>
+<p>We could also use the MessageRouter in Pinto to spin up another process that knows how to do this for us so this translation is already done once we&#39;re in user code</p>
+<pre><code class="language-haskell"><span class="hljs-keyword">import</span> Pinto.MessageRouter <span class="hljs-keyword">as</span> MR
+
+<span class="hljs-title">workerLoop</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">LegacyApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">workerLoop</span> = <span class="hljs-keyword">do</span>
+  msg &lt;- receive
+  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span> 
+    <span class="hljs-type">Err</span> err -&gt; ...
+    <span class="hljs-type">Data</span> bin -&gt; ...
+    <span class="hljs-type">Fin</span> -&gt; ...
+
+<span class="hljs-title">startWorker</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">LegacyApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">startWorker</span> = <span class="hljs-keyword">do</span>
+  me &lt;- self
+  <span class="hljs-type">MR</span>.startRouter <span class="hljs-type">LegacyApi</span>.subscribe <span class="hljs-type">LegacyApi</span>.unsubscribe (self self &lt;&lt;&lt; <span class="hljs-type">LegacyApi</span>.unpack)
+  workerLoop</code></pre>
+<p>This is a viable solution for <em>most</em> scenarios because it is easy to understand, reasonably lightweight, allows us to accept more than one kind of message, etc. It incur the &quot;cost&quot; of spinning up another process, and it does incur the cost of doubling the number of messages being sent for a single interaction.</p>
+<p>Usually this isn&#39;t a problem (or more - if doubling the messages or processes is going to cause you issues, then it&#39;s possible that the codebase already has issues anyway!). </p>
+<p>Having said all of that, for FFI around existing Erlang where there are there are numerous variants, writing mapping code in Erlang could be rather error prone (and passing in constructors from Purescript gets tiresome after half a dozen) - it starts to make sense to instead try to describe the data types &quot;in place&quot; in Purescript using something formal.</p>
+<p>For this, there is the package <a href="https://github.com/id3as/purescript-erl-untagged-union">purescript-untagged-union</a>.</p>
+<p>Now, two of these values are directly representable in Purescript because of the way in which types are represented in Erlang under the hood.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">LegacyMsg</span> </span>
+  = <span class="hljs-type">Err</span> <span class="hljs-type">Binary</span>
+  | <span class="hljs-type">Data</span> <span class="hljs-type">Binary</span></code></pre>
+<p>We can let the untagged unions library know that underlying data maps onto this with an instance of RuntimeType that describes it</p>
+<pre><code class="language-haskell">instance legacyMsg_runtimeType ::
+  RuntimeType
+    LegacyMsg
+    (RTOption (RTTuple2 (RTLiteralAtom &quot;err&quot;) RTBinary)
+               RTTuple2 (RTLiteralAtom &quot;data&quot; RTBinary))</code></pre>
+<p>Come to think of it, that &#39;err&#39; is horrible, we&#39;re in Purescript and there is no reason to have such an ugly constructor - how about renaming it during mapping?</p>
+<pre><code class="language-haskell">data LegacyMsg 
+  = Error Binary
+  | Data Binary
+
+instance legacyMsg_runtimeType ::
+  RuntimeType
+    LegacyMsg
+    (RTOption (RTTuple2 (RTLiteralAtomConvert &quot;err&quot; &quot;error&quot;) RTBinary)
+               RTTuple2 (RTLiteralAtom &quot;data&quot; RTBinary))</code></pre>
+<p>We still have that atom all by itself however, the atom &#39;fin&#39; isn&#39;t representable as a Purescript type, it is only an Atom but we&#39;d like still like to be able to receive it! </p>
+<p>Well, we can build a type that represents our incoming messages, including that atom.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">Union</span> |$| <span class="hljs-type">AtomSymbol</span>.<span class="hljs-type">Atom</span> &quot;fin&quot; |+| <span class="hljs-type">LegacyMsg</span> |+| <span class="hljs-type">Nil</span></span></code></pre>
+<p>And then all that is left is to use this in a process that can receive these messages</p>
+<pre><code class="language-haskell"><span class="hljs-title">workerLoop</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">LegacyApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">workerLoop</span> = <span class="hljs-keyword">do</span>
+  msg &lt;- receive
+  ( case_ 
+      # on (\(m&#x27; :: <span class="hljs-type">LegacyMsg</span>) -&gt;
+          <span class="hljs-keyword">case</span> m&#x27; <span class="hljs-keyword">of</span> 
+            <span class="hljs-type">Err</span> err -&gt; ...
+            <span class="hljs-type">Data</span> bin -&gt; ...
+        )
+      # on (\(_ :: <span class="hljs-type">AtomSymbol</span>.<span class="hljs-type">Atom</span> <span class="hljs-string">&quot;fin&quot;</span>) -&gt;
+            ...
+        )
+  ) msg
+
+<span class="hljs-title">startWorker</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">LegacyApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">startWorker</span> = <span class="hljs-keyword">do</span>
+  <span class="hljs-type">LegacyApi</span>.subscribe 
+  workerLoop</code></pre>
+<p>This needs to be exhaustive or we will get a compile error which is super cool. </p>
+<p>All of this works without an additional process or a fumbly mapping layer. It&#39;s not perfect and relies on actually getting the type description correct but this at least presents a way of doing it without writing error-prone Erlang, which can be useful when dealing with APIs that have a whole array of random structures.</p>

@@ -1,0 +1,228 @@
+<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
+<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
+<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
+<!--[if !ie]><!-->
+<html lang="en"> <!--<![endif]-->
+<head>
+    <title id="title">Purerl Updates - Processes and Self</title>
+    <meta charset="utf-8">
+    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="Description" content="Rob Ashton's blog, Purescript, Erlang, Purerl, Javascript, Software Design, etc"/> 
+    <meta name="author" content="Rob Ashton">
+    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
+    <link rel="stylesheet" href="/assets/css/style_responsive.css">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
+    <link rel="stylesheet" href="/assets/css/themes/default.css">
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
+    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="header">
+        <div class="container">
+            <div class="logo">
+             <h2><a href="/index.html">Rob Ashton</a></h2>
+            </div>
+            <div class="navbar">
+                <div class="navbar-inner">
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </a>
+                    <div class="nav-collapse collapse">
+                        <ul class="nav top-2">
+                          <li>
+                                <a href="/">Home</a>
+                            </li>
+                            <li>
+                                <a href="/blog.html">Blog</a>
+                            </li>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <body>
+    <div id="blog-entry">
+      <h1 id="post-title">Purerl Updates - Processes and Self</h1>
+      <h6>Published on <span class="date">2021-10-12</span></h6>
+      <div id="post"><p>It has been about three years since I first sat in a hotel in Lithuania throwing together the first versions of <a href="https://github.com/id3as/purescript-erl-pinto">purescript-erl-pinto</a> and <a href="https://github.com/id3as/purescript-erl-stetson">purescript-erl-stetson</a> so that we could get started on a project for one of our clients.</p>
+<p>Quite a lot of code has been written against those projects internally by colleagues and myself and over time:</p>
+<ul>
+<li>Various improvements/patterns have been discovered within core libraries such as <a href="https://github.com/purerl/purescript-erl-process">purescript-erl-process</a>. </li>
+<li>A heap of Erlang specific packages have been written and released</li>
+<li>Another mountain of packages have been ported across from Purescript </li>
+<li>Pinto and Stetson have been upgraded repeatedly by various colleagues as our understanding of what we need them to do has evolved.</li>
+</ul>
+<p>The <a href="https://purerl-cookbook.readthedocs.io/">purerl cookbook</a> has been updated for these latest releases, as has the <a href="https://github.com/id3as/demo-ps">demo-ps</a> but felt it worthwhile highlighting some of the changes in a few (of my increasingly rare) blog posts.</p>
+<p>In this post we&#39;ll be looking at Processes and the concept of &#39;self&#39;</p>
+<h1 id="processes">Processes</h1>
+<p>A common practise in Erlang codebases is to spawn a new process and use its Pid for communication.</p>
+<pre><code class="language-erlang"><span class="hljs-function"><span class="hljs-title">example</span><span class="hljs-params">()</span> -&gt;</span>
+  Pid = spawn_link(fun receive_message/0)
+  Pid ! hi.
+
+<span class="hljs-function"><span class="hljs-title">receive_message</span><span class="hljs-params">()</span> -&gt;</span>
+  <span class="hljs-keyword">receive</span>
+    SomeMessage -&gt; 
+      ?PRINT(<span class="hljs-string">&quot;Got a message&quot;</span>),
+      ok
+   <span class="hljs-keyword">end</span>.</code></pre>
+<p>In Purerl, the type <em>Pid</em> lives in <em>Erl.Process.Raw</em> and is just an imported foreign type</p>
+<pre><code class="language-haskell"><span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> data <span class="hljs-type">Pid</span> :: <span class="hljs-type">Type</span></code></pre>
+<p>This typically isn&#39;t used to any great amount except in some specific FFI cases, it being far better generally to use the types found in <em>Erl.Process</em> which have the phantom type <em>msg</em> floating around meaning all the sends and receives are limited to the types of message that that process has declared it will receive. <em>Process msg</em> itself is just a newtype around Raw.Pid of course.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">newtype</span> <span class="hljs-type">Process</span> (<span class="hljs-title">a</span> :: <span class="hljs-type">Type</span>)</span>
+  = <span class="hljs-type">Process</span> <span class="hljs-type">Raw</span>.<span class="hljs-type">Pid</span></code></pre>
+<p>To create a typed process, one could call <em>spawnLink</em> and provide a callback which will be executed in the process created in that underlying call to <em>spawn_link</em> in Erlang. A change made fairly early on in development was to change this callback from something that took some context, to something that operated inside <em>ProcessM msg r</em>, with the context being provided by that monad - this will become important later on in this blog entry so I&#39;ll demonstrate this here.</p>
+<h2 id="the-old-way">The old way</h2>
+<p>&quot;Given a callback that accepts a <em>SpawnLinkContext</em> typed around <em>msg</em>, run that callback inside a new process and return that new process, also typed around <em>msg</em>&quot;</p>
+<pre><code class="language-haskell"><span class="hljs-title">spawnLink</span> :: <span class="hljs-keyword">forall</span> msg. (<span class="hljs-type">SpawnLinkContext</span> msg -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>) -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Process</span> msg)</code></pre>
+<p>That context then provided the means of receiving messages, being defined as something like</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">SpawnLinkContext</span> msg = </span>
+  { receive :: <span class="hljs-type">Effect</span> msg 
+  , receiveWithTimeout :: <span class="hljs-type">Timeout</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Maybe</span> msg)
+  }</code></pre>
+<p>Thus, the Erlang example, re-written in Purerl would have looked something like this</p>
+<pre><code class="language-haskell"><span class="hljs-title">example</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">example</span> = <span class="hljs-keyword">do</span>
+  pid &lt;- spawnLink receiveMessage
+  pid ! <span class="hljs-string">&quot;hi&quot;</span>
+
+<span class="hljs-title">receiveMessage</span> :: <span class="hljs-type">SpawnLinkContext</span> <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">receiveMessage</span> c = <span class="hljs-keyword">do</span> 
+  msg &lt;- c.receive
+  log <span class="hljs-string">&quot;Got a message&quot;</span></code></pre>
+<h2 id="the-new-way">The new way</h2>
+<p>&quot;Evaluate the given code in the context of a <em>ProcessM</em> typed around <em>msg</em>&quot;</p>
+<pre><code class="language-haskell"><span class="hljs-title">spawnLink</span> :: <span class="hljs-keyword">forall</span> msg. <span class="hljs-type">ProcessM</span> msg <span class="hljs-type">Unit</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Process</span> msg)</code></pre>
+<p>And quite simply, any calls to receive/etc are defined as functions that operate inside ProcessM, again all typed around <em>msg</em></p>
+<pre><code class="language-haskell"><span class="hljs-title">receive</span> :: <span class="hljs-keyword">forall</span> msg. <span class="hljs-type">ProcessM</span> msg msg
+<span class="hljs-title">receive</span> = <span class="hljs-type">ProcessM</span> <span class="hljs-type">Raw</span>.receive</code></pre>
+<p>This cuts down on the cruft somewhat, as instead of having to pass a context everywhere, one can simply write functions in the context of ProcessM, re-writing that initial example now looks like this (Note that the log call needs lifting into <em>ProcessM</em> because it is written as an <em>Effect</em>)</p>
+<pre><code class="language-haskell"><span class="hljs-title">example</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">example</span> = <span class="hljs-keyword">do</span>
+  pid &lt;- spawnLink receiveMessage
+  pid ! <span class="hljs-string">&quot;hi&quot;</span>
+
+<span class="hljs-title">receiveMessage</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">String</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">receiveMessage</span> = <span class="hljs-keyword">do</span> 
+  msg &lt;- receive
+  liftEffect $ log <span class="hljs-string">&quot;Got a message&quot;</span></code></pre>
+<h2 id="extending-this-model">Extending this model</h2>
+<p>It turns out that this is quite a nice pattern for representing the different <em>types</em> of process available in Erlang (OTP, Cowboy and indeed our own application code), consider:</p>
+<ul>
+<li>Cowboy Loop handlers</li>
+<li>Cowboy Websocket handlers</li>
+<li>OTP gen_server</li>
+<li>OTP supervisor</li>
+<li>OTP gen_statem</li>
+</ul>
+<p>All of these could be ran as <em>ProcessM</em>, except they have more types associated with them <em>and</em> various functions available designed for use in those specific contexts, for example in the simple case of cowboy..</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">WebSocketInfoHandler</span> msg state</span>
+  = msg -&gt; state -&gt; <span class="hljs-type">WebSocketResult</span> msg (<span class="hljs-type">WebSocketCallResult</span> state)</code></pre>
+<p>We have the types <em>msg</em> and <em>state</em> in our type because the callbacks involved tend to take <em>state</em> and there is a callback (<em>info</em>) for messages received by the loop handler typed around <em>msg</em></p>
+<p>In the more complicated case of an OTP GenServer, this looks like this</p>
+<pre><code>type C<span class="hljs-literal">all</span>Fn reply cont stop msg <span class="hljs-keyword">state</span>
+  = From reply -&gt; <span class="hljs-keyword">state</span> -&gt; ResultT cont stop msg <span class="hljs-keyword">state</span> (C<span class="hljs-literal">all</span>Result reply cont stop <span class="hljs-keyword">state</span>)</code></pre><p>Most operations take place inside that <em>ResultT</em> which encodes the <em>cont</em>, <em>stop</em>, <em>msg</em>, and <em>state</em> types for use with our operations. (<em>cont</em> being the message that can be received by <em>handle_continue</em>, <em>stop</em> being a custom stop reason, <em>msg</em> being messages received by <em>handle_info</em> and <em>state</em> being the state of the gen server).</p>
+<p>We also end up with our own contexts in our own codebases for specific process types around common units of business logic. </p>
+<h2 id="common-functionality">Common Functionality</h2>
+<p>In most of these cases, just like with <em>Process.spawnLink</em>, something gets returned that represents the started process - for example the GenServer.</p>
+<pre><code class="language-haskell"><span class="hljs-title">startLink</span> :: <span class="hljs-keyword">forall</span> cont stop msg state. 
+  (<span class="hljs-type">ServerSpec</span> cont stop msg state) 
+  -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">StartLinkResult</span> (<span class="hljs-type">ServerPid</span> cont stop msg state))</code></pre>
+<p>Here we have a <em>ServerPid cont stop msg state</em> returned to the caller - again keeping a lot of useful information around to help us make calls into a GenServer but the type we&#39;re interested in here is <em>msg</em>. Most generic APIs will be written around the concept of a <em>Process msg</em> and what we have here is a <em>ServerPid cont stop msg state</em></p>
+<p>The logical step here is to expose</p>
+<pre><code class="language-haskell"><span class="hljs-title">toProcess</span> :: <span class="hljs-type">ServerPid</span> cont stop msg state -&gt; <span class="hljs-type">Process</span> msg</code></pre>
+<p>It turns out that this is a very common operation and so a typeclass is born and added to Erl.Process for everybody to implement when writing this kind of code.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-type">HasProcess</span> b a <span class="hljs-keyword">where</span></span>
+  getProcess :: a -&gt; <span class="hljs-type">Process</span> b</code></pre>
+<p>In fact, two typeclasses are born because some APIs only need a Pid after all.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-type">HasPid</span> a <span class="hljs-keyword">where</span></span>
+  getPid :: a -&gt; <span class="hljs-type">Pid</span></code></pre>
+<p>Most functions that take a <em>Process msg</em> therefore don&#39;t actually care about it <em>being</em> a <em>Process msg</em>, but only that a <em>Process msg</em> can be gotten from the type</p>
+<pre><code class="language-haskell"><span class="hljs-title">callMe</span> :: <span class="hljs-keyword">forall</span> p msg. 
+  <span class="hljs-type">HasProcess</span> msg p =&gt; 
+  p -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span></code></pre>
+<p>And now all of those custom types can be used with a whole suite of APIs without having to unpack a convoluted structure of newtypes.</p>
+<h2 id="self">Self</h2>
+<p>There is one more common operation that has been ignored so far, and that is the concept of self. An incredibly common thing in Erlang is to invoke <em>self</em> to get the Pid of the current process.</p>
+<pre><code class="language-erlang">Self = self(),
+some_api:call_me(Self)</code></pre>
+<p>For a while, we started having <em>self</em> methods on every module that exported some monad in which process logic could be evalulated, and this would return the full type of the process (complete with <em>cont</em>, <em>stop</em>, <em>state</em>, etc). There were a lot of <em>self</em> functions being exported and imported and in 99.99% of all cases they were immediately followed by a call to <em>getProcess</em> using the <em>HasProcess</em> typeclass implementation for that system.</p>
+<pre><code class="language-haskell">(me :: <span class="hljs-type">Process</span> <span class="hljs-type">MyMsg</span>) &lt;- getProcess &lt;$&gt; <span class="hljs-type">GenServer</span>.self</code></pre>
+<p>What does <em>self</em> mean then? The correct answer is as written above, but the correct answer isn&#39;t always the nicest answer - it was very rare that we would need anything from <em>self</em> other than the current <em>Process msg</em> and we were running into issues in modules that had code for more than one of these contexts in them, whose self are we using anyway?</p>
+<p>The answer was to be pragmatic and create a typeclass for &#39;<em>any m</em>&#39; that allowed that &#39;<em>m</em>&#39; to export a <em>Process msg</em></p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-type">HasSelf</span> (<span class="hljs-title">m</span> :: <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span>) msg | m -&gt; msg <span class="hljs-keyword">where</span></span>
+  self :: m (<span class="hljs-type">Process</span> msg)</code></pre>
+<p>For the case of anything running inside a <em>ProcessM</em>, this isn&#39;t any more complicated than calling Raw.self to get the current pid and wrapping it up with the relevant newtypes</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">instance</span> selfProcessM :: <span class="hljs-type">HasSelf</span> (<span class="hljs-type">ProcessM</span> <span class="hljs-title">a</span>) a <span class="hljs-keyword">where</span></span>
+  self :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">ProcessM</span> a (<span class="hljs-type">Process</span> a)
+  self = <span class="hljs-type">ProcessM</span> $ <span class="hljs-type">Process</span> &lt;$&gt; <span class="hljs-type">Raw</span>.self</code></pre>
+<p>Similar implementations then exist for Pinto/Stetson contexts, allowing code to simply call <em>Process.self</em> from practically anywhere to get a typed <em>Process msg</em> valid for the current context.</p>
+<pre><code class="language-haskell"><span class="hljs-type">SomeApi</span>.callMe &lt;&lt;&lt; self</code></pre>
+<p>All typed, all safe, nobody sent messages they can&#39;t handle - living the dream.</p>
+</div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="mailto:robashton@codeofrob.com">Respond</a>
+      </div>
+
+        <!--=== Copyright ===-->
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span6">
+                <p class="terms">2020 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
+    });
+        </script>
+        <!--[if lt IE 9]>
+    <script src="assets/js/respond.js"></script>
+<![endif]-->
+        </body>
+        </html>
+

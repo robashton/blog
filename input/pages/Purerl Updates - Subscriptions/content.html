@@ -1,0 +1,116 @@
+<p>Two blog posts in a week? Unheard of - following on from last week&#39;s blockbuster smash hit epic &quot;<a href="/entries/purerl-updates---processes-and-self.html">Purerl Updates - Processes and Self</a>&quot;, today we have an entry describing our current thoughts on subscriptions in a Purerl world.</p>
+<p>A standard procedure in Erlang, is to invoke an API that then proceeds to send messages back to the invoking process.</p>
+<pre><code class="language-erlang">some_api:subscribe()
+
+<span class="hljs-keyword">receive</span> 
+  Msg -&gt; ..</code></pre>
+<p>More often or not, an overload will be provided allowing a Pid to be passed in, in case you didn&#39;t want it sending to <em>self</em>.</p>
+<pre><code class="language-erlang">Pid = spawn_worker(),
+some_api:subscribe(Pid)</code></pre>
+<p>We could write a function that looks like this in Purescript (using the typeclasses explored in the previous blog entry).</p>
+<pre><code class="language-haskell"><span class="hljs-keyword">module</span> SomeApi <span class="hljs-keyword">where</span>
+
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">HelloWorld</span> | <span class="hljs-type">Goodbye</span></span>
+
+<span class="hljs-title">subscribe</span> :: <span class="hljs-keyword">forall</span> process. 
+  <span class="hljs-type">HasProcess</span> <span class="hljs-type">Msg</span> process =&gt; 
+  process -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">subscribe</span> = ...
+</code></pre>
+<p>In this, we are saying &quot;Given a process that accepts <em>Msg</em>, then the subscription will send <em>msg</em> to you.</p>
+<pre><code class="language-haskell"><span class="hljs-title">workerLoop</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">SomeApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">workerLoop</span> = <span class="hljs-keyword">do</span>
+  msg &lt;- receive
+  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span> 
+    <span class="hljs-type">HelloWorld</span> -&gt; ...
+    <span class="hljs-type">Goodbye</span> -&gt; ...
+
+<span class="hljs-title">main</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">main</span> = <span class="hljs-keyword">do</span> 
+  process &lt;- spawnLink workerLoop
+  <span class="hljs-type">SomeApi</span>.subscribe process</code></pre>
+<p>This isn&#39;t great, typically we don&#39;t write processes this way - processes usually not only want to subscribe to messages from external sources, but also send themselves messages, typically they&#39;ll achieve that by lifting messages into a process specific data type.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">ProcessMsg</span> </span>
+  = <span class="hljs-type">ApiMsg</span> <span class="hljs-type">SomeApi</span>.<span class="hljs-type">Msg</span>
+  | <span class="hljs-type">Tick</span>
+
+<span class="hljs-title">workerLoop</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">ProcessMsg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">workerLoop</span> = ...
+</code></pre>
+<p>Calling <em>SomeApi.subscribe</em> with this process will result in a compiler error because SomeApi.Msg is the wrong type.</p>
+<h2 id="emitters">Emitters</h2>
+<p>The pattern we&#39;ve been using up until now to side-step this is for subscription calls to take in a blank cheque in the form of <em>msg -&gt; Effect Unit</em>, allowing the caller to decide what to do with messages on that subscription.</p>
+<pre><code class="language-haskell"><span class="hljs-keyword">module</span> SomeApi <span class="hljs-keyword">where</span>
+
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">HelloWorld</span> | <span class="hljs-type">Goodbye</span></span>
+
+<span class="hljs-title">subscribe</span> :: (<span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>) -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">subscribe</span> = ...
+</code></pre>
+<p>Subscription could then look like this</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">ProcessMsg</span> </span>
+  = <span class="hljs-type">ApiMsg</span> <span class="hljs-type">SomeApi</span>.<span class="hljs-type">Msg</span>
+  | <span class="hljs-type">Tick</span>
+
+<span class="hljs-title">main</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">main</span> = <span class="hljs-keyword">do</span> 
+  process &lt;- spawnLink workerLoop
+  <span class="hljs-type">SomeApi</span>.subscribe $ send process &lt;&lt;&lt; <span class="hljs-type">ApiMsg</span></code></pre>
+<p>More commonly the use of some form of <em>self</em> would be used inside the process itself, as it makes little sense for one process to subscribe on behalf of another.</p>
+<pre><code class="language-haskell"><span class="hljs-title">workerLoop</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">SomeApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">workerLoop</span> = <span class="hljs-keyword">do</span>
+  msg &lt;- receive
+  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span> 
+    <span class="hljs-type">HelloWorld</span> -&gt; ...
+    <span class="hljs-type">Goodbye</span> -&gt; ...
+
+<span class="hljs-title">startWorker</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">SomeApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">startWorker</span> = <span class="hljs-keyword">do</span>
+  me &lt;- self
+  liftEffect $ <span class="hljs-type">SomeApi</span>.subscribe $ send me &lt;&lt;&lt; <span class="hljs-type">ApiMsg</span>
+  workerLoop
+
+<span class="hljs-title">main</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">main</span> = <span class="hljs-keyword">do</span> 
+  _ &lt;- spawnLink workerLoop
+</code></pre>
+<p>This <em>works</em> and is elegant - and indeed for about two years this has been The Way. Our codebase is/was littered with <em>send me &lt;&lt;&lt; Msg</em>, but in hindsight this isn&#39;t great.</p>
+<p>Why not? The problem with <em>Effect Unit</em> is that it can do anything. <em>ANYTHING</em>. The problem with passing an <em>Effect Unit</em> is that it can do that &quot;anything&quot; within the context of a completely different process. This can cause problems.</p>
+<p><em>Errors</em>: What happens if the Effect Unit causes an exception? Who crashes? The remote process? Who does that affect? Anybody else who is currently subscribed? How do they find out? Are they in the right supervision tree for this not to be a problem? Can we just swallow the exception? How does the caller find out that it crashed? Oh dear.</p>
+<p><em>Interference</em>: What if this is in a message loop doing other things? What if the <em>Effect Unit</em> takes up precious time? What happens to the backlog? What happens to anything awaiting a message with a timeout? </p>
+<p>While the reality is that while nearly all our callbacks are implemented as <em>send me &lt;&lt;&lt; Msg</em>, as our codebases grow and we do more and more of these things, somebody is eventually going to cause problems with the above and we&#39;ll be looking at hilarious (and needless) debug sessions as a result. If not us - then somebody else using Purerl (and our numbers <em>are</em> growing...).</p>
+<h2 id="hasself-to-the-rescue">HasSelf to the rescue</h2>
+<p>HasSelf was added fairly recently and makes it possible to write code that operates inside any monad provided it has an implementation of &#39;self&#39;.</p>
+<pre><code class="language-haskell"><span class="hljs-title">saferSubscribe</span> ::
+  <span class="hljs-keyword">forall</span> m msg.
+  <span class="hljs-type">MonadEffect</span> m =&gt;
+  <span class="hljs-type">HasSelf</span> m msg =&gt;
+  (<span class="hljs-type">Msg</span> -&gt; msg) -&gt; m <span class="hljs-type">Unit</span>
+<span class="hljs-title">saferSubscribe</span> f = <span class="hljs-keyword">do</span>
+  me :: (<span class="hljs-type">Process</span> msg) &lt;- self
+  liftEffect $ subscribe $ send me &lt;&lt;&lt; f
+  pure unit</code></pre>
+<p>Adding onto that, we need to assert that we can evaluate effects in this monad (MonadEffect m =&gt;) in order to actually issue the subscription and suddenly our call to this becomes</p>
+<pre><code class="language-haskell"><span class="hljs-title">workerLoop</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">SomeApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">workerLoop</span> = <span class="hljs-keyword">do</span>
+  msg &lt;- receive
+  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span> 
+    <span class="hljs-type">HelloWorld</span> -&gt; ...
+    <span class="hljs-type">Goodbye</span> -&gt; ...
+
+<span class="hljs-title">startWorker</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">SomeApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">startWorker</span> = <span class="hljs-keyword">do</span>
+  <span class="hljs-type">SomeApi</span>.saferSubscribe <span class="hljs-type">ApiMsg</span>
+  workerLoop
+
+<span class="hljs-title">main</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">main</span> = <span class="hljs-keyword">do</span> 
+  _ &lt;- spawnLink workerLoop
+</code></pre>
+<p>Note: The liftEffect is gone, as is the call to &#39;self&#39;, the API looks a <em>lot</em> more like the original Erlang and is safer while we&#39;re at it. </p>
+<p>Because it&#39;s no longer a blank cheque, we should probably provide a second method (just like in Erlang) that takes a process to send messages to instead of simply relying on &#39;self&#39;.</p>
+<pre><code class="language-haskell"><span class="hljs-title">saferSubscribeTo</span> ::
+  <span class="hljs-keyword">forall</span> msg.
+  <span class="hljs-type">Process</span> msg -&gt; (<span class="hljs-type">Msg</span> -&gt; msg) -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">saferSubscribeTo</span> p f = <span class="hljs-keyword">do</span> subscribe $ send p &lt;&lt;&lt; f</code></pre>
+<p>This is how most of our subscriptions now look across Pinto/our own code/etc. It&#39;s safer for everybody concerned and fits well with the ethos of &#39;trying to look like the Erlang APIs most of this stuff is built on top of&#39;.</p>
