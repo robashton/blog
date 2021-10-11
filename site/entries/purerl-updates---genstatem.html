@@ -1,0 +1,215 @@
+<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
+<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
+<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
+<!--[if !ie]><!-->
+<html lang="en"> <!--<![endif]-->
+<head>
+    <title id="title">Purerl Updates - GenStatem</title>
+    <meta charset="utf-8">
+    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="Description" content="Rob Ashton's blog, Purescript, Erlang, Purerl, Javascript, Software Design, etc"/> 
+    <meta name="author" content="Rob Ashton">
+    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
+    <link rel="stylesheet" href="/assets/css/style_responsive.css">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
+    <link rel="stylesheet" href="/assets/css/themes/default.css">
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
+    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="header">
+        <div class="container">
+            <div class="logo">
+             <h2><a href="/index.html">Rob Ashton</a></h2>
+            </div>
+            <div class="navbar">
+                <div class="navbar-inner">
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </a>
+                    <div class="nav-collapse collapse">
+                        <ul class="nav top-2">
+                          <li>
+                                <a href="/">Home</a>
+                            </li>
+                            <li>
+                                <a href="/blog.html">Blog</a>
+                            </li>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <body>
+    <div id="blog-entry">
+      <h1 id="post-title">Purerl Updates - GenStatem</h1>
+      <h6>Published on <span class="date">2021-10-26</span></h6>
+      <div id="post"><p>Seems we&#39;ve ended up with a small handful of posts about the latest Purerl updates! Great - that&#39;s about one for every reader, let&#39;s get cracking!</p>
+<ul>
+<li><a href="/entries/purerl-updates---processes-and-self.html">Purerl Updates - Processes and Self</a></li>
+<li><a href="/entries/purerl-updates---subscriptions.html">Purerl Updates - Subscriptions</a></li>
+<li><a href="/entries/purerl-updates---untagged-unions.html">Purerl Updates - Untagged Unions</a></li>
+<li><a href="/entries/purerl-updates---maxing-out-pinto-otp.html">Purerl Updates - Maxing out Pinto OTP</a></li>
+</ul>
+<p>One of the big motivations for the big push on <a href="https://github.com/id3as/purescript-erl-pinto">purescript-erl-pinto</a> was to facillitate the addition of other OTP behaviours than GenServer.</p>
+<p>One of our &quot;go-to&quot; servers is <a href="https://erlang.org/doc/man/gen_statem.html">gen_statem</a>. When writing any sort of implementation of a stateful network protocol for example, it is nice to model various steps of the protocol as &#39;states&#39; on which only certain types of message can be enacted. A gen_statem has a list of these possible states (as an atom in this case), as well as &#39;Data&#39; which is an arbitrary term.</p>
+<p>The simplest example outside of this however, is the locked door. A door which is locked cannot be opened, and a door that is opened cannot be locked. If the door is open we can take the treasure behind the door and to unlock the door we need a key. This could be modelled with three states here, an</p>
+<ul>
+<li>Locked</li>
+<li>Unlocked</li>
+<li>Open</li>
+</ul>
+<p>Some of a plain ol&#39; gen_statem to represent this would look like this.</p>
+<pre><code class="language-erlang">init([]) -&gt;
+    {ok, locked , #{ key =&gt; &lt;&lt;&quot;open sesame&quot;&gt;&gt;, treasure =&gt; &lt;&lt;&quot;The moon is made of cheese&quot;&gt;&gt;}}.
+
+handle_event({call,From}, { unlock, K1 }, locked, #{ key := K2, treasure := Secret }) 
+  when K1 =:= K2 -&gt;
+  {next_state, unlocked, #{ treasure =&gt; Secret }, [{reply, From, ok}]};
+
+handle_event({call,From}, { unlock, _K1 }, locked, Data) 
+  {keep_state, Data, [{reply, From, bad_key}]};
+
+handle_event({call,From}, { unlock, _K1 }, unlocked, Data) 
+  {keep_state, Data, [{reply, From, ok}]};
+
+handle_event({call,From}, open, unlocked, Data) 
+  {next_state, open, Data, [{reply, From, ok}]};
+</code></pre>
+<p>And so on and so forth. </p>
+<p>A locked door has a key and a treasure, a call to &#39;unlock&#39; with the right key will give you an open door with just the &#39;treasure&#39;, a call to unlock with the wrong key will result in an error, a call to unlock when already unlocked is just fine thank-you and a door that is unlocked can be opened. A few things of note that we&#39;re not a <em>huge</em> fan of here. </p>
+<ul>
+<li>There is nothing to tie the current &#39;state&#39; with the &#39;data&#39;, thus there is nothing stopping a locked door from not having a key (oh dear!)</li>
+<li>There are a <em>lot</em> of tuples with arbitrary atoms floating around and the possibility for typos is endless</li>
+<li>States aren&#39;t defined up front, any arbitrary atom can be returned and we&#39;ll now be in that state</li>
+</ul>
+<p>We could be generous and say that two of these are actually a feature and not a bug, but beauty is in the eye of the beholder and if you&#39;re a fan of type systems then this has all the beauty of my macaroni art from pre-school.</p>
+<p>From a Purescript perspective, it&#39;d be nice if we could tie the current state with &quot;state specific data&quot; using an ADT, as well as have some state that is common to all.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">State</span> </span>
+  = <span class="hljs-type">Locked</span> { key :: <span class="hljs-type">String</span>, treasure :: <span class="hljs-type">String</span> }
+  | <span class="hljs-type">Unlocked</span> { treasure :: <span class="hljs-type">String</span> }
+  | <span class="hljs-type">Open</span>
+</code></pre>
+<pre><code class="language-haskell"><span class="hljs-title">startLink</span> :: <span class="hljs-type">Effect</span> (<span class="hljs-type">StartLinkResult</span> <span class="hljs-type">DoorLockPid</span>)
+<span class="hljs-title">startLink</span> = <span class="hljs-keyword">do</span>
+  <span class="hljs-type">GenStatem</span>.startLink $ <span class="hljs-type">GenStatem</span>.defaultSpec init
+  <span class="hljs-keyword">where</span>
+    init = pure $ <span class="hljs-type">InitOk</span> (<span class="hljs-type">Locked</span> { key: <span class="hljs-string">&quot;open sesame&quot;</span>, treasure: <span class="hljs-string">&quot;the moon is made of cheese&quot;</span> }) {}
+</code></pre>
+<p>Now, the only problem with our new <em>State</em> is that the extra data bundled with it is means that it can&#39;t be used directly as a &#39;state&#39; in gen_statem because each variant would be a new state!</p>
+<p>A typeclass provided therefore be able to extract a &#39;stateid&#39; to pass to the underlying gen_statem implementation</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">StateId</span></span>
+  = <span class="hljs-type">StateIdLocked</span>
+  | <span class="hljs-type">StateIdUnlocked</span>
+  | <span class="hljs-type">StateIdOpen</span>
+
+<span class="hljs-title">derive</span> <span class="hljs-keyword">instance</span> eqStateId :: <span class="hljs-type">Eq</span> <span class="hljs-type">StateId</span>
+<span class="hljs-class">
+<span class="hljs-keyword">instance</span> stateHasStateId :: <span class="hljs-type">HasStateId</span> <span class="hljs-type">StateId</span> <span class="hljs-type">State</span> <span class="hljs-keyword">where</span></span>
+  getStateId (<span class="hljs-type">Locked</span> _) = <span class="hljs-type">StateIdLocked</span>
+  getStateId (<span class="hljs-type">Unlocked</span> _) = <span class="hljs-type">StateIdUnlocked</span>
+  getStateId (<span class="hljs-type">Open</span> _) = <span class="hljs-type">StateIdOpen</span></code></pre>
+<p>A default implementation could exist of course to simply extract an atom from the underlying representation, building that is left as an exercise for the reader..</p>
+<p>Anyway, just like with GenServer and Supervisor, we can represent a GenStatem with a Pid and a Type in order to communicate with it and build up various callbacks and such. The type specs are quite daunting beause GenStatem has quite a few different &#39;message types&#39; - most of thes can be ignored and set to Void/Unit until needed.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">newtype</span> <span class="hljs-type">StatemType</span> :: <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span></span>
+<span class="hljs-class"><span class="hljs-keyword">newtype</span> <span class="hljs-type">StatemType</span> info internal timerName timerContent commonData stateId state</span>
+  = <span class="hljs-type">StatemType</span> <span class="hljs-type">Void</span>
+
+<span class="hljs-class"><span class="hljs-keyword">newtype</span> <span class="hljs-type">StatemPid</span> :: <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span></span>
+<span class="hljs-class"><span class="hljs-keyword">newtype</span> <span class="hljs-type">StatemPid</span> info internal timerName timerContent commonData stateId state</span>
+  = <span class="hljs-type">StatemPid</span> (<span class="hljs-type">Process</span> info)</code></pre>
+<p>Our very simple DoorLock Genstatem which doesn&#39;t have any messages outside of direct &#39;calls&#39; could be defined as </p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">DoorlockType</span> = <span class="hljs-type">StatemType</span> <span class="hljs-type">Unit</span> <span class="hljs-type">Unit</span> <span class="hljs-type">Unit</span> <span class="hljs-type">Unit</span> {} <span class="hljs-type">StateId</span> <span class="hljs-type">State</span></span>
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">DoorlockPid</span> = <span class="hljs-type">StatemPid</span> <span class="hljs-type">Unit</span> <span class="hljs-type">Unit</span> <span class="hljs-type">Unit</span> <span class="hljs-type">Unit</span> {} <span class="hljs-type">StateId</span> <span class="hljs-type">State</span></span></code></pre>
+<p>With these types defined, a semi-complete implementation of our door-lock GenStatem could therefore look like</p>
+<pre><code class="language-haskell"><span class="hljs-title">serverName</span> :: <span class="hljs-type">RegistryName</span> <span class="hljs-type">DoorlockType</span>
+<span class="hljs-title">serverName</span> = <span class="hljs-type">Local</span> $ atom <span class="hljs-string">&quot;doorlock&quot;</span>
+
+<span class="hljs-title">startLink</span> :: <span class="hljs-type">Effect</span> (<span class="hljs-type">StartLinkResult</span> <span class="hljs-type">DoorlockPid</span>)
+<span class="hljs-title">startLink</span> = 
+  <span class="hljs-type">Statem</span>.startLink $ <span class="hljs-type">Statem</span>.defaultSpec init { name = <span class="hljs-type">Just</span> serverName } 
+
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">UnlockResult</span> = <span class="hljs-type">Unlocked</span> | <span class="hljs-type">BadCode</span> </span>
+
+<span class="hljs-title">unlock</span> :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">UnlockResult</span>
+<span class="hljs-title">unlock</span> k1 = <span class="hljs-type">GenStatem</span>.call (<span class="hljs-type">ByName</span> serverName) 
+  \from (<span class="hljs-type">Locked</span> { key: k2 } _ = 
+    <span class="hljs-keyword">if</span> k2 == k1 <span class="hljs-keyword">then</span> <span class="hljs-keyword">do</span>
+      <span class="hljs-keyword">let</span> actions = <span class="hljs-type">GenStatem</span>.newActions # <span class="hljs-type">GenStatem</span>.addReply (<span class="hljs-type">GenStatem</span>.reply from <span class="hljs-type">Unlocked</span>)
+      pure <span class="hljs-type">EventNextStateWithActions</span> (<span class="hljs-type">Unlocked</span> { treasure }) {} actions
+    <span class="hljs-keyword">else</span> <span class="hljs-keyword">do</span>
+      <span class="hljs-keyword">let</span> actions = <span class="hljs-type">GenStatem</span>.newActions # <span class="hljs-type">GenStatem</span>.addReply (<span class="hljs-type">GenStatem</span>.reply from <span class="hljs-type">BadCode</span>)
+      pure $ <span class="hljs-type">EventKeepStateAndDataWithActions</span> actions
+</code></pre>
+<p>The GenStatem functionality in Pinto is being used in a few places in our codebases now, but it is not complete. There are some hand-wavey bits around timers and messaging that will get fixed when somebody needs it, but the pattern and general types are pretty much now in place. Various callbacks can be supplied by overriding the default spec, those callbacks will receive certain kinds of messages that will need adding to the type signatures and various return values can be built up by using the functions provided in the GenStatem module.</p>
+<p>There are other kinds of Genserver available that could do with representations in Pinto and as we saw in the last entry, now we have a generic way of representing &#39;pids&#39; and &#39;types&#39; that can supply and enforce their own internal messages, it should be possible to do this without making any substantial changes to pinto itself.</p>
+<h2 id="a-note-on-pintos-future">A note on Pinto&#39;s future</h2>
+<p>Pinto is now &#39;conceptually&#39; pretty complete and hopefully shouldn&#39;t undergo any more major changes. The types that have been added can be used to describe pretty much any running proces and various functionalities that can be exposed to interact with those proceses - from the simple &quot;This process has a state and can receive messages&quot; to &quot;This process has a state, can receive this type of video stream and this type of audio stream, send these messages on a timer...&quot; and then be stuck into Supervisors in the same way as any other server.</p>
+<p>There are probably better ways of representing this in Purescript by deviating further from OTP itself and re-imagining a more Purescript central means of modelling these things. Eventually somebody is going to take the plunge and do this and it probably won&#39;t be us. Should this happen, I don&#39;t think it&#39;ll take long to move away from Pinto and to it - so if anybody fancies the task...</p>
+</div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="mailto:robashton@codeofrob.com">Respond</a>
+      </div>
+
+        <!--=== Copyright ===-->
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span6">
+                <p class="terms">2020 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
+    });
+        </script>
+        <!--[if lt IE 9]>
+    <script src="assets/js/respond.js"></script>
+<![endif]-->
+        </body>
+        </html>
+

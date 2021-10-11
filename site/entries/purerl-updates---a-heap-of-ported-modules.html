@@ -1,0 +1,143 @@
+<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
+<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
+<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
+<!--[if !ie]><!-->
+<html lang="en"> <!--<![endif]-->
+<head>
+    <title id="title">Purerl Updates - A heap of ported modules</title>
+    <meta charset="utf-8">
+    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="Description" content="Rob Ashton's blog, Purescript, Erlang, Purerl, Javascript, Software Design, etc"/> 
+    <meta name="author" content="Rob Ashton">
+    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
+    <link rel="stylesheet" href="/assets/css/style_responsive.css">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
+    <link rel="stylesheet" href="/assets/css/themes/default.css">
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
+    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="header">
+        <div class="container">
+            <div class="logo">
+             <h2><a href="/index.html">Rob Ashton</a></h2>
+            </div>
+            <div class="navbar">
+                <div class="navbar-inner">
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </a>
+                    <div class="nav-collapse collapse">
+                        <ul class="nav top-2">
+                          <li>
+                                <a href="/">Home</a>
+                            </li>
+                            <li>
+                                <a href="/blog.html">Blog</a>
+                            </li>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <body>
+    <div id="blog-entry">
+      <h1 id="post-title">Purerl Updates - A heap of ported modules</h1>
+      <h6>Published on <span class="date">2021-10-28</span></h6>
+      <div id="post"><p>Previous entries in this series: </p>
+<ul>
+<li><a href="/entries/purerl-updates---processes-and-self.html">Purerl Updates - Processes and Self</a></li>
+<li><a href="/entries/purerl-updates---subscriptions.html">Purerl Updates - Subscriptions</a></li>
+<li><a href="/entries/purerl-updates---untagged-unions.html">Purerl Updates - Untagged Unions</a></li>
+<li><a href="/entries/purerl-updates---maxing-out-pinto-otp.html">Purerl Updates - Maxing out Pinto OTP</a></li>
+<li><a href="/entries/purerl-updates---genstatem.htm">Purerl Updates - GenStatem</a></li>
+</ul>
+<p>One of the big advantages of using an existing language like Purescript when building out typed support for Erlang, is the presence of existing tooling and libraries for the language (such as language servers, package management, syntax highlighting, etc - as well as libraries for all the normal maths, string manipulation, date times, testing and all that).</p>
+<p>That&#39;s not to say you get those things for free however, in a perfect world we could add libraries to our package set directly from the original repos - the litmus test for whether this is possible is &quot;Is there any Javascript in the original repo?&quot;. If there isn&#39;t then the library will work out of the box but if it has other dependencies that aren&#39;t yet in the package set then they will need adding to the package set too.</p>
+<p>On top of that, one of the things we &#39;lack&#39; in Purerl is the Aff monad. We (as far as we can tell so far) don&#39;t need it because we&#39;re just not writing code that way - or rather with the presence of various means of performing async actions in Erlang it simply isn&#39;t necessary. This does mean that any library that brings in Aff (such as some of the popular testing frameworks) will need porting to use sometihng else unless somebody feels like porting <a href="https://github.com/purescript-contrib/purescript-aff/blob/main/src/Effect/Aff.js#L152">Aff</a>? No I thought not.</p>
+<p>Consider the library <a href="https://github.com/purescript-contrib/purescript-parsing">purescript-parsing</a> which was needed recently to parse <a href="https://datatracker.ietf.org/doc/html/rfc8216">RFC8216</a>.</p>
+<p>On the face of it, there is nothing but Purescript in <a href="https://github.com/purescript-contrib/purescript-parsing/tree/main/src/Text/Parsing/Parser">the repo</a> and the tests are incredibly simple, however it has a dependency on <a href="https://github.com/purescript-contrib/purescript-unicode">purescript-unicode</a> which whilst being entirely Purescript also, not only has a dependency on <a href="https://github.com/id3as/purescript-quickcheck">purescript-quickcheck</a> which absolutely does have some Erlang in it, but also generates Erlang that breaks the Erlang compiler because of &#39;complexity&#39;. (hard coded lists of unicode characters meant nested function calls all the way down).</p>
+<p>Quickcheck needs the JS re-writing as Erlang, and then if you want to build unicode/parser independently and run <em>their</em> tests then they need their packages updating so they can pull the fork of quickcheck. Thankfully these libraries all (sensibly) have their tests written as a <em>main :: Effect Unit</em> rather than using a fancy testing library so the changes are very fast and easy to implement. As a result of running the test suite of course, some missing features were found in <a href="https://github.com/id3as/purescript-strings">purescript-strings</a> for which, thankfully built-in functions exist in Erlang so no hard work was required.</p>
+<p>We also needed <a href="https://github.com/purescript/purescript-datetime">purescript-datetime</a> which has a lot of the underlying implementation built off of Javascript&#39;s date system and needed rewriting to use Erlangs. Since then this has become embedded in a lot of other packages because we consider things like Seconds and Milliseconds to be important primitives worth representing as something other than <em>Int</em> and defining our own newtypes everywhere doesn&#39;t make a lot of sense. If you&#39;re going to be using Datetime heavily then you probably also want to format dates and times so that means bringing in <a href="https://github.com/purescript-contrib/purescript-formatters">purescript-formatters</a> which has a dependency on parsing (cool, already ported!), but tests written against <em>Aff</em> for no good reason (That&#39;s fine, replaced them with good ol&#39; <a href="https://github.com/id3as/purescript-erl-test-eunit">purescript-erl-test-eunit</a>.</p>
+<p>I guess what I&#39;m trying to say is that there are yaks all the way down, and that all of these libraries kindly written by other people don&#39;t come for <em>free</em>. On the bright side because we&#39;ve been actively writing Purescript for three years we&#39;ve brought across a lot of them ourselves already. The complete list of packages ported to the id3as organisation at this time of writing is:</p>
+<ul>
+<li><a href="https://github.com/id3as/purescript-these">purescript-these</a></li>
+<li><a href="https://github.com/id3as/purescript-parsing">purescript-parsing</a></li>
+<li><a href="https://github.com/id3as/purescript-pathy">purescript-pathy</a></li>
+<li><a href="https://github.com/id3as/purescript-formatters">purescript-formatters</a></li>
+<li><a href="https://github.com/id3as/purescript-unicode">purescript-unicode</a></li>
+<li><a href="https://github.com/id3as/purescript-datetime">purescript-datetime</a></li>
+<li><a href="https://github.com/id3as/purescript-quickcheck">purescript-quickcheck</a></li>
+<li><a href="https://github.com/id3as/purescript-uri">purescript-uri</a></li>
+<li><a href="https://github.com/id3as/purescript-sequences">purescript-sequences</a></li>
+<li><a href="https://github.com/id3as/purescript-dagre">purescript-dagre</a></li>
+<li><a href="https://github.com/id3as/purescript-longs">purescript-longs</a></li>
+</ul>
+<p>These will end up in the default package set over time so they can be referred to without needing to know where they are - but if you&#39;re venturing down the route of using Purescript and needing a package that doesn&#39;t exist, then check the <a href="https://github.com/purerl">Purerl org</a> and the <a href="https://github.com/id3as">Id3as</a> org to see if it hasn&#39;t already been ported!</p>
+</div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="mailto:robashton@codeofrob.com">Respond</a>
+      </div>
+
+        <!--=== Copyright ===-->
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span6">
+                <p class="terms">2020 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
+    });
+        </script>
+        <!--[if lt IE 9]>
+    <script src="assets/js/respond.js"></script>
+<![endif]-->
+        </body>
+        </html>
+
