@@ -1,4 +1,4 @@
-Two blog posts in a week? Unheard of - following on from last week's blockbuster smash hit epic "[Purerl Updates - Processes and Self](/entries/purerl-updates---processes-and-self.html)", today we have an entry describing our current thoughts on subscriptions in a Purerl world.
+Two blog posts in a week? Unheard of - following on from Tuesday's blockbuster smash hit epic "[Purerl Updates - Processes and Self](/entries/purerl-updates---processes-and-self.html)", today we have an entry describing our current thoughts on subscriptions in a Purerl world.
 
 A standard procedure in Erlang, is to invoke an API that then proceeds to send messages back to the invoking process.
 
