@@ -26,7 +26,7 @@ function compileStatics(cb) {
     for(var i = 0; i < files.length; i++) {
       var file = files[i]
       var fullpath = path.join('input/static', files[i])
-      var htmlfilename = path.join('site', file)
+      var htmlfilename = path.join('docs', file)
       var html = fs.readFileSync(fullpath, 'utf8');
       var statichtml = plates.bind(statictemplate, { body: html });
       fs.writeFileSync(htmlfilename, statichtml , 'utf8');
@@ -65,7 +65,7 @@ var compilePosts = function(posts) {
   var rssItems = 0;
   for(var i = 0 ; i < posts.length; i++) {
     var post = posts[i];
-    var outputFilename = 'site/entries/' + common.titleToPage(post.title);
+    var outputFilename = 'docs/entries/' + common.titleToPage(post.title);
     var inputHtml = readPageHtmlSync(common.titleToFolder(post.title));
     var commentHtml = '';
     var inputComments = JSON.parse(fs.readFileSync('input/pages/' + common.titleToFolder(post.title) + '/comments.json', 'utf8'));
@@ -103,7 +103,7 @@ var compilePosts = function(posts) {
   }
 
   var rssFeed = feed.xml();
-  fs.writeFileSync('site/rss.xml', rssFeed, 'utf8');
+  fs.writeFileSync('docs/rss.xml', rssFeed, 'utf8');
   console.log('RSS written')
 };
 
@@ -133,8 +133,8 @@ common.getAllPostsInfo(function(posts) {
 
   // In essence doesn't do anything any more, but maybe in the future
   var indexHtml = plates.bind(indexTemplate, { entrylist: listHtml, unpublishedposts: unpublishedposts || "zero"});
-  fs.writeFileSync('./site/blog.html', indexHtml, 'utf8');
-  fs.writeFileSync('./site/allposts.txt', allEntries, 'utf8')
+  fs.writeFileSync('./docs/blog.html', indexHtml, 'utf8');
+  fs.writeFileSync('./docs/allposts.txt', allEntries, 'utf8')
   compilePosts(newposts);
   compileStatics(function() {
     process.exit()
