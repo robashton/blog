@@ -1,4 +1,683 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Tue, 12 Oct 2021 07:55:41 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Write Your Erlang Gen Servers in Visual Basic]]></title><description><![CDATA[<p>TLDR: <a href="https://github.com/robashton/erlang.net">Erlang.NET Released on Github</a></p>
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Sat, 20 May 2023 19:08:50 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[Purerl Updates - A heap of ported modules]]></title><description><![CDATA[<p>Previous entries in this series: </p>
+<ul>
+<li><a href="/entries/purerl-updates---processes-and-self.html">Purerl Updates - Processes and Self</a></li>
+<li><a href="/entries/purerl-updates---subscriptions.html">Purerl Updates - Subscriptions</a></li>
+<li><a href="/entries/purerl-updates---untagged-unions.html">Purerl Updates - Untagged Unions</a></li>
+<li><a href="/entries/purerl-updates---maxing-out-pinto-otp.html">Purerl Updates - Maxing out Pinto OTP</a></li>
+<li><a href="/entries/purerl-updates---genstatem.htm">Purerl Updates - GenStatem</a></li>
+</ul>
+<p>One of the big advantages of using an existing language like Purescript when building out typed support for Erlang, is the presence of existing tooling and libraries for the language (such as language servers, package management, syntax highlighting, etc - as well as libraries for all the normal maths, string manipulation, date times, testing and all that).</p>
+<p>That&#39;s not to say you get those things for free however, in a perfect world we could add libraries to our package set directly from the original repos - the litmus test for whether this is possible is &quot;Is there any Javascript in the original repo?&quot;. If there isn&#39;t then the library will work out of the box but if it has other dependencies that aren&#39;t yet in the package set then they will need adding to the package set too.</p>
+<p>On top of that, one of the things we &#39;lack&#39; in Purerl is the Aff monad. We (as far as we can tell so far) don&#39;t need it because we&#39;re just not writing code that way - or rather with the presence of various means of performing async actions in Erlang it simply isn&#39;t necessary. This does mean that any library that brings in Aff (such as some of the popular testing frameworks) will need porting to use sometihng else unless somebody feels like porting <a href="https://github.com/purescript-contrib/purescript-aff/blob/main/src/Effect/Aff.js#L152">Aff</a>? No I thought not.</p>
+<p>Consider the library <a href="https://github.com/purescript-contrib/purescript-parsing">purescript-parsing</a> which was needed recently to parse <a href="https://datatracker.ietf.org/doc/html/rfc8216">RFC8216</a>.</p>
+<p>On the face of it, there is nothing but Purescript in <a href="https://github.com/purescript-contrib/purescript-parsing/tree/main/src/Text/Parsing/Parser">the repo</a> and the tests are incredibly simple, however it has a dependency on <a href="https://github.com/purescript-contrib/purescript-unicode">purescript-unicode</a> which whilst being entirely Purescript also, not only has a dependency on <a href="https://github.com/id3as/purescript-quickcheck">purescript-quickcheck</a> which absolutely does have some Erlang in it, but also generates Erlang that breaks the Erlang compiler because of &#39;complexity&#39;. (hard coded lists of unicode characters meant nested function calls all the way down).</p>
+<p>Quickcheck needs the JS re-writing as Erlang, and then if you want to build unicode/parser independently and run <em>their</em> tests then they need their packages updating so they can pull the fork of quickcheck. Thankfully these libraries all (sensibly) have their tests written as a <em>main :: Effect Unit</em> rather than using a fancy testing library so the changes are very fast and easy to implement. As a result of running the test suite of course, some missing features were found in <a href="https://github.com/id3as/purescript-strings">purescript-strings</a> for which, thankfully built-in functions exist in Erlang so no hard work was required.</p>
+<p>We also needed <a href="https://github.com/purescript/purescript-datetime">purescript-datetime</a> which has a lot of the underlying implementation built off of Javascript&#39;s date system and needed rewriting to use Erlangs. Since then this has become embedded in a lot of other packages because we consider things like Seconds and Milliseconds to be important primitives worth representing as something other than <em>Int</em> and defining our own newtypes everywhere doesn&#39;t make a lot of sense. If you&#39;re going to be using Datetime heavily then you probably also want to format dates and times so that means bringing in <a href="https://github.com/purescript-contrib/purescript-formatters">purescript-formatters</a> which has a dependency on parsing (cool, already ported!), but tests written against <em>Aff</em> for no good reason (That&#39;s fine, replaced them with good ol&#39; <a href="https://github.com/id3as/purescript-erl-test-eunit">purescript-erl-test-eunit</a>.</p>
+<p>I guess what I&#39;m trying to say is that there are yaks all the way down, and that all of these libraries kindly written by other people don&#39;t come for <em>free</em>. On the bright side because we&#39;ve been actively writing Purescript for three years we&#39;ve brought across a lot of them ourselves already. The complete list of packages ported to the id3as organisation at this time of writing is:</p>
+<ul>
+<li><a href="https://github.com/id3as/purescript-these">purescript-these</a></li>
+<li><a href="https://github.com/id3as/purescript-parsing">purescript-parsing</a></li>
+<li><a href="https://github.com/id3as/purescript-pathy">purescript-pathy</a></li>
+<li><a href="https://github.com/id3as/purescript-formatters">purescript-formatters</a></li>
+<li><a href="https://github.com/id3as/purescript-unicode">purescript-unicode</a></li>
+<li><a href="https://github.com/id3as/purescript-datetime">purescript-datetime</a></li>
+<li><a href="https://github.com/id3as/purescript-quickcheck">purescript-quickcheck</a></li>
+<li><a href="https://github.com/id3as/purescript-uri">purescript-uri</a></li>
+<li><a href="https://github.com/id3as/purescript-sequences">purescript-sequences</a></li>
+<li><a href="https://github.com/id3as/purescript-dagre">purescript-dagre</a></li>
+<li><a href="https://github.com/id3as/purescript-longs">purescript-longs</a></li>
+</ul>
+<p>These will end up in the default package set over time so they can be referred to without needing to know where they are - but if you&#39;re venturing down the route of using Purescript and needing a package that doesn&#39;t exist, then check the <a href="https://github.com/purerl">Purerl org</a> and the <a href="https://github.com/id3as">Id3as</a> org to see if somebody hasn&#39;t already done the leg work!</p>
+]]></description><link>http://codeofrob.com/entries/purerl-updates---a-heap-of-ported-modules.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purerl-updates---a-heap-of-ported-modules.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 28 Oct 2021 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purerl Updates - GenStatem]]></title><description><![CDATA[<p>Seems we&#39;ve ended up with a small handful of posts about the latest Purerl updates! Great - that&#39;s about one for every reader, let&#39;s get cracking!</p>
+<ul>
+<li><a href="/entries/purerl-updates---processes-and-self.html">Purerl Updates - Processes and Self</a></li>
+<li><a href="/entries/purerl-updates---subscriptions.html">Purerl Updates - Subscriptions</a></li>
+<li><a href="/entries/purerl-updates---untagged-unions.html">Purerl Updates - Untagged Unions</a></li>
+<li><a href="/entries/purerl-updates---maxing-out-pinto-otp.html">Purerl Updates - Maxing out Pinto OTP</a></li>
+</ul>
+<p>One of the big motivations for the big push on <a href="https://github.com/id3as/purescript-erl-pinto">purescript-erl-pinto</a> was to facillitate the addition of other OTP behaviours than GenServer.</p>
+<p>One of our &quot;go-to&quot; servers is <a href="https://erlang.org/doc/man/gen_statem.html">gen_statem</a>. When writing any sort of implementation of a stateful network protocol for example, it is nice to model various steps of the protocol as &#39;states&#39; on which only certain types of message can be enacted. A gen_statem has a list of these possible states (as an atom in this case), as well as &#39;Data&#39; which is an arbitrary term.</p>
+<p>The simplest example outside of this however, is the locked door. A door which is locked cannot be opened, and a door that is opened cannot be locked. If the door is open we can take the treasure behind the door and to unlock the door we need a key. This could be modelled with three states here, an</p>
+<ul>
+<li>Locked</li>
+<li>Unlocked</li>
+<li>Open</li>
+</ul>
+<p>Some of a plain ol&#39; gen_statem to represent this would look like this.</p>
+<pre><code class="language-erlang">init([]) -&gt;
+    {ok, locked , #{ key =&gt; &lt;&lt;&quot;open sesame&quot;&gt;&gt;, treasure =&gt; &lt;&lt;&quot;The moon is made of cheese&quot;&gt;&gt;}}.
+
+handle_event({call,From}, { unlock, K1 }, locked, #{ key := K2, treasure := Secret }) 
+  when K1 =:= K2 -&gt;
+  {next_state, unlocked, #{ treasure =&gt; Secret }, [{reply, From, ok}]};
+
+handle_event({call,From}, { unlock, _K1 }, locked, Data) 
+  {keep_state, Data, [{reply, From, bad_key}]};
+
+handle_event({call,From}, { unlock, _K1 }, unlocked, Data) 
+  {keep_state, Data, [{reply, From, ok}]};
+
+handle_event({call,From}, open, unlocked, Data) 
+  {next_state, open, Data, [{reply, From, ok}]};
+</code></pre>
+<p>And so on and so forth. </p>
+<p>A locked door has a key and a treasure, a call to &#39;unlock&#39; with the right key will give you an open door with just the &#39;treasure&#39;, a call to unlock with the wrong key will result in an error, a call to unlock when already unlocked is just fine thank-you and a door that is unlocked can be opened. A few things of note that we&#39;re not a <em>huge</em> fan of here. </p>
+<ul>
+<li>There is nothing to tie the current &#39;state&#39; with the &#39;data&#39;, thus there is nothing stopping a locked door from not having a key (oh dear!)</li>
+<li>There are a <em>lot</em> of tuples with arbitrary atoms floating around and the possibility for typos is endless</li>
+<li>States aren&#39;t defined up front, any arbitrary atom can be returned and we&#39;ll now be in that state</li>
+</ul>
+<p>We could be generous and say that two of these are actually a feature and not a bug, but beauty is in the eye of the beholder and if you&#39;re a fan of type systems then this has all the beauty of my macaroni art from pre-school.</p>
+<p>From a Purescript perspective, it&#39;d be nice if we could tie the current state with &quot;state specific data&quot; using an ADT, as well as have some state that is common to all.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">State</span> </span>
+  = <span class="hljs-type">Locked</span> { key :: <span class="hljs-type">String</span>, treasure :: <span class="hljs-type">String</span> }
+  | <span class="hljs-type">Unlocked</span> { treasure :: <span class="hljs-type">String</span> }
+  | <span class="hljs-type">Open</span>
+</code></pre>
+<pre><code class="language-haskell"><span class="hljs-title">startLink</span> :: <span class="hljs-type">Effect</span> (<span class="hljs-type">StartLinkResult</span> <span class="hljs-type">DoorLockPid</span>)
+<span class="hljs-title">startLink</span> = <span class="hljs-keyword">do</span>
+  <span class="hljs-type">GenStatem</span>.startLink $ <span class="hljs-type">GenStatem</span>.defaultSpec init
+  <span class="hljs-keyword">where</span>
+    init = pure $ <span class="hljs-type">InitOk</span> (<span class="hljs-type">Locked</span> { key: <span class="hljs-string">&quot;open sesame&quot;</span>, treasure: <span class="hljs-string">&quot;the moon is made of cheese&quot;</span> }) {}
+</code></pre>
+<p>Now, the only problem with our new <em>State</em> is that the extra data bundled with it is means that it can&#39;t be used directly as a &#39;state&#39; in gen_statem because each variant would be a new state!</p>
+<p>A typeclass provided therefore be able to extract a &#39;stateid&#39; to pass to the underlying gen_statem implementation</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">StateId</span></span>
+  = <span class="hljs-type">StateIdLocked</span>
+  | <span class="hljs-type">StateIdUnlocked</span>
+  | <span class="hljs-type">StateIdOpen</span>
+
+<span class="hljs-title">derive</span> <span class="hljs-keyword">instance</span> eqStateId :: <span class="hljs-type">Eq</span> <span class="hljs-type">StateId</span>
+<span class="hljs-class">
+<span class="hljs-keyword">instance</span> stateHasStateId :: <span class="hljs-type">HasStateId</span> <span class="hljs-type">StateId</span> <span class="hljs-type">State</span> <span class="hljs-keyword">where</span></span>
+  getStateId (<span class="hljs-type">Locked</span> _) = <span class="hljs-type">StateIdLocked</span>
+  getStateId (<span class="hljs-type">Unlocked</span> _) = <span class="hljs-type">StateIdUnlocked</span>
+  getStateId (<span class="hljs-type">Open</span> _) = <span class="hljs-type">StateIdOpen</span></code></pre>
+<p>A default implementation could exist of course to simply extract an atom from the underlying representation, building that is left as an exercise for the reader..</p>
+<p>Anyway, just like with GenServer and Supervisor, we can represent a GenStatem with a Pid and a Type in order to communicate with it and build up various callbacks and such. The type specs are quite daunting beause GenStatem has quite a few different &#39;message types&#39; - most of thes can be ignored and set to Void/Unit until needed.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">newtype</span> <span class="hljs-type">StatemType</span> :: <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span></span>
+<span class="hljs-class"><span class="hljs-keyword">newtype</span> <span class="hljs-type">StatemType</span> info internal timerName timerContent commonData stateId state</span>
+  = <span class="hljs-type">StatemType</span> <span class="hljs-type">Void</span>
+
+<span class="hljs-class"><span class="hljs-keyword">newtype</span> <span class="hljs-type">StatemPid</span> :: <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span></span>
+<span class="hljs-class"><span class="hljs-keyword">newtype</span> <span class="hljs-type">StatemPid</span> info internal timerName timerContent commonData stateId state</span>
+  = <span class="hljs-type">StatemPid</span> (<span class="hljs-type">Process</span> info)</code></pre>
+<p>Our very simple DoorLock Genstatem which doesn&#39;t have any messages outside of direct &#39;calls&#39; could be defined as </p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">DoorlockType</span> = <span class="hljs-type">StatemType</span> <span class="hljs-type">Unit</span> <span class="hljs-type">Unit</span> <span class="hljs-type">Unit</span> <span class="hljs-type">Unit</span> {} <span class="hljs-type">StateId</span> <span class="hljs-type">State</span></span>
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">DoorlockPid</span> = <span class="hljs-type">StatemPid</span> <span class="hljs-type">Unit</span> <span class="hljs-type">Unit</span> <span class="hljs-type">Unit</span> <span class="hljs-type">Unit</span> {} <span class="hljs-type">StateId</span> <span class="hljs-type">State</span></span></code></pre>
+<p>With these types defined, a semi-complete implementation of our door-lock GenStatem could therefore look like</p>
+<pre><code class="language-haskell"><span class="hljs-title">serverName</span> :: <span class="hljs-type">RegistryName</span> <span class="hljs-type">DoorlockType</span>
+<span class="hljs-title">serverName</span> = <span class="hljs-type">Local</span> $ atom <span class="hljs-string">&quot;doorlock&quot;</span>
+
+<span class="hljs-title">startLink</span> :: <span class="hljs-type">Effect</span> (<span class="hljs-type">StartLinkResult</span> <span class="hljs-type">DoorlockPid</span>)
+<span class="hljs-title">startLink</span> = 
+  <span class="hljs-type">Statem</span>.startLink $ <span class="hljs-type">Statem</span>.defaultSpec init { name = <span class="hljs-type">Just</span> serverName } 
+
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">UnlockResult</span> = <span class="hljs-type">Unlocked</span> | <span class="hljs-type">BadCode</span> </span>
+
+<span class="hljs-title">unlock</span> :: <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">UnlockResult</span>
+<span class="hljs-title">unlock</span> k1 = <span class="hljs-type">GenStatem</span>.call (<span class="hljs-type">ByName</span> serverName) 
+  \from (<span class="hljs-type">Locked</span> { key: k2 } _ = 
+    <span class="hljs-keyword">if</span> k2 == k1 <span class="hljs-keyword">then</span> <span class="hljs-keyword">do</span>
+      <span class="hljs-keyword">let</span> actions = <span class="hljs-type">GenStatem</span>.newActions # <span class="hljs-type">GenStatem</span>.addReply (<span class="hljs-type">GenStatem</span>.reply from <span class="hljs-type">Unlocked</span>)
+      pure <span class="hljs-type">EventNextStateWithActions</span> (<span class="hljs-type">Unlocked</span> { treasure }) {} actions
+    <span class="hljs-keyword">else</span> <span class="hljs-keyword">do</span>
+      <span class="hljs-keyword">let</span> actions = <span class="hljs-type">GenStatem</span>.newActions # <span class="hljs-type">GenStatem</span>.addReply (<span class="hljs-type">GenStatem</span>.reply from <span class="hljs-type">BadCode</span>)
+      pure $ <span class="hljs-type">EventKeepStateAndDataWithActions</span> actions
+</code></pre>
+<p>The GenStatem functionality in Pinto is being used in a few places in our codebases now, but it is not complete. There are some hand-wavey bits around timers and messaging that will get fixed when somebody needs it, but the pattern and general types are pretty much now in place. Various callbacks can be supplied by overriding the default spec, those callbacks will receive certain kinds of messages that will need adding to the type signatures and various return values can be built up by using the functions provided in the GenStatem module.</p>
+<p>There are other kinds of Genserver available that could do with representations in Pinto and as we saw in the last entry, now we have a generic way of representing &#39;pids&#39; and &#39;types&#39; that can supply and enforce their own internal messages, it should be possible to do this without making any substantial changes to pinto itself.</p>
+<h2 id="a-note-on-pintos-future">A note on Pinto&#39;s future</h2>
+<p>Pinto is now &#39;conceptually&#39; pretty complete and hopefully shouldn&#39;t undergo any more major changes. The types that have been added can be used to describe pretty much any running proces and various functionalities that can be exposed to interact with those proceses - from the simple &quot;This process has a state and can receive messages&quot; to &quot;This process has a state, can receive this type of video stream and this type of audio stream, send these messages on a timer...&quot; and then be stuck into Supervisors in the same way as any other server.</p>
+<p>There are probably better ways of representing this in Purescript by deviating further from OTP itself and re-imagining a more Purescript central means of modelling these things. Eventually somebody is going to take the plunge and do this and it probably won&#39;t be us. Should this happen, I don&#39;t think it&#39;ll take long to move away from Pinto and to it - so if anybody fancies the task...</p>
+]]></description><link>http://codeofrob.com/entries/purerl-updates---genstatem.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purerl-updates---genstatem.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 26 Oct 2021 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purerl Updates - maxing out Pinto OTP]]></title><description><![CDATA[<p>Yes, another blog post about Purerl, following on from</p>
+<ul>
+<li><a href="/entries/purerl-updates---processes-and-self.html">Purerl Updates - Processes and Self</a></li>
+<li><a href="/entries/purerl-updates---subscriptions.html">Purerl Updates - Subscriptions</a></li>
+<li><a href="/entries/purerl-updates---untagged-unions.html">Purerl Updates - Untagged Unions</a></li>
+</ul>
+<p>When I first threw together <a href="https://github.com/id3as/purescript-erl-pinto">Pinto</a>, it was with the aim that there simply be a usable path for building supervision trees and gen servers, and not that we would have access to the full functionality of those things straight out of the gate. This proved to be a sensible choice because as we learned more about how we would like to write code in Purescript built around various messaging mechanisms it also turned out that this code would need to evolve more than a few times before we were all truly happy with the model.</p>
+<p>A lot of usable application code was written with this &quot;V1&quot; pass, but it was always known that eventually we would want to not only have access to other &quot;gen&quot; models (such as statem), but the bullet would need biting and the model would need expanding to allow us to use the full gamut of functionality exposed by gen_server.</p>
+<p>Thankfully, it turns out that the general concepts that had evolved during the development and real-world use of V1 carried over, and the changes as far as the end-user is concerned are largely additive. (Note: I didn&#39;t do most of the work on V2, that was <a href="https://github.com/philipstears">@philipstears</a> and <a href="https://github.com/adrianroe">@adrianroe</a>, so kudos to them on gathering the will for it).</p>
+<h2 id="the-types">The types</h2>
+<p>In V1 Pinto, the types around the spinning up of processes was very GenServer focused</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">ServerName</span> state msg = <span class="hljs-type">Local</span> <span class="hljs-type">Atom</span></span>
+                          | <span class="hljs-type">Global</span> <span class="hljs-type">GlobalName</span>
+                          | <span class="hljs-type">Via</span> <span class="hljs-type">NativeModuleName</span> <span class="hljs-type">Foreign</span></code></pre>
+<p>Not only that, but the result of calling the various <em>startLinks</em> for Supervisors/GenServers was very simplistic - losing any information about whatever the process was that was started. (Hello Raw.Pid)</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">StartLinkResult</span></span>
+  = <span class="hljs-type">Ok</span> <span class="hljs-type">Pid</span>
+  | <span class="hljs-type">Ignore</span>
+  | <span class="hljs-type">AlreadyStarted</span> <span class="hljs-type">Pid</span>
+  | <span class="hljs-type">Failed</span> <span class="hljs-type">Foreign</span></code></pre>
+<p>As a result, this meant things like Supervisor had their ServerName defined as </p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">SupervisorName</span> = <span class="hljs-type">ServerName</span> <span class="hljs-type">Unit</span> <span class="hljs-type">Unit</span></span></code></pre>
+<p>Which isn&#39;t <em>wrong</em> as such, but is completely pointless. State and Msg are GenServer constructs and they aren&#39;t even the only ones we need for a GenServer which is about to get a revamp anway. The answer (as it often does), lies in adding type parameters - while we&#39;re at it, changing the API to use an Either because that&#39;s a good way to represent success and failure.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">NotStartedReason</span> serverProcess</span>
+  = <span class="hljs-type">Ignore</span>
+  | <span class="hljs-type">AlreadyStarted</span> serverProcess
+  | <span class="hljs-type">Failed</span> <span class="hljs-type">Foreign</span>
+
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">StartLinkResult</span> serverProcess</span>
+  = <span class="hljs-type">Either</span> (<span class="hljs-type">NotStartedReason</span> serverProcess) serverProcess</code></pre>
+<p>We can&#39;t add constraints to the type definion itself, but we can enforce that when these things are used that <em>HasPid serverProcess =&gt;</em>, which is what Pinto will do in most of its APIs. By doing this, we can have GenServers export a new type (ServerPid state msg) and Supervisors export their own type (SupervisorPid) which both have Raw.Pid underlying them, but GenServer can also <em>(HasProcess msg (ServerPid state msg))</em> which Just Makes Sense.</p>
+<p>A similar thing can be done to ServerName</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">RegistryName</span> :: <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span></span>
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">RegistryName</span> serverType</span>
+  = <span class="hljs-type">Local</span> <span class="hljs-type">Atom</span>
+  | <span class="hljs-type">Global</span> <span class="hljs-type">Foreign</span>
+  | <span class="hljs-type">Via</span> <span class="hljs-type">NativeModuleName</span> <span class="hljs-type">Foreign</span></code></pre>
+<p>Why would we want that? Because calls into running processes (such as GenServer.call or Supervisor.startChild) might like to know type information in order to enforce some level of correctness, and while we&#39;re at it we can support doing this either either the Pid gained from startLink, or with the registered name of that child</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">RegistryReference</span> :: <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span></span>
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">RegistryReference</span> serverPid serverType</span>
+  = <span class="hljs-type">ByPid</span> serverPid
+  | <span class="hljs-type">ByName</span> (<span class="hljs-type">RegistryName</span> serverType)</code></pre>
+<p>Now this has been done, we&#39;re free to re-write Supervisor (or indeed, as we will see, split it into two different modules), and re-write GenServer with all the types we want without that leaking across implementations.</p>
+<h2 id="genservers">GenServers</h2>
+<p>Consider the following very boring GenServer in V1 that starts up, subscribes to a bus, and receives messages via handleInfo</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">BookWatchingStartArgs</span> = {}</span>
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">State</span> = {}</span>
+
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">BookMsg</span> <span class="hljs-type">BookEvent</span> </span>
+
+<span class="hljs-title">serverName</span> :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
+<span class="hljs-title">serverName</span> = <span class="hljs-type">Local</span> $ atom <span class="hljs-string">&quot;handle_info_example&quot;</span>
+
+<span class="hljs-title">startLink</span> :: <span class="hljs-type">BookWatchingStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
+<span class="hljs-title">startLink</span> args =
+  <span class="hljs-type">Gen</span>.buildStartLink serverName (init args) $ <span class="hljs-type">Gen</span>.defaultStartLink { handleInfo = handleInfo }
+
+<span class="hljs-title">currentState</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">State</span>
+<span class="hljs-title">currentState</span> = <span class="hljs-type">Gen</span>.call serverName \state -&gt; pure $ <span class="hljs-type">CallReply</span> state state
+
+<span class="hljs-title">init</span> :: <span class="hljs-type">BookWatchingStartArgs</span> -&gt; <span class="hljs-type">Gen</span>.<span class="hljs-type">Init</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
+<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
+  self &lt;- <span class="hljs-type">Gen</span>.self
+  _ &lt;- <span class="hljs-type">Gen</span>.lift $ <span class="hljs-type">SimpleBus</span>.subscribe <span class="hljs-type">BookLibrary</span>.bus $ <span class="hljs-type">BookMsg</span> &gt;&gt;&gt; send self
+  pure $ {}
+
+
+<span class="hljs-title">handleInfo</span> :: <span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">State</span> -&gt; <span class="hljs-type">Gen</span>.<span class="hljs-type">HandleInfo</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
+<span class="hljs-title">handleInfo</span> msg state = <span class="hljs-keyword">do</span>
+  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span>
+    <span class="hljs-type">BookMsg</span> bookEvent -&gt; 
+      <span class="hljs-comment">-- <span class="hljs-doctag">TODO:</span> Something with bookEvent</span>
+      pure $ <span class="hljs-type">CastNoReply</span> state
+</code></pre>
+<p>There are a few things of note here</p>
+<ul>
+<li>The GenServer <em>has</em> to have a name (not strictly true but..), this isn&#39;t really necessary for lot of  <em>simple_one_for_one</em> for example</li>
+<li>How can &#39;init&#39; fail?</li>
+<li>How does one stop this gen server from inside the gen server?</li>
+<li>How does one defer a reply in response to a &#39;call&#39; (Usually gen_server would give you a &#39;from&#39; argument, this has been dropped here)</li>
+<li>The use of &#39;Gen.self&#39; (see also: <a href="/entries/purerl-updates---processes-and-self.html">Purerl Updates - Processes and Self</a></li>
+<li>How does one do a handle_continue, and what is its type going to be?</li>
+</ul>
+<p>As we can see, this largely comes down to missing items from the surface area of the gen server rather than a fundamental design flaw, but nevertheless there are some breaking changes to get to the point where these things are supposed. </p>
+<h2 id="starting-a-genserver">Starting a GenServer</h2>
+<p>A few things need to change here</p>
+<ul>
+<li>A GenServer can ask to &#39;continue&#39; an exchange by returning the current operation and re-entering with a message sent internally - we need a type for this</li>
+<li>A GenServer can ask to &#39;shutdown&#39;, and can supply a &#39;reason&#39; for that shutdown that can be intercepted elsewhere/internally and it&#39;d be nice if that was typed</li>
+<li>The return result of the startLink isn&#39;t typed <em>at all</em>, this should be a Pid of some sort that encapsulates that types of messages this GenServer can receive</li>
+<li>Name should be optional</li>
+</ul>
+<p>Thus, we need two extra types added to our ServerName (Cont and Stop), and StartLinkResult actually needs to be typed around some sort of Pid.</p>
+<pre><code class="language-haskell"><span class="hljs-title">serverName</span> :: <span class="hljs-type">RegistryName</span> (<span class="hljs-type">GenServer</span>.<span class="hljs-type">ServerType</span> <span class="hljs-type">Unit</span> <span class="hljs-type">Unit</span> <span class="hljs-type">Msg</span> <span class="hljs-type">State</span>)
+<span class="hljs-title">serverName</span> = <span class="hljs-type">Local</span> $ atom <span class="hljs-string">&quot;handle_info_example&quot;</span>
+
+<span class="hljs-title">startLink</span> :: <span class="hljs-type">BookWatchingStartArgs</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">StartLinkResult</span> (<span class="hljs-type">GenServer</span>.<span class="hljs-type">ServerPid</span> <span class="hljs-type">Unit</span> <span class="hljs-type">Unit</span> <span class="hljs-type">Msg</span> <span class="hljs-type">State</span>))
+<span class="hljs-title">startLink</span> args = <span class="hljs-type">GenServer</span>.startLink $ (<span class="hljs-type">GenServer</span>.defaultSpec (init args)) { name = <span class="hljs-type">Just</span> serverName, handleInfo = <span class="hljs-type">Just</span> handleInfo }
+
+<span class="hljs-title">init</span> :: <span class="hljs-type">BookWatchingStartArgs</span> -&gt; <span class="hljs-type">GenServer</span>.<span class="hljs-type">InitFn</span> <span class="hljs-type">Unit</span> <span class="hljs-type">Unit</span> <span class="hljs-type">Msg</span> <span class="hljs-type">State</span> 
+<span class="hljs-title">init</span> _args = <span class="hljs-keyword">do</span>
+  _ &lt;- <span class="hljs-type">SimpleBus</span>.subscribe <span class="hljs-type">BookLibrary</span>.bus <span class="hljs-type">BookMsg</span> 
+  pure $ <span class="hljs-type">InitOk</span> {}</code></pre>
+<p>So</p>
+<ul>
+<li>serverName is now a RegistryName parameterised with <em>GenServer.ServerType (Cont Stop Msg State)</em></li>
+<li>GenServer.startLink now simply takes a record full of config for which a default can be summoned with defaultSpec</li>
+<li>serverName is completely optional (as is handleInfo, both are Maybes to indicate this)</li>
+<li>StartLinkResult is now parameterised with the type of Pid we&#39;re starting with, in this case a GenServer.ServerPid (Cont Stop Msg State)</li>
+<li>init now returns an indication as to whether it has actually succeeded or not..</li>
+</ul>
+<p>We&#39;ll also note that with the addition of <a href="/entries/purerl-updates---processes-and-self.html">HasSelf</a>, we can now use subscribe without liftEffect, just relying on ambient context to get the messages sent to <em>self</em> (See also <a href="/entries/purerl-updates---subscriptions.html">Subscriptions</a>)</p>
+<p>Our handleInfo has changed as well (as has every other callback, but in exactly the same way) as it needs to also include all the additional type information for this GenServer</p>
+<pre><code class="language-haskell"><span class="hljs-title">handleInfo</span> :: <span class="hljs-type">GenServer</span>.<span class="hljs-type">InfoFn</span> <span class="hljs-type">Unit</span> <span class="hljs-type">Unit</span> <span class="hljs-type">Msg</span> <span class="hljs-type">State</span>
+<span class="hljs-title">handleInfo</span> msg state = 
+  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span>
+   <span class="hljs-type">BookMsg</span> bookEvent -&gt; 
+      <span class="hljs-comment">-- <span class="hljs-doctag">TODO:</span> Something with bookEvent</span>
+      pure $ <span class="hljs-type">GenServer</span>.return state</code></pre>
+<p>Conceptually, nothing has really changed in our basic use cases except more types have been added to various signatures to make additional functionality possible (which we can default to <em>Unit</em> until we need them), as well as all of the callbacks now operating inside a <em>HasSelf msg =&gt;</em> (actually a <em>ResultT cont stop msg state</em>), so that all of the type information for this GenServer is available at all times.</p>
+<p>A heap of methods now hang off GenServer to help return the appropriate responses from the various callbacks (CallFn, CastFn, InfoFn, ContFn, TerminateFn) which are all typed safely around whatever we&#39;ve declared in our signature.</p>
+<p>It&#39;s certainly a bit more verbose because of all of these extra types, but typically what ends up happening in our code is that we have business-process specific monads written which sit <em>inside</em> a GenServer and only expose the bits we need so that we don&#39;t have to write <em>Unit Unit Unit State</em> repeatedly. A lesson from the last couple of years with typed FP - with flexibility comes verbosity...</p>
+<h2 id="supervisors">Supervisors</h2>
+<p>Supervisors in V1 were okay for most cases except <em>simple_one_for_one</em>. </p>
+<ul>
+<li>A reading of the documentation for Erlang OTP reveals that in most cases, both the arguments <em>and</em> the return value of API calls into <em>supervisor:** are special-cased for *simple_one_for_one</em></li>
+<li>There was no way in V1 of tying the construction of the simple_one_for_one supervisor and the subsequent calls to <em>start_child</em> together, thus it was very hand-wavey with regards to type safety</li>
+</ul>
+<p>The solution? The solution is to have two modules - one for &quot;simple_one_for_one&quot; (<em>Pinto.Supervisor.SimpleOneForOne</em>) and one for everything else (<em>Pinto.Supervisor</em>). This makes the API much easier because the return values of functions stop being dependent on the type of supervisor being ran (in Purescript at least) and we can disregard the special cases in both modules because the code doesn&#39;t allow for us to end up in situations where we&#39;re calling one type of supervisors with another&#39;s pid.</p>
+<p>Just like with GenServers, we&#39;ll see that these are constructed around <em>RegistryName</em> and <em>StartLinkResult pid</em>, this is once again so that we have typed pids available for invocation into the various APIs in a standardised manner.</p>
+<p>Normal supervisors (from <a href="https://github.com/id3as/demo-ps">demo-ps</a>). </p>
+<pre><code class="language-haskell"><span class="hljs-title">startLink</span> :: <span class="hljs-type">Effect</span> (<span class="hljs-type">StartLinkResult</span> <span class="hljs-type">SupervisorPid</span>)
+<span class="hljs-title">startLink</span> = <span class="hljs-keyword">do</span>
+  <span class="hljs-type">Supervisor</span>.startLink (<span class="hljs-type">Just</span> $ <span class="hljs-type">Local</span> $ atom <span class="hljs-string">&quot;example_sup&quot;</span>) init
+
+<span class="hljs-title">init</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">SupervisorSpec</span>
+<span class="hljs-title">init</span> = <span class="hljs-keyword">do</span>
+  connectionString &lt;- <span class="hljs-type">BookConfig</span>.connectionString
+  webPort &lt;- <span class="hljs-type">BookConfig</span>.webPort
+  pure
+    { flags:
+        { strategy: <span class="hljs-type">OneForOne</span>
+        , intensity: <span class="hljs-number">1</span>
+        , period: <span class="hljs-type">Seconds</span> <span class="hljs-number">5.0</span>
+        }
+    , childSpecs:
+        (worker <span class="hljs-string">&quot;book_web&quot;</span> $ <span class="hljs-type">BookWeb</span>.startLink { webPort })
+        : (worker <span class="hljs-string">&quot;empty_server&quot;</span> $ <span class="hljs-type">EmptyGenServer</span>.startLink {})
+        : (worker <span class="hljs-string">&quot;book_library&quot;</span> $ <span class="hljs-type">BookLibrary</span>.startLink { connectionString })
+        : (worker <span class="hljs-string">&quot;handle_info_example&quot;</span> $ <span class="hljs-type">HandleInfoExample</span>.startLink {})
+        : (worker <span class="hljs-string">&quot;monitor_example&quot;</span> $ <span class="hljs-type">MonitorExample</span>.startLink {})
+        : nil
+    }
+<span class="hljs-title">worker</span> ::
+  <span class="hljs-keyword">forall</span> childProcess.
+  <span class="hljs-type">HasPid</span> childProcess =&gt;
+  <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">StartLinkResult</span> childProcess) -&gt; <span class="hljs-type">ErlChildSpec</span>
+<span class="hljs-title">worker</span> id start =
+  spec
+    { id
+    , childType: <span class="hljs-type">Worker</span>
+    , start
+    , restartStrategy: <span class="hljs-type">RestartTransient</span>
+    , shutdownStrategy: <span class="hljs-type">ShutdownTimeout</span> $ <span class="hljs-type">Milliseconds</span> <span class="hljs-number">5000.0</span>
+    }
+</code></pre>
+<p>You&#39;ll note that the server has a name (Local $ atom &quot;example_sup&quot;), calls to startChild/terminateChild/deleteChild can be made with <em>ByName $ Local $ atom &quot;example_sup&quot;</em> if we so needed. In the case of simple_one_for_one (below), this server name has the start args and pid type of the children encoded in it so that calls to startChild/etc are typed.</p>
+<p>simple_one_for_one:</p>
+<pre><code class="language-haskell"><span class="hljs-title">serverName</span> :: <span class="hljs-type">RegistryName</span> (<span class="hljs-type">OneForOne</span>.<span class="hljs-type">SupervisorType</span> <span class="hljs-type">OneForOneGenServerStartArgs</span> <span class="hljs-type">OneForOneGenPid</span>)
+<span class="hljs-title">serverName</span> = <span class="hljs-type">Local</span> $ atom $ <span class="hljs-string">&quot;one_for_one_example&quot;</span>
+
+<span class="hljs-title">startLink</span> :: <span class="hljs-type">Effect</span> (<span class="hljs-type">StartLinkResult</span> (<span class="hljs-type">OneForOne</span>.<span class="hljs-type">SupervisorPid</span> <span class="hljs-type">OneForOneGenServerStartArgs</span> <span class="hljs-type">OneForOneGenPid</span>))
+<span class="hljs-title">startLink</span> = <span class="hljs-type">OneForOne</span>.startLink (<span class="hljs-type">Just</span> serverName) init
+
+<span class="hljs-title">init</span> :: <span class="hljs-type">Effect</span> (<span class="hljs-type">ChildSpec</span> <span class="hljs-type">OneForOneGenServerStartArgs</span> <span class="hljs-type">OneForOneGenPid</span>)
+<span class="hljs-title">init</span> =
+  pure { intensity: <span class="hljs-number">100</span>
+    , period: <span class="hljs-type">Seconds</span> <span class="hljs-number">60.0</span>
+    , childType: <span class="hljs-type">Worker</span>
+    , start: <span class="hljs-type">OneForOneGen</span>.startLink
+    , restartStrategy: <span class="hljs-type">RestartTransient</span>
+    , shutdownStrategy: <span class="hljs-type">ShutdownTimeout</span> $ <span class="hljs-type">Milliseconds</span> <span class="hljs-number">5000.0</span>
+  } 
+
+<span class="hljs-title">startClient</span> :: <span class="hljs-type">OneForOneGenServerStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">OneForOneGenPid</span>
+<span class="hljs-title">startClient</span> args = <span class="hljs-keyword">do</span>
+  crashIfChildNotStarted &lt;$&gt; <span class="hljs-type">Sup</span>.startChild (<span class="hljs-type">ByName</span> serverName) args
+</code></pre>
+<h2 id="monitors">Monitors</h2>
+<p>With untagged unions, it is entirely possible now to use monitors directly from <a href="https://github.com/id3as/purescript-erl-kernel">erl-kernel</a>, if our process is either single-purpose or is already using untagged unions with say, gun. However, in a lot of cases it still makes sense to use the message router in Pinto for this because we want our code to maintain simplicity with a simple ADT. For this convenience an implementation of Monitor still exists inside Pinto which implements this for us.</p>
+<p>For anything that has a Pid, and assuming we&#39;re inside something that <em>HasSelf</em>, we can call</p>
+<pre><code class="language-haskell"><span class="hljs-title">ref</span> &lt;- <span class="hljs-type">Monitor</span>.monitor pid <span class="hljs-type">ProcessDown</span></code></pre>
+<p>where ProcessDown is a constructor that takes a <em>Pinto.Monitor.MonitorMsg</em></p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">MyMsg</span> </span>
+  = <span class="hljs-type">Tick</span>
+  | <span class="hljs-type">ProcessDown</span> <span class="hljs-type">Monitor</span>.<span class="hljs-type">MonitorMsg</span></code></pre>
+<p>A MonitorMsg is presently defined as </p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">MonitorObject</span></span>
+  = <span class="hljs-type">Foreign</span>
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">MonitorInfo</span></span>
+  = <span class="hljs-type">Foreign</span>
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">MonitorType</span></span>
+  = <span class="hljs-type">Process</span>
+  | <span class="hljs-type">Port</span>
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">MonitorMsg</span></span>
+  = <span class="hljs-type">Down</span> (<span class="hljs-type">MR</span>.<span class="hljs-type">RouterRef</span> <span class="hljs-type">MonitorRef</span>) <span class="hljs-type">MonitorType</span> <span class="hljs-type">MonitorObject</span> <span class="hljs-type">MonitorInfo</span></code></pre>
+<p>Which will need expanding should anybody actually need that information. Because we have a router sat in the way, the usual usage of monitor is to pass all of the information we need into the message that will be sent to us and ignore the MonitorMsg entirely</p>
+<pre><code class="language-haskell"><span class="hljs-title">ref</span> &lt;- <span class="hljs-type">Monitor</span>.monitor pid (const $ <span class="hljs-type">ProcessDown</span> pid)</code></pre>
+<p>where</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">MyMsg</span> </span>
+  = <span class="hljs-type">Tick</span>
+  | <span class="hljs-type">ProcessDown</span> <span class="hljs-type">Pid</span></code></pre>
+<p>Pull requests are accepted should somebody want to make the effort to expand those types into reality for some reason.</p>
+<h2 id="timers">Timers</h2>
+<p>Timers have also had a slight change in line with the new <em>HasSelf</em> typeclass and thoughts around subscriptions, as well as importing the recently ported DateTime libraries so that we have sensible duration types available to us.</p>
+<p>So instead of</p>
+<pre><code class="language-haskell"><span class="hljs-title">me</span> &lt;- self
+<span class="hljs-title">liftEffect</span> $ <span class="hljs-type">Timer</span>.sendEvery <span class="hljs-number">1000</span> me <span class="hljs-type">Tick</span></code></pre>
+<p>We have the far simpler</p>
+<pre><code class="language-haskell"><span class="hljs-type">Timer</span>.sendEvery (<span class="hljs-type">Milliseconds</span> <span class="hljs-number">1000.0</span>) <span class="hljs-type">Tick</span></code></pre>
+<p>This will probably be moved to <a href="https://github.com/id3as/purescript-erl-kernel">erl-kernel</a> in time, because it no longer does anything special and looks exactly like the underlying API.</p>
+<h2 id="summary">Summary</h2>
+<p>Conceptually not a lot has changed and yet we&#39;ve ended up in a place where we can use the full range of functionalities exposed by GenServers and Supervisors in a type-safe manner, we can chalk that up as a win - especially as it means this <a href="https://github.com/id3as/purescript-erl-pinto/issues/2">Github issue</a> from March 2019 can finally be closed.</p>
+]]></description><link>http://codeofrob.com/entries/purerl-updates---maxing-out-pinto-otp.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purerl-updates---maxing-out-pinto-otp.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 21 Oct 2021 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purerl Updates - Untagged Unions]]></title><description><![CDATA[<p>Yes, another blog post about Purerl, following on from</p>
+<ul>
+<li><a href="/entries/purerl-updates---processes-and-self.html">Purerl Updates - Processes and Self</a></li>
+<li><a href="/entries/purerl-updates---subscriptions.html">Purerl Updates - Subscriptions</a></li>
+</ul>
+<p>We are now here to talk about untagged unions and how they can be used when dealing with legacy messages being sent to our process and why we might want to do something differently at all.</p>
+<p>Consider a dependency to a legacy Erlang library that has a subscribe call that sends us messages</p>
+<pre><code class="language-erlang">legacy_api:subscribe(),
+
+<span class="hljs-keyword">receive</span> 
+  { data, Bin } -&gt; ..
+  { err, Reason } -&gt; ..
+  eof -&gt; ..
+</code></pre>
+<p>It isn&#39;t possible to subcribe to this in Purescript without doing <em>something</em> to unpack those Erlang types. We could have</p>
+<pre><code class="language-haskell"><span class="hljs-title">workerLoop</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">Foreign</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">workerLoop</span> = <span class="hljs-keyword">do</span>
+  msg &lt;- receive
+  <span class="hljs-keyword">case</span> (<span class="hljs-type">LegacyApi</span>.unpack msg) <span class="hljs-keyword">of</span> 
+    <span class="hljs-type">Err</span> err -&gt; ...
+    <span class="hljs-type">Data</span> bin -&gt; ...
+    <span class="hljs-type">Fin</span> -&gt; ...
+
+<span class="hljs-title">startWorker</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">Foreign</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">startWorker</span> = <span class="hljs-keyword">do</span>
+  <span class="hljs-type">LegacyApi</span>.subscribe
+  workerLoop
+</code></pre>
+<p>Simply leaving it to the caller to know that the Foreign needs running through the API again in order to decipher it.</p>
+<p>We could also use the MessageRouter in Pinto to spin up another process that knows how to do this for us so this translation is already done once we&#39;re in user code</p>
+<pre><code class="language-haskell"><span class="hljs-keyword">import</span> Pinto.MessageRouter <span class="hljs-keyword">as</span> MR
+
+<span class="hljs-title">workerLoop</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">LegacyApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">workerLoop</span> = <span class="hljs-keyword">do</span>
+  msg &lt;- receive
+  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span> 
+    <span class="hljs-type">Err</span> err -&gt; ...
+    <span class="hljs-type">Data</span> bin -&gt; ...
+    <span class="hljs-type">Fin</span> -&gt; ...
+
+<span class="hljs-title">startWorker</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">LegacyApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">startWorker</span> = <span class="hljs-keyword">do</span>
+  me &lt;- self
+  <span class="hljs-type">MR</span>.startRouter <span class="hljs-type">LegacyApi</span>.subscribe <span class="hljs-type">LegacyApi</span>.unsubscribe (self self &lt;&lt;&lt; <span class="hljs-type">LegacyApi</span>.unpack)
+  workerLoop</code></pre>
+<p>This is a viable solution for <em>most</em> scenarios because it is easy to understand, reasonably lightweight, allows us to accept more than one kind of message, etc. It incur the &quot;cost&quot; of spinning up another process, and it does incur the cost of doubling the number of messages being sent for a single interaction.</p>
+<p>Usually this isn&#39;t a problem (or more - if doubling the messages or processes is going to cause you issues, then it&#39;s possible that the codebase already has issues anyway!). </p>
+<p>Having said all of that, for FFI around existing Erlang where there are there are numerous variants, writing mapping code in Erlang could be rather error prone (and passing in constructors from Purescript gets tiresome after half a dozen) - it starts to make sense to instead try to describe the data types &quot;in place&quot; in Purescript using something formal.</p>
+<p>For this, there is the package <a href="https://github.com/id3as/purescript-erl-untagged-union">purescript-untagged-union</a>.</p>
+<p>Now, two of these values are directly representable in Purescript because of the way in which types are represented in Erlang under the hood.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">LegacyMsg</span> </span>
+  = <span class="hljs-type">Err</span> <span class="hljs-type">Binary</span>
+  | <span class="hljs-type">Data</span> <span class="hljs-type">Binary</span></code></pre>
+<p>We can let the untagged unions library know that underlying data maps onto this with an instance of RuntimeType that describes it</p>
+<pre><code class="language-haskell">instance legacyMsg_runtimeType ::
+  RuntimeType
+    LegacyMsg
+    (RTOption (RTTuple2 (RTLiteralAtom &quot;err&quot;) RTBinary)
+               RTTuple2 (RTLiteralAtom &quot;data&quot; RTBinary))</code></pre>
+<p>Come to think of it, that &#39;err&#39; is horrible, we&#39;re in Purescript and there is no reason to have such an ugly constructor - how about renaming it during mapping?</p>
+<pre><code class="language-haskell">data LegacyMsg 
+  = Error Binary
+  | Data Binary
+
+instance legacyMsg_runtimeType ::
+  RuntimeType
+    LegacyMsg
+    (RTOption (RTTuple2 (RTLiteralAtomConvert &quot;err&quot; &quot;error&quot;) RTBinary)
+               RTTuple2 (RTLiteralAtom &quot;data&quot; RTBinary))</code></pre>
+<p>We still have that atom all by itself however, the atom &#39;fin&#39; isn&#39;t representable as a Purescript type, it is only an Atom but we&#39;d like still like to be able to receive it! </p>
+<p>Well, we can build a type that represents our incoming messages, including that atom.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">Union</span> |$| <span class="hljs-type">AtomSymbol</span>.<span class="hljs-type">Atom</span> &quot;fin&quot; |+| <span class="hljs-type">LegacyMsg</span> |+| <span class="hljs-type">Nil</span></span></code></pre>
+<p>And then all that is left is to use this in a process that can receive these messages</p>
+<pre><code class="language-haskell"><span class="hljs-title">workerLoop</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">LegacyApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">workerLoop</span> = <span class="hljs-keyword">do</span>
+  msg &lt;- receive
+  ( case_ 
+      # on (\(m&#x27; :: <span class="hljs-type">LegacyMsg</span>) -&gt;
+          <span class="hljs-keyword">case</span> m&#x27; <span class="hljs-keyword">of</span> 
+            <span class="hljs-type">Err</span> err -&gt; ...
+            <span class="hljs-type">Data</span> bin -&gt; ...
+        )
+      # on (\(_ :: <span class="hljs-type">AtomSymbol</span>.<span class="hljs-type">Atom</span> <span class="hljs-string">&quot;fin&quot;</span>) -&gt;
+            ...
+        )
+  ) msg
+
+<span class="hljs-title">startWorker</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">LegacyApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">startWorker</span> = <span class="hljs-keyword">do</span>
+  <span class="hljs-type">LegacyApi</span>.subscribe 
+  workerLoop</code></pre>
+<p>This needs to be exhaustive or we will get a compile error which is super cool. </p>
+<p>All of this works without an additional process or a fumbly mapping layer. It&#39;s not perfect and relies on actually getting the type description correct but this at least presents a way of doing it without writing error-prone Erlang, which can be useful when dealing with APIs that have a whole array of random structures.</p>
+]]></description><link>http://codeofrob.com/entries/purerl-updates---untagged-unions.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purerl-updates---untagged-unions.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 19 Oct 2021 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purerl Updates - Subscriptions]]></title><description><![CDATA[<p>Two blog posts in a week? Unheard of - following on from Tuesday&#39;s blockbuster smash hit epic &quot;<a href="/entries/purerl-updates---processes-and-self.html">Purerl Updates - Processes and Self</a>&quot;, today we have an entry describing our current thoughts on subscriptions in a Purerl world.</p>
+<p>A standard procedure in Erlang, is to invoke an API that then proceeds to send messages back to the invoking process.</p>
+<pre><code class="language-erlang">some_api:subscribe()
+
+<span class="hljs-keyword">receive</span> 
+  Msg -&gt; ..</code></pre>
+<p>More often or not, an overload will be provided allowing a Pid to be passed in, in case you didn&#39;t want it sending to <em>self</em>.</p>
+<pre><code class="language-erlang">Pid = spawn_worker(),
+some_api:subscribe(Pid)</code></pre>
+<p>We could write a function that looks like this in Purescript (using the typeclasses explored in the previous blog entry).</p>
+<pre><code class="language-haskell"><span class="hljs-keyword">module</span> SomeApi <span class="hljs-keyword">where</span>
+
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">HelloWorld</span> | <span class="hljs-type">Goodbye</span></span>
+
+<span class="hljs-title">subscribe</span> :: <span class="hljs-keyword">forall</span> process. 
+  <span class="hljs-type">HasProcess</span> <span class="hljs-type">Msg</span> process =&gt; 
+  process -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">subscribe</span> = ...
+</code></pre>
+<p>In this, we are saying &quot;Given a process that accepts <em>Msg</em>, then the subscription will send <em>msg</em> to you.</p>
+<pre><code class="language-haskell"><span class="hljs-title">workerLoop</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">SomeApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">workerLoop</span> = <span class="hljs-keyword">do</span>
+  msg &lt;- receive
+  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span> 
+    <span class="hljs-type">HelloWorld</span> -&gt; ...
+    <span class="hljs-type">Goodbye</span> -&gt; ...
+
+<span class="hljs-title">main</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">main</span> = <span class="hljs-keyword">do</span> 
+  process &lt;- spawnLink workerLoop
+  <span class="hljs-type">SomeApi</span>.subscribe process</code></pre>
+<p>This isn&#39;t great, typically we don&#39;t write processes this way - processes usually not only want to subscribe to messages from external sources, but also send themselves messages, typically they&#39;ll achieve that by lifting messages into a process specific data type.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">ProcessMsg</span> </span>
+  = <span class="hljs-type">ApiMsg</span> <span class="hljs-type">SomeApi</span>.<span class="hljs-type">Msg</span>
+  | <span class="hljs-type">Tick</span>
+
+<span class="hljs-title">workerLoop</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">ProcessMsg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">workerLoop</span> = ...
+</code></pre>
+<p>Calling <em>SomeApi.subscribe</em> with this process will result in a compiler error because SomeApi.Msg is the wrong type.</p>
+<h2 id="emitters">Emitters</h2>
+<p>The pattern we&#39;ve been using up until now to side-step this is for subscription calls to take in a blank cheque in the form of <em>msg -&gt; Effect Unit</em>, allowing the caller to decide what to do with messages on that subscription.</p>
+<pre><code class="language-haskell"><span class="hljs-keyword">module</span> SomeApi <span class="hljs-keyword">where</span>
+
+<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">HelloWorld</span> | <span class="hljs-type">Goodbye</span></span>
+
+<span class="hljs-title">subscribe</span> :: (<span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>) -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">subscribe</span> = ...
+</code></pre>
+<p>Subscription could then look like this</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">ProcessMsg</span> </span>
+  = <span class="hljs-type">ApiMsg</span> <span class="hljs-type">SomeApi</span>.<span class="hljs-type">Msg</span>
+  | <span class="hljs-type">Tick</span>
+
+<span class="hljs-title">main</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">main</span> = <span class="hljs-keyword">do</span> 
+  process &lt;- spawnLink workerLoop
+  <span class="hljs-type">SomeApi</span>.subscribe $ send process &lt;&lt;&lt; <span class="hljs-type">ApiMsg</span></code></pre>
+<p>More commonly the use of some form of <em>self</em> would be used inside the process itself, as it makes little sense for one process to subscribe on behalf of another.</p>
+<pre><code class="language-haskell"><span class="hljs-title">workerLoop</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">SomeApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">workerLoop</span> = <span class="hljs-keyword">do</span>
+  msg &lt;- receive
+  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span> 
+    <span class="hljs-type">HelloWorld</span> -&gt; ...
+    <span class="hljs-type">Goodbye</span> -&gt; ...
+
+<span class="hljs-title">startWorker</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">SomeApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">startWorker</span> = <span class="hljs-keyword">do</span>
+  me &lt;- self
+  liftEffect $ <span class="hljs-type">SomeApi</span>.subscribe $ send me &lt;&lt;&lt; <span class="hljs-type">ApiMsg</span>
+  workerLoop
+
+<span class="hljs-title">main</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">main</span> = <span class="hljs-keyword">do</span> 
+  _ &lt;- spawnLink workerLoop
+</code></pre>
+<p>This <em>works</em> and is elegant - and indeed for about two years this has been The Way. Our codebase is/was littered with <em>send me &lt;&lt;&lt; Msg</em>, but in hindsight this isn&#39;t great.</p>
+<p>Why not? The problem with <em>Effect Unit</em> is that it can do anything. <em>ANYTHING</em>. The problem with passing an <em>Effect Unit</em> is that it can do that &quot;anything&quot; within the context of a completely different process. This can cause problems.</p>
+<p><em>Errors</em>: What happens if the Effect Unit causes an exception? Who crashes? The remote process? Who does that affect? Anybody else who is currently subscribed? How do they find out? Are they in the right supervision tree for this not to be a problem? Can we just swallow the exception? How does the caller find out that it crashed? Oh dear.</p>
+<p><em>Interference</em>: What if this is in a message loop doing other things? What if the <em>Effect Unit</em> takes up precious time? What happens to the backlog? What happens to anything awaiting a message with a timeout? </p>
+<p>While the reality is that while nearly all our callbacks are implemented as <em>send me &lt;&lt;&lt; Msg</em>, as our codebases grow and we do more and more of these things, somebody is eventually going to cause problems with the above and we&#39;ll be looking at hilarious (and needless) debug sessions as a result. If not us - then somebody else using Purerl (and our numbers <em>are</em> growing...).</p>
+<h2 id="hasself-to-the-rescue">HasSelf to the rescue</h2>
+<p>HasSelf was added fairly recently and makes it possible to write code that operates inside any monad provided it has an implementation of &#39;self&#39;.</p>
+<pre><code class="language-haskell"><span class="hljs-title">saferSubscribe</span> ::
+  <span class="hljs-keyword">forall</span> m msg.
+  <span class="hljs-type">MonadEffect</span> m =&gt;
+  <span class="hljs-type">HasSelf</span> m msg =&gt;
+  (<span class="hljs-type">Msg</span> -&gt; msg) -&gt; m <span class="hljs-type">Unit</span>
+<span class="hljs-title">saferSubscribe</span> f = <span class="hljs-keyword">do</span>
+  me :: (<span class="hljs-type">Process</span> msg) &lt;- self
+  liftEffect $ subscribe $ send me &lt;&lt;&lt; f
+  pure unit</code></pre>
+<p>Adding onto that, we need to assert that we can evaluate effects in this monad (MonadEffect m =&gt;) in order to actually issue the subscription and suddenly our call to this becomes</p>
+<pre><code class="language-haskell"><span class="hljs-title">workerLoop</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">SomeApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">workerLoop</span> = <span class="hljs-keyword">do</span>
+  msg &lt;- receive
+  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span> 
+    <span class="hljs-type">HelloWorld</span> -&gt; ...
+    <span class="hljs-type">Goodbye</span> -&gt; ...
+
+<span class="hljs-title">startWorker</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">SomeApi</span>.<span class="hljs-type">Msg</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">startWorker</span> = <span class="hljs-keyword">do</span>
+  <span class="hljs-type">SomeApi</span>.saferSubscribe <span class="hljs-type">ApiMsg</span>
+  workerLoop
+
+<span class="hljs-title">main</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">main</span> = <span class="hljs-keyword">do</span> 
+  _ &lt;- spawnLink workerLoop
+</code></pre>
+<p>Note: The liftEffect is gone, as is the call to &#39;self&#39;, the API looks a <em>lot</em> more like the original Erlang and is safer while we&#39;re at it. </p>
+<p>Because it&#39;s no longer a blank cheque, we should probably provide a second method (just like in Erlang) that takes a process to send messages to instead of simply relying on &#39;self&#39;.</p>
+<pre><code class="language-haskell"><span class="hljs-title">saferSubscribeTo</span> ::
+  <span class="hljs-keyword">forall</span> msg.
+  <span class="hljs-type">Process</span> msg -&gt; (<span class="hljs-type">Msg</span> -&gt; msg) -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">saferSubscribeTo</span> p f = <span class="hljs-keyword">do</span> subscribe $ send p &lt;&lt;&lt; f</code></pre>
+<p>This is how most of our subscriptions now look across Pinto/our own code/etc. It&#39;s safer for everybody concerned and fits well with the ethos of &#39;trying to look like the Erlang APIs most of this stuff is built on top of&#39;.</p>
+]]></description><link>http://codeofrob.com/entries/purerl-updates---subscriptions.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purerl-updates---subscriptions.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 14 Oct 2021 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purerl Updates - Processes and Self]]></title><description><![CDATA[<p>It has been about three years since I first sat in a hotel in Lithuania throwing together the first versions of <a href="https://github.com/id3as/purescript-erl-pinto">purescript-erl-pinto</a> and <a href="https://github.com/id3as/purescript-erl-stetson">purescript-erl-stetson</a> so that we could get started on a project for one of our clients.</p>
+<p>Quite a lot of code has been written against those projects internally by colleagues and myself and over time:</p>
+<ul>
+<li>Various improvements/patterns have been discovered within core libraries such as <a href="https://github.com/purerl/purescript-erl-process">purescript-erl-process</a>. </li>
+<li>A heap of Erlang specific packages have been written and released</li>
+<li>Another mountain of packages have been ported across from Purescript </li>
+<li>Pinto and Stetson have been upgraded repeatedly by various colleagues as our understanding of what we need them to do has evolved.</li>
+</ul>
+<p>The <a href="https://purerl-cookbook.readthedocs.io/">purerl cookbook</a> has been updated for these latest releases, as has the <a href="https://github.com/id3as/demo-ps">demo-ps</a> but felt it worthwhile highlighting some of the changes in a few (of my increasingly rare) blog posts.</p>
+<p>In this post we&#39;ll be looking at Processes and the concept of &#39;self&#39;</p>
+<h1 id="processes">Processes</h1>
+<p>A common practise in Erlang codebases is to spawn a new process and use its Pid for communication.</p>
+<pre><code class="language-erlang"><span class="hljs-function"><span class="hljs-title">example</span><span class="hljs-params">()</span> -&gt;</span>
+  Pid = spawn_link(fun receive_message/0)
+  Pid ! hi.
+
+<span class="hljs-function"><span class="hljs-title">receive_message</span><span class="hljs-params">()</span> -&gt;</span>
+  <span class="hljs-keyword">receive</span>
+    SomeMessage -&gt; 
+      ?PRINT(<span class="hljs-string">&quot;Got a message&quot;</span>),
+      ok
+   <span class="hljs-keyword">end</span>.</code></pre>
+<p>In Purerl, the type <em>Pid</em> lives in <em>Erl.Process.Raw</em> and is just an imported foreign type</p>
+<pre><code class="language-haskell"><span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> data <span class="hljs-type">Pid</span> :: <span class="hljs-type">Type</span></code></pre>
+<p>This typically isn&#39;t used to any great amount except in some specific FFI cases, it being far better generally to use the types found in <em>Erl.Process</em> which have the phantom type <em>msg</em> floating around meaning all the sends and receives are limited to the types of message that that process has declared it will receive. <em>Process msg</em> itself is just a newtype around Raw.Pid of course.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">newtype</span> <span class="hljs-type">Process</span> (<span class="hljs-title">a</span> :: <span class="hljs-type">Type</span>)</span>
+  = <span class="hljs-type">Process</span> <span class="hljs-type">Raw</span>.<span class="hljs-type">Pid</span></code></pre>
+<p>To create a typed process, one could call <em>spawnLink</em> and provide a callback which will be executed in the process created in that underlying call to <em>spawn_link</em> in Erlang. A change made fairly early on in development was to change this callback from something that took some context, to something that operated inside <em>ProcessM msg r</em>, with the context being provided by that monad - this will become important later on in this blog entry so I&#39;ll demonstrate this here.</p>
+<h2 id="the-old-way">The old way</h2>
+<p>&quot;Given a callback that accepts a <em>SpawnLinkContext</em> typed around <em>msg</em>, run that callback inside a new process and return that new process, also typed around <em>msg</em>&quot;</p>
+<pre><code class="language-haskell"><span class="hljs-title">spawnLink</span> :: <span class="hljs-keyword">forall</span> msg. (<span class="hljs-type">SpawnLinkContext</span> msg -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>) -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Process</span> msg)</code></pre>
+<p>That context then provided the means of receiving messages, being defined as something like</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">SpawnLinkContext</span> msg = </span>
+  { receive :: <span class="hljs-type">Effect</span> msg 
+  , receiveWithTimeout :: <span class="hljs-type">Timeout</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Maybe</span> msg)
+  }</code></pre>
+<p>Thus, the Erlang example, re-written in Purerl would have looked something like this</p>
+<pre><code class="language-haskell"><span class="hljs-title">example</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">example</span> = <span class="hljs-keyword">do</span>
+  pid &lt;- spawnLink receiveMessage
+  pid ! <span class="hljs-string">&quot;hi&quot;</span>
+
+<span class="hljs-title">receiveMessage</span> :: <span class="hljs-type">SpawnLinkContext</span> <span class="hljs-type">String</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">receiveMessage</span> c = <span class="hljs-keyword">do</span> 
+  msg &lt;- c.receive
+  log <span class="hljs-string">&quot;Got a message&quot;</span></code></pre>
+<h2 id="the-new-way">The new way</h2>
+<p>&quot;Evaluate the given code in the context of a <em>ProcessM</em> typed around <em>msg</em>&quot;</p>
+<pre><code class="language-haskell"><span class="hljs-title">spawnLink</span> :: <span class="hljs-keyword">forall</span> msg. <span class="hljs-type">ProcessM</span> msg <span class="hljs-type">Unit</span> -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">Process</span> msg)</code></pre>
+<p>And quite simply, any calls to receive/etc are defined as functions that operate inside ProcessM, again all typed around <em>msg</em></p>
+<pre><code class="language-haskell"><span class="hljs-title">receive</span> :: <span class="hljs-keyword">forall</span> msg. <span class="hljs-type">ProcessM</span> msg msg
+<span class="hljs-title">receive</span> = <span class="hljs-type">ProcessM</span> <span class="hljs-type">Raw</span>.receive</code></pre>
+<p>This cuts down on the cruft somewhat, as instead of having to pass a context everywhere, one can simply write functions in the context of ProcessM, re-writing that initial example now looks like this (Note that the log call needs lifting into <em>ProcessM</em> because it is written as an <em>Effect</em>)</p>
+<pre><code class="language-haskell"><span class="hljs-title">example</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">example</span> = <span class="hljs-keyword">do</span>
+  pid &lt;- spawnLink receiveMessage
+  pid ! <span class="hljs-string">&quot;hi&quot;</span>
+
+<span class="hljs-title">receiveMessage</span> :: <span class="hljs-type">ProcessM</span> <span class="hljs-type">String</span> <span class="hljs-type">Unit</span>
+<span class="hljs-title">receiveMessage</span> = <span class="hljs-keyword">do</span> 
+  msg &lt;- receive
+  liftEffect $ log <span class="hljs-string">&quot;Got a message&quot;</span></code></pre>
+<h2 id="extending-this-model">Extending this model</h2>
+<p>It turns out that this is quite a nice pattern for representing the different <em>types</em> of process available in Erlang (OTP, Cowboy and indeed our own application code), consider:</p>
+<ul>
+<li>Cowboy Loop handlers</li>
+<li>Cowboy Websocket handlers</li>
+<li>OTP gen_server</li>
+<li>OTP supervisor</li>
+<li>OTP gen_statem</li>
+</ul>
+<p>All of these could be ran as <em>ProcessM</em>, except they have more types associated with them <em>and</em> various functions available designed for use in those specific contexts, for example in the simple case of cowboy..</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">WebSocketInfoHandler</span> msg state</span>
+  = msg -&gt; state -&gt; <span class="hljs-type">WebSocketResult</span> msg (<span class="hljs-type">WebSocketCallResult</span> state)</code></pre>
+<p>We have the types <em>msg</em> and <em>state</em> in our type because the callbacks involved tend to take <em>state</em> and there is a callback (<em>info</em>) for messages received by the loop handler typed around <em>msg</em></p>
+<p>In the more complicated case of an OTP GenServer, this looks like this</p>
+<pre><code>type C<span class="hljs-literal">all</span>Fn reply cont stop msg <span class="hljs-keyword">state</span>
+  = From reply -&gt; <span class="hljs-keyword">state</span> -&gt; ResultT cont stop msg <span class="hljs-keyword">state</span> (C<span class="hljs-literal">all</span>Result reply cont stop <span class="hljs-keyword">state</span>)</code></pre><p>Most operations take place inside that <em>ResultT</em> which encodes the <em>cont</em>, <em>stop</em>, <em>msg</em>, and <em>state</em> types for use with our operations. (<em>cont</em> being the message that can be received by <em>handle_continue</em>, <em>stop</em> being a custom stop reason, <em>msg</em> being messages received by <em>handle_info</em> and <em>state</em> being the state of the gen server).</p>
+<p>We also end up with our own contexts in our own codebases for specific process types around common units of business logic. </p>
+<h2 id="common-functionality">Common Functionality</h2>
+<p>In most of these cases, just like with <em>Process.spawnLink</em>, something gets returned that represents the started process - for example the GenServer.</p>
+<pre><code class="language-haskell"><span class="hljs-title">startLink</span> :: <span class="hljs-keyword">forall</span> cont stop msg state. 
+  (<span class="hljs-type">ServerSpec</span> cont stop msg state) 
+  -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">StartLinkResult</span> (<span class="hljs-type">ServerPid</span> cont stop msg state))</code></pre>
+<p>Here we have a <em>ServerPid cont stop msg state</em> returned to the caller - again keeping a lot of useful information around to help us make calls into a GenServer but the type we&#39;re interested in here is <em>msg</em>. Most generic APIs will be written around the concept of a <em>Process msg</em> and what we have here is a <em>ServerPid cont stop msg state</em></p>
+<p>The logical step here is to expose</p>
+<pre><code class="language-haskell"><span class="hljs-title">toProcess</span> :: <span class="hljs-type">ServerPid</span> cont stop msg state -&gt; <span class="hljs-type">Process</span> msg</code></pre>
+<p>It turns out that this is a very common operation and so a typeclass is born and added to Erl.Process for everybody to implement when writing this kind of code.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-type">HasProcess</span> b a <span class="hljs-keyword">where</span></span>
+  getProcess :: a -&gt; <span class="hljs-type">Process</span> b</code></pre>
+<p>In fact, two typeclasses are born because some APIs only need a Pid after all.</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-type">HasPid</span> a <span class="hljs-keyword">where</span></span>
+  getPid :: a -&gt; <span class="hljs-type">Pid</span></code></pre>
+<p>Most functions that take a <em>Process msg</em> therefore don&#39;t actually care about it <em>being</em> a <em>Process msg</em>, but only that a <em>Process msg</em> can be gotten from the type</p>
+<pre><code class="language-haskell"><span class="hljs-title">callMe</span> :: <span class="hljs-keyword">forall</span> p msg. 
+  <span class="hljs-type">HasProcess</span> msg p =&gt; 
+  p -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span></code></pre>
+<p>And now all of those custom types can be used with a whole suite of APIs without having to unpack a convoluted structure of newtypes.</p>
+<h2 id="self">Self</h2>
+<p>There is one more common operation that has been ignored so far, and that is the concept of self. An incredibly common thing in Erlang is to invoke <em>self</em> to get the Pid of the current process.</p>
+<pre><code class="language-erlang">Self = self(),
+some_api:call_me(Self)</code></pre>
+<p>For a while, we started having <em>self</em> methods on every module that exported some monad in which process logic could be evalulated, and this would return the full type of the process (complete with <em>cont</em>, <em>stop</em>, <em>state</em>, etc). There were a lot of <em>self</em> functions being exported and imported and in 99.99% of all cases they were immediately followed by a call to <em>getProcess</em> using the <em>HasProcess</em> typeclass implementation for that system.</p>
+<pre><code class="language-haskell">(me :: <span class="hljs-type">Process</span> <span class="hljs-type">MyMsg</span>) &lt;- getProcess &lt;$&gt; <span class="hljs-type">GenServer</span>.self</code></pre>
+<p>What does <em>self</em> mean then? The correct answer is as written above, but the correct answer isn&#39;t always the nicest answer - it was very rare that we would need anything from <em>self</em> other than the current <em>Process msg</em> and we were running into issues in modules that had code for more than one of these contexts in them, whose self are we using anyway?</p>
+<p>The answer was to be pragmatic and create a typeclass for &#39;<em>any m</em>&#39; that allowed that &#39;<em>m</em>&#39; to export a <em>Process msg</em></p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-type">HasSelf</span> (<span class="hljs-title">m</span> :: <span class="hljs-type">Type</span> -&gt; <span class="hljs-type">Type</span>) msg | m -&gt; msg <span class="hljs-keyword">where</span></span>
+  self :: m (<span class="hljs-type">Process</span> msg)</code></pre>
+<p>For the case of anything running inside a <em>ProcessM</em>, this isn&#39;t any more complicated than calling Raw.self to get the current pid and wrapping it up with the relevant newtypes</p>
+<pre><code class="language-haskell"><span class="hljs-class"><span class="hljs-keyword">instance</span> selfProcessM :: <span class="hljs-type">HasSelf</span> (<span class="hljs-type">ProcessM</span> <span class="hljs-title">a</span>) a <span class="hljs-keyword">where</span></span>
+  self :: <span class="hljs-keyword">forall</span> a. <span class="hljs-type">ProcessM</span> a (<span class="hljs-type">Process</span> a)
+  self = <span class="hljs-type">ProcessM</span> $ <span class="hljs-type">Process</span> &lt;$&gt; <span class="hljs-type">Raw</span>.self</code></pre>
+<p>Similar implementations then exist for Pinto/Stetson contexts, allowing code to simply call <em>Process.self</em> from practically anywhere to get a typed <em>Process msg</em> valid for the current context.</p>
+<pre><code class="language-haskell"><span class="hljs-type">SomeApi</span>.callMe &lt;&lt;&lt; self</code></pre>
+<p>All typed, all safe, nobody sent messages they can&#39;t handle - living the dream.</p>
+]]></description><link>http://codeofrob.com/entries/purerl-updates---processes-and-self.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purerl-updates---processes-and-self.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 12 Oct 2021 09:30:00 GMT</pubDate></item><item><title><![CDATA[Write Your Erlang Gen Servers in Visual Basic]]></title><description><![CDATA[<p>TLDR: <a href="https://github.com/robashton/erlang.net">Erlang.NET Released on Github</a></p>
 <p>I&#39;ve been working in Erlang now for nearly a decade and for the last year or two we have been investigating what it would take to start writing a <em>lot</em> more of that Erlang in Purescript instead because in theory working in a sensibly typed language means fewer bugs means fewer support calls means more time spent working on features which can be sold and therefore this is good for profit margins.</p>
 <p>Well let me tell you - it blows, we have lost weeks trying to write typeclasses around row types to confirm that &#39;this chunk of binary is good to go into this piece of code that just wants a chunk of binary&#39; and months pontificating over whether an attribute should be declared at the type-level or merely at runtime and whilst progress has been made, it has been a slow and painful exercise.</p>
 <p><em>There has to be a better way</em></p>
@@ -655,667 +1334,4 @@ config <span class="hljs-symbol">:dotnet</span>,
 </code></pre><p>I couldn&#39;t work out if we actually wanted to use Lock/Unlock around decoder creation, but it didn&#39;t hurt so in it went.</p>
 <p>I <em>think</em> that this is how these APIs should be used, I give no claims to actual correctness - the documentation is vague and contradictory in places with samples/such but I have stress tested this and I&#39;ve also demonstrated the failure cases to myself (multiple threads, no locks) to hilarity so it&#39;s probably close enough to be right.</p>
 <p>Note: The transform/encode side of the API doesn&#39;t provide config to use this locking mechanism and that feels a little bit like the left hand not knowing what the right hand is doing, but hey ho - use what we can, when we can.</p>
-]]></description><link>http://codeofrob.com/entries/cuda-context-management-with-nvenc.html</link><guid isPermaLink="true">http://codeofrob.com/entries/cuda-context-management-with-nvenc.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 17 Nov 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Decoding h264 with Nvidia]]></title><description><![CDATA[<p>This blog entry is part of my &quot;<a href="/entries/blogging-the-mundane.html">blog about mundane stuff</a>&quot; series.</p>
-<p>The scene is set and I&#39;ve <a href="/entries/exploring-the-nvidia-code-samples-and-docs.html">set my laptop up to do Nvidia work</a>,so now to look at the decode process in isolation.</p>
-<p>The first task for me will be to attempt to decode one of my &#39;known good&#39; h264 sources. Now - my sources are nearly all transport streams with audio (often multiple) and such, so I&#39;ll need to parse those files, pull the streams out of them, filter the video stream from a single pid and send the h264 frame data into the API for decode. This is quite a lot of work and there is no way of testing whether the results are good short of either dumping them to disk and telling ffmpeg what it&#39;s looking at (raw frames), or piping that data into an encoder in code and writing out a fresh transport stream with the round-tripped h264.</p>
-<p>I&#39;ll take that second option because I already have all the code required to do this in Erlang in our proprietary workflow engine - a simplified example of the code I&#39;ll write to test my decoder appears below. (Working inside of a mature codebase has its advantages)</p>
-<pre><code class="language-erlang">
-  #workflow {
-    generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">&quot;foo.ts&quot;</span>&gt;&gt; },
-    processors = [
-      #nvidia_decoder { name = decode, from = { source, ?video_frames_with_stream_id(<span class="hljs-number">256</span>) } },
-      #x264_encoder { name = encode, from = decode },
-      #ts_writer { name = write, from = encode, filename  = &lt;&lt;<span class="hljs-string">&quot;out.ts&quot;</span>&gt;&gt; }
-    ]
-  }
-</code></pre>
-<p>Now to get to this point, the &#39;best&#39; way to achieve this is to try to mirror the underlying API as best as possible in Erlang and write as direct a NIF as possible under this. We can assume that&#39;s what I&#39;m then using in the Erlang, that allows me to write a test Erlang file and simply calls one or two of the methods with minimum config and build that up as I go. So we&#39;ll say that that&#39;s what I&#39;m doing with an <em>nvidia_test.erl</em> calling into an <em>nvidia_api.erl</em> which my <em>nvidia_decoder.erl</em> will eventually leverage.</p>
-<p>We can therefore jump straight into the C and write some functions that we can assume are being called from Erlang with the appropriate arguments.</p>
-<h1 id="the-api">The API</h1>
-<p>The Decode API is contained in a couple of header files in the SDK tarfile</p>
-<ul>
-<li><em>Interface/cuviddec.h</em> all the enums and functions</li>
-<li><em>Interface/nvcuvid.h</em>  some  high level helpers (includes the above)</li>
-</ul>
-<p>A pre-built library for this exists in</p>
-<ul>
-<li><em>Lib/[os]/[arch]/libnvcuvid.so</em></li>
-</ul>
-<p>but on my OS this library is shipped with nvidia-x11 and that&#39;s the package I am loading it from at runtime, but it is also shipped with the opengl-drivers package. Googling around this I can see confusion over whether this is supposed to be vendored or not (why would we need to have X libs installed in order to run a decode process for example).</p>
-<p>I suspect that we&#39;d just vendor this in production rather than install packages we don&#39;t need.</p>
-<h1 id="parsing-the-h264">Parsing the h264</h1>
-<p>Each frame has a blob of &#39;data&#39;, which is essentially a sequence of NAL units, some of which are metadata describing the video content and some of which are the data itself. We can parse this ourselves in Erlang and pass just the data into the decoder, or we can just pass the whole lot into Nvidia&#39;s parser and use the callbacks provided by that parser to then feed a decoder.</p>
-<p>We do actually have code lying around for parsing h264, which is why we even have the concept of a &#39;frame&#39; at all in the above code, but by far the easiest way to use the Nvidia decoder to use that parser as it then ends up providing the exact structures required <em>for</em> that decoder.</p>
-<p>Creating a parser is quite easy, we populate a CUVIDPARSERPARAMS with appropriate config and init the darned thing - this is all host code for execution on the CPU and is not remotely specific to nvidia and doesn&#39;t require any hardware setup. In my code, the parser parameters are passed in from Erlang, but hard coded below. <em>decode_session</em> is a pointer to a struct containing both the parser and a pile of information also passed in by the Erlang.</p>
-<pre><code class="language-c">
-  CUVIDPARSERPARAMS videoParserParameters = {}
-  videoParserParameters.CodecType = cudaVideoCodec_H264;
-  videoParserParameters.ulMaxNumDecodeSurfaces = <span class="hljs-number">1</span>;
-  videoParserParameters.ulClockRate = <span class="hljs-number">90000</span>;
-  videoParserParameters.ulMaxDisplayDelay = <span class="hljs-number">0</span>;
-  videoParserParameters.pUserData = decode_session;
-
-  videoParserParameters.pfnSequenceCallback = decode_session_handle_video_sequence;
-  videoParserParameters.pfnDecodePicture = decode_session_handle_picture_decode;
-  videoParserParameters.pfnDisplayPicture = decode_session_handle_picture_display;
-
-
- cuvidCreateVideoParser(&amp;decode_session-&gt;parser, &amp;videoParserParameters);
-</code></pre>
-<p>There are three callbacks on this struct, which are very much designed to work around the decode itself. </p>
-<ul>
-<li><em>pfnSequenceCallback</em>: Stream information, create the decoder if you want / Stream has changed and decoder needs reconfiguring</li>
-<li><em>pfnDecodePicture</em>: Here is data and information about that data, stick it into the decoder</li>
-<li><em>pfnDisplayPicture</em>: You should pulling a frame out of the decoder here cos it&#39;s ready</li>
-</ul>
-<p>If the reader is unfamiliar with video streams, the reason we have two callbacks for decode/display is that frames in the incoming h264 stream are not necessarily in display order because you can have references to previous/future frames in encoded h264 data. It&#39;s not simply &#39;one in, one out&#39;.</p>
-<p>The form of the data going in therefore is &#39;packets&#39; with timestamps which we can use for correlation coming back out again, calling the code from Erlang (but removing all the NIF mess) looks like this, simply throwing data at the parser and letting it do its job.</p>
-<pre><code class="language-c">
-<span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title">decode_frame</span><span class="hljs-params">(decode_session* session, <span class="hljs-keyword">void</span>* data, <span class="hljs-keyword">int</span> size, <span class="hljs-keyword">int64_t</span> timestamp)</span>
-</span>{
-  CUVIDSOURCEDATAPACKET packet = { <span class="hljs-number">0</span> };
-  packet.payload = data;
-  packet.payload_size = size;
-  packet.flags = CUVID_PKT_TIMESTAMP;
-  packet.timestamp = timestamp;
-
-  <span class="hljs-keyword">if</span> (size == <span class="hljs-number">0</span>) {
-    packet.flags |= CUVID_PKT_ENDOFSTREAM;
-  }
-
-  cuCtxPushCurrent(session-&gt;ctx);
-  cr = cuvidParseVideoData(session-&gt;parser, &amp;packet);
-  cuCtxPopCurrent(session-&gt;ctx);
-
-}
-
-</code></pre>
-<p>My first test effectively boiled down to calling this parser with a couple of frames with empty callbacks and printfs just to make sure that things were initialising as expected and the callbacks were being invoked.</p>
-<pre><code class="language-c">
-  <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> CUDAAPI <span class="hljs-title">decode_session_handle_video_sequence</span><span class="hljs-params">(<span class="hljs-keyword">void</span> *obj, CUVIDEOFORMAT* pVideoFormat)</span>
-  </span>{
-    TRACE(<span class="hljs-string">&quot;handle_video_sequence  \r\n&quot;</span>);
-  }
-</code></pre>
-<p>Each of these callbacks present us with a <em>void\</em> obj<em>, which is the *pUserData</em> passed into the parser parameters on creation, we&#39;re using a struct here containing the parser and parameters, and it makes sense to stash the decoder in this struct too.</p>
-<h1 id="initialising-the-hardware">Initialising the hardware</h1>
-<p>We can&#39;t create a decoder until we&#39;ve parsed some h264, but the decoder API is built directly on top of some CUDA constructs and those constructs will need creating up front if we are to create that decoder. </p>
-<p>All CUDA operations revolve around having a CUDA context created around the device we want to use for the CUDA operations, ignoring the return results (not something I&#39;m doing in the real code), a basic setup looks thus. (I&#39;ve also stripped the Erlang comms from these implementations, as messaging code and binary reference counting is outside the scope of this blog entry).</p>
-<pre><code class="language-c">
- CUdevice cuDevice = <span class="hljs-number">0</span>;
- CUcontext ctx = <span class="hljs-number">0</span>;
-
-
- cuInit(<span class="hljs-number">0</span>);
- cuDeviceGet(&amp;cuDevice, <span class="hljs-number">0</span>);
- cuCtxCreate(&amp;ctx, <span class="hljs-number">0</span>, cuDevice);
-</code></pre>
-<p>Now, for all operations involving CUDA, this context will need binding to the current thread (except where in cases where various Nvidia APIs helpfully do this for us) and there are multiple ways of managing that context, the documentation tells us to do it one way whilst saying that another way is the default and the samples go on to do it in a whole other manner. I&#39;ll actually try and cover this in the next entry because it might save somebody some time in the future (or somebody might e-mail me to tell me I&#39;ve completely missed the point, that&#39;d be quite nice).</p>
-<p>We stash this context on the struct being used in the parser above so I can then use it in calls later, but that&#39;s the extent of the setup we can do until we&#39;ve parsed some of the stream.</p>
-<h1 id="creating-the-decoder">Creating the decoder</h1>
-<p>In the callback for <em>pfnSequenceCallback</em>, we get told about the video format in the struct <em>CUVIDEOFORMAT</em>, and get passed our struct as a <em>void\</em> <em>, so the first thing to do here is grab that struct because it has some config on it, and then create a *CUVIDDECODECREATEINFO</em> and populate it from both the config and the information about the video given to us by the parser.</p>
-<pre><code class="language-c">  <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> CUDAAPI <span class="hljs-title">decode_session_handle_video_sequence</span><span class="hljs-params">(<span class="hljs-keyword">void</span> *obj, CUVIDEOFORMAT* pVideoFormat)</span> </span>{
-    CUresult cr;
-    decode_session *session = (decode_session *) obj;
-    CUVIDDECODECREATEINFO decode_create_info = { <span class="hljs-number">0</span> };
-
-    decode_create_info.ulWidth = pVideoFormat-&gt;coded_width;
-    decode_create_info.ulHeight = pVideoFormat-&gt;coded_height;
-    decode_create_info.CodecType = pVideoFormat-&gt;codec;
-    decode_create_info.ChromaFormat = pVideoFormat-&gt;chroma_format;
-    decode_create_info.bitDepthMinus8 = pVideoFormat-&gt;bit_depth_luma_minus8;
-    decode_create_info.ulTargetWidth = pVideoFormat-&gt;coded_width;
-    decode_create_info.ulTargetHeight = pVideoFormat-&gt;coded_height;
-    decode_create_info.ulNumDecodeSurfaces = pVideoFormat-&gt;min_num_decode_surfaces;
-    decode_create_info.ulNumOutputSurfaces = <span class="hljs-number">2</span>;
-    decode_create_info.ulIntraDecodeOnly = <span class="hljs-number">0</span>;
-    decode_create_info.Reserved1 = <span class="hljs-number">0</span>;
-    decode_create_info.ulCreationFlags = cudaVideoCreate_PreferCUVID;
-
-    decode_create_info.ulMaxWidth = session-&gt;max_width;
-    decode_create_info.ulMaxHeight = session-&gt;max_height;
-    decode_create_info.OutputFormat = session-&gt;output_format;
-    decode_create_info.DeinterlaceMode = session-&gt;deinterlace_mode;
-  }
-</code></pre>
-<p>Creating the decoder itself is just a case of binding the CUDA context to the current thread and invoking the relevant API.</p>
-<pre><code class="language-c">
-  cuCtxPushCurrent(session-&gt;ctx);
-  cr = cuvidCreateDecoder(&amp;session-&gt;decoder, &amp;decode_create_info);
-  cuCtxPopCurrent(<span class="hljs-literal">NULL</span>);
-</code></pre>
-<p>The callback expects a return value of *&lt; 0* if there is a failure, or  <em>min_num_decode_surfaces</em> if there is a success, so...</p>
-<pre><code class="language-c">
-  <span class="hljs-keyword">if</span> ( CUDA_SUCCESS == cr ) {
-    <span class="hljs-keyword">return</span> pVideoFormat-&gt;min_num_decode_surfaces;
-  } <span class="hljs-keyword">else</span>  {
-    <span class="hljs-keyword">return</span> <span class="hljs-number">-1</span>;
-  }
-</code></pre>
-<p>Bit of a faff, but fairly linear at least, with these steps completed we&#39;ll start receiving parsed frame data into <em>pfnDecodePicture</em> which we can feed directly into the decoder.</p>
-<pre><code class="language-c">
-  <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> CUDAAPI <span class="hljs-title">decode_session_handle_picture_decode</span><span class="hljs-params">(<span class="hljs-keyword">void</span>* obj, CUVIDPICPARAMS* pPicParams)</span>
-  </span>{
-    decode_session *session = (decode_session *) obj;
-    CUresult cr;
-
-    cuCtxPushCurrent(session-&gt;ctx);
-    cr = cuvidDecodePicture(session-&gt;decoder, pPicParams);
-    cuCtxPopCurrent(<span class="hljs-literal">NULL</span>);
-
-    <span class="hljs-keyword">if</span> ( CUDA_SUCCESS == cr ) {
-      <span class="hljs-keyword">return</span> <span class="hljs-number">1</span>;
-    } <span class="hljs-keyword">else</span> {
-      <span class="hljs-keyword">return</span> <span class="hljs-number">-1</span>;
-    }
-}
-</code></pre>
-<p><em>pPicParams</em> contains the data as well as information about this frame (such as whether it&#39;s an iframe or not) and conveniently the parser gives the exact data that the decoder expects in order to do its job. With this, we&#39;ll start getting invocations of <em>pfnDisplayPicture</em> with raw frame data which we can send back into our application for further processing. This is actually a bit more complicated, as up until now the memory management has been taken care of us by the APIs we are using.</p>
-<p>The parser is accepting our host memory buffers, and then creating buffers in host memory for its own data which are being copied into device memory by the decoder, and in order to get the data out we&#39;ll need to copy it out of these decoder managed buffers into either host or device memory.</p>
-<p>Copying data out of device memory into host memory is expensive because of limited bandwidth and proximity but is necessary at <em>some</em> point if we are to output that data to anywhere useful. It is however not always desirable to immediately do this if we are then to do an encode or transform on the GPU, we probably want to create buffers on the device itself and perform a copy from the decoder-managed buffers onto our own managed buffers.</p>
-<p>Our code will assume that we want the memory copied into more device memory and we&#39;ll incur another copy if we want to subsequently copy it out onto the host; this is for convenience as in the real world we&#39;ll almost certainly be doing further operations on the GPU and only moving data to the host for testing (as in the above workflow) or for very specific operations (such as some sort of fingerprinting or overlay scenario).</p>
-<p>So, the first thing we need to do here is call cuvidMapVideoFrame, which will block until the frame specified by <em>picture_index</em> has been decoded and is ready for copying out. MapVideoFrame <em>effectively</em> locks that decoder-owned buffer and readies it for use in further calls (copying it into something we own). Once  we&#39;ve called Map, we check the decode status to make sure that the data is worth copying out in the first place. I&#39;ve left us a <em>...</em> as a placeholder for the next steps.</p>
-<pre><code class="language-c">
-<span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> CUDAAPI <span class="hljs-title">decode_session_handle_picture_display</span><span class="hljs-params">(<span class="hljs-keyword">void</span>* obj, CUVIDPARSERDISPINFO* pDispInfo)</span>
-</span>{
-  decode_session *session = (decode_session *) obj;
-  CUresult cr = <span class="hljs-number">0</span>;
-  CUdeviceptr srcFrame = <span class="hljs-number">0</span>;
-  <span class="hljs-keyword">unsigned</span> <span class="hljs-keyword">int</span> srcPitch = <span class="hljs-number">0</span>;
-  CUVIDGETDECODESTATUS status = {<span class="hljs-number">0</span>};
-
-  CUVIDPROCPARAMS vpp = {<span class="hljs-number">0</span>};
-  vpp.progressive_frame = pDispInfo-&gt;progressive_frame;
-  vpp.second_field = pDispInfo-&gt;repeat_first_field + <span class="hljs-number">1</span>;
-  vpp.top_field_first = pDispInfo-&gt;top_field_first;
-  vpp.unpaired_field = pDispInfo-&gt;repeat_first_field &lt; <span class="hljs-number">0</span>;
-
-  cuCtxPushCurrent(session-&gt;ctx);
-
-  <span class="hljs-keyword">if</span>((cr = cuvidMapVideoFrame(session-&gt;decoder, pDispInfo-&gt;picture_index, &amp;srcFrame, &amp;srcPitch, &amp;vpp)) != CUDA_SUCCESS) {
-    <span class="hljs-keyword">return</span> <span class="hljs-number">-1</span>;
-  }
-
-  cr = cuvidGetDecodeStatus(session-&gt;decoder, pDispInfo-&gt;picture_index, &amp;status);
-
-  <span class="hljs-keyword">if</span> (cr == CUDA_SUCCESS &amp;&amp; (status.decodeStatus == cuvidDecodeStatus_Error || status.decodeStatus == cuvidDecodeStatus_Error_Concealed))
-  {
-    <span class="hljs-keyword">return</span> <span class="hljs-number">-1</span>;
-  }
-
-  <span class="hljs-comment">// ... </span>
-
-  cuCtxPopCurrent(<span class="hljs-literal">NULL</span>);
-
-</code></pre>
-<p>And now we&#39;re at the meat of it, we&#39;ve locked the decoded frame and need somewhere to put it. In the real world we operate a pool of surfaces which can be passed into Erlang and reference counted before being returned to the pool when Erlang has finished using that surface. In this example we&#39;ll just create a surface on demand and assume that somebody will destroy it (or re-use it) at some point - obviously creation is expensive so it is best not to be doing this on demand in reality.</p>
-<p>We have to calculate the sizes for this surface based on the <em>CUVIDEOFORMAT</em> that we received in the pfnSequenceCallback, <em>bpp</em> will change depending on the bit depth of the source, but the only output format the decoder actually supports is NV12 so I&#39;ve hard coded byte height to (Chroma = 1 * height) + (Luma  = 0.5 * height), as those are the planes  that we&#39;ll expect in this format. If you don&#39;t know about planar formats then go and <a href="https://wiki.videolan.org/YUV">read about them</a> if you&#39;re writing this code haha, you&#39;ll need to understand it.</p>
-<pre><code class="language-c">
-  <span class="hljs-keyword">void</span>* dstFrame;
-  <span class="hljs-keyword">int</span> dstPitch;
-  <span class="hljs-keyword">int</span> bpp = pVideoFormat-&gt;bit_depth_luma_minus8 &gt; <span class="hljs-number">0</span> ? <span class="hljs-number">2</span> : <span class="hljs-number">1</span>;
-  <span class="hljs-keyword">int</span> frame_width = pVideoFormat-&gt;display_area.right - pVideoFormat-&gt;display_area.left;
-  <span class="hljs-keyword">int</span> byte_width = frame_width * bpp;
-  <span class="hljs-keyword">int</span> byte_height = (pVideoFormat-&gt;display_area.right - pVideoFormat-&gt;display_area.left) * <span class="hljs-number">1.5</span>;
-
-  cuMemAllocPitch((CUdeviceptr *)&amp;dstFrame, &amp;dstPitch, frameWidth  * bpp, byte_height, <span class="hljs-number">16</span>);
-</code></pre>
-<p>We allocate pitched memory (also known as byte-aligned where the pitch is the stride..), essentially we want our buffer to be a be a nice round number, usually a power of 2 because  it makes for efficient read/writes. The pitch is output into &#39;dstPitch&#39; which we&#39;ll need to use later on when using this buffer because maths.</p>
-<p>Assuming we have a buffer created as above, we can copy from our mapped video frame into our new device memory with</p>
-<pre><code class="language-c">
-  CUDA_MEMCPY2D m = { <span class="hljs-number">0</span> };
-  CUresult cr;
-
-  m.srcMemoryType = CU_MEMORYTYPE_DEVICE;
-  m.srcDevice = (CUdeviceptr)srcFrame;
-  m.srcPitch = srcPitch;
-  m.dstMemoryType = CU_MEMORYTYPE_DEVICE;
-  m.dstDevice = (CUdeviceptr)dstFrame;
-  m.dstPitch = dstPitch;
-  m.WidthInBytes = byte_width;
-  m.Height = byte_height;
-
-  cuMemcpy2D(&amp;m);
-</code></pre>
-<p>If we wanted this in host memory, we&#39;d do a straight up malloc of (byte_width * byte_height) with a pitch of byte_width, and copy it out this way</p>
-<pre><code>
-  CUDA_MEMCPY2D <span class="hljs-attr">m</span> = { <span class="hljs-number">0</span> };
-  CUresult cr;
-
-  m.<span class="hljs-attr">srcMemoryType</span> = CU_MEMORYTYPE_DEVICE;
-  m.<span class="hljs-attr">srcDevice</span> = (CUdeviceptr)srcFrame;
-  m.<span class="hljs-attr">srcPitch</span> = srcPitch;
-  m.<span class="hljs-attr">dstMemoryType</span> = CU_MEMORYTYPE_HOST;
-  m.<span class="hljs-attr">dstHost</span> = (CUdeviceptr)dstFrame;
-  m.<span class="hljs-attr">dstPitch</span> = byte_width;
-  m.<span class="hljs-attr">WidthInBytes</span> = byte_width;
-  m.<span class="hljs-attr">Height</span> = byte_height;
-
-  cuMemcpy2D(&amp;m);
-</code></pre><p>That data can then be fired into libx264 along with <em>pDispInfo-&gt;timestamp</em>, encoded and viewed with pleasure. I guess the next post I should  probably talk about CUDA context management before I get to the job of encoding or transforming this data and  maybe it&#39;s worth talking a little about how I&#39;m managing reference counted surfaces between Erlang and C as well as that&#39;s a whole world of fun after this.</p>
-<p>Mundane, but hopefully useful to me or somebody else in the future.</p>
-]]></description><link>http://codeofrob.com/entries/decoding-h264-with-nvidia.html</link><guid isPermaLink="true">http://codeofrob.com/entries/decoding-h264-with-nvidia.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 12 Nov 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Exploring the NVIDIA code samples and docs]]></title><description><![CDATA[<p>This blog entry is part of my &quot;<a href="/entries/blogging-the-mundane.html">blog about mundane stuff</a>&quot; series.</p>
-<h1 id="the-sdk">The SDK</h1>
-<p>There seems to be a single tar file available for the NVEnc/Dec stuff containing the headers, sample code and some PDFs that are semi-useful for learning how all this stuff ties together, so I unpacked that locally to the project I was working in and set up paths so I could include the header files from it. </p>
-<p>Step one in learning a new SDK or whatever is usually to</p>
-<ul>
-<li>A) RTFM</li>
-<li>B) Look at the samples</li>
-<li>C) Look at how others do it</li>
-</ul>
-<p>For <em>A</em> we have some PDFs lying about with 101 instructions on how to tie stuff together (not sufficient by itself), in theory there are some full SDK references available (found via Google for older versions but not for latest, must only be for the the upper class developers signed into some portal or another that I don&#39;t have access to - or I&#39;m terrible at Google), and we have the various header files with reasonably well documented functions lying about.</p>
-<p>They do provide some good &#39;you will need to do these things in order to get a context with which to do...&#39;, but they&#39;re best read alongside the sample code to get some understanding of why it does what it does.</p>
-<p>For <em>B</em> there is a full suite of samples, doing anything we pretty much might want to do with the SDK - but sadly (as is unfortunately common with SDKs such as this) rather than write samples directly against the APIs as would be convenient for the learner, they&#39;ve built a whole abstraction in C++ and then used <em>that</em> for all the samples because it&#39;s  convenient for the author - that&#39;s <em>obviously</em> easier to learn from than just some sample code that does the bare minimum in a linear fashion - <em>rolleyes</em>.</p>
-<p>For <em>C</em> we look towards <a href="https://github.com/FFmpeg/FFmpeg/">ffmpeg</a>, (<a href="https://github.com/FFmpeg/FFmpeg/blob/master/libavcodec/nvenc.c">nvenc</a>/<a href="https://github.com/FFmpeg/FFmpeg/blob/master/libavcodec/nvdec.c">nvdec</a>) because that <em>works</em> but acknowledge that usually when they implement various pipelines/codecs that they&#39;re often not done in the most efficient manner because it&#39;s a big pluggable abstract system and that&#39;s not the stated goal or necessarily even compatible with their architecture.</p>
-<p>Irregardless of the quality of the samples (That&#39;s a real word as of 2020, sorry I don&#39;t make the rules), they are where I found the most value for learning how the NV stuff works, even if it meant tracing through step by step and pulling the relevant function calls and the order they&#39;re invoked in into my own test code.</p>
-<p>From any perspective, it&#39;s pretty obvious from looking at the header files/pdfs that encode and decode are very much their own things done in their own way with their own enums and own flags and own API design, it makes sense from a hardware perspective that these are dedicated processes but that it bubbles up to the API itself so dramatically is amusing - I imagine this is the result of separate teams working largely in isolation and <a href="https://en.wikipedia.org/wiki/Conway%27s_law">Conway&#39;s Law</a> holding steady...</p>
-<h1 id="building-the-samples">Building the samples</h1>
-<p>This was a bit of a dance for me, having the wrong versions of GCC about for the purposes of building the rest of our stack initially, but essentially I found out where the right versions of GCC had ended up from my shell.nix and manually told cmake about them..</p>
-<pre><code>
-mkdir build &amp;&amp; cd build
-
-cmake -DCMAKE_LIBRARY_PATH=/run/opengl-driver/lib/ -DCMAKE_C_COMPILER=/nix/store/l2abq8hpgdjc4x7dwdps7zqcnxmjmjp4-gcc-<span class="hljs-keyword">wrapper</span><span class="hljs-number">-8.3</span><span class="hljs-number">.0</span>/bin/gcc -DCMAKE_CXX_COMPILER=/nix/store/l2abq8hpgdjc4x7dwdps7zqcnxmjmjp4-gcc-<span class="hljs-keyword">wrapper</span><span class="hljs-number">-8.3</span><span class="hljs-number">.0</span>/bin/g++ ..
-make
-make install
-</code></pre><p>Not ideal but hey ho, this gave me a pile of binaries in my &#39;build&#39; directory which I can invoke to find out what my hardware is capable of (in the case of decode)</p>
-<pre><code>~/nvidia/Samples/build]$ ./AppDec -h
-
-Options:
--i             Input file path
--o             Output file path
--outplanar     Convert output to planar format
--gpu           Ordinal of GPU to use
--crop l,t,r,b  Crop rectangle in left,top,right,bottom (ignored for case 0)
--resize WxH    Resize to dimension W times H (ignored for case 0)
-
-Decoder Capability
-
-GPU in use: GeForce GTX 1050
-Codec  JPEG   BitDepth <span class="hljs-number"> 8 </span>  ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 32768 </span> MaxHeight <span class="hljs-number"> 16384 </span> MaxMBCount <span class="hljs-number"> 67108864 </span> MinWidth <span class="hljs-number"> 64 </span>  MinHeight <span class="hljs-number"> 64 </span>  SurfaceFormat  NV12
-Codec  MPEG1  BitDepth <span class="hljs-number"> 8 </span>  ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 4080 </span>  MaxHeight <span class="hljs-number"> 4080 </span>  MaxMBCount <span class="hljs-number"> 65280 </span>    MinWidth <span class="hljs-number"> 48 </span>  MinHeight <span class="hljs-number"> 16 </span>  SurfaceFormat  NV12
-Codec  MPEG2  BitDepth <span class="hljs-number"> 8 </span>  ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 4080 </span>  MaxHeight <span class="hljs-number"> 4080 </span>  MaxMBCount <span class="hljs-number"> 65280 </span>    MinWidth <span class="hljs-number"> 48 </span>  MinHeight <span class="hljs-number"> 16 </span>  SurfaceFormat  NV12
-Codec  MPEG4  BitDepth <span class="hljs-number"> 8 </span>  ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 2032 </span>  MaxHeight <span class="hljs-number"> 2032 </span>  MaxMBCount <span class="hljs-number"> 8192 </span>     MinWidth <span class="hljs-number"> 48 </span>  MinHeight <span class="hljs-number"> 16 </span>  SurfaceFormat  NV12
-Codec  H264   BitDepth <span class="hljs-number"> 8 </span>  ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 4096 </span>  MaxHeight <span class="hljs-number"> 4096 </span>  MaxMBCount <span class="hljs-number"> 65536 </span>    MinWidth <span class="hljs-number"> 48 </span>  MinHeight <span class="hljs-number"> 16 </span>  SurfaceFormat  NV12
-Codec  HEVC   BitDepth <span class="hljs-number"> 8 </span>  ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 8192 </span>  MaxHeight <span class="hljs-number"> 8192 </span>  MaxMBCount <span class="hljs-number"> 262144 </span>   MinWidth <span class="hljs-number"> 144 </span> MinHeight <span class="hljs-number"> 144 </span> SurfaceFormat  NV12
-Codec  HEVC   BitDepth <span class="hljs-number"> 10 </span> ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 8192 </span>  MaxHeight <span class="hljs-number"> 8192 </span>  MaxMBCount <span class="hljs-number"> 262144 </span>   MinWidth <span class="hljs-number"> 144 </span> MinHeight <span class="hljs-number"> 144 </span> SurfaceFormat  NV12 P016
-Codec  HEVC   BitDepth <span class="hljs-number"> 12 </span> ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 8192 </span>  MaxHeight <span class="hljs-number"> 8192 </span>  MaxMBCount <span class="hljs-number"> 262144 </span>   MinWidth <span class="hljs-number"> 144 </span> MinHeight <span class="hljs-number"> 144 </span> SurfaceFormat  NV12 P016
-Codec  HEVC   BitDepth <span class="hljs-number"> 8 </span>  ChromaFormat  4:4:4  Supported <span class="hljs-number"> 0 </span> MaxWidth <span class="hljs-number"> 0 </span>     MaxHeight <span class="hljs-number"> 0 </span>     MaxMBCount <span class="hljs-number"> 0 </span>        MinWidth <span class="hljs-number"> 0 </span>   MinHeight <span class="hljs-number"> 0 </span>   SurfaceFormat  N/A
-Codec  HEVC   BitDepth <span class="hljs-number"> 10 </span> ChromaFormat  4:4:4  Supported <span class="hljs-number"> 0 </span> MaxWidth <span class="hljs-number"> 0 </span>     MaxHeight <span class="hljs-number"> 0 </span>     MaxMBCount <span class="hljs-number"> 0 </span>        MinWidth <span class="hljs-number"> 0 </span>   MinHeight <span class="hljs-number"> 0 </span>   SurfaceFormat  N/A
-Codec  HEVC   BitDepth <span class="hljs-number"> 12 </span> ChromaFormat  4:4:4  Supported <span class="hljs-number"> 0 </span> MaxWidth <span class="hljs-number"> 0 </span>     MaxHeight <span class="hljs-number"> 0 </span>     MaxMBCount <span class="hljs-number"> 0 </span>        MinWidth <span class="hljs-number"> 0 </span>   MinHeight <span class="hljs-number"> 0 </span>   SurfaceFormat  N/A
-Codec  VC1    BitDepth <span class="hljs-number"> 8 </span>  ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 2032 </span>  MaxHeight <span class="hljs-number"> 2032 </span>  MaxMBCount <span class="hljs-number"> 8192 </span>     MinWidth <span class="hljs-number"> 48 </span>  MinHeight <span class="hljs-number"> 16 </span>  SurfaceFormat  NV12
-Codec  VP8    BitDepth <span class="hljs-number"> 8 </span>  ChromaFormat  4:2:0  Supported <span class="hljs-number"> 0 </span> MaxWidth <span class="hljs-number"> 0 </span>     MaxHeight <span class="hljs-number"> 0 </span>     MaxMBCount <span class="hljs-number"> 0 </span>        MinWidth <span class="hljs-number"> 0 </span>   MinHeight <span class="hljs-number"> 0 </span>   SurfaceFormat  N/A
-Codec  VP9    BitDepth <span class="hljs-number"> 8 </span>  ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 8192 </span>  MaxHeight <span class="hljs-number"> 8192 </span>  MaxMBCount <span class="hljs-number"> 262144 </span>   MinWidth <span class="hljs-number"> 128 </span> MinHeight <span class="hljs-number"> 128 </span> SurfaceFormat  NV12
-Codec  VP9    BitDepth <span class="hljs-number"> 10 </span> ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 8192 </span>  MaxHeight <span class="hljs-number"> 8192 </span>  MaxMBCount <span class="hljs-number"> 262144 </span>   MinWidth <span class="hljs-number"> 128 </span> MinHeight <span class="hljs-number"> 128 </span> SurfaceFormat  NV12 P016
-Codec  VP9    BitDepth <span class="hljs-number"> 12 </span> ChromaFormat  4:2:0  Supported <span class="hljs-number"> 1 </span> MaxWidth <span class="hljs-number"> 8192 </span>  MaxHeight <span class="hljs-number"> 8192 </span>  MaxMBCount <span class="hljs-number"> 262144 </span>   MinWidth <span class="hljs-number"> 128 </span> MinHeight <span class="hljs-number"> 128 </span> SurfaceFormat  NV12 P016
-</code></pre><p>Honestly it&#39;s kinda impressive how much my nearly three year old laptop is capable of, dedicated hardware decode of 4k HEVC? Sure thing... </p>
-<h1 id="the-sample-code-then">The sample code then</h1>
-<p>The sample code is essentially boils down to a pile of projects under &#39;AppEncode&#39;, &#39;AppDecode&#39;, and &#39;AppTranscode&#39; directories - in theory demonstrating in isolation how to do those tasks, I say in theory because all of the examples are effectively a main(int argc, char** arg) that parse the command line and then spin up the shared code in the NvDecoder/NvEncoder directories.</p>
-<p>That&#39;s super annoying, as it means the useful code is sat inside two C++ classes plus a pile of inheritance to change the behaviour at times and if you want to work out what one of these &#39;isolated&#39; examples are actually doing you have to traipse up and down a pile of abstracted mess to work out how the API is actually being invoked. This is a masterclass in how <em>not</em> to write useful example code for an SDK in case anybody is still unclear as to how I feel about this.</p>
-<p>The useful code for decoding exists in a single class, <em>NvDecoder</em>, with most of the interesting code taking place in <em>Decode</em> and <em>GetFrame</em>. There is a lot of work happening under the covers which will need looking at in a following blog post, but what is interesting here is that Nvidia provide the means not only to decode the video bitstream, but also to parse the codec around that bitstream. That&#39;s kinda cool because this isn&#39;t a small feat - it&#39;s quite common for video decoder APIs to only deal with the bitstream which makes the cost of entry quite high unless you&#39;ve already got all of that code lying about. Of course if you&#39;re already parsing the nals and such in your pipeline you can skip that aspect of the Nvidia API (this being what is recommended) but because their parser is built to work with their decoder that&#39;s clearly what I&#39;m going to start with.</p>
-<p>The useful code for encoding exists in a single class, <em>NvEncoder</em>, but with various overrides in things like <em>NvEncoderCuda</em>, <em>NvEncoderD3D11</em>, etc. So that&#39;s a pain in the arse, not to mention the heap of boolean decisions around #IFDEFs, if(m_bSomeFlag) making it difficult to work out what one of the isolated examples is doing.  It is safe to say that understanding the encoding process is going to be frustrating.</p>
-<h1 id="next-steps">Next steps</h1>
-<p>Honestly getting this far was a faff in itself, some of it was harder because of my Nixos setup and some of it was easier (Side by side GCC installations and such are never that much fun), and my driver set up whilst easy on paper took me a few attempts to get correct because of my previous efforts in entirely disabling the GPU...</p>
-<p>Having the samples building and working though, we can be confident that if I write the right code in the next steps that the rest of it will work...</p>
-]]></description><link>http://codeofrob.com/entries/exploring-the-nvidia-code-samples-and-docs.html</link><guid isPermaLink="true">http://codeofrob.com/entries/exploring-the-nvidia-code-samples-and-docs.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 10 Nov 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Getting started with NVEnc]]></title><description><![CDATA[<p>This blog entry is part of my &quot;<a href="/entries/blogging-the-mundane.html">blog about mundane stuff</a>&quot; series.</p>
-<p>Mundane blog posts here we go! I recently got asked about adding NVIDIA capability to our stack and that is a process I went through and completed with only moderate frustration. I don&#39;t tend to write very much C in my day to day job (This is by design, nobody wants me writing C and I don&#39;t want to be writing C) but here we are writing C because that&#39;s the easiest way to integrate native stuff with Erlang and I&#39;m not about to go and learn Rust just to play with an SDK that we may not end up using in production. I will go and learn Rust in 2021 though, Rust is where our native stuff is heading but I digress - thisis the life of a developer working in this sort of environment - putting off learning new things until it becomes strictly necessary or we&#39;d  never get any bloody work done.</p>
-<p>We&#39;ll ignore the Erlang bit for the most part, because I could probably write several blog posts on my experience of writing NIFs (badly) alone, and we&#39;ll just take a quick overview of how the NVIDIA stuff fits together because coming to this task entirely from scratch with no knowledge of how the various bits fit together made set up that little bit more interesting.</p>
-<h1 id="my-os">My OS</h1>
-<p>I run Nixos, my entire system including drivers, software packages, configuration and such exist on Github in a <a href="https://github.com/robashton/nixos-install">repository</a> and it makes set up on new hardware or re-paving from scratch on existing hardware a very simply task of cloning a repo and running it against that hardware.</p>
-<p>The hardest thing about the setup of this laptop with the Nvidia chip on it was disabling the GPU in the first place entirely so to squeeze as much battery life out of it as possible whilst sitting in bars at conferences and such and writing code until somebody wants to chat to me. (I actually paved this laptop whilst sat at a conference in Lithuania, that seems a different world now..). There is a perfectly good integrated Intel GPU (that also does hardware accelerated encodes/decodes too!) that I&#39;ve been using for the lifetime of his hardware (and we use this stuff in production so it makes sense to use it locally).</p>
-<p>The first thing I needed to do was update the kernel to latest and survey what the state of Nvidia drivers/etc is in this world having not looked at it for a couple of years. The answer is &#39;in a state of flux&#39; (<em>when isn&#39;t it?</em>), but it looks like we&#39;ve finally got sensible offloading of the GPU built in and in theory we can run an X session off-screen for doing rendering and such on that GPU without draining the battery just because I was silly enough to open vim inside a terminal emulator. </p>
-<p>The support for the encode/decode functionality is built into these drivers in the form of dynamically loaded libraries and they need to be set up properly before anything will work. On Windows this probably just means running an EXE, on MacOS it probably means dragging an icon onto another icon and on Nixos I need configure the drivers with the information of where to find the hardware and how I want it to operate.</p>
-<p>I had been lying to ACPI to get my touchpad working with Nvidia disabled, but now comes the time to tell the truth once more..</p>
-<pre><code>    <span class="hljs-attr">boot.kernelParams</span> = [ <span class="hljs-string">&quot;acpi_osi=Linux&quot;</span> ]<span class="hljs-comment">;</span></code></pre><p>Hey NVIDIA, this is where my hardware is (located using lspci)</p>
-<pre><code>  <span class="hljs-attr">hardware.nvidia.prime.nvidiaBusId</span> = <span class="hljs-string">&quot;PCI:1:0:0&quot;</span><span class="hljs-comment">;</span>
-  <span class="hljs-attr">hardware.nvidia.prime.intelBusId</span> = <span class="hljs-string">&quot;PCI:0:2:0&quot;</span><span class="hljs-comment">;</span></code></pre><p>And I want the official drivers pls, blacklist nouveau - don&#39;t even think about it pal.</p>
-<pre><code>  <span class="hljs-attr">hardware.nvidia.modesetting.enable</span> = <span class="hljs-literal">true</span><span class="hljs-comment">;</span>
-  <span class="hljs-attr">hardware.nvidia.prime.offload.enable</span> = <span class="hljs-literal">true</span><span class="hljs-comment">;</span>
-  <span class="hljs-attr">hardware.nvidia.nvidiaPersistenced</span> = <span class="hljs-literal">true</span><span class="hljs-comment">;</span>
-
-  <span class="hljs-attr">services.xserver.videoDrivers</span> = [ <span class="hljs-string">&quot;nvidia&quot;</span> ]<span class="hljs-comment">;</span>
-  <span class="hljs-attr">boot.kernelModules</span> = [ <span class="hljs-string">&quot;nvidia-uvm&quot;</span> <span class="hljs-string">&quot;nvidia-drm&quot;</span> ]<span class="hljs-comment">;</span>
-  <span class="hljs-attr">boot.blacklistedKernelModules</span> = [ <span class="hljs-string">&quot;nouveau&quot;</span> ]<span class="hljs-comment">;</span></code></pre><p>And also the X11 packages for this stuff</p>
-<pre><code>  environment.systemPackages = with pkgs<span class="hljs-comment">; [</span>
-    linuxPackages.nvidia_x11
-  ]<span class="hljs-comment">;</span></code></pre><p>And may as well get the opengl stuff set up while we&#39;re here, although it&#39;s not strictly useful for the encodes it&#39;s good for testing the hardware itself.</p>
-<pre><code>  hardware.<span class="hljs-attr">opengl</span> = {
-    <span class="hljs-attr">enable</span> = <span class="hljs-literal">true</span>;
-    <span class="hljs-attr">driSupport</span> = <span class="hljs-literal">true</span>;
-  }</code></pre><p>I also follow the official guidance in setting up a quick bash script to run things with the Nvidia GPU instead of the default Intel one.</p>
-<p>Having a Nixos setup is quite nice, a quick rebuild and I have a new boot option to start up with all of this enabled (and the old option is still there in case I got anything wrong, which I definitely did in my first few passes here).</p>
-<p>Anyway, this gives me a few things..</p>
-<ul>
-<li><em>glxgears</em>:  Woo, spinny gears on my laptop powered by Intel</li>
-<li><em>nvidia-offload glxgears</em>: Woo, spinny gears powered by Nvidia</li>
-<li><em>/run/opengl-driver/lib/libnvidia-encode.so</em>: Library for doing encode stuff</li>
-<li><em>/run/opengl-driver/lib/dri/nvidia_drv_video.so</em>: The actual video driver</li>
-</ul>
-<p>Happy this is all setup, I need to look next at the tools required to write code that uses these things...</p>
-<h1 id="the-project-stuff">The project stuff</h1>
-<p>I don&#39;t tend to install SDKs or even development tools and such in my global environment, it nearly always ends up being the case that I need a different version of something for one project or another and because I&#39;m on Nixos I just use Nix shells for the individual projects and their development requirements <a href="https://purerl-cookbook.readthedocs.io/en/latest/devenv/nix.html">(Something I have written a bit about)</a></p>
-<p>It turns out I just need to add these packages to my environment and I&#39;m good to go, I already have nvidia_x11, but I &#39;add&#39; it again here so I can use it to generate some environment variables later on in the shell.nix so everything lines up.</p>
-<pre><code>
-  <span class="hljs-attribute">cudatoolkit</span>
-  <span class="hljs-attribute">nvidia</span>-video-sdk
-  <span class="hljs-attribute">linuxPackages</span>.nvidia_x<span class="hljs-number">11</span>
-</code></pre><p>As a bonus, I also go and add these because it&#39;ll make the code samples build and run properly (and as code samples typically seem to be the main entrance to SDKs like this that&#39;s a helpful thing.</p>
-<pre><code><span class="hljs-code">    cmake
-    pkgconfig
-    gcc8
-    ffmpeg-full
-</span></code></pre><p>As a further bonus, I go and add <em>gdb</em> to this list because I literally don&#39;t have any development tools on my host OS and I&#39;m bound to cause a few SIGSEGVs over the next couple of weeks that need debugging.</p>
-<p>The cuda toolkit doesn&#39;t (at time of writing) work with the modern version of GCC on my OS so I needed to explicitly pull GCC8 and set that in the environment so that when I&#39;m building code with our standard makefiles we&#39;ll do the right thing.</p>
-<pre><code>  shellHook = <span class="hljs-string">&#x27;&#x27;</span>
-    <span class="hljs-builtin-name">export</span> <span class="hljs-attribute">CUDA_PATH</span>=<span class="hljs-variable">${pkgs.cudatoolkit}</span>
-    <span class="hljs-builtin-name">export</span> <span class="hljs-attribute">LD_LIBRARY_PATH</span>=<span class="hljs-variable">${pkgs.linuxPackages.nvidia_x11}</span>/lib
-    <span class="hljs-builtin-name">export</span> <span class="hljs-attribute">EXTRA_LDFLAGS</span>=<span class="hljs-string">&quot;-L/lib -L<span class="hljs-variable">${pkgs.linuxPackages.nvidia_x11}</span>/lib&quot;</span>
-    <span class="hljs-builtin-name">export</span> <span class="hljs-attribute">EXTRA_CCFLAGS</span>=<span class="hljs-string">&quot;-I/usr/include&quot;</span>
-    <span class="hljs-builtin-name">export</span> <span class="hljs-attribute">CC</span>=<span class="hljs-variable">${pkgs.gcc8}</span>/bin/gcc
-    <span class="hljs-builtin-name">export</span> <span class="hljs-attribute">CXX</span>=<span class="hljs-variable">${pkgs.gcc8}</span>/bin/g++
-  <span class="hljs-string">&#x27;&#x27;</span>;</code></pre><p>Anyway, that&#39;s my setup - seeing as I&#39;ve made it to 1000 words already I&#39;ll leave the next post of &quot;exploring the samples, SDK surface area, documentation, etc&quot; to the next one. mundane <em>and</em> wordy, everybody&#39;s favourite.</p>
-]]></description><link>http://codeofrob.com/entries/getting-started-with-nvenc.html</link><guid isPermaLink="true">http://codeofrob.com/entries/getting-started-with-nvenc.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 05 Nov 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Blogging the mundane]]></title><description><![CDATA[<p>I was having a chat with a few friends over a glass or two of whisky the other evening (over Google Hangouts or whatever it is called these days) and the subject turned to whether any of us had become lazy about our online output as time had gone on and as we were getting old. (All of us really).</p>
-<p><strong>&quot;Why don&#39;t you blog any more?&quot;</strong></p>
-<p>My own personal answer is quite simply that I don&#39;t think anybody actually cares about anything I do these days, a vanishingly small number of people want to hear about anything to do with Erlang, an even smaller number of people have any interest in Purescript and the intersection of those two subjects doesn&#39;t do very much to increase the number of people willing to click a link with any of this content behind it. It&#39;s somewhat disheartening to write pages upon pages of documentation that nobody is going to care about until it&#39;s gotten so stale it&#39;s now useless. (See also: <a href="https://purerl-cookbook.readthedocs.io/en/latest/">The Purerl Cookbook</a>).</p>
-<p>Conversations with folk at conferences on these subjects doesn&#39;t do much to boost my interest in sharing, you can literally see people glaze over the moment you mention anything that isn&#39;t</p>
-<ul>
-<li>A) YAML</li>
-<li>B) Kubernetes</li>
-<li>C) YAML and Kubernetes</li>
-</ul>
-<p>Outside of that, anything I might do tends to be pretty niche, have a high ramp-up cost (for me) and be quite specific to my day to day job of moving bytes from one place to another with some sort of transform in the way making the whole process a lot slower than it could be (Yes, that&#39;s literally all of our jobs). </p>
-<p>Once I have invested days learning about something new (to me) I seldom feel the inclination of trying to write about it - even if I found it a challenge to learn myself in the first place because </p>
-<ul>
-<li>A) Nobody cares </li>
-<li>B) I doubt anything I can write on the subject will help anybody further than existing materials have helped me </li>
-</ul>
-<p><em>A challenge then</em></p>
-<p>Ignoring all of the above, I&#39;ll try to (between now and the end of the year) blog about some of the day to day mundane things &quot;wot I have done&quot;, even if the only person it helps is me in a year&#39;s time when I open code long since untouched and can&#39;t remember how any of it works. In the absence of conferences (these online replacements don&#39;t count because they don&#39;t have beanbags to chat to people on) this will perhaps be half a replacement for that experience (In that I get to talk, but not to listen, unless somebody wants to tweet me something interesting in response).</p>
-<p>Have at you - the next blog post(s) will be about NVIDIA GPU based transcoding and such cos I recently wrote a driver for our own proprietary workflows to integrate with the GPU on my laptop and the documentation wasn&#39;t great but the results were pretty nifty indeed.</p>
-]]></description><link>http://codeofrob.com/entries/blogging-the-mundane.html</link><guid isPermaLink="true">http://codeofrob.com/entries/blogging-the-mundane.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 03 Nov 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purerl Updates - Message Routing From Legacy Code]]></title><description><![CDATA[<p>We&#39;ve covered the essential upgrades to Pinto and Stetson, so now we&#39;ll cover a quick bonus topic which is one of the concepts thrown into Pinto to help with all of this work.</p>
-<h1 id="previous-purerl-posts">Previous Purerl posts</h1>
-<ul>
-<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
-<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
-<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
-<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
-<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
-<li><a href="/entries/purescript-interop-with-native-erlang---interacting-with-redis.html">Purescript interop with native Erlang, interaction with Redis</a></li>
-</ul>
-<h1 id="updates">Updates</h1>
-<ul>
-<li><a href="/entries/updates-to-pinto+stetson---purerl-in-progress.html">Nix overlays for Purerl/etc</a></li>
-<li><a href="/entries/purerl-updates---typed-routes-in-stetson.html">Typed routing for Stetson</a></li>
-<li><a href="/entries/purerl-updates---arbitrary-messages-and-handle_info-in-gen-servers.html">Arbitrary messages and handle_info in gen_servers</a></li>
-<li><a href="/entries/purerl-updates---arbitrary-messages-and-stetson-handlers.html">Arbitrary messages and Stetson handlers</a></li>
-<li><a href="/entries/purerl-updates---monitors-in-stetson-and-pinto.html">Monitors for arbitrary pids from Gen servers + Stetson handlers</a></li>
-<li>MessageRouting in Pinto to easily bind to legacy code that sends us messages</li>
-</ul>
-<h1 id="the-problem">The problem</h1>
-<p>A <em>lot</em> of legacy Erlang code (ours included) will have something along the lines of </p>
-<pre><code class="language-erlang">
-cool_api:do_something().
-</code></pre>
-<p>That behind the scenes will almost immediately do a call to <em>self()</em> to get the caller pid and then probably spin up some more processes and start sending messages back to us.</p>
-<pre><code class="language-erlang">
-  do_something() -&gt;
-    Self = self(),
-    spawn_link(<span class="hljs-keyword">fun</span> Fun() -&gt;
-      <span class="hljs-keyword">receive</span>
-        _ -&gt;  ok
-      <span class="hljs-keyword">after</span> <span class="hljs-number">1000</span> -&gt;
-         Self ! hi
-         Fun()
-      <span class="hljs-keyword">end</span>
-    <span class="hljs-keyword">end</span>).
-</code></pre>
-<p>In this case, we&#39;ve got a native function called do_something() that captures the current pid, spins up a process which will stop if it receives anything and otherwise every second send a message back to the parent (hi).</p>
-<p>If we were to write FFI for this, it&#39;d look a lot like this:</p>
-<pre><code class="language-haskell">
-<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> doSomething :: <span class="hljs-type">Effect</span> <span class="hljs-type">Pid</span>
-<span class="hljs-keyword">foreign</span> <span class="hljs-keyword">import</span> stop :: <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
-
-</code></pre>
-<pre><code class="language-erlang">
-<span class="hljs-function"><span class="hljs-title">doSomething</span><span class="hljs-params">()</span> -&gt;</span>
-  <span class="hljs-keyword">fun</span>() -&gt;
-    cool_api:do_something()
-  <span class="hljs-keyword">end</span>.
-
-<span class="hljs-function"><span class="hljs-title">stop</span><span class="hljs-params">(Pid)</span> -&gt;</span>
-  <span class="hljs-keyword">fun</span>() -&gt;
-    Pid ! this_will_stop_you_cos_you_received_something
-  <span class="hljs-keyword">end</span>.
-</code></pre>
-<p>We would immediately start receiving atoms of &#39;hi&#39; to the calling process, which unless we happen to be very specific and careful, won&#39;t know how to receive them, for example in a gen server.</p>
-<pre><code class="language-haskell">
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">State</span> = {}</span>
-
-<span class="hljs-title">serverName</span> :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span> <span class="hljs-type">Atom</span>
-<span class="hljs-title">serverName</span> = <span class="hljs-type">Local</span> $ atom <span class="hljs-string">&quot;listener&quot;</span>
-
-<span class="hljs-title">startLink</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
-<span class="hljs-title">startLink</span> =
-  <span class="hljs-type">Gen</span>.buildStartLink serverName init $ <span class="hljs-type">Gen</span>.defaultStartLink { handleInfo = handleInfo }
-
-<span class="hljs-title">init</span> :: <span class="hljs-type">Gen</span>.<span class="hljs-type">Init</span> <span class="hljs-type">State</span> <span class="hljs-type">Atom</span>
-<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
-  <span class="hljs-type">Gen</span>.lift <span class="hljs-type">CoolApi</span>.doSomething
-  pure $ {}
-
-<span class="hljs-title">handleInfo</span> :: <span class="hljs-type">Atom</span> -&gt; <span class="hljs-type">State</span> -&gt; <span class="hljs-type">Gen</span>.<span class="hljs-type">HandleInfo</span> <span class="hljs-type">State</span> <span class="hljs-type">Atom</span>
-<span class="hljs-title">handleInfo</span> msg state = <span class="hljs-keyword">do</span>
-  <span class="hljs-comment">-- got an atom, woo</span>
-  <span class="hljs-comment">-- not much to do with it</span>
-  pure <span class="hljs-type">CastNoReply</span> state
-</code></pre>
-<p>This will work, it&#39;s a gen server that knows how to receive atoms - but it&#39;s unlikely we&#39;ll want to write a gen server that only receives atoms and nothing else - as soon as we add a timer, monitor or subscribe to anything else we&#39;ll want to change our message type into an ADT so that we can dispatch over the various message types.</p>
-<pre><code class="language-haskell">
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">CoolApiMsg</span> <span class="hljs-type">Atom</span></span>
-         | <span class="hljs-type">Tick</span>
-</code></pre>
-<p>So we&#39;re going to need some way to map this. </p>
-<p><em>The old way</em>: We&#39;d register a mapping function with the gen server that would recognise the cool_api messages and convert them into the right type for us, this was janky AF and has been deleted in the latest Pinto</p>
-<p><em>the new way</em>: Proxy process that receives the message, translates it and then sends it on to the main process</p>
-<p>That proxy process is a burden to create because if we start spawning processes in Erlang, we need to make sure we monitor the parent so we terminate when it does, yada yada yada what a mess. Thankfully this is what <em>MessageRouter</em> in Pinto is for, it neatly wraps up this common pattern safely so we don&#39;t have to.</p>
-<h1 id="pintomessagerouter">Pinto.MessageRouter</h1>
-<p>The message router exports three functions of interest, one of which invokes a router on top of a process that will always start, and one on top of a process that might fail, the third takes a RouterRef (returned on success) and terminates the router.</p>
-<pre><code class="language-haskell">
-    startRouter :: <span class="hljs-keyword">forall</span> handle msg. <span class="hljs-type">Effect</span> handle -&gt; (handle -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>) -&gt; (msg -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>) -&gt;  <span class="hljs-type">Effect</span> (<span class="hljs-type">RouterRef</span> handle)
-
-    maybeStartRouter = maybeStartRouterImpl <span class="hljs-type">RouterRef</span>
-
-    stopRouter  :: <span class="hljs-keyword">forall</span> handle. <span class="hljs-type">RouterRef</span> handle -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
-</code></pre>
-<p>We&#39;ll focus on the simple case. </p>
-<ul>
-<li>Given an <em>Effect handle</em> - ie something that returns some reference to whatever is created (in our case a pid)</li>
-<li>Given a function that given that handle, terminates the process</li>
-<li>Given a callback that takes &#39;whatever is received&#39; and &#39;does something to it&#39; (<em>Effect Unit</em>)</li>
-<li>We&#39;ll get an <em>Effect</em> of <em>(RouterRef handle)</em> back (which we can hold onto in order to terminate the whole show by calling stopRouter)</li>
-</ul>
-<p>Wrapping our legacy API is &quot;simple&quot; now that we&#39;ve already written the FFI for it</p>
-<pre><code class="language-haskell">
-<span class="hljs-keyword">import</span> Pinto.MessageRouting <span class="hljs-keyword">as</span> MR
-
-<span class="hljs-title">wrappedDoSomething</span> :: <span class="hljs-keyword">forall</span>. (<span class="hljs-type">Atom</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>) -&gt; <span class="hljs-type">Effect</span> (<span class="hljs-type">MR</span>.<span class="hljs-type">RouterRef</span> <span class="hljs-type">Pid</span>)
-<span class="hljs-title">wrappedDoSomething</span> recv = <span class="hljs-type">MR</span>.startRouter <span class="hljs-type">CoolApi</span>.doSomething <span class="hljs-type">CoolApi</span>.stop recv
-
-</code></pre>
-<p>With this, we can re-write our gen server with the message lifted into the appropriate type</p>
-<pre><code class="language-haskell">
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">State</span> = {}</span>
-<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">Tick</span> | <span class="hljs-type">DoSomething</span> <span class="hljs-type">Atom</span></span>
-
-<span class="hljs-title">serverName</span> :: <span class="hljs-type">ServerName</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
-<span class="hljs-title">serverName</span> = <span class="hljs-type">Local</span> $ atom <span class="hljs-string">&quot;listener&quot;</span>
-
-<span class="hljs-title">startLink</span> :: <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
-<span class="hljs-title">startLink</span> =
-  <span class="hljs-type">Gen</span>.buildStartLink serverName init $ <span class="hljs-type">Gen</span>.defaultStartLink { handleInfo = handleInfo }
-
-<span class="hljs-title">init</span> :: <span class="hljs-type">Gen</span>.<span class="hljs-type">Init</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
-<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
-  self &lt;- <span class="hljs-type">Gen</span>.self
-  <span class="hljs-type">Gen</span>.lift <span class="hljs-type">Wrapper</span>.wrappedDoSomething $ send self &lt;&lt;&lt; <span class="hljs-type">DoSomething</span>
-  pure $ {}
-
-<span class="hljs-title">handleInfo</span> :: <span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">State</span> -&gt; <span class="hljs-type">Gen</span>.<span class="hljs-type">HandleInfo</span> <span class="hljs-type">State</span> <span class="hljs-type">Atom</span>
-<span class="hljs-title">handleInfo</span> msg state = <span class="hljs-keyword">do</span>
-  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span>
-    <span class="hljs-type">Tick</span> -&gt; ...
-    <span class="hljs-type">DoSomething</span> msg -&gt; ...
-</code></pre>
-<p>It means an extra process per router, so isn&#39;t something we want to be using if we&#39;re going to be spinning up 1000s of short lived versions of it, but for that sort of thing we&#39;re in specialist territory where we&#39;d be using a look up table or dropping to plain ol&#39; Erlang. (See also <em>Pinto.Timer</em> which just uses the underlying mechanisms to send messages of the right type directly without an intermediary process.</p>
-<p>The point is that wrapping up legacy code that sends us arbitrary messages has been turned into a relatively small amount of work as a result of these changes, so long as we supply a start function and a stop function and a callback that knows what to do with the messages we can transform and then send accordingly. This has been used across our codebases with great success (as well as in Pinto itself) and has enabled our gen servers and web handlers to remain clean and receive the right typed messages.</p>
-]]></description><link>http://codeofrob.com/entries/purerl-updates---message-routing-from-legacy-code.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purerl-updates---message-routing-from-legacy-code.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 14 Jul 2020 09:30:00 GMT</pubDate></item><item><title><![CDATA[Purerl Updates - Monitors in Stetson and Pinto]]></title><description><![CDATA[<p>We&#39;ve managed to get nicely typed arbitrary messages into our web handlers and gen servers, now it&#39;s time to look at Monitors.</p>
-<h1 id="previous-purerl-posts">Previous Purerl posts</h1>
-<ul>
-<li><a href="/entries/introducing-pinto-and-stetson---opinionated-purescript-bindings-to-otp-and-cowboy.html">Introduction to Pinto/Stetson - Opinionated Bindings to OTP/Cowboy</a></li>
-<li><a href="/entries/the-structure-of-an-end-to-end-purescript-otp-project.html">The structure of an end-to-end purescript OTP project</a></li>
-<li><a href="/entries/building-on-top-of-otp-with-purescript-with-pinto.html">Building on top of OTP with Purescript with Pinto</a></li>
-<li><a href="/entries/building-a-purescript-web-server-with-stetson-and-pinto.html">Building a Purescript web server with Stetson and Pinto</a></li>
-<li><a href="/entries/shared-code-twixt-purescript-server-and-client.html">Shared code twixt Purescript server and client</a></li>
-<li><a href="/entries/purescript-interop-with-native-erlang---interacting-with-redis.html">Purescript interop with native Erlang, interaction with Redis</a></li>
-</ul>
-<h1 id="updates">Updates</h1>
-<ul>
-<li><a href="/entries/updates-to-pinto+stetson---purerl-in-progress.html">Nix overlays for Purerl/etc</a></li>
-<li><a href="/entries/purerl-updates---typed-routes-in-stetson.html">Typed routing for Stetson</a></li>
-<li><a href="/entries/purerl-updates---arbitrary-messages-and-handle_info-in-gen-servers.html">Arbitrary messages and handle_info in gen_servers</a></li>
-<li><a href="/entries/purerl-updates---arbitrary-messages-and-stetson-handlers.html">Arbitrary messages and Stetson handlers</a></li>
-<li>Monitors for arbitrary pids from Gen servers + Stetson handlers</li>
-<li>MessageRouting in Pinto to easily bind to legacy code that sends us messages</li>
-</ul>
-<h1 id="monitors">Monitors</h1>
-<p>A reasonably common pattern for monitors in some of our code is</p>
-<ul>
-<li>Internal server manages a collection of pids that are recipients of data streams</li>
-<li>web handlers open and register with this server to receive those data streams</li>
-</ul>
-<p>In this case <em>sometimes</em></p>
-<ul>
-<li>It&#39;s useful for the internal server to monitor the subscribers and remove the pids when they become invalid</li>
-<li>It&#39;s useful for the web handler to monitor the server, so it can close the connection if that goes away</li>
-</ul>
-<p>This isn&#39;t always the case, sometimes a static message bus is a better option, sometimes pids can be checked ad-hoc, but for the purpose of this example we&#39;ll assume that this is exactly what we want as it&#39;ll be a nice end-to-end example of message passing and monitoring in Purerl.</p>
-<h1 id="the-internal-server">The internal server</h1>
-<p>So we&#39;ll define a basic gen server that keeps a state that&#39;s a map of pids to functions that receive data <em>(Binary -&gt; Effect Unit)</em>, and set up a timer to send us a <em>Tick</em> message after 500ms - our message type will therefore just be either that <em>Tick</em> message, or a message telling us that a client has disconnected. We&#39;ll configure the gen server to use a <em>handleInfo</em> function when these come in (explored further below).</p>
-<pre><code class="language-haskell">
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">State</span> = {
-  <span class="hljs-title">handlers</span> :: <span class="hljs-type">Map</span>.<span class="hljs-type">Map</span> <span class="hljs-type">Pid</span> <span class="hljs-type">MessageHandler</span>
-}</span>
-
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-type">MessageHandler</span> = (<span class="hljs-type">Binary</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>)</span>
-
-<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">Msg</span> = <span class="hljs-type">ClientDisconnected</span> <span class="hljs-type">Pid</span></span>
-         | <span class="hljs-type">Tick</span>
-
-<span class="hljs-title">startLink</span> :: <span class="hljs-type">BookWatchingStartArgs</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">StartLinkResult</span>
-<span class="hljs-title">startLink</span> args =
-  <span class="hljs-type">Gen</span>.buildStartLink serverName (init args) $ <span class="hljs-type">Gen</span>.defaultStartLink { handleInfo = handleInfo }
-
-<span class="hljs-title">init</span> :: <span class="hljs-type">BookWatchingStartArgs</span> -&gt; <span class="hljs-type">Gen</span>.<span class="hljs-type">Init</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
-<span class="hljs-title">init</span> args = <span class="hljs-keyword">do</span>
-  self &lt;- <span class="hljs-type">Gen</span>.self
-  void $ <span class="hljs-type">Gen</span>.lift $ <span class="hljs-type">Timer</span>.sendAfter <span class="hljs-number">500</span> <span class="hljs-type">Tick</span> self
-  pure $ {
-    handlers: <span class="hljs-type">Map</span>.empty
-  }
-</code></pre>
-<p>We can export a function <em>registerClient</em> for clients to invoke in order to start receiving data, while we&#39;re still in the process that called us we can get its pid by calling out to &#39;<em>Pinto.self</em>&#39;, and then in the context of the gen server, we&#39;ll get our own pid so we can add the monitor in the next function <em>addHandler</em>.</p>
-<p>As we have the pid of our calling process, we can invoke <em>Monitor.pid</em>, and pass in a callback that disregards the message given to us when the monitor pops and just sends a message with the handler pid back to our <em>handleInfo</em>. Once we&#39;re monitoring the handler, we can add it to our map using the pid as a key so we can easily remove it later when we get the message telling us it went down.</p>
-<pre><code class="language-haskell">
-<span class="hljs-title">registerClient</span> :: <span class="hljs-type">MessageHandler</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
-<span class="hljs-title">registerClient</span> handler = <span class="hljs-keyword">do</span>
-  handlerPid &lt;- <span class="hljs-type">Pinto</span>.self
-  <span class="hljs-type">Gen</span>.doCall serverName \state -&gt; <span class="hljs-keyword">do</span>
-     self &lt;- <span class="hljs-type">Gen</span>.self
-     newState &lt;- <span class="hljs-type">Gen</span>.lift $ addHandler handler self handlerPid state
-     pure $ <span class="hljs-type">CallReply</span> unit newState
-
-<span class="hljs-title">addHandler</span> :: <span class="hljs-type">MessageHandler</span> -&gt; <span class="hljs-type">Process</span> <span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">Pid</span> -&gt; <span class="hljs-type">State</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">State</span>
-<span class="hljs-title">addHandler</span> handler self handlerPid state@{ handlers } = <span class="hljs-keyword">do</span>
-  void $ <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">&quot;Adding handler ~p as it has connected&quot;</span> handlerPid
-  void $ <span class="hljs-type">Monitor</span>.pid handlerPid (\_ -&gt; self ! <span class="hljs-type">ClientDisconnected</span> handlerPid)
-  pure $ state { handlers = <span class="hljs-type">Map</span>.insert handlerPid handler handlers }
-</code></pre>
-<p>All that is left therefore, is to handle the messages we might receive into the handleInfo we configured earlier as part of startLink. </p>
-<ul>
-<li>If we get a ClientDisconnected, we simply remove the handler from our map so we no longer send any data to it</li>
-<li>If we get a Tick, we invoke sendData on the map of handlers, before scheduling another tick for 500ms time</li>
-</ul>
-<pre><code class="language-haskell">
-<span class="hljs-title">handleInfo</span> :: <span class="hljs-type">Msg</span> -&gt; <span class="hljs-type">State</span> -&gt; <span class="hljs-type">Gen</span>.<span class="hljs-type">HandleInfo</span> <span class="hljs-type">State</span> <span class="hljs-type">Msg</span>
-<span class="hljs-title">handleInfo</span> msg state@{ handlers  } = <span class="hljs-keyword">do</span>
-  <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span>
-     <span class="hljs-type">ClientDisconnected</span> handlerPid -&gt; <span class="hljs-keyword">do</span>
-        void $ <span class="hljs-type">Gen</span>.lift $ <span class="hljs-type">Logger</span>.info1 <span class="hljs-string">&quot;Removing ~p as it disconnected&quot;</span> handlerPid
-        pure $ <span class="hljs-type">CastNoReply</span> $ state { handlers = <span class="hljs-type">Map</span>.delete handlerPid handlers }
-     <span class="hljs-type">Tick</span> -&gt; <span class="hljs-keyword">do</span>
-        <span class="hljs-type">Gen</span>.lift $ sendData handlers
-        self &lt;- <span class="hljs-type">Gen</span>.self
-        void $ <span class="hljs-type">Gen</span>.lift $ <span class="hljs-type">Timer</span>.sendAfter <span class="hljs-number">500</span> <span class="hljs-type">Tick</span> self
-        pure $ <span class="hljs-type">CastNoReply</span> $ state 
-</code></pre>
-<p>Sending data is easy, seeing as the handlers are just a list of effectful callbacks of <em>(Binary -&gt; Effect Unit)</em></p>
-<pre><code class="language-haskell">
-<span class="hljs-title">sendData</span> :: <span class="hljs-type">Map</span>.<span class="hljs-type">Map</span> <span class="hljs-type">Pid</span> <span class="hljs-type">MessageHandler</span> -&gt; <span class="hljs-type">Effect</span> <span class="hljs-type">Unit</span>
-<span class="hljs-title">sendData</span> handlers = <span class="hljs-keyword">do</span>
-  freshData &lt;- getDataFromSomeNativeCode
-  void $ traverse (\handler -&gt; <span class="hljs-keyword">do</span> handler freshData) $ <span class="hljs-type">Map</span>.values handlers 
-  pure unit
-</code></pre>
-<p>So that&#39;s an entire gen server, which </p>
-<ul>
-<li>Allows the registration of callbacks that&#39;ll accept data</li>
-<li>Monitors the pids of the calling process, and removes the callbacks when the monitor pops</li>
-<li>Ticks every 500ms and traverses over the callbacks to send the data</li>
-</ul>
-<p>Note: Because of the callback/pids there is nothing stopping us using this code from any other Purerl (or indeed Erlang). None of this is Pinto specific and this is very much by design.</p>
-<h1 id="subscribing-and-monitoring-from-stetson">Subscribing (and monitoring) from Stetson</h1>
-<p>Speaking of other Purerl, a lot of Purerl gets written using Stetson to support Rest/Websockets/Streams/etc; so that&#39;s where we&#39;ll subscribe to this data. We&#39;ll also then add a monitor to that streaming process that closes the connection when it goes away. (We could also just block while we wait for it to restart for example).</p>
-<p>So, we&#39;ll define a data type for our messages, we&#39;re either receiving data that needs to be streamed, our data source died, or our data source was already down when we tried to connect to it.</p>
-<pre><code class="language-haskell">
-<span class="hljs-class"><span class="hljs-keyword">data</span> <span class="hljs-type">DataStreamMessage</span> = <span class="hljs-type">Data</span> <span class="hljs-type">Binary</span></span>
-                       | <span class="hljs-type">DataSourceDied</span>
-                       | <span class="hljs-type">DataSourceAlreadyDown</span>
-
-</code></pre>
-<p>We&#39;ll just kick off our handler with <em>Loop.handler</em>, start a streamed reply with a status code 200 and make sure that Stetson knows we&#39;re doing a Loop, we&#39;re typed as a <em>StetsonHandler DataStreamMessage Unit</em> because we receive <em>DataSteamMessage</em> and don&#39;t store any state of our own.</p>
-<pre><code class="language-haskell">
-<span class="hljs-title">dataStream</span> :: <span class="hljs-type">StetsonHandler</span> <span class="hljs-type">DataStreamMessage</span> <span class="hljs-type">Unit</span>
-<span class="hljs-title">dataStream</span> =
-  <span class="hljs-type">Loop</span>.handler (\req -&gt; <span class="hljs-keyword">do</span>
-               req2 &lt;- streamReply (<span class="hljs-type">StatusCode</span> <span class="hljs-number">200</span>) <span class="hljs-type">Map</span>.empty req
-               <span class="hljs-type">Loop</span>.initResult req2 unit)
-</code></pre>
-<p>In our <em>Loop.init</em>, we&#39;ll get our own typed process <em>(Process DataStreamMessage)</em>, invoking &#39;<em>Process.send</em>&#39; on this gives us a function of type (Msg -&gt; Effect Unit) so we&#39;ll compose that with a constructor for our own data type (Data) giving us the correct function type of <em>(Binary -&gt; Effect Unit)</em></p>
-<p>Using <em>Gen.monitor</em> with the server name of <em>MonitorExample</em>, we can detect when that process dies - there are two effectful callbacks for this, one for when the process dies and one for if the process is already down (there is no pid to monitor). </p>
-<pre><code class="language-haskell">
-    # <span class="hljs-type">Loop</span>.init (\req state -&gt; <span class="hljs-keyword">do</span> 
-                      self &lt;- <span class="hljs-type">Loop</span>.self
-                      void $ <span class="hljs-type">Loop</span>.lift $ <span class="hljs-type">MonitorExample</span>.registerClient $ send self &lt;&lt;&lt; <span class="hljs-type">Data</span>
-                      void $ <span class="hljs-type">Loop</span>.lift $ <span class="hljs-type">Gen</span>.monitor <span class="hljs-type">MonitorExample</span>.serverName (\_ -&gt; send self <span class="hljs-type">DataSourceDied</span>) (send self <span class="hljs-type">DataSourceAlreadyDown</span>)
-                      pure unit)
-</code></pre>
-<p>We receive those messages in the <em>Loop.info</em> callback</p>
-<ul>
-<li>if we get data then we can stream that directly to the client and carry on looping</li>
-<li>if the data source died then we unceremoniously terminate the stream</li>
-<li>if the data source is already down then we unceremoniously terminate the stream</li>
-</ul>
-<pre><code class="language-haskell">    # <span class="hljs-type">Loop</span>.info (\msg req state -&gt;  <span class="hljs-keyword">do</span>
-                <span class="hljs-keyword">case</span> msg <span class="hljs-keyword">of</span>
-                     <span class="hljs-type">Data</span> binary -&gt; <span class="hljs-keyword">do</span>
-                        _ &lt;- <span class="hljs-type">Loop</span>.lift $ streamBody binary req
-                        pure $ <span class="hljs-type">LoopOk</span> req state
-
-                     <span class="hljs-type">DataSourceDied</span> -&gt;  <span class="hljs-keyword">do</span>
-                       pure $ <span class="hljs-type">LoopStop</span> req state
-
-                     <span class="hljs-type">DataSourceAlreadyDown</span> -&gt;  <span class="hljs-keyword">do</span>
-                       pure $ <span class="hljs-type">LoopStop</span> req state
-</code></pre>
-<p>And that&#39;s that, we have a gen server running which will send data to any subscribers and clean up when those subscribers terminate, and we have a loop handler that&#39;ll subcribe to that data source and clean up if that data source dies. There is a lot going on here but it&#39;s worth unpicking as there are a lot of useful concepts here neatly packaged into a single example.</p>
-<p>By sticking to plain ol&#39; pids and callbacks, all of this code remains portable and not tied to either of these libraries, which is handy because at some point somebody smarter than I will write something more Purerl idiomatic for web serving and OTP wrapping and we&#39;ll probably want to switch to those things..</p>
-]]></description><link>http://codeofrob.com/entries/purerl-updates---monitors-in-stetson-and-pinto.html</link><guid isPermaLink="true">http://codeofrob.com/entries/purerl-updates---monitors-in-stetson-and-pinto.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 09 Jul 2020 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/cuda-context-management-with-nvenc.html</link><guid isPermaLink="true">http://codeofrob.com/entries/cuda-context-management-with-nvenc.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Tue, 17 Nov 2020 09:30:00 GMT</pubDate></item></channel></rss>
