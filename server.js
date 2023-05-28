@@ -4,7 +4,7 @@ var
   paperboy = require('paperboy'),
   common = require('./common'),
   PORT = process.env.PORT || 8000,
-  WEBROOT = path.join(path.dirname(__filename), 'site'),
+  WEBROOT = path.join(path.dirname(__filename), 'docs'),
   fork = require('child_process').fork
   
   var cachedPosts = null;
