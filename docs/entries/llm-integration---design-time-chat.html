@@ -1,0 +1,187 @@
+<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
+<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
+<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
+<!--[if !ie]><!-->
+<html lang="en"> <!--<![endif]-->
+<head>
+    <title id="title">LLM Integration - Design Time Chat</title>
+    <meta charset="utf-8">
+    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="Description" content="Rob Ashton's blog, Purescript, Erlang, Purerl, Javascript, Software Design, etc"/> 
+    <meta name="author" content="Rob Ashton">
+    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/headers/header1.css">
+    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
+    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
+    <link rel="stylesheet" href="/assets/css/style_responsive.css">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
+    <link rel="stylesheet" href="/assets/css/themes/default.css">
+    <link rel="stylesheet" type="text/css" href="/style.css"></link>
+    <link rel="stylesheet" type="text/css" href="/github.css"></link>
+    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-11207442-1']);
+      _gaq.push(['_setDomainName', 'codeofrob.com']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="header">
+        <div class="container">
+            <div class="logo">
+             <h2><a href="/index.html">Rob Ashton</a></h2>
+            </div>
+            <div class="navbar">
+                <div class="navbar-inner">
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </a>
+                    <div class="nav-collapse collapse">
+                        <ul class="nav top-2">
+                          <li>
+                                <a href="/">Home</a>
+                            </li>
+                            <li>
+                                <a href="/blog.html">Blog</a>
+                            </li>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <body>
+    <div id="blog-entry">
+      <h1 id="post-title">LLM Integration - Design Time Chat</h1>
+      <h6>Published on <span class="date">2025-9-23</span></h6>
+      <div id="post"><p>Continuing on</p>
+<ul>
+<li><a href="/entries/an-adventure-in-llm+agent-development.html">Intro + Basics</a></li>
+</ul>
+<p>A bit of chat then, what can go wrong?</p>
+<p>To re-iterate, we&#39;ve got</p>
+<ul>
+<li>A dynamic library of available components</li>
+<li>Well defined subscription model (what produces what media, and what accepts it)</li>
+<li>Fully defined schemas for all component configurations</li>
+<li>Validation that can run across a workflow and tell you exactly what is wrong (and sometimes how to fix it)</li>
+</ul>
+<p>I&#39;ve set up ambient LLM integration in <a href="https://norsk.video/norsk-studio-live-media-workflow-server/">Norsk Studio</a>, and any code on the server can easily start a session against whatever is currently configured.</p>
+<h2 id="the-basics">The basics</h2>
+<ul>
+<li>Chat lives in the web browser</li>
+<li>The <em>model</em> effectively lives in the web browser too (the thing being edited, and the library it is using to do it)</li>
+<li>LLM integration lives on the server (it has to use tokens to talk to the APIs, you don&#39;t want them on the client)</li>
+</ul>
+<p>The obvious thing to do is</p>
+<ul>
+<li>Set up a websocket which sets up a LLM session for this browser instance, it can tear it down when the WS goes away</li>
+<li>Store chat history in local storage so a refresh of the page doesn&#39;t lose context</li>
+<li>Create and supply tools to the LLM session that can query the workflow/library in the browser</li>
+</ul>
+<h2 id="a-naive-implementation">A naive implementation</h2>
+<ul>
+<li><em>get_current_workflow</em>: Serialise the document and send it back</li>
+<li><em>list_available_components</em>: Serialise the library and send it back</li>
+<li><em>add_component</em>: Take an id/type/config and add a component to the workspace</li>
+<li><em>remove_component</em>: Self explanatory</li>
+<li><em>subscribe</em>: Take a source id and destination id, and configuration for a subscription and set up/replace a sub</li>
+</ul>
+<p>Yeah... no. </p>
+<p>Context bloat is a real thing and presenting all of the information in the app to the LLM is one of the first mistakes I assume everybody makes because I certainly did on my first pass.</p>
+<ul>
+<li>the current workflow contains configuration for every component (that&#39;s a lot of data)</li>
+<li>components each have schemas attached (that&#39;s even more data)</li>
+<li>add_component.. takes config, meaning the LLM needs to generate the config</li>
+<li>subscribe - far too much context required potentially</li>
+</ul>
+<p>With a library of potentially a hundred or so components, and documents containing upwards of a dozen or two components, we&#39;d quickly exceed token limits with completely irrelevant information.
+Worst case, the LLM API just throws rate limit errors at you, best case, the LLM does completely wacko operations because you&#39;ve filled its context window with garbage.</p>
+<h2 id="surgical-precision">Surgical precision</h2>
+<ul>
+<li><em>get_workflow_components</em>: Return just the ids, the type, and a brief summary of what the component does from the library </li>
+<li><em>get_workflow_graph</em>: Return the ids, subscriptions between them and basic configuration of each sub</li>
+<li><em>search_components</em>: Given keywords, return just the types and summaries of matching components </li>
+<li><em>add_component</em>: Given a display name, location and type, add the component with default configuration, return any validation issues</li>
+<li><em>get_component_schema</em>: Given a specific component type, return the schema for the configuration of that component</li>
+<li><em>update_component_config</em>: Given a component id, and a <em>partial</em> config, update just the provided rows of the component, return any validation issues</li>
+<li><em>add_subscription</em>: Given two component ids (target/source), create a default widest-possible subscription between them, return validation issues</li>
+<li><em>get_subscription_options</em>: Given two component ids, detail what is actually possible (the UI already does this with dropdowns and different UIs depending on what is selected)</li>
+<li><em>update_subscription</em>: Supplying a subset of the options and the two ids, update the subscription (return validation issues)</li>
+</ul>
+<p>This is a key learning for anybody implementing LLM integration with custom tools, it&#39;s not too much of a shift.
+If you have a good user experience (defaults, minimal interaction to perform happy path by default, etc), then that same experience can easily be provided to the LLM by tools and context bloat can be avoided.</p>
+<ul>
+<li><p><em>Do this thing</em>: Do the thing with minimal information, set up defaults for everything, tell the LLM/user about anything that might be wrong</p>
+</li>
+<li><p><em>get some information</em>: What is the least amount of information that the user/LLM needs to perform a task?</p>
+</li>
+<li><p>A user simply drags on components and for the most part can just hit &#39;save&#39; immediately because defaults are always provided</p>
+</li>
+<li><p>A user simply drags connections between components and the UI automatically creates a subscription that takes the most data allowed</p>
+</li>
+<li><p>Validation is ran constantly, with instructions on how to fix things, common examples</p>
+<ul>
+<li>Clashing ports on inputs/oututs</li>
+<li>Clashing source names on inputs/outputs</li>
+<li>Subscribing to video multiple times on outputs from different upstream sources when trying to subscribe to audio</li>
+</ul>
+</li>
+</ul>
+</div>
+      <div id="links">
+        <a href="/">Index</a>
+        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
+        <a href="mailto:robashton@codeofrob.com">Respond</a>
+      </div>
+
+        <!--=== Copyright ===-->
+          <div class="container">
+            <div class="row-fluid">
+              <div class="span6">
+                <p class="terms">2020 © Rob Ashton. ALL Rights Reserved.</p>
+              </div>
+            </div><!--/row-fluid-->
+          </div><!--/container-->
+
+        <!-- JS Global Compulsory -->
+        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
+        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <!-- JS Implementing Plugins -->
+        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
+        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
+        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
+        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
+        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
+        <!-- JS Page Level -->
+        <script type="text/javascript" src="/assets/js/app.js"></script>
+        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
+        <script type="text/javascript">
+jQuery(document).ready(function() {
+    App.init();
+    App.initFancybox();
+    App.initSliders();
+    Index.initParallaxSlider();
+    });
+        </script>
+        <!--[if lt IE 9]>
+    <script src="assets/js/respond.js"></script>
+<![endif]-->
+        </body>
+        </html>
+

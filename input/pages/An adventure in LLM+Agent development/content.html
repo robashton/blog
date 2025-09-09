@@ -1,0 +1,93 @@
+<p>I&#39;m an AI sceptic, but it doesn&#39;t mean I&#39;m not going to try out this stuff in our products if there is the chance that I&#39;m wrong and these things can be persuaded to do useful things for our customers. 
+I have found some value in using Claude to generate &#39;obvious&#39; code when constrained to a very detailed plan (that Claude has also written), and its clear that when the output is constrained that correct answers can be arrived at. </p>
+<p>Experiments then, but first I&#39;ll just do a quick recap on what the product <em>is</em> because it&#39;s not something I ever really talk about outside of .. well work.</p>
+<h1 id="norsk"><a href="https://norsk.video/">Norsk</a></h1>
+<p>Make Live Easy and all that. We have a pretty great programmable media server with an <a href="https://docs.norsk.video/media-sdk/1.0.400/norsk-sdk.html">SDK</a> that lets you create media nodes that subscribe to each other across a graph and manipulate that media in all sorts of interesting ways complete with hardware integration and all the stuff one expects from one of these things.</p>
+<h1 id="norsk-studio"><a href="https://norsk.video/norsk-studio-live-media-workflow-server/">Norsk Studio</a></h1>
+<img src="/img/studio.png" width="400px" />
+
+<p>My baby, originally created in a weekend with a goal of &quot;Windows forms for media workflows&quot;, it&#39;s come on a long way since then but essentially it&#39;s a drag and drop media workflow builder, where each component automatically presents</p>
+<ul>
+<li>swagger/http control surface</li>
+<li>UIs around that control surface</li>
+<li>metrics/alerts/etc</li>
+</ul>
+<p>I guess an interesting thing about this whole setup is that these components are dynamically loaded into the workspace, a workflow will only contain a subset of these (generating a unique set of HTTP APIs for that workflow), and all of this comes with schemas for</p>
+<ul>
+<li>State</li>
+<li>Config</li>
+<li>Commands</li>
+<li>Events</li>
+<li>HTTP </li>
+</ul>
+<p>Schemas, well given how prone to hallucinating and generating nonsense LLMs are that is something that could come in handy.</p>
+<h1 id="the-obvious-integrations">The obvious integrations</h1>
+<p><em>Workflow Chat Assistant</em>: </p>
+<p>It&#39;s a bit dull on the surface, stick a chat interface into the main design UI and give it the ability to query the current workflow, add/remove components/subscriptions edit config, run the workflow, etc.
+Building a workflow in Norsk Studio is very easy, so I don&#39;t know how much value there is in this, however perhaps there is an opportunity for discovery if you&#39;re not sure how to do something in Studio, and perhaps a chat interface offers an interesting accessibility option for those unable to use a graphical drag and drop interface? I don&#39;t know.</p>
+<p>We have </p>
+<ul>
+<li>schemas for configurations</li>
+<li>extensive validation for subscriptions</li>
+<li>extensive validation <em>for</em> that configuration </li>
+</ul>
+<p>It&#39;s quite possible that this will be an easy integration for an LLM.</p>
+<p><em>Dashboard generation</em>: </p>
+<p>Related to the Chat assistant (and possibly integrated into it), given a workflow that the user has built, it should be easily possible to generate a UI specifically for this workflow</p>
+<ul>
+<li>Clearly defined HTTP APIs </li>
+<li>Clearly defined commands</li>
+<li>Clearly defined websocket events for live updates</li>
+<li>Clearly defined metrics</li>
+</ul>
+<p><em>AI Operators (agents)</em></p>
+<p>Possibly really interesting if I can get it right, can we embed a decision making agent into a workflow and have it operate an event automatically?</p>
+<p>We have</p>
+<ul>
+<li>As above, well defined control surfaces for each component</li>
+<li>well defined events being raised from components</li>
+</ul>
+<p>It&#39;s entirely possible for a component to pull data from other components (or subscribe to events) and use them to decision on.</p>
+<p>One of my other colleagues is currently integrating more focused models upstream to do object detection and raise events related to the actual media
+Another of of my colleagues has recently integrated CMSD into Norsk to flow quality metrics through with the media, again decisioning on this could be interesting</p>
+<p><em>Targeted advice</em></p>
+<p>Got validation errors? Magic &#39;fix this&#39; button? This could be really easy given the above.</p>
+<h1 id="step-one-supporting-all-of-this">Step one, supporting all of this</h1>
+<ul>
+<li>I want to use Anthropic, OpenAI, and Gemini</li>
+<li>I want multiple aspects of Norsk Studio to be able to integrate/use these LLMs</li>
+</ul>
+<p>This calls for a common LLM abstraction. I shopped around and found a few of them but the scene is fast moving and this represents quite the potential pain point. </p>
+<p>No doubt in a few years we&#39;ll look back on this wild west era and either be doing something completely differently, or one of these common abstractions will have won and we&#39;ll switch over to it, but for now I&#39;ll just write my own because I want MCP intgration and custom tools and boy is that a moving target at the moment.</p>
+<p>Essentially a chat with an LLM in this world involves</p>
+<ul>
+<li>Sending a &#39;system prompt&#39;</li>
+<li>Sending the &#39;history&#39; of the chat <em>to</em> the LLM</li>
+<li>Sending a list of the tools that the LLM can invoke alongside that</li>
+</ul>
+<p>The history contains (effectively)</p>
+<ul>
+<li>Interleaved messages from the user/LLM</li>
+<li>Tool requests from the LLM</li>
+<li>Tool results given back to the LLM</li>
+</ul>
+<p>This history being sent is what represents our &#39;context&#39;, which is the thing that the LLMs have limits on. The result of sending this to the LLM (as far as I understand it) is just a statistical stream of text deemed most likely to be the response.<br>There is no innate understanding, no actual &#39;thinking&#39; - this is one of the reasons why LLMs are kinda shit and by all accounts, a dead end for AGI but I digress, it is something to be managed.
+Effectively the actual interface with the LLM is stateless and we are in charge of looking after the state.</p>
+<p>So a starter for ten really is</p>
+<pre><code class="language-typescript"><span class="hljs-keyword">type</span> ChatHistoryItem = {
+  <span class="hljs-attr">role</span>: <span class="hljs-string">&quot;user&quot;</span> | <span class="hljs-string">&quot;assistant&quot;</span>,
+  <span class="hljs-attr">content</span>: <span class="hljs-built_in">string</span>,
+  <span class="hljs-attr">toolCalls</span>: ToolCall[],
+  <span class="hljs-attr">toolResults</span>: ToolResults[]
+}
+
+<span class="hljs-keyword">type</span> ChatOptions = {
+  <span class="hljs-attr">systemPrompt</span>: <span class="hljs-built_in">string</span>,
+  <span class="hljs-attr">tools</span>: LLmTool[]
+  }
+
+<span class="hljs-keyword">interface</span> LlmSession {
+  chat(history: ChatHistoryItem[], <span class="hljs-attr">options</span>: ChatOptions);
+}
+</code></pre>
+<p>Next up, I&#39;ll start to go through what it took to get a decent chat experience in Studio.</p>
