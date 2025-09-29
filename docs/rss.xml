@@ -1,97 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Mon, 22 Sep 2025 16:00:37 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[An adventure in LLM+Agent development]]></title><description><![CDATA[<p>I&#39;m an AI sceptic, but it doesn&#39;t mean I&#39;m not going to try out this stuff in our products if there is the chance that I&#39;m wrong and these things can be persuaded to do useful things for our customers. 
-I have found some value in using Claude to generate &#39;obvious&#39; code when constrained to a very detailed plan (that Claude has also written), and its clear that when the output is constrained that correct answers can be arrived at. </p>
-<p>Experiments then, but first I&#39;ll just do a quick recap on what the product <em>is</em> because it&#39;s not something I ever really talk about outside of .. well work.</p>
-<h1 id="norsk"><a href="https://norsk.video/">Norsk</a></h1>
-<p>Make Live Easy and all that. We have a pretty great programmable media server with an <a href="https://docs.norsk.video/media-sdk/1.0.400/norsk-sdk.html">SDK</a> that lets you create media nodes that subscribe to each other across a graph and manipulate that media in all sorts of interesting ways complete with hardware integration and all the stuff one expects from one of these things.</p>
-<h1 id="norsk-studio"><a href="https://norsk.video/norsk-studio-live-media-workflow-server/">Norsk Studio</a></h1>
-<img src="/img/studio.png" width="400px" />
-
-<p>My baby, originally created in a weekend with a goal of &quot;Windows forms for media workflows&quot;, it&#39;s come on a long way since then but essentially it&#39;s a drag and drop media workflow builder, where each component automatically presents</p>
-<ul>
-<li>swagger/http control surface</li>
-<li>UIs around that control surface</li>
-<li>metrics/alerts/etc</li>
-</ul>
-<p>I guess an interesting thing about this whole setup is that these components are dynamically loaded into the workspace, a workflow will only contain a subset of these (generating a unique set of HTTP APIs for that workflow), and all of this comes with schemas for</p>
-<ul>
-<li>State</li>
-<li>Config</li>
-<li>Commands</li>
-<li>Events</li>
-<li>HTTP </li>
-</ul>
-<p>Schemas, well given how prone to hallucinating and generating nonsense LLMs are that is something that could come in handy.</p>
-<h1 id="the-obvious-integrations">The obvious integrations</h1>
-<p><em>Workflow Chat Assistant</em>: </p>
-<p>It&#39;s a bit dull on the surface, stick a chat interface into the main design UI and give it the ability to query the current workflow, add/remove components/subscriptions edit config, run the workflow, etc.
-Building a workflow in Norsk Studio is very easy, so I don&#39;t know how much value there is in this, however perhaps there is an opportunity for discovery if you&#39;re not sure how to do something in Studio, and perhaps a chat interface offers an interesting accessibility option for those unable to use a graphical drag and drop interface? I don&#39;t know.</p>
-<p>We have </p>
-<ul>
-<li>schemas for configurations</li>
-<li>extensive validation for subscriptions</li>
-<li>extensive validation <em>for</em> that configuration </li>
-</ul>
-<p>It&#39;s quite possible that this will be an easy integration for an LLM.</p>
-<p><em>Dashboard generation</em>: </p>
-<p>Related to the Chat assistant (and possibly integrated into it), given a workflow that the user has built, it should be easily possible to generate a UI specifically for this workflow</p>
-<ul>
-<li>Clearly defined HTTP APIs </li>
-<li>Clearly defined commands</li>
-<li>Clearly defined websocket events for live updates</li>
-<li>Clearly defined metrics</li>
-</ul>
-<p><em>AI Operators (agents)</em></p>
-<p>Possibly really interesting if I can get it right, can we embed a decision making agent into a workflow and have it operate an event automatically?</p>
-<p>We have</p>
-<ul>
-<li>As above, well defined control surfaces for each component</li>
-<li>well defined events being raised from components</li>
-</ul>
-<p>It&#39;s entirely possible for a component to pull data from other components (or subscribe to events) and use them to decision on.</p>
-<p>One of my other colleagues is currently integrating more focused models upstream to do object detection and raise events related to the actual media
-Another of of my colleagues has recently integrated CMSD into Norsk to flow quality metrics through with the media, again decisioning on this could be interesting</p>
-<p><em>Targeted advice</em></p>
-<p>Got validation errors? Magic &#39;fix this&#39; button? This could be really easy given the above.</p>
-<h1 id="step-one-supporting-all-of-this">Step one, supporting all of this</h1>
-<ul>
-<li>I want to use Anthropic, OpenAI, and Gemini</li>
-<li>I want multiple aspects of Norsk Studio to be able to integrate/use these LLMs</li>
-</ul>
-<p>This calls for a common LLM abstraction. I shopped around and found a few of them but the scene is fast moving and this represents quite the potential pain point. </p>
-<p>No doubt in a few years we&#39;ll look back on this wild west era and either be doing something completely differently, or one of these common abstractions will have won and we&#39;ll switch over to it, but for now I&#39;ll just write my own because I want MCP intgration and custom tools and boy is that a moving target at the moment.</p>
-<p>Essentially a chat with an LLM in this world involves</p>
-<ul>
-<li>Sending a &#39;system prompt&#39;</li>
-<li>Sending the &#39;history&#39; of the chat <em>to</em> the LLM</li>
-<li>Sending a list of the tools that the LLM can invoke alongside that</li>
-</ul>
-<p>The history contains (effectively)</p>
-<ul>
-<li>Interleaved messages from the user/LLM</li>
-<li>Tool requests from the LLM</li>
-<li>Tool results given back to the LLM</li>
-</ul>
-<p>This history being sent is what represents our &#39;context&#39;, which is the thing that the LLMs have limits on. The result of sending this to the LLM (as far as I understand it) is just a statistical stream of text deemed most likely to be the response.<br>There is no innate understanding, no actual &#39;thinking&#39; - this is one of the reasons why LLMs are kinda shit and by all accounts, a dead end for AGI but I digress, it is something to be managed.
-Effectively the actual interface with the LLM is stateless and we are in charge of looking after the state.</p>
-<p>So a starter for ten really is</p>
-<pre><code class="language-typescript"><span class="hljs-keyword">type</span> ChatHistoryItem = {
-  <span class="hljs-attr">role</span>: <span class="hljs-string">&quot;user&quot;</span> | <span class="hljs-string">&quot;assistant&quot;</span>,
-  <span class="hljs-attr">content</span>: <span class="hljs-built_in">string</span>,
-  <span class="hljs-attr">toolCalls</span>: ToolCall[],
-  <span class="hljs-attr">toolResults</span>: ToolResults[]
-}
-
-<span class="hljs-keyword">type</span> ChatOptions = {
-  <span class="hljs-attr">systemPrompt</span>: <span class="hljs-built_in">string</span>,
-  <span class="hljs-attr">tools</span>: LLmTool[]
-  }
-
-<span class="hljs-keyword">interface</span> LlmSession {
-  chat(history: ChatHistoryItem[], <span class="hljs-attr">options</span>: ChatOptions);
-}
-</code></pre>
-<p>Next up, I&#39;ll start to go through what it took to get a decent chat experience in Studio.</p>
-]]></description><link>http://codeofrob.com/entries/an-adventure-in-llm+agent-development.html</link><guid isPermaLink="true">http://codeofrob.com/entries/an-adventure-in-llm+agent-development.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 18 Sep 2025 09:30:00 GMT</pubDate></item><item><title><![CDATA[The launching of a product, or where I've been for the last few years]]></title><description><![CDATA[<p>Rejoice!</p>
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Rob Ashton's blog]]></title><description><![CDATA[Software development dumping ground]]></description><link>http://codeofrob.com</link><image><url>http://codeofrob.com/img/cover.jpg</url><title>Rob Ashton&apos;s blog</title><link>http://codeofrob.com</link></image><generator>RSS for Node</generator><lastBuildDate>Thu, 11 Sep 2025 08:49:50 GMT</lastBuildDate><atom:link href="http://feeds.feedburner.com/robashton" rel="self" type="application/rss+xml"/><author><![CDATA[Rob Ashton]]></author><item><title><![CDATA[The launching of a product, or where I've been for the last few years]]></title><description><![CDATA[<p>Rejoice!</p>
 <p>I have somehow managed to revive my blog without having to write any code, change any CSS or do any busy work at all thanks to the miracle of Github pages and the fact that my website was always just a pile of static pages generated by some terribly written JS that hasn&#39;t changed in nearly a decade - who says code rots?</p>
 <h2 id="where-the-hell-have-i-been">Where the hell have I been?</h2>
 <p>I&#39;m honestly quite surprised at how many people have reached out over the last few years to ask this question - I can either consider this a testament to how much impact I&#39;ve made over those years, or simply because I&#39;ve always been a noisy person and any silence from over in my corner is deafening.</p>
@@ -1248,4 +1155,115 @@ config <span class="hljs-symbol">:dotnet</span>,
       }
     }</code></pre>
 <p>I hope this answers the question and helps with people struggling to move away from their legacy elixir projects, always happy to help.</p>
-]]></description><link>http://codeofrob.com/entries/integrating-c-with-legacy-elixir-projects.html</link><guid isPermaLink="true">http://codeofrob.com/entries/integrating-c-with-legacy-elixir-projects.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 01 Apr 2021 09:30:00 GMT</pubDate></item></channel></rss>
+]]></description><link>http://codeofrob.com/entries/integrating-c-with-legacy-elixir-projects.html</link><guid isPermaLink="true">http://codeofrob.com/entries/integrating-c-with-legacy-elixir-projects.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 01 Apr 2021 09:30:00 GMT</pubDate></item><item><title><![CDATA[Encoding h264 with Nvidia]]></title><description><![CDATA[<p>This blog entry is part of my &quot;<a href="/entries/blogging-the-mundane.html">blog about mundane stuff</a>&quot; series.</p>
+<p>I covered my <a href="/entries/decoding-h264-with-nvidia.html">decoding</a> test before having a look at <a href="/entries/cuda-context-management-with-nvenc.html">context management</a>, so now it&#39;s time to look at re-encoding the h264 and demonstrating a round trip through the nvidia hardware.</p>
+<h1 id="what-we-have-already">What we have already</h1>
+<p>We had this workflow for testing</p>
+<pre><code>
+  #workflow {
+    generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">&quot;foo.ts&quot;</span>&gt;&gt; },
+    processors = [
+      #nvidia_decoder { name = decode, <span class="hljs-keyword">from</span> = { source, ?video_frames_with_stream_id(<span class="hljs-number">256</span>) } },
+      #x264_encoder { name = encode, <span class="hljs-keyword">from</span> = decode },
+      #ts_writer { name = write, <span class="hljs-keyword">from</span> = encode, filename  = &lt;&lt;<span class="hljs-string">&quot;out.ts&quot;</span>&gt;&gt; }
+    ]
+  }
+
+</code></pre><p>and what I want is</p>
+<pre><code>  #workflow {
+    generator = #read_from_ts { name = source, filename  = &lt;&lt;<span class="hljs-string">&quot;foo.ts&quot;</span>&gt;&gt; },
+    processors = [
+      #nvidia_decoder { name = decode, <span class="hljs-keyword">from</span> = { source, ?video_frames_with_stream_id(<span class="hljs-number">256</span>) } },
+      #nvidia_encoder { name = encode, <span class="hljs-keyword">from</span> = decode },
+      #ts_writer { name = write, <span class="hljs-keyword">from</span> = encode, filename  = &lt;&lt;<span class="hljs-string">&quot;out.ts&quot;</span>&gt;&gt; }
+    ]
+  }
+</code></pre><p>In the decode entry we had a series of pointers to surfaces that we&#39;d pulled out of the decoder along with the corresponding timestamps, these are in NV12 planar format and byte-aligned (and I&#39;m storing all that information alongside the pointer to that surface in a struct so now we just need to see what the API looks like to turn this surface into h264 once again...)</p>
+<p>This looks something like this (It actually looks nothing like this as most of this info is stored in a linked list tied to a central pool which contains the shared information), but this is at least representative of what we have.</p>
+<pre><code>
+  <span class="hljs-keyword">typedef</span> <span class="hljs-class"><span class="hljs-keyword">struct</span> _<span class="hljs-title">nvidia_allocated_surface</span>  {</span>
+    <span class="hljs-keyword">uint8_t</span>* data;
+    <span class="hljs-keyword">int</span> bpp;
+    <span class="hljs-keyword">int</span> byte_width;
+    <span class="hljs-keyword">int</span> byte_height;
+    <span class="hljs-keyword">size_t</span> pitch;
+  } nvidia_allocated_surface;
+</code></pre><p>This surface is allocated <em>on the GPU</em> via CUDA, and the GPU is where we want to do our encode so hopefully we can pretty much use this data directly.</p>
+<h1 id="the-api">The API</h1>
+<p>The encode API looks nothing like the decode API in that it&#39;s sat in its own header file (which is again expected to be included as part of the repo, but the library we&#39;re going to be loading is <em>definitely</em>  expected to exist on the runtime as part of the driver install.</p>
+<ul>
+<li><em>Include/nvEncodeAPI.h</em> contains all definitions/enums/functions/etc</li>
+</ul>
+<p>and somewhere on the host OS installed as part of the driver package (for me, /run/opengl-driver/lib/)</p>
+<ul>
+<li><em>libnvidia-encode.so</em></li>
+</ul>
+<h1 id="creating-the-api">Creating the API</h1>
+<p>The functions that we end up using are loaded as a struct of function pointers and we actually only link a single function directly from that library to get hold of that struct. As a consequence of this, every struct being passed into a function in this API tends to be versioned indepedendently, such is life.</p>
+<pre><code class="language-c">
+  <span class="hljs-keyword">uint32_t</span> version = <span class="hljs-number">0</span>;
+  <span class="hljs-keyword">uint32_t</span> currentVersion = (NVENCAPI_MAJOR_VERSION &lt;&lt; <span class="hljs-number">4</span>) | NVENCAPI_MINOR_VERSION;
+  NV_ENCODE_API_FUNCTION_LIST nvenc = {NV_ENCODE_API_FUNCTION_LIST_VER};
+
+  NvEncodeAPIGetMaxSupportedVersion(&amp;version);
+  <span class="hljs-keyword">if</span> (currentVersion &gt; version)
+  {
+    <span class="hljs-keyword">return</span> <span class="hljs-number">-1</span>; <span class="hljs-comment">// or whatever</span>
+  }
+
+  NvEncodeAPICreateInstance(&amp;nvenc);
+
+  <span class="hljs-comment">// use the functions on nvenc</span>
+</code></pre>
+<p>This doesn&#39;t do anything other than a <em>dlopen</em> of the library exporting the functions and copy the pointers to those functions onto the nvenc struct so they can be called. Invoke it once, cache the results somewhere and then we can get to the business of talking to the GPU.</p>
+<h1 id="creating-an-encoder">Creating an encoder</h1>
+<p>Unlike the decode stack, the encoder doesn&#39;t seem to be built <em>directly</em> on top of CUDA, it having the capability of instantiating on top of OpenGL/DirectX/Cuda as options (and then utilise surfaces from those systems). Because we&#39;re using the decoder (and planning on using CUDA to run upscaling algorithms and such), it makes sense to use CUDA for the encoder too.</p>
+<p>Because of this, we&#39;ll want to use our already-created CUDA context and pass this into the open session call.</p>
+<pre><code>
+  NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS <span class="hljs-attr">encodeSessionExParams</span> = { NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS_VER };
+  encodeSessionExParams.<span class="hljs-attr">device</span> = ctx;
+  encodeSessionExParams.<span class="hljs-attr">deviceType</span> = NV_ENC_DEVICE_TYPE_CUDA;
+  encodeSessionExParams.<span class="hljs-attr">apiVersion</span> = NVENCAPI_VERSION;
+  void* <span class="hljs-attr">encoder</span> = NULL;
+
+  nvenc.nvEncOpenEncodeSessionEx(&amp;encodeSessionExParams, &amp;encoder);
+</code></pre><p>Now, this doesn&#39;t do very much other than give us an encode session that isn&#39;t initialise - and to initialise it we need to tell it what form our desired output needs to take. It is entirely possible to spend a day or two wondering why this call gives you back &#39;NV_ENC_ERR_INVALID_PARAM&#39; if it&#39;s not set up correctly (and reading the sample code doesn&#39;t help because the configuration of the encoder happens across multiple files because of the way that the samples are written), the below seems to be the the minimum required..</p>
+<p>In the Real World (tm) we have an input surface with a known width/height from the decoder, here we&#39;ll hard code it along with the frame rate (I know my source is 25fps). In the Real World a load of these args will be passed in from Erlang, not C.</p>
+<pre><code class="language-c">
+  NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
+  NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
+  NV_ENC_PRESET_CONFIG presetConfig = { NV_ENC_PRESET_CONFIG_VER, { NV_ENC_CONFIG_VER } };
+
+  initializeParams.encodeConfig = &amp;encodeConfig;
+
+  <span class="hljs-comment">// The essentials</span>
+  initializeParams-&gt;encodeGUID = NV_ENC_CODEC_H264_GUID;
+  initializeParams-&gt;presetGUID = NV_ENC_PRESET_P4_GUID;
+
+  <span class="hljs-comment">// These need to line up with the input surface dimensions</span>
+  initializeParams-&gt;encodeWidth = <span class="hljs-number">576</span>;
+  initializeParams-&gt;encodeHeight = <span class="hljs-number">720</span>;
+
+  <span class="hljs-comment">// Ditto these</span>
+  initializeParams-&gt;frameRateNum = <span class="hljs-number">25</span>;
+  initializeParams-&gt;frameRateDen = <span class="hljs-number">1</span>;
+
+  <span class="hljs-comment">// I seemed to need these as well</span>
+  initializeParams.enablePTD = <span class="hljs-number">1</span>;
+  initializeParams.encodeConfig-&gt;frameIntervalP = <span class="hljs-number">3</span>;
+  initializeParams.encodeConfig-&gt;gopLength = <span class="hljs-number">50</span>;
+  initializeParams.tuningInfo = NV_ENC_TUNING_INFO_HIGH_QUALITY;
+
+</code></pre>
+<p>Once this initialize params basics is set up, we can ask the encoder to populate the actual details for us based on the preset and codec specified in the &#39;essentials&#39;</p>
+<pre><code class="language-c">
+  nvenc.nvEncGetEncodePresetConfigEx(encode_session-&gt;encoder, initializeParams.encodeGUID, initializeParams.presetGUID, tuningInfo, &amp;presetConfig);
+  <span class="hljs-built_in">memcpy</span>(initializeParams.encodeConfig, &amp;presetConfig.presetCfg, <span class="hljs-keyword">sizeof</span>(NV_ENC_CONFIG));
+</code></pre>
+<p>I&#39;m not entirely sure why we don&#39;t just invoke nvEncGetEncoderPresetConfigEx on the struct already contained on the initializeParams, but the samples all end up doing this and the above code is precarious enough already (honestly, the number of ways this can go wrong with a single error is infuriating!). So we stick with the samples way of doing stuff!</p>
+<p>I also needed to then go and set up the IDR frequency to match our requested gop length (the samples do this too) and not doing this resulted in NV_ENC_ERR_INVALID_PARAM so..</p>
+<pre><code class="language-c">
+    initializeParams.encodeConfig-&gt;encodeCodecConfig.h264Config.idrPeriod = initializeParams.encodeConfig-&gt;gopLength;
+</code></pre>
+<p>With all of the above done correctly, a call to the init fn will return a success and if not I&#39;m really sorry you&#39;re on your own because I&#39;ve served my time already.</p>
+]]></description><link>http://codeofrob.com/entries/encoding-h264-with-nvidia.html</link><guid isPermaLink="true">http://codeofrob.com/entries/encoding-h264-with-nvidia.html</guid><dc:creator><![CDATA[Rob Ashton]]></dc:creator><pubDate>Thu, 19 Nov 2020 09:30:00 GMT</pubDate></item></channel></rss>
