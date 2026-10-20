@@ -1,74 +1,36 @@
-<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
-<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
-<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
-<!--[if !ie]><!-->
-<html lang="en"> <!--<![endif]-->
+<!doctype html>
+<html lang="en-GB">
 <head>
-    <title id="title">RavenDB - Image Gallery Project (V) - The Structure</title>
-    <meta charset="utf-8">
-    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="Description" content="Rob Ashton's blog, Purescript, Erlang, Purerl, Javascript, Software Design, etc"/> 
-    <meta name="author" content="Rob Ashton">
-    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
-    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/assets/css/style.css">
-    <link rel="stylesheet" href="/assets/css/headers/header1.css">
-    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
-    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
-    <link rel="stylesheet" href="/assets/css/style_responsive.css">
-    <link rel="shortcut icon" href="/favicon.ico">
-    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
-    <link rel="stylesheet" href="/assets/css/themes/default.css">
-    <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/github.css"></link>
-    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
-    <script type="text/javascript">
-      var _gaq = _gaq || [];
-      _gaq.push(['_setAccount', 'UA-11207442-1']);
-      _gaq.push(['_setDomainName', 'codeofrob.com']);
-      _gaq.push(['_trackPageview']);
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RavenDB - Image Gallery Project (V) - The Structure - Rob Ashton</title>
+  <meta name="description" content="Rob Ashton's blog. Erlang, Purescript, live video, and whatever else I've been getting annoyed about.">
+  <meta name="author" content="Rob Ashton">
+  <link rel="alternate" type="application/rss+xml" href="/rss.xml" title="Rob Ashton's blog">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap">
+  <link rel="stylesheet" href="/css/site.css">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  
+</head>
+<body>
+  <header class="site">
+    <a class="name" href="/">Rob Ashton</a>
+    <nav>
+      <a href="/blog.html">Writing</a>
+      <a href="/projects.html">Projects</a>
+      <a href="/speaking.html">Talks</a>
+    </nav>
+  </header>
+  <main>
+<article class="post">
+  <header>
+    <h1>RavenDB - Image Gallery Project (V) - The Structure</h1>
+    <p class="meta"><time datetime="2010-10-01">1 October 2010</time></p>
+  </header>
+  <div class="post-body">
 
-      (function() {
-        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-      })();
-    </script>
-  </head>
-
-  <body>
-    <div class="header">
-        <div class="container">
-            <div class="logo">
-             <h2><a href="/index.html">Rob Ashton</a></h2>
-            </div>
-            <div class="navbar">
-                <div class="navbar-inner">
-                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                    </a>
-                    <div class="nav-collapse collapse">
-                        <ul class="nav top-2">
-                          <li>
-                                <a href="/">Home</a>
-                            </li>
-                            <li>
-                                <a href="/blog.html">Blog</a>
-                            </li>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <body>
-    <div id="blog-entry">
-      <h1 id="post-title">RavenDB - Image Gallery Project (V) - The Structure</h1>
-      <h6>Published on <span class="date">2010-10-1</span></h6>
-      <div id="post">
 		<p>The code for this and all other entries can be found here: <a href="http://github.com/robashton/RavenGallery/">http://github.com/robashton/RavenGallery/</a>&nbsp;</p>  <p>Disclaimer: The structure of this application will be as simple as I can get it whilst still maintaining some semblance of maintainability going forward, any complaints can be directed at the comments field below if you think I’m committing some heinous crimes with the contents of this entry. The beauty of writing code with a high separation of concerns is that any of this can change without too much fuss if the initial code proves unworthy. This is all largely irrelevant anyway, but as the following entries will all utilise code using this structure, I thought it best to write an entry describing the basic principles of how the system works.</p>  <p><strong>Views vs Entities</strong></p>  <p>We have one data storage system, it stores documents and allows us to query those documents. Those documents are generally a lot flatter than those we have been used to in the past, and that allows us to store all the information required for a single entity in a single document (for the most part). A couple of assumptions therefore</p>  <ul>   <li>When dealing with behaviour or units of work, we’re dealing with entities and by therefore the underlying documents that represent those entities. </li>    <li>When dealing with pages of information, or views – we’re dealing with indexes across those documents, rather than complete documents themselves </li> </ul>  <p>It makes sense therefore to separate these two concerns into two different systems</p>  <p><strong>Views</strong></p>  <p>Without getting into the detail of how we get these views out yet, views are something we need. In our application here, a view is a single class containing all the information required to render a page of information. Generally, some information will be required to know what data is required for that view – that might just be an ID, or it might be the type of view and some information about how many items are to be displayed, some search terms to look for and a few other snippets beyond that.</p>  <p>We therefore have two types to be aware of, the input type containing information about the view we want, and the view itself.</p>  <p>I’m going to be brave and define an interface here, I can always change it later on it if proves unworthy of our love</p>  <div class="csharpcode">   <pre class="alt"><span class="lnum">   1:  </span><span class="kwrd">public</span> <span class="kwrd">interface</span> IViewRepository</pre>
 
   <pre><span class="lnum">   2:  </span>{</pre>
@@ -476,46 +438,34 @@ And with that, an interface for our view factories to implement:
 <p>The above all uses StructureMap magic to locate the appropriate handlers/view factories in much the same way we’ll be using StructureMap to find validators, model binders and other such niceties.</p>
 
 <p>In the next instalment of this series, we’ll create our user document, our user entity and the necessary infrastructure required to create/retrieve user entities from the repository, as well as demonstrating the functionality of the ICommandInvoker that we’ll be using throughout this series.</p>
-	</div>
-      <div id="links">
-        <a href="/">Index</a>
-        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="mailto:robashton@codeofrob.com">Respond</a>
-      </div>
+	
+  </div>
+  <footer>
+    <p class="respond">Comments are long gone, but you can <a href="mailto:robashton@codeofrob.com">email me</a> if you've got something to say.</p>
+    <details class="comments"><summary>11 comments from the old blog</summary><ol><li><p class="comment-author">Doug <span>10/1/2010 10:00 PM</span></p><div class="comment-body">Loving where this series is going.  Keep 'em coming!</div></li>
+<li><p class="comment-author">Chris Swain <span>10/3/2010 4:49 PM</span></p><div class="comment-body">I'm so glad you're doing this blog series.  It's going to be helpful to those of us looking for guidance with RavenDB and ASP.NET MVC.  I downloaded the sample project and I'm not sure why you have documents, entities, and viewmodels.  Could you explain a little more about the difference between your entities and your viewmodels and why you need both?</div></li>
+<li><p class="comment-author">Rob Ashton <span>10/3/2010 7:12 PM</span></p><div class="comment-body">Ah - well that is definitely a non-contentious question :)I don't *need* those things, and I could just return the documents and use those as my view models, but I'm doing this project as not just a RavenDB primer but as an example of how CQRS can work well with a single data store when that data store is a document database with pre-computed map/reduce indexes.As a purist, this means entities shouldn't really be used for the view layer (querying).The &quot;Should I use my entities on my view model&quot; question has been done to death in the DDD threads/forums/etc - and for simple projects like this you probably wouldn't have any issues with doing so - but architecturally it doesn't scale (and in RDBMS projects you can swiftly end up with Select N+1 problems as you try to traverse through the relationships of the entity). You could still end up with that in this kind of project if you were not careful too.Even if I merged Entities and Documents, I'd still not be using the Entities as View Models - it's just bad karma to do so :)I hope that explains it at least a little bit - it will make more sense as I add more views to the project.</div></li>
+<li><p class="comment-author">cowgaR <span>10/14/2010 5:52 PM</span></p><div class="comment-body">one of the advantage of NoSQL was that POCO was finaly possible in a simple manner and there wasn't any mapping done (impedance mismatch was almost gone), store whatever you want (no joins, no big-deal about optimal data schema thoughts and so on...).thus developing application became simpler with NoSQL, but I see you're missing itso you're trying over-complicate architecture...and present useless mapping withyour entities-document nonsense...premature optimization is the root of all evil</div></li>
+<li><p class="comment-author">Rob Ashton <span>10/14/2010 5:58 PM</span></p><div class="comment-body">I think you're right - there is a certain element of undoing the good done here - but I also know I'm not alone in doing this because leaving code unguarded from troublesome developers makes people uncomfortable.I'm actually considering going back to quitting this because bugrit, mis-using direct access to modify documents can be prevented through code reviews and education and not_being_lazy.</div></li>
+<li><p class="comment-author">cowgaR <span>10/14/2010 6:13 PM</span></p><div class="comment-body">what a swift response, thank you - my (angry) point was, seeing you're doing TDD:&quot;how in the hell&quot; did you come to the point you NEED entities in your projectisn't that once I'm doing TDD/BDD, anything I need can be brought later on + refactor?Once we hit some nasty problem that we can't solve?Seeing CQRS mentioned I  thought this will overcomplicate things, although I'm not against the idea of seperating the views/documents as NoSQL fits this nicely...one can't allways assume that there are &quot;bad&quot; developers that screw the code, and we need to &quot;guard&quot; it. That's what tests are for.there are many RubyOnRails application out there which architecture is elegant and simple (even using active record beneath!) and are working fine (twitter front layer is RoR), only we in .NET world aim somewhere to LHC/NASA labs with our code...I like Rob Conery take on this, Web is simple, so should your app be...</div></li>
+<li><p class="comment-author">Rob Ashton <span>10/14/2010 6:22 PM</span></p><div class="comment-body">Ah, you see - I don't need entities in this project, but I already said that :)This is supposed to be a full vertical slice of how you *could* build a proper application (not just a website) on top of RavenDB, but obviously a real application wouldn't be appropriate for a blog series introducing new concepts.I kinda figured that if I did it one way in one set of blog entries, and did it a different way in the upcoming screencasts then people could make their own mind up for their own projects where it makes sense.Clearly this is the wrong choice for a simple little image gallery, but in an enterprise environment (urgh, I hate that phrase) with a complex domain you might wish to do something similar because it keeps the boundaries well defined.I think my personal preference (seeing as the serializer does support it), is to just use read-only properties and have your cake *and* eat it with simplicity AND safety.</div></li>
+<li><p class="comment-author">Rob Ashton <span>10/14/2010 6:23 PM</span></p><div class="comment-body">And you're right, most websites and even simple web applications simply don't need those well defined boundaries because it *adds* complexity instead of taking it away.</div></li>
+<li><p class="comment-author">Rob Ashton <span>10/14/2010 6:24 PM</span></p><div class="comment-body">And sticking to simple CQRS principles won't be complicating things, that's a separate point from the entities/documents discussion.It just means I have one port of call to get views out, and port of call for enacting change on the model - no fancy architecture/patterns/trickery to be seen here.</div></li>
+<li><p class="comment-author">Rob Ashton <span>10/14/2010 6:27 PM</span></p><div class="comment-body">One further thing I forgot to say (Sorry, I think all over the place when I'm writing), unless I had done it this way and started a big discussion in the mailing list and wrote a blog entry summarising that discussion then it wouldn't have taken place and that would be quite sad :)</div></li>
+<li><p class="comment-author">cowgaR <span>10/14/2010 10:13 PM</span></p><div class="comment-body">agreed, I've glanced further articles (and discussion, but I started from part 1, gosh! ;-) so continue to bring flame and quality to NoSQL world ;)good job</div></li></ol></details>
+    <nav class="older-newer"><a rel="prev" href="/entries/ravendb---image-gallery-project-iv--tracking-documents.html"><span>Older</span>RavenDB - Image Gallery Project (IV) -Tracking Documents</a><a rel="next" href="/entries/ravendb---image-gallery-application-vi---entities,-repositories-and-commands.html"><span>Newer</span>RavenDB - Image Gallery Application (VI) - Entities, Repositories and Commands</a></nav>
+  </footer>
+</article>
 
-        <!--=== Copyright ===-->
-          <div class="container">
-            <div class="row-fluid">
-              <div class="span6">
-                <p class="terms">2020 © Rob Ashton. ALL Rights Reserved.</p>
-              </div>
-            </div><!--/row-fluid-->
-          </div><!--/container-->
-
-        <!-- JS Global Compulsory -->
-        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-        <!-- JS Implementing Plugins -->
-        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-        <!-- JS Page Level -->
-        <script type="text/javascript" src="/assets/js/app.js"></script>
-        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
-        <script type="text/javascript">
-jQuery(document).ready(function() {
-    App.init();
-    App.initFancybox();
-    App.initSliders();
-    Index.initParallaxSlider();
-    });
-        </script>
-        <!--[if lt IE 9]>
-    <script src="assets/js/respond.js"></script>
-<![endif]-->
-        </body>
-        </html>
-
+  </main>
+  <footer class="site">
+    <p>
+      <a href="mailto:robashton@codeofrob.com">robashton@codeofrob.com</a>
+      <a href="https://github.com/robashton">GitHub</a>
+      <a href="/rss.xml">RSS</a>
+      <a href="/testimonials.html">Nice things people have said</a>
+      <a href="/crowdsourced.html">The old homepage</a>
+    </p>
+  </footer>
+</body>
+</html>

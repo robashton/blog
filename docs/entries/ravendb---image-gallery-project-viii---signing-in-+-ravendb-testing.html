@@ -1,74 +1,36 @@
-<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
-<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
-<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
-<!--[if !ie]><!-->
-<html lang="en"> <!--<![endif]-->
+<!doctype html>
+<html lang="en-GB">
 <head>
-    <title id="title">RavenDB - Image Gallery Project (VIII) - Signing In + RavenDB Testing</title>
-    <meta charset="utf-8">
-    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="Description" content="Rob Ashton's blog, Purescript, Erlang, Purerl, Javascript, Software Design, etc"/> 
-    <meta name="author" content="Rob Ashton">
-    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
-    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/assets/css/style.css">
-    <link rel="stylesheet" href="/assets/css/headers/header1.css">
-    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
-    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
-    <link rel="stylesheet" href="/assets/css/style_responsive.css">
-    <link rel="shortcut icon" href="/favicon.ico">
-    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
-    <link rel="stylesheet" href="/assets/css/themes/default.css">
-    <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/github.css"></link>
-    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
-    <script type="text/javascript">
-      var _gaq = _gaq || [];
-      _gaq.push(['_setAccount', 'UA-11207442-1']);
-      _gaq.push(['_setDomainName', 'codeofrob.com']);
-      _gaq.push(['_trackPageview']);
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RavenDB - Image Gallery Project (VIII) - Signing In + RavenDB Testing - Rob Ashton</title>
+  <meta name="description" content="Rob Ashton's blog. Erlang, Purescript, live video, and whatever else I've been getting annoyed about.">
+  <meta name="author" content="Rob Ashton">
+  <link rel="alternate" type="application/rss+xml" href="/rss.xml" title="Rob Ashton's blog">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap">
+  <link rel="stylesheet" href="/css/site.css">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  
+</head>
+<body>
+  <header class="site">
+    <a class="name" href="/">Rob Ashton</a>
+    <nav>
+      <a href="/blog.html">Writing</a>
+      <a href="/projects.html">Projects</a>
+      <a href="/speaking.html">Talks</a>
+    </nav>
+  </header>
+  <main>
+<article class="post">
+  <header>
+    <h1>RavenDB - Image Gallery Project (VIII) - Signing In + RavenDB Testing</h1>
+    <p class="meta"><time datetime="2010-10-07">7 October 2010</time></p>
+  </header>
+  <div class="post-body">
 
-      (function() {
-        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-      })();
-    </script>
-  </head>
-
-  <body>
-    <div class="header">
-        <div class="container">
-            <div class="logo">
-             <h2><a href="/index.html">Rob Ashton</a></h2>
-            </div>
-            <div class="navbar">
-                <div class="navbar-inner">
-                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                    </a>
-                    <div class="nav-collapse collapse">
-                        <ul class="nav top-2">
-                          <li>
-                                <a href="/">Home</a>
-                            </li>
-                            <li>
-                                <a href="/blog.html">Blog</a>
-                            </li>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <body>
-    <div id="blog-entry">
-      <h1 id="post-title">RavenDB - Image Gallery Project (VIII) - Signing In + RavenDB Testing</h1>
-      <h6>Published on <span class="date">2010-10-7</span></h6>
-      <div id="post">
 		<p>The code for this and all other entries can be found here: <a href="http://github.com/robashton/RavenGallery/">http://github.com/robashton/RavenGallery/</a>&nbsp;</p>  <p>With registration conquered, the next challenge is to allow users to sign in and out, authenticating against RavenDB’s document store and telling ASP.NET who the current user is. This should be a breeze now everything else is in place.</p>  <p><strong>Post-registration log-on</strong></p>  <p>This is a simplistic system, and we just want the ability to log in for now, so we’re not going to bother with user e-mail address validation or OpenId, although that might be something we could visit later, the ability to log in and out is a fairly fundamental blocker when it comes to adding the rest of the functionality.</p>  <p>First thing we need to do disassociate ourselves from the FormsAuthentication static class or anything like it, out of principle I don’t use any of the built in provider garbage in MS-MVC, implementing enormous interfaces isn’t my idea of fun and I’ve never managed to work out what else it gives me. I do however like to use FormsAuthentication to manage cookies for me.</p>  <p>I just want to be able to test if I want to, and I do want to test – even if it’s just for simple interaction.</p>  <div class="csharpcode">   <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">interface</span> IAuthenticationService</pre>
 
   <pre><span class="lnum">   2:  </span>    {</pre>
@@ -112,7 +74,7 @@
 }
 .csharpcode .lnum { color: #606060; }]]></style>
 
-<div class="csharpcode">&nbsp;</div>
+
 
 <div class="csharpcode">
   <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">class</span> AuthenticationService : IAuthenticationService</pre>
@@ -598,46 +560,29 @@
 <p>I take some time out of this busy development schedule to create a new Assembly, <strong>RavenGallery.Core.Tests.Integration.dll</strong> and move those tests to it. They might be <em>fast</em>, but fast is relative and I still don’t want to be waiting for these every time I want to test my other code.</p>
 
 <p>In the next instalment, we’ll look at our document model for storing images with some rudimentary support for tagging and labelling, it’s about to get interesting.</p>
-	</div>
-      <div id="links">
-        <a href="/">Index</a>
-        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="mailto:robashton@codeofrob.com">Respond</a>
-      </div>
+	
+  </div>
+  <footer>
+    <p class="respond">Comments are long gone, but you can <a href="mailto:robashton@codeofrob.com">email me</a> if you've got something to say.</p>
+    <details class="comments"><summary>6 comments from the old blog</summary><ol><li><p class="comment-author">Matt Warren <span>10/7/2010 10:36 AM</span></p><div class="comment-body">You're right that doing test directly again RavenDB is slow, but at least the &quot;embedded&quot; mode makes it easy to do.Plus you're testing against the same thing you're running against, so there no issues with there being a difference.BTW nice series, I'm trying to learn ASP.NET MVC and it's really helping.</div></li>
+<li><p class="comment-author">Rob Ashton <span>10/7/2010 11:12 AM</span></p><div class="comment-body">Yeah - it definitely isn't a criticism of RavenDB, just something that needs pointing out so people don't make my intentional mistake above :)I'm really glad I'm doing a full vertical slice of the project now, not only RavenDB but &quot;these other technologies too&quot;, I'd like to think &quot;MS-MVC used right&quot; but I'm sure I'll get a few gotchas commented on as I go through.</div></li>
+<li><p class="comment-author">Kenny Eliasson <span>10/7/2010 12:02 PM</span></p><div class="comment-body">First time I see someone validating the login logic in a &quot;ViewValidator&quot; and then using ModelState.Usually see explicit calls to IUserService and just validating that the input isn't empty.Is that a approach you take use else where?</div></li>
+<li><p class="comment-author">Matt Warren <span>10/7/2010 12:27 PM</span></p><div class="comment-body">I actually think it's a benefit of Raven. From what I've read, when you want to test other DB solutions you generally end up doing tests against SQLite, rather than against the real DB. At least with RavenDB you're testing the same thing.</div></li>
+<li><p class="comment-author">Rob Ashton <span>10/7/2010 12:39 PM</span></p><div class="comment-body">Kenny :: It's an odd one I know,  I've got the data there so I use it there,  it also allows me to use the same validation feedback and etc without setting up anything new.In my other projects I just do it in the controller and add a message to a generic messaging system that all pages have the ability to use, but I haven't got access to that here so I don't.Do you have an opinion on this that you'd wish to share? :)</div></li>
+<li><p class="comment-author">Rob Ashton <span>10/7/2010 12:40 PM</span></p><div class="comment-body">Matt :: It's a valid remark, but remember that with the SQLite solution, we can always flick a switch and run them against MySQL with no changes as part of a set of slower running integration tests, as well as getting some vague sanity checks ran quickly as part of the faster tests.</div></li></ol></details>
+    <nav class="older-newer"><a rel="prev" href="/entries/ravendb---image-gallery-project-vii---user-registration.html"><span>Older</span>RavenDB - Image Gallery Project (VII) - User Registration</a><a rel="next" href="/entries/upcoming-talks-mostly-on-ravendb.html"><span>Newer</span>Upcoming talks (mostly on RavenDB)</a></nav>
+  </footer>
+</article>
 
-        <!--=== Copyright ===-->
-          <div class="container">
-            <div class="row-fluid">
-              <div class="span6">
-                <p class="terms">2020 © Rob Ashton. ALL Rights Reserved.</p>
-              </div>
-            </div><!--/row-fluid-->
-          </div><!--/container-->
-
-        <!-- JS Global Compulsory -->
-        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-        <!-- JS Implementing Plugins -->
-        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-        <!-- JS Page Level -->
-        <script type="text/javascript" src="/assets/js/app.js"></script>
-        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
-        <script type="text/javascript">
-jQuery(document).ready(function() {
-    App.init();
-    App.initFancybox();
-    App.initSliders();
-    Index.initParallaxSlider();
-    });
-        </script>
-        <!--[if lt IE 9]>
-    <script src="assets/js/respond.js"></script>
-<![endif]-->
-        </body>
-        </html>
-
+  </main>
+  <footer class="site">
+    <p>
+      <a href="mailto:robashton@codeofrob.com">robashton@codeofrob.com</a>
+      <a href="https://github.com/robashton">GitHub</a>
+      <a href="/rss.xml">RSS</a>
+      <a href="/testimonials.html">Nice things people have said</a>
+      <a href="/crowdsourced.html">The old homepage</a>
+    </p>
+  </footer>
+</body>
+</html>

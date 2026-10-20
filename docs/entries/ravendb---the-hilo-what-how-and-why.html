@@ -1,75 +1,37 @@
-<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
-<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
-<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
-<!--[if !ie]><!-->
-<html lang="en"> <!--<![endif]-->
+<!doctype html>
+<html lang="en-GB">
 <head>
-    <title id="title">RavenDB - The HiLo what how and why</title>
-    <meta charset="utf-8">
-    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="Description" content="Rob Ashton's blog, Purescript, Erlang, Purerl, Javascript, Software Design, etc"/> 
-    <meta name="author" content="Rob Ashton">
-    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
-    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/assets/css/style.css">
-    <link rel="stylesheet" href="/assets/css/headers/header1.css">
-    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
-    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
-    <link rel="stylesheet" href="/assets/css/style_responsive.css">
-    <link rel="shortcut icon" href="/favicon.ico">
-    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
-    <link rel="stylesheet" href="/assets/css/themes/default.css">
-    <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/github.css"></link>
-    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
-    <script type="text/javascript">
-      var _gaq = _gaq || [];
-      _gaq.push(['_setAccount', 'UA-11207442-1']);
-      _gaq.push(['_setDomainName', 'codeofrob.com']);
-      _gaq.push(['_trackPageview']);
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RavenDB - The HiLo what how and why - Rob Ashton</title>
+  <meta name="description" content="Rob Ashton's blog. Erlang, Purescript, live video, and whatever else I've been getting annoyed about.">
+  <meta name="author" content="Rob Ashton">
+  <link rel="alternate" type="application/rss+xml" href="/rss.xml" title="Rob Ashton's blog">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap">
+  <link rel="stylesheet" href="/css/site.css">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  
+</head>
+<body>
+  <header class="site">
+    <a class="name" href="/">Rob Ashton</a>
+    <nav>
+      <a href="/blog.html">Writing</a>
+      <a href="/projects.html">Projects</a>
+      <a href="/speaking.html">Talks</a>
+    </nav>
+  </header>
+  <main>
+<article class="post">
+  <header>
+    <h1>RavenDB - The HiLo what how and why</h1>
+    <p class="meta"><time datetime="2010-05-16">16 May 2010</time></p>
+  </header>
+  <div class="post-body">
 
-      (function() {
-        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-      })();
-    </script>
-  </head>
-
-  <body>
-    <div class="header">
-        <div class="container">
-            <div class="logo">
-             <h2><a href="/index.html">Rob Ashton</a></h2>
-            </div>
-            <div class="navbar">
-                <div class="navbar-inner">
-                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                    </a>
-                    <div class="nav-collapse collapse">
-                        <ul class="nav top-2">
-                          <li>
-                                <a href="/">Home</a>
-                            </li>
-                            <li>
-                                <a href="/blog.html">Blog</a>
-                            </li>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <body>
-    <div id="blog-entry">
-      <h1 id="post-title">RavenDB - The HiLo what how and why</h1>
-      <h6>Published on <span class="date">2010-5-16</span></h6>
-      <div id="post">
-		<p>One of the issues I touched on in with the <a href="http://codeofrob.com/archive/2010/05/12/ravendb-basic-usage-considerations.aspx">basic interaction with RavenDB</a> was the awkwardness of with having to call SaveChanges in order to get the ids of entities that had been saved across the unit of work. This is not a problem new to the document db space, nor is it a problem new to any system where the domain has been mapped to any id based data store (ORMs/RDBMS/etc).</p>  <p>I was going to cook a home brew solution specifically for my use within my projects and blog about it in order that other people could use it, but after posting my intentions in the <strong>RavenDB</strong> mailing list to create something like this, Oren suggested that making it the default behaviour and moving id generation to the Store would be a welcome move.</p>  <p>After posting on Twitter about this now being default, I got asked quite a few questions on what HiLo was, what the advantages were, and why it was a good thing that in the .NET client for RavenDB this was now going to be the default.</p>  <p><strong>The gist</strong></p>  <ul>   <li>Waiting until SaveChanges to get ids for saved entities makes writing logic against those entities troublesome</li>    <li>Calling SaveChanges every time a new entity is created makes transactions troublesome</li>    <li>Calling SaveChanges to get the entity id means a call across the wire just to get an entity id, which is expensive</li>    <li>Simply assigning a Guid to the Id makes accessing documents via REST an unpleasant experience</li>    <li>You can’t just assign a random integer, because you’d just get collisions as other clients did the same and tried to save their entities</li>    <li>HiLo provides a method of creating *<strong>incremental</strong>* integer based ids for entities in a fashion that is safe in concurrent environments</li> </ul>  <p><strong>The algorithm</strong></p>  <p>The basic premise, is that the server still controls the id generation, but effectively hands out a range of ids to each client, which the client can then hand out to objects as they are created, and when the client runs out of ids, it simply requests more.</p>  <p>Obviously, requesting a heap of Ids all at the same time would be expensive, so the idea is that the server provides a single id, a “Hi” value which controls the creation of the range on the client. (which provides the “Lo” value)</p>  <p>There are a number of ways this can be implemented, but the one I chose was probably the simplest, and credit goes to <a href="http://devlicio.us/blogs/tuna_toksoz/archive/2009/05/18/id-generation-for-db4o.aspx">Tuna Toksoz</a> for the blog entry which provided the means to implementing it myself.</p>  <ul>   <li>The data store needs only store the latest “Hi” value, which starts at 1, and increases by 1 every time a new “Hi” value is requested by a client</li>    <li>The clients all use the same number for a “Capacity”, that is – the range of numbers that each “Hi” value represents. For example 1000</li>    <li>Each client requests a “Hi” value and resets their “Lo” value to 0</li>    <li>Every time a new Id is requested from the generator, the Id is generated by combining the Hi and Lo numbers together:</li> </ul>  <div class="csharpcode">   <pre class="alt"><span class="lnum">   1:  </span>(currentHi - 1)*capacity + (++currentLo)</pre>
+		<p>One of the issues I touched on in with the <a href="/entries/ravendb---basic-usage-considerations.html">basic interaction with RavenDB</a> was the awkwardness of with having to call SaveChanges in order to get the ids of entities that had been saved across the unit of work. This is not a problem new to the document db space, nor is it a problem new to any system where the domain has been mapped to any id based data store (ORMs/RDBMS/etc).</p>  <p>I was going to cook a home brew solution specifically for my use within my projects and blog about it in order that other people could use it, but after posting my intentions in the <strong>RavenDB</strong> mailing list to create something like this, Oren suggested that making it the default behaviour and moving id generation to the Store would be a welcome move.</p>  <p>After posting on Twitter about this now being default, I got asked quite a few questions on what HiLo was, what the advantages were, and why it was a good thing that in the .NET client for RavenDB this was now going to be the default.</p>  <p><strong>The gist</strong></p>  <ul>   <li>Waiting until SaveChanges to get ids for saved entities makes writing logic against those entities troublesome</li>    <li>Calling SaveChanges every time a new entity is created makes transactions troublesome</li>    <li>Calling SaveChanges to get the entity id means a call across the wire just to get an entity id, which is expensive</li>    <li>Simply assigning a Guid to the Id makes accessing documents via REST an unpleasant experience</li>    <li>You can’t just assign a random integer, because you’d just get collisions as other clients did the same and tried to save their entities</li>    <li>HiLo provides a method of creating *<strong>incremental</strong>* integer based ids for entities in a fashion that is safe in concurrent environments</li> </ul>  <p><strong>The algorithm</strong></p>  <p>The basic premise, is that the server still controls the id generation, but effectively hands out a range of ids to each client, which the client can then hand out to objects as they are created, and when the client runs out of ids, it simply requests more.</p>  <p>Obviously, requesting a heap of Ids all at the same time would be expensive, so the idea is that the server provides a single id, a “Hi” value which controls the creation of the range on the client. (which provides the “Lo” value)</p>  <p>There are a number of ways this can be implemented, but the one I chose was probably the simplest, and credit goes to <a href="http://devlicio.us/blogs/tuna_toksoz/archive/2009/05/18/id-generation-for-db4o.aspx">Tuna Toksoz</a> for the blog entry which provided the means to implementing it myself.</p>  <ul>   <li>The data store needs only store the latest “Hi” value, which starts at 1, and increases by 1 every time a new “Hi” value is requested by a client</li>    <li>The clients all use the same number for a “Capacity”, that is – the range of numbers that each “Hi” value represents. For example 1000</li>    <li>Each client requests a “Hi” value and resets their “Lo” value to 0</li>    <li>Every time a new Id is requested from the generator, the Id is generated by combining the Hi and Lo numbers together:</li> </ul>  <div class="csharpcode">   <pre class="alt"><span class="lnum">   1:  </span>(currentHi - 1)*capacity + (++currentLo)</pre>
 </div>
 
 <div class="csharpcode">
@@ -193,46 +155,27 @@
 <p>While I might contribute the odd bug fix to open source projects now and then, the idea of going in and changing the fundamental way the .NET RavenDB client worked was a bit daunting – not from a technical perspective, but from a taste perspective as I wasn’t sure how Oren wanted things done. As he later said, he’d prefer that code that has to then change be submitted, then no code at all be submitted. I’d like to raise that with anybody who wants to contribute to this project – if you’ve got a good idea then hit the mailing list and suggest it and maybe implement it – nothing to be lost if it’s something people want to use.</p>
 
 <p>In the end, my implementation is barely visible in there, but I'm still pleased that this is in there, it makes *my* life easier :)</p>
-	</div>
-      <div id="links">
-        <a href="/">Index</a>
-        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="mailto:robashton@codeofrob.com">Respond</a>
-      </div>
+	
+  </div>
+  <footer>
+    <p class="respond">Comments are long gone, but you can <a href="mailto:robashton@codeofrob.com">email me</a> if you've got something to say.</p>
+    <details class="comments"><summary>4 comments from the old blog</summary><ol><li><p class="comment-author">Sean <span>5/16/2010 10:45 PM</span></p><div class="comment-body">When using hilo myself, I found it worked better if I implimented the hi by eg 1000 and then getting a new id with (currentHi) + (++currentLo)That lets you change the capacity client side without problems.  It also simplified getting a new id inside sql server stored procs.</div></li>
+<li><p class="comment-author">robashton <span>5/16/2010 10:54 PM</span></p><div class="comment-body">Surely that means the client still needs to be aware of the capacity (because they'd still be able to go past capacity if it was changed on the server).Either way it's brittle if you're not in control of the whole system - but if you're writing a proper system then only one client will access the database (ideally), and everything else will go through that client so it doesn't matter.</div></li>
+<li><p class="comment-author">Ken Egozi <span>5/17/2010 6:10 AM</span></p><div class="comment-body">@rob: proper system =&gt; only one client?with large, complex systems, you can easily find a mix of technologies. Like RoR front-end, erlang based chat server, .NET logic engine, and Java based batch processing. One of the things that can make RavenDB appeal would be a consistent set of clients for major environments. For e.g., I like that with MongoDB you get official server build for every possible type of host (irrelevant with RavenDB as it is dependant on ESENT afaik), and a large list of consistent client APIs.</div></li>
+<li><p class="comment-author">robashton <span>5/17/2010 7:45 AM</span></p><div class="comment-body">Sure - but most architects would balk at the idea of letting all those things go directly to the database. Instead, the main application would most likely expose services which these would go to.Even if you weren't to do that (Because let's face it, RavenDB exposes the ability to load logic directly into it *and* exposes REST services so why *not* go directly to it), the fact remains that with any client-id assignation system you're going to have to standardise how and when those clients generate those ids and it doesn't matter which variant of the HiLo algorithm you use :)</div></li></ol></details>
+    <nav class="older-newer"><a rel="prev" href="/entries/ravendb---basic-usage-considerations.html"><span>Older</span>RavenDB - Basic usage considerations</a><a rel="next" href="/entries/ravendb---how-stale-do-you-want-it.html"><span>Newer</span>RavenDB - How stale do you want it</a></nav>
+  </footer>
+</article>
 
-        <!--=== Copyright ===-->
-          <div class="container">
-            <div class="row-fluid">
-              <div class="span6">
-                <p class="terms">2020 © Rob Ashton. ALL Rights Reserved.</p>
-              </div>
-            </div><!--/row-fluid-->
-          </div><!--/container-->
-
-        <!-- JS Global Compulsory -->
-        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-        <!-- JS Implementing Plugins -->
-        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-        <!-- JS Page Level -->
-        <script type="text/javascript" src="/assets/js/app.js"></script>
-        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
-        <script type="text/javascript">
-jQuery(document).ready(function() {
-    App.init();
-    App.initFancybox();
-    App.initSliders();
-    Index.initParallaxSlider();
-    });
-        </script>
-        <!--[if lt IE 9]>
-    <script src="assets/js/respond.js"></script>
-<![endif]-->
-        </body>
-        </html>
-
+  </main>
+  <footer class="site">
+    <p>
+      <a href="mailto:robashton@codeofrob.com">robashton@codeofrob.com</a>
+      <a href="https://github.com/robashton">GitHub</a>
+      <a href="/rss.xml">RSS</a>
+      <a href="/testimonials.html">Nice things people have said</a>
+      <a href="/crowdsourced.html">The old homepage</a>
+    </p>
+  </footer>
+</body>
+</html>

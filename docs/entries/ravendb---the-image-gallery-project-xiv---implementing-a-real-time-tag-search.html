@@ -1,74 +1,36 @@
-<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
-<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
-<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
-<!--[if !ie]><!-->
-<html lang="en"> <!--<![endif]-->
+<!doctype html>
+<html lang="en-GB">
 <head>
-    <title id="title">RavenDB - The Image Gallery Project (XIV) - Implementing a real-time tag search</title>
-    <meta charset="utf-8">
-    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="Description" content="Rob Ashton's blog, Purescript, Erlang, Purerl, Javascript, Software Design, etc"/> 
-    <meta name="author" content="Rob Ashton">
-    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
-    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/assets/css/style.css">
-    <link rel="stylesheet" href="/assets/css/headers/header1.css">
-    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
-    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
-    <link rel="stylesheet" href="/assets/css/style_responsive.css">
-    <link rel="shortcut icon" href="/favicon.ico">
-    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
-    <link rel="stylesheet" href="/assets/css/themes/default.css">
-    <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/github.css"></link>
-    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
-    <script type="text/javascript">
-      var _gaq = _gaq || [];
-      _gaq.push(['_setAccount', 'UA-11207442-1']);
-      _gaq.push(['_setDomainName', 'codeofrob.com']);
-      _gaq.push(['_trackPageview']);
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RavenDB - The Image Gallery Project (XIV) - Implementing a real-time tag search - Rob Ashton</title>
+  <meta name="description" content="Rob Ashton's blog. Erlang, Purescript, live video, and whatever else I've been getting annoyed about.">
+  <meta name="author" content="Rob Ashton">
+  <link rel="alternate" type="application/rss+xml" href="/rss.xml" title="Rob Ashton's blog">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap">
+  <link rel="stylesheet" href="/css/site.css">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  
+</head>
+<body>
+  <header class="site">
+    <a class="name" href="/">Rob Ashton</a>
+    <nav>
+      <a href="/blog.html">Writing</a>
+      <a href="/projects.html">Projects</a>
+      <a href="/speaking.html">Talks</a>
+    </nav>
+  </header>
+  <main>
+<article class="post">
+  <header>
+    <h1>RavenDB - The Image Gallery Project (XIV) - Implementing a real-time tag search</h1>
+    <p class="meta"><time datetime="2010-10-21">21 October 2010</time></p>
+  </header>
+  <div class="post-body">
 
-      (function() {
-        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-      })();
-    </script>
-  </head>
-
-  <body>
-    <div class="header">
-        <div class="container">
-            <div class="logo">
-             <h2><a href="/index.html">Rob Ashton</a></h2>
-            </div>
-            <div class="navbar">
-                <div class="navbar-inner">
-                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                    </a>
-                    <div class="nav-collapse collapse">
-                        <ul class="nav top-2">
-                          <li>
-                                <a href="/">Home</a>
-                            </li>
-                            <li>
-                                <a href="/blog.html">Blog</a>
-                            </li>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <body>
-    <div id="blog-entry">
-      <h1 id="post-title">RavenDB - The Image Gallery Project (XIV) - Implementing a real-time tag search</h1>
-      <h6>Published on <span class="date">2010-10-21</span></h6>
-      <div id="post">
 		<p>The code for this and all other entries in this series can be found here: <a href="http://github.com/robashton/RavenGallery/">http://github.com/robashton/RavenGallery/</a></p>  <p>We don’t currently have any search functionality in the image browser which means the browser is all but useless, so let’s look at adding that with some RavenDB magic.</p>  <p>In a RDBMS project, performing loose searches on tags and other fields of our documents would be a non-trivial operation both in implementation and execution – in RavenDB we can just execute a LINQ query and know an index will be created in the background to make this operation ludicrously fast.</p>  <p><strong>Some background: The Web bit</strong></p>  <p>In order to demo the kind of functionality we can get from RavenDB, I’m going to implement a search as you type system which constantly asks RavenDB for the search results for a given term.</p>  <p>Because I’m trying to do this as a more real-world example, I’m not going to cheat by doing partial page updates and passing XHTML all over the show with JavaScript, I’m going to rip apart my original controller action and make it return just the view.</p>  <p>Instead, I am going to use some client-side templating with jquery-tmpl, and a call to a service to get the relevant view as a blob of JSON will be used, any changes to the textbox will just mean this initial call will get made again and the view re-populated.</p>  <div class="csharpcode">   <pre class="alt">        <span class="kwrd">public</span> ActionResult Browse()</pre>
 
   <pre>        {</pre>
@@ -494,7 +456,7 @@
 
 <p><em>As the user types,</em> images with tags that match the current search text are displayed within the search results area – Lucene indexes are seriously fast and this is a good demonstration of that</p>
 
-<p><a href="http://codeofrob.com/images/codeofrob_com/WindowsLiveWriter/RavenDBTheImageGalleryProjectXIII_C8ED/image_2.png"><img style="background-image: none; border-right-width: 0px; margin: ;padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px;" title="image" border="0" alt="image" src="http://codeofrob.com/images/codeofrob_com/WindowsLiveWriter/RavenDBTheImageGalleryProjectXIII_C8ED/image_thumb.png" width="533" height="518"></a></p>
+<p><a href="/images/codeofrob_com/WindowsLiveWriter/RavenDBTheImageGalleryProjectXIII_C8ED/image_2.png"><img style="background-image: none; border-right-width: 0px; margin: ;padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px;" title="image" border="0" alt="image" src="/images/codeofrob_com/WindowsLiveWriter/RavenDBTheImageGalleryProjectXIII_C8ED/image_thumb.png" width="533" height="518"></a></p>
 
 <p><strong>There are still some improvements that could be made at this time.</strong></p>
 
@@ -503,46 +465,27 @@
 <p>We are also still returning the entire document each time and then just plucking the relevant fields from it – this is rather heavy weight with all that data travelling across the wire and still needs changing so that we only transmit the fields from the document that we want in our end view model. <em>(Projections)</em></p>
 
 <p>That makes clear what we’ll be doing next…</p>
-	</div>
-      <div id="links">
-        <a href="/">Index</a>
-        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="mailto:robashton@codeofrob.com">Respond</a>
-      </div>
+	
+  </div>
+  <footer>
+    <p class="respond">Comments are long gone, but you can <a href="mailto:robashton@codeofrob.com">email me</a> if you've got something to say.</p>
+    <details class="comments"><summary>4 comments from the old blog</summary><ol><li><p class="comment-author">tobi <span>10/22/2010 2:57 PM</span></p><div class="comment-body">There is a bug inpublic ImageBrowseView Load(ImageBrowseInputModel input)the filtering should happen before the paging. This might actually be a bug in ravens linq support if the order did not matter for your tests.</div></li>
+<li><p class="comment-author">Rob Ashton <span>10/22/2010 5:00 PM</span></p><div class="comment-body">Really - you think?All paging is doing is setting a value in the underlying state, when that gets done is largely irrelevant?</div></li>
+<li><p class="comment-author">tobi <span>10/23/2010 9:13 AM</span></p><div class="comment-body">If you page before filtering you can get less than a page full of data back. Probably ravens linq support does not implement it that way! There are two bugs cancelling each other out.</div></li>
+<li><p class="comment-author">Rob ashton <span>10/23/2010 2:43 PM</span></p><div class="comment-body">hmm,  you are right - I am not sure if we'd count that as a bug as such, but it certainly does behave differently to default SQL linq provider or in memory collection provider.I shall start a discussion about it on the mailing list, I suspect we shall leave the behaviour as it is</div></li></ol></details>
+    <nav class="older-newer"><a rel="prev" href="/entries/ravendb-image-gallery-project-xiii--understanding-indexes.html"><span>Older</span>RavenDB-Image Gallery Project (XIII)- Understanding Indexes</a><a rel="next" href="/entries/ravendb-the-image-gallery-project-xv---improving-tag-search-with-autocomplete.html"><span>Newer</span>RavenDB-The Image Gallery Project (XV) - Improving Tag Search with AutoComplete</a></nav>
+  </footer>
+</article>
 
-        <!--=== Copyright ===-->
-          <div class="container">
-            <div class="row-fluid">
-              <div class="span6">
-                <p class="terms">2020 © Rob Ashton. ALL Rights Reserved.</p>
-              </div>
-            </div><!--/row-fluid-->
-          </div><!--/container-->
-
-        <!-- JS Global Compulsory -->
-        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-        <!-- JS Implementing Plugins -->
-        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-        <!-- JS Page Level -->
-        <script type="text/javascript" src="/assets/js/app.js"></script>
-        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
-        <script type="text/javascript">
-jQuery(document).ready(function() {
-    App.init();
-    App.initFancybox();
-    App.initSliders();
-    Index.initParallaxSlider();
-    });
-        </script>
-        <!--[if lt IE 9]>
-    <script src="assets/js/respond.js"></script>
-<![endif]-->
-        </body>
-        </html>
-
+  </main>
+  <footer class="site">
+    <p>
+      <a href="mailto:robashton@codeofrob.com">robashton@codeofrob.com</a>
+      <a href="https://github.com/robashton">GitHub</a>
+      <a href="/rss.xml">RSS</a>
+      <a href="/testimonials.html">Nice things people have said</a>
+      <a href="/crowdsourced.html">The old homepage</a>
+    </p>
+  </footer>
+</body>
+</html>

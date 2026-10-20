@@ -1,74 +1,36 @@
-<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
-<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
-<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
-<!--[if !ie]><!-->
-<html lang="en"> <!--<![endif]-->
+<!doctype html>
+<html lang="en-GB">
 <head>
-    <title id="title">RavenDB-Image Gallery Project (XIII)- Understanding Indexes</title>
-    <meta charset="utf-8">
-    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="Description" content="Rob Ashton's blog, Purescript, Erlang, Purerl, Javascript, Software Design, etc"/> 
-    <meta name="author" content="Rob Ashton">
-    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
-    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/assets/css/style.css">
-    <link rel="stylesheet" href="/assets/css/headers/header1.css">
-    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
-    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
-    <link rel="stylesheet" href="/assets/css/style_responsive.css">
-    <link rel="shortcut icon" href="/favicon.ico">
-    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
-    <link rel="stylesheet" href="/assets/css/themes/default.css">
-    <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/github.css"></link>
-    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
-    <script type="text/javascript">
-      var _gaq = _gaq || [];
-      _gaq.push(['_setAccount', 'UA-11207442-1']);
-      _gaq.push(['_setDomainName', 'codeofrob.com']);
-      _gaq.push(['_trackPageview']);
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RavenDB-Image Gallery Project (XIII)- Understanding Indexes - Rob Ashton</title>
+  <meta name="description" content="Rob Ashton's blog. Erlang, Purescript, live video, and whatever else I've been getting annoyed about.">
+  <meta name="author" content="Rob Ashton">
+  <link rel="alternate" type="application/rss+xml" href="/rss.xml" title="Rob Ashton's blog">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap">
+  <link rel="stylesheet" href="/css/site.css">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  
+</head>
+<body>
+  <header class="site">
+    <a class="name" href="/">Rob Ashton</a>
+    <nav>
+      <a href="/blog.html">Writing</a>
+      <a href="/projects.html">Projects</a>
+      <a href="/speaking.html">Talks</a>
+    </nav>
+  </header>
+  <main>
+<article class="post">
+  <header>
+    <h1>RavenDB-Image Gallery Project (XIII)- Understanding Indexes</h1>
+    <p class="meta"><time datetime="2010-10-19">19 October 2010</time></p>
+  </header>
+  <div class="post-body">
 
-      (function() {
-        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-      })();
-    </script>
-  </head>
-
-  <body>
-    <div class="header">
-        <div class="container">
-            <div class="logo">
-             <h2><a href="/index.html">Rob Ashton</a></h2>
-            </div>
-            <div class="navbar">
-                <div class="navbar-inner">
-                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                    </a>
-                    <div class="nav-collapse collapse">
-                        <ul class="nav top-2">
-                          <li>
-                                <a href="/">Home</a>
-                            </li>
-                            <li>
-                                <a href="/blog.html">Blog</a>
-                            </li>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <body>
-    <div id="blog-entry">
-      <h1 id="post-title">RavenDB-Image Gallery Project (XIII)- Understanding Indexes</h1>
-      <h6>Published on <span class="date">2010-10-19</span></h6>
-      <div id="post">
 		<p>The code for this and all other entries in this series can be found here: <a href="http://github.com/robashton/RavenGallery/">http://github.com/robashton/RavenGallery/</a></p>  <p>So far our image browser view just retrieves *all* of the documents from the document store, and allows paging through them. In other previous entries we have also written simple LINQ queries to check the existence of users and authenticate via username and password.</p>  <p>RavenDB makes it very easy for us to query our documents and not think about what is going on under the hood, and that can get us very far indeed before we have to do any manual work ourselves, but that can make the leap to advanced functionality quite a big one.</p>  <p>So, before we get that far it would be best to explain what is going on when you perform these basic queries against the document store. </p>  <p><strong>A basic query against a single property</strong></p>  <p>In RavenDB we can query a property on our document like so:</p>  <div class="csharpcode">   <pre class="alt">var query = documentSession.Query&lt;ImageDocument&gt;() </pre>
 
   <pre>        .Where(x=&gt;x.Title == <span class="str">"Something"</span>) </pre>
@@ -283,46 +245,32 @@
 <p>In order for LINQ to be used to query that index, there is a convention that the properties in the anonymous object created by the map expression should have the same name as the properties in the original document, but this is not entirely necessary – later in the series we might discuss some use cases for this and we can query without using the LINQ provider.</p>
 
 <p>For the next few entries, any ad-hoc queries will also be accompanied with an explanation of the underlying index that will be created, so that when we reach the point where we <em>need</em> to create an index it should be easily understandable.</p>
-	</div>
-      <div id="links">
-        <a href="/">Index</a>
-        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="mailto:robashton@codeofrob.com">Respond</a>
-      </div>
+	
+  </div>
+  <footer>
+    <p class="respond">Comments are long gone, but you can <a href="mailto:robashton@codeofrob.com">email me</a> if you've got something to say.</p>
+    <details class="comments"><summary>9 comments from the old blog</summary><ol><li><p class="comment-author">Matt Warren <span>10/19/2010 12:35 PM</span></p><div class="comment-body">When you say &quot;For the vast majority of queries, it is simply not necessary to pre-define those indexes&quot;It might be worth adding that dynamic queries are not suitable if you need to do any sorting/ordering or if you need results that include all docs - straight away. In these cases creating indexes up front is still the best option.But dynamic queries are a *really* cool feature.</div></li>
+<li><p class="comment-author">Rob Ashton <span>10/19/2010 3:39 PM</span></p><div class="comment-body">It's a difficult one, RavenDB does now support ordering on dynamic queries, and by the time you have enough data in the system for the dynamic nature of the query to be a problem, the query is probably permanent.</div></li>
+<li><p class="comment-author">Matt Warren <span>10/19/2010 11:10 PM</span></p><div class="comment-body">Sorry I didn't mean to say that dynamic queries can't sort, just that it causes problems.But I guess I was thinking about the situation where you already have a large dataset and you issue a new dynamic query. In that case the query will be stale for a long time, during which sorting might not return the correct results. But I admit it's not a common case.</div></li>
+<li><p class="comment-author">Anders <span>10/20/2010 6:59 AM</span></p><div class="comment-body">I think there need to be some more information on when I do need to pre-define some indexes. What can't/shouldn't I do with dynamic queries etc.</div></li>
+<li><p class="comment-author">Rob Ashton <span>10/20/2010 12:43 PM</span></p><div class="comment-body">You're right, I am trying to do it within the context of this series however and there are still a lot of features I have left to cover :)Oren does a good summary of when you wouldn't want to use dynamic queries here: ayende.com/.../ravenrsquos-dynamic-queries.aspx</div></li>
+<li><p class="comment-author">Nadav <span>10/21/2010 6:40 AM</span></p><div class="comment-body">I have a question about the updating of the indexes being done in a background thread.Does this mean that if I add a document to the database and then query the database then the newly added document might not be in the query result?That seems a bit problematic to me...</div></li>
+<li><p class="comment-author">Rob Ashton <span>10/21/2010 10:02 AM</span></p><div class="comment-body">That is indeed the case.This is always a possibility in any system which is built this way (most of the CQRSy patterns acknowledge this). Typically the solution is to design user interfaces that *assume* success and display the updated results immediately.If seeing 'up to date' results is massively important (and you should strive to avoid such situations), then you can always use WaitForNoneStaleResultsAsOfNow to make sure you have the latest indexed data.</div></li>
+<li><p class="comment-author">Nadav <span>10/21/2010 2:05 PM</span></p><div class="comment-body">Thanks, Rob.I'm just trying to think I you design the interface to avoid it.i.e. You add an item to the data, go back to the index page, and the Item you just added is not shown. The client's response will be WTF?!</div></li>
+<li><p class="comment-author">Rob Ashton <span>10/21/2010 2:21 PM</span></p><div class="comment-body">In a web application, rather than go to a different page, show an editor in-situ (JavaScript, it's the modern way anyway), when they add the item, you can add it to the list without requesting any data from the server at all.(Just one solution)</div></li></ol></details>
+    <nav class="older-newer"><a rel="prev" href="/entries/ravendb---the-image-gallery-project-xii---integrating-our-view-with-asp.net-mvc.html"><span>Older</span>RavenDB - The Image Gallery Project (XII) - Integrating our view with ASP.NET MVC</a><a rel="next" href="/entries/ravendb---the-image-gallery-project-xiv---implementing-a-real-time-tag-search.html"><span>Newer</span>RavenDB - The Image Gallery Project (XIV) - Implementing a real-time tag search</a></nav>
+  </footer>
+</article>
 
-        <!--=== Copyright ===-->
-          <div class="container">
-            <div class="row-fluid">
-              <div class="span6">
-                <p class="terms">2020 © Rob Ashton. ALL Rights Reserved.</p>
-              </div>
-            </div><!--/row-fluid-->
-          </div><!--/container-->
-
-        <!-- JS Global Compulsory -->
-        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-        <!-- JS Implementing Plugins -->
-        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-        <!-- JS Page Level -->
-        <script type="text/javascript" src="/assets/js/app.js"></script>
-        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
-        <script type="text/javascript">
-jQuery(document).ready(function() {
-    App.init();
-    App.initFancybox();
-    App.initSliders();
-    Index.initParallaxSlider();
-    });
-        </script>
-        <!--[if lt IE 9]>
-    <script src="assets/js/respond.js"></script>
-<![endif]-->
-        </body>
-        </html>
-
+  </main>
+  <footer class="site">
+    <p>
+      <a href="mailto:robashton@codeofrob.com">robashton@codeofrob.com</a>
+      <a href="https://github.com/robashton">GitHub</a>
+      <a href="/rss.xml">RSS</a>
+      <a href="/testimonials.html">Nice things people have said</a>
+      <a href="/crowdsourced.html">The old homepage</a>
+    </p>
+  </footer>
+</body>
+</html>

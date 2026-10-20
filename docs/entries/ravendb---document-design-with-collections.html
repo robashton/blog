@@ -1,75 +1,37 @@
-<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
-<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
-<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
-<!--[if !ie]><!-->
-<html lang="en"> <!--<![endif]-->
+<!doctype html>
+<html lang="en-GB">
 <head>
-    <title id="title">RavenDB - Document design with collections</title>
-    <meta charset="utf-8">
-    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="Description" content="Rob Ashton's blog, Purescript, Erlang, Purerl, Javascript, Software Design, etc"/> 
-    <meta name="author" content="Rob Ashton">
-    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
-    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/assets/css/style.css">
-    <link rel="stylesheet" href="/assets/css/headers/header1.css">
-    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
-    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
-    <link rel="stylesheet" href="/assets/css/style_responsive.css">
-    <link rel="shortcut icon" href="/favicon.ico">
-    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
-    <link rel="stylesheet" href="/assets/css/themes/default.css">
-    <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/github.css"></link>
-    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
-    <script type="text/javascript">
-      var _gaq = _gaq || [];
-      _gaq.push(['_setAccount', 'UA-11207442-1']);
-      _gaq.push(['_setDomainName', 'codeofrob.com']);
-      _gaq.push(['_trackPageview']);
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RavenDB - Document design with collections - Rob Ashton</title>
+  <meta name="description" content="Rob Ashton's blog. Erlang, Purescript, live video, and whatever else I've been getting annoyed about.">
+  <meta name="author" content="Rob Ashton">
+  <link rel="alternate" type="application/rss+xml" href="/rss.xml" title="Rob Ashton's blog">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap">
+  <link rel="stylesheet" href="/css/site.css">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  
+</head>
+<body>
+  <header class="site">
+    <a class="name" href="/">Rob Ashton</a>
+    <nav>
+      <a href="/blog.html">Writing</a>
+      <a href="/projects.html">Projects</a>
+      <a href="/speaking.html">Talks</a>
+    </nav>
+  </header>
+  <main>
+<article class="post">
+  <header>
+    <h1>RavenDB - Document design with collections</h1>
+    <p class="meta"><time datetime="2010-12-21">21 December 2010</time></p>
+  </header>
+  <div class="post-body">
 
-      (function() {
-        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-      })();
-    </script>
-  </head>
-
-  <body>
-    <div class="header">
-        <div class="container">
-            <div class="logo">
-             <h2><a href="/index.html">Rob Ashton</a></h2>
-            </div>
-            <div class="navbar">
-                <div class="navbar-inner">
-                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                    </a>
-                    <div class="nav-collapse collapse">
-                        <ul class="nav top-2">
-                          <li>
-                                <a href="/">Home</a>
-                            </li>
-                            <li>
-                                <a href="/blog.html">Blog</a>
-                            </li>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <body>
-    <div id="blog-entry">
-      <h1 id="post-title">RavenDB - Document design with collections</h1>
-      <h6>Published on <span class="date">2010-12-21</span></h6>
-      <div id="post">
-		<p>In my previous entry about a <a href="http://codeofrob.com/archive/2010/12/16/ravendb-stackoverflow-style-voting-with-live-projections.aspx">StackOverflow type system</a> we saw that I split out some of my large collections into their own documents, rather than persist them as part of the whole question document.</p>  <p>I have been asked since then what my rationale was when creating that example? In what situations might I take a collection from a document and persist each item in its own document? In what situations might I just store the collection inside the document that owns that collection?</p>  <p>There are disadvantages and advantages to either of these approaches, and&nbsp; these will impact you differently based on the ways in which you are likely to be using this data. </p>  <p><strong>Storing the collection inside the master document</strong></p>  <pre>
+		<p>In my previous entry about a <a href="/entries/ravendb---stackoverflow-style-voting-with-live-projections.html">StackOverflow type system</a> we saw that I split out some of my large collections into their own documents, rather than persist them as part of the whole question document.</p>  <p>I have been asked since then what my rationale was when creating that example? In what situations might I take a collection from a document and persist each item in its own document? In what situations might I just store the collection inside the document that owns that collection?</p>  <p>There are disadvantages and advantages to either of these approaches, and&nbsp; these will impact you differently based on the ways in which you are likely to be using this data. </p>  <p><strong>Storing the collection inside the master document</strong></p>  <pre>
 public class MasterDocument 
 { 
     // various Master properties + unique Id
@@ -179,46 +141,30 @@ public class ChildDocument
 <p>You’re nearly <em>always</em> going to have this problem when you are trying to tie a conceptual entity and its <em>behaviour</em> directly to the manner in which it is persisted as <em>data</em>. Using a document database reduces this mismatch quite a lot – but in the complex models with interesting behaviour where DDD actually becomes useful, you most likely aren’t going to be talking about data, and if you use a document database to do any form of persistence this will most likely be done separately to the entities themselves.</p>
 
 <p>My advice? Don’t worry too much about this – persist your data, stick behaviour on your documents where it makes sense to and get on with life. The language is still useful as a way of communicating intent, but you’re not going to see me using it too much if I am working with data in this way.</p>
-	</div>
-      <div id="links">
-        <a href="/">Index</a>
-        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="mailto:robashton@codeofrob.com">Respond</a>
-      </div>
+	
+  </div>
+  <footer>
+    <p class="respond">Comments are long gone, but you can <a href="mailto:robashton@codeofrob.com">email me</a> if you've got something to say.</p>
+    <details class="comments"><summary>7 comments from the old blog</summary><ol><li><p class="comment-author">Andrew Davey <span>12/21/2010 5:47 PM</span></p><div class="comment-body">Thanks for this follow up post, Rob. The examples are really helpful. Maybe a RavenDB document design wiki would be useful, rather than the forums filling up with &quot;how should I structure application X&quot; questions.</div></li>
+<li><p class="comment-author">robashton <span>12/21/2010 9:16 PM</span></p><div class="comment-body">Perhaps as the questions emerge we can come up with that - some of the standard document design guidelines are different with RavenDB on account of the drive towards added value functionality.</div></li>
+<li><p class="comment-author">Chris Marisic <span>12/22/2010 3:00 PM</span></p><div class="comment-body">Very useful insight Rob</div></li>
+<li><p class="comment-author">robashton <span>12/22/2010 3:07 PM</span></p><div class="comment-body">Thanks, perhaps more of these as more questions get asked :-)</div></li>
+<li><p class="comment-author">DanyW <span>1/26/2011 10:42 PM</span></p><div class="comment-body">Thanks Rob - this actually went a long way to answering my languishing question on StackOverflow.</div></li>
+<li><p class="comment-author">robashton <span>1/26/2011 10:52 PM</span></p><div class="comment-body">I saw that earlier but am on my phone so...</div></li>
+<li><p class="comment-author">DanyW <span>1/26/2011 10:57 PM</span></p><div class="comment-body">This article actually gave me a eureka moment - I've got a bulk of my SQL data model mapped out into documents now. Next is testing how well it fits into my UI workflow</div></li></ol></details>
+    <nav class="older-newer"><a rel="prev" href="/entries/ravendb---stackoverflow-style-voting-with-live-projections.html"><span>Older</span>RavenDB - StackOverflow style voting with Live Projections</a><a rel="next" href="/entries/a-word-of-advice-for-recruiters.html"><span>Newer</span>A word of advice for recruiters</a></nav>
+  </footer>
+</article>
 
-        <!--=== Copyright ===-->
-          <div class="container">
-            <div class="row-fluid">
-              <div class="span6">
-                <p class="terms">2020 © Rob Ashton. ALL Rights Reserved.</p>
-              </div>
-            </div><!--/row-fluid-->
-          </div><!--/container-->
-
-        <!-- JS Global Compulsory -->
-        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-        <!-- JS Implementing Plugins -->
-        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-        <!-- JS Page Level -->
-        <script type="text/javascript" src="/assets/js/app.js"></script>
-        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
-        <script type="text/javascript">
-jQuery(document).ready(function() {
-    App.init();
-    App.initFancybox();
-    App.initSliders();
-    Index.initParallaxSlider();
-    });
-        </script>
-        <!--[if lt IE 9]>
-    <script src="assets/js/respond.js"></script>
-<![endif]-->
-        </body>
-        </html>
-
+  </main>
+  <footer class="site">
+    <p>
+      <a href="mailto:robashton@codeofrob.com">robashton@codeofrob.com</a>
+      <a href="https://github.com/robashton">GitHub</a>
+      <a href="/rss.xml">RSS</a>
+      <a href="/testimonials.html">Nice things people have said</a>
+      <a href="/crowdsourced.html">The old homepage</a>
+    </p>
+  </footer>
+</body>
+</html>

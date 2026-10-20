@@ -1,74 +1,36 @@
-<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
-<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
-<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
-<!--[if !ie]><!-->
-<html lang="en"> <!--<![endif]-->
+<!doctype html>
+<html lang="en-GB">
 <head>
-    <title id="title">RavenDB - The Image Gallery Project (XVI) - Adding Edit Functionality (I)</title>
-    <meta charset="utf-8">
-    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="Description" content="Rob Ashton's blog, Purescript, Erlang, Purerl, Javascript, Software Design, etc"/> 
-    <meta name="author" content="Rob Ashton">
-    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
-    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/assets/css/style.css">
-    <link rel="stylesheet" href="/assets/css/headers/header1.css">
-    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
-    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
-    <link rel="stylesheet" href="/assets/css/style_responsive.css">
-    <link rel="shortcut icon" href="/favicon.ico">
-    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
-    <link rel="stylesheet" href="/assets/css/themes/default.css">
-    <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/github.css"></link>
-    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
-    <script type="text/javascript">
-      var _gaq = _gaq || [];
-      _gaq.push(['_setAccount', 'UA-11207442-1']);
-      _gaq.push(['_setDomainName', 'codeofrob.com']);
-      _gaq.push(['_trackPageview']);
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RavenDB - The Image Gallery Project (XVI) - Adding Edit Functionality (I) - Rob Ashton</title>
+  <meta name="description" content="Rob Ashton's blog. Erlang, Purescript, live video, and whatever else I've been getting annoyed about.">
+  <meta name="author" content="Rob Ashton">
+  <link rel="alternate" type="application/rss+xml" href="/rss.xml" title="Rob Ashton's blog">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap">
+  <link rel="stylesheet" href="/css/site.css">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  
+</head>
+<body>
+  <header class="site">
+    <a class="name" href="/">Rob Ashton</a>
+    <nav>
+      <a href="/blog.html">Writing</a>
+      <a href="/projects.html">Projects</a>
+      <a href="/speaking.html">Talks</a>
+    </nav>
+  </header>
+  <main>
+<article class="post">
+  <header>
+    <h1>RavenDB - The Image Gallery Project (XVI) - Adding Edit Functionality (I)</h1>
+    <p class="meta"><time datetime="2010-11-23">23 November 2010</time></p>
+  </header>
+  <div class="post-body">
 
-      (function() {
-        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-      })();
-    </script>
-  </head>
-
-  <body>
-    <div class="header">
-        <div class="container">
-            <div class="logo">
-             <h2><a href="/index.html">Rob Ashton</a></h2>
-            </div>
-            <div class="navbar">
-                <div class="navbar-inner">
-                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                    </a>
-                    <div class="nav-collapse collapse">
-                        <ul class="nav top-2">
-                          <li>
-                                <a href="/">Home</a>
-                            </li>
-                            <li>
-                                <a href="/blog.html">Blog</a>
-                            </li>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <body>
-    <div id="blog-entry">
-      <h1 id="post-title">RavenDB - The Image Gallery Project (XVI) - Adding Edit Functionality (I)</h1>
-      <h6>Published on <span class="date">2010-11-23</span></h6>
-      <div id="post">
 		<p>We have thus far covered the creation of new documents, and the querying of those documents to create views for specific pages in our system. We haven’t actually demonstrated the editing of existing documents and how that actually fits into the application lifecycle covered at the beginning of this series.</p>  <p>This series has been written with the intention of it being a full vertical slice through a modern web application using RavenDB, instead of just being a thin technical demo of RavenDB and we are going to look at how we might write an interface</p>  <p><strong>Moving away from CRUD</strong></p>  <p>A typical CRUD data screen might display all the fields for a document, and have a single save button at the end for dumping all of this data back into the store.</p>  <p>I’m not a big fan of this, we now live in the 21st century and have rich client functionality everywhere – not to mention that this in no way really captures the intent of the user and what it is they actually want to achieve.</p>  <p>We are therefore going to have a screen that displays all the data for a particular image, and allows the user to edit the fields in place. In doing this,&nbsp; our interface can send one-way commands via JSON and not have to rely on data being returned from the server – this is not only a great experience for the user, but allows us to keep our commands as one-way enactors of change.</p>  <p>For a further bit of fun, we will actually use the same screen to display the image to users who don’t own the image, but not allow changes to it if they aren’t meant to. We could then display “related” images to one side and allow further browsing from this point.</p>  <p>Okay, I admit we’re at risk of copying Flickr here, but I did say we were doing this as a largely real world project, and imitation is the finest form of flattery.</p>  <p><strong>The web bit</strong></p>  <p>Just like with our home-page image browser, we won’t be pre-populating a view model in the controller and will instead expose more JSON endpoints to retrieve data about a specific image and do more client-side template magic. The great thing about this is that it also gives us an API to expose to third parties with no extra effort. (Did I mention we were living in the 21st century?)</p>  <p>Here is the template used on my view page (Images/View.Spark)</p>  <div class="csharpcode">   <pre class="alt"><span class="kwrd">&lt;</span><span class="html">script</span> <span class="attr">id</span><span class="kwrd">="focused-image-template"</span> <span class="attr">type</span><span class="kwrd">="text/x-jquery-tmpl"</span><span class="kwrd">&gt;</span> </pre>
 
   <pre>  &lt;div <span class="kwrd">class</span>=<span class="str">"focused-image"</span>&gt; </pre>
@@ -435,46 +397,27 @@
 <p>In other news, I’m beginning to think that with all the simplicity I’m displaying at the moment that I should have gone for the simple option of having my entities as the documents and not wrapping them up, I might do a u-turn on that very shortly with a post on re-factoring. </p>
 
 <p>PS: I’m aware that the rest of the entries aren’t navigable to, I’ll fix the template right after publishing this…</p>
-	</div>
-      <div id="links">
-        <a href="/">Index</a>
-        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="mailto:robashton@codeofrob.com">Respond</a>
-      </div>
+	
+  </div>
+  <footer>
+    <p class="respond">Comments are long gone, but you can <a href="mailto:robashton@codeofrob.com">email me</a> if you've got something to say.</p>
+    <details class="comments"><summary>4 comments from the old blog</summary><ol><li><p class="comment-author">Nicklas <span>11/24/2010 9:07 AM</span></p><div class="comment-body">Thanks for doing this image gallery project. Thanks to this I've started to create my own blog using ravendb and are using your code as a reference. It's helping me learn alot, not just about ravendb but of TDD as well as MVC.</div></li>
+<li><p class="comment-author">robashton <span>11/24/2010 9:47 AM</span></p><div class="comment-body">Absolutely my pleasure :)Caveat: Don't take anything I do for gospel, especially the TDD elements - I'm a self professed &quot;not very good tester&quot; and I'm still struggling to balance value with coverage.</div></li>
+<li><p class="comment-author">Doug <span>11/24/2010 4:08 PM</span></p><div class="comment-body">I have drawn a lot of inspiration from your project and really appreciate the effort you are putting into it. I'm still struggling a bit to shift my thinking and embrace RavenDB but on a whole what you are presenting here has been very helpful.  Thank you.</div></li>
+<li><p class="comment-author">TN Requin pas cher <span>11/1/2011 3:05 AM</span></p><div class="comment-body">In 1985 Nike turns up with a TN pas cher brand of shoes for the awesome basketball player Michael Jordan which transformed the NBA accessories' world. Ever since then Nike is manufacturing Chaussures Aire Max BW Jordan shoe each year under Jordan Brand as Air Jordan series. Now there has been more than twenty five series of Air Jordan opening with Air Jordan I to Air Jordan 2011. But what makes the Air Jordan so extraordinary? It is in the name of a celebrity, but there is a lot to the Jordon shoes than just the name. When Nike contacted Jordon, he required the ideal Chaussures Aire Max LTD shoes for the players who not at all compromise with the quality, ease and the style the player are worthy of. These are the accurate features with Jordon shoes that make it so exclusive and attract everybody towards it, and if it is an inexpensive Jordon shoe, is a certainly done deal.Air Jordan shoes are a must have in your collection chaussure aire max tn requin pas cher Homme list. foolpig1101</div></li></ol></details>
+    <nav class="older-newer"><a rel="prev" href="/entries/oredev---post-conference-review.html"><span>Older</span>Oredev - Post conference review</a><a rel="next" href="/entries/i-have-handed-in-my-notice-and-am-looking-for-a-job.html"><span>Newer</span>I have handed in my notice and am looking for a job</a></nav>
+  </footer>
+</article>
 
-        <!--=== Copyright ===-->
-          <div class="container">
-            <div class="row-fluid">
-              <div class="span6">
-                <p class="terms">2020 © Rob Ashton. ALL Rights Reserved.</p>
-              </div>
-            </div><!--/row-fluid-->
-          </div><!--/container-->
-
-        <!-- JS Global Compulsory -->
-        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-        <!-- JS Implementing Plugins -->
-        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-        <!-- JS Page Level -->
-        <script type="text/javascript" src="/assets/js/app.js"></script>
-        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
-        <script type="text/javascript">
-jQuery(document).ready(function() {
-    App.init();
-    App.initFancybox();
-    App.initSliders();
-    Index.initParallaxSlider();
-    });
-        </script>
-        <!--[if lt IE 9]>
-    <script src="assets/js/respond.js"></script>
-<![endif]-->
-        </body>
-        </html>
-
+  </main>
+  <footer class="site">
+    <p>
+      <a href="mailto:robashton@codeofrob.com">robashton@codeofrob.com</a>
+      <a href="https://github.com/robashton">GitHub</a>
+      <a href="/rss.xml">RSS</a>
+      <a href="/testimonials.html">Nice things people have said</a>
+      <a href="/crowdsourced.html">The old homepage</a>
+    </p>
+  </footer>
+</body>
+</html>

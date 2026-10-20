@@ -1,74 +1,36 @@
-<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
-<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
-<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
-<!--[if !ie]><!-->
-<html lang="en"> <!--<![endif]-->
+<!doctype html>
+<html lang="en-GB">
 <head>
-    <title id="title">Service location is (not) always evil</title>
-    <meta charset="utf-8">
-    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="Description" content="Rob Ashton's blog, Purescript, Erlang, Purerl, Javascript, Software Design, etc"/> 
-    <meta name="author" content="Rob Ashton">
-    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
-    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/assets/css/style.css">
-    <link rel="stylesheet" href="/assets/css/headers/header1.css">
-    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
-    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
-    <link rel="stylesheet" href="/assets/css/style_responsive.css">
-    <link rel="shortcut icon" href="/favicon.ico">
-    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
-    <link rel="stylesheet" href="/assets/css/themes/default.css">
-    <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/github.css"></link>
-    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
-    <script type="text/javascript">
-      var _gaq = _gaq || [];
-      _gaq.push(['_setAccount', 'UA-11207442-1']);
-      _gaq.push(['_setDomainName', 'codeofrob.com']);
-      _gaq.push(['_trackPageview']);
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Service location is (not) always evil - Rob Ashton</title>
+  <meta name="description" content="Rob Ashton's blog. Erlang, Purescript, live video, and whatever else I've been getting annoyed about.">
+  <meta name="author" content="Rob Ashton">
+  <link rel="alternate" type="application/rss+xml" href="/rss.xml" title="Rob Ashton's blog">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap">
+  <link rel="stylesheet" href="/css/site.css">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  
+</head>
+<body>
+  <header class="site">
+    <a class="name" href="/">Rob Ashton</a>
+    <nav>
+      <a href="/blog.html">Writing</a>
+      <a href="/projects.html">Projects</a>
+      <a href="/speaking.html">Talks</a>
+    </nav>
+  </header>
+  <main>
+<article class="post">
+  <header>
+    <h1>Service location is (not) always evil</h1>
+    <p class="meta"><time datetime="2011-02-02">2 February 2011</time></p>
+  </header>
+  <div class="post-body">
 
-      (function() {
-        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-      })();
-    </script>
-  </head>
-
-  <body>
-    <div class="header">
-        <div class="container">
-            <div class="logo">
-             <h2><a href="/index.html">Rob Ashton</a></h2>
-            </div>
-            <div class="navbar">
-                <div class="navbar-inner">
-                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                    </a>
-                    <div class="nav-collapse collapse">
-                        <ul class="nav top-2">
-                          <li>
-                                <a href="/">Home</a>
-                            </li>
-                            <li>
-                                <a href="/blog.html">Blog</a>
-                            </li>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <body>
-    <div id="blog-entry">
-      <h1 id="post-title">Service location is (not) always evil</h1>
-      <h6>Published on <span class="date">2011-2-2</span></h6>
-      <div id="post">
 		<p>Okay – so recently I’ve started presenting a session to various groups involving the well known IOC container “StructureMap” – and despite being pretty clear about the contents of said talk I’m getting quite a bit of backlash for demonstrating anything that even remotely resembles service location.</p> <p>As we all know, service location is bad – but why do we know that? Because we’ve been told it’s bad? And why were we told it was bad? Let’s very briefly dig into this and see where we end up:</p> <p><strong>Why is service location evil?</strong></p> <p>Consider the following WebForms style code:</p> <div id="codeSnippetWrapper"> <div style="border-bottom-style: none; text-align: left; padding-bottom: 0px; line-height: 12pt; border-right-style: none; background-color: #f4f4f4; padding-left: 0px; width: 100%; padding-right: 0px; font-family: 'Courier New', courier, monospace; direction: ltr; border-top-style: none; color: black; font-size: 8pt; border-left-style: none; overflow: visible; padding-top: 0px;" id="codeSnippet"><pre style="border-bottom-style: none; text-align: left; padding-bottom: 0px; line-height: 12pt; border-right-style: none; background-color: white; margin: 0em; padding-left: 0px; width: 100%; padding-right: 0px; font-family: 'Courier New', courier, monospace; direction: ltr; border-top-style: none; color: black; font-size: 8pt; border-left-style: none; overflow: visible; padding-top: 0px;"><span style="color: #0000ff;">public</span> <span style="color: #0000ff;">class</span> Page</pre><!--CRLF--><pre style="border-bottom-style: none; text-align: left; padding-bottom: 0px; line-height: 12pt; border-right-style: none; background-color: #f4f4f4; margin: 0em; padding-left: 0px; width: 100%; padding-right: 0px; font-family: 'Courier New', courier, monospace; direction: ltr; border-top-style: none; color: black; font-size: 8pt; border-left-style: none; overflow: visible; padding-top: 0px;">   {</pre><!--CRLF--><pre style="border-bottom-style: none; text-align: left; padding-bottom: 0px; line-height: 12pt; border-right-style: none; background-color: white; margin: 0em; padding-left: 0px; width: 100%; padding-right: 0px; font-family: 'Courier New', courier, monospace; direction: ltr; border-top-style: none; color: black; font-size: 8pt; border-left-style: none; overflow: visible; padding-top: 0px;">       <span style="color: #0000ff;">public</span> Page()</pre><!--CRLF--><pre style="border-bottom-style: none; text-align: left; padding-bottom: 0px; line-height: 12pt; border-right-style: none; background-color: #f4f4f4; margin: 0em; padding-left: 0px; width: 100%; padding-right: 0px; font-family: 'Courier New', courier, monospace; direction: ltr; border-top-style: none; color: black; font-size: 8pt; border-left-style: none; overflow: visible; padding-top: 0px;">       {</pre><!--CRLF--><pre style="border-bottom-style: none; text-align: left; padding-bottom: 0px; line-height: 12pt; border-right-style: none; background-color: white; margin: 0em; padding-left: 0px; width: 100%; padding-right: 0px; font-family: 'Courier New', courier, monospace; direction: ltr; border-top-style: none; color: black; font-size: 8pt; border-left-style: none; overflow: visible; padding-top: 0px;">           var factory = <span style="color: #0000ff;">new</span> CheeseFactory();</pre><!--CRLF--><pre style="border-bottom-style: none; text-align: left; padding-bottom: 0px; line-height: 12pt; border-right-style: none; background-color: #f4f4f4; margin: 0em; padding-left: 0px; width: 100%; padding-right: 0px; font-family: 'Courier New', courier, monospace; direction: ltr; border-top-style: none; color: black; font-size: 8pt; border-left-style: none; overflow: visible; padding-top: 0px;">           var cheese = factory.CreateCheese(<span style="color: #006080;">"smelly"</span>);</pre><!--CRLF--><pre style="border-bottom-style: none; text-align: left; padding-bottom: 0px; line-height: 12pt; border-right-style: none; background-color: white; margin: 0em; padding-left: 0px; width: 100%; padding-right: 0px; font-family: 'Courier New', courier, monospace; direction: ltr; border-top-style: none; color: black; font-size: 8pt; border-left-style: none; overflow: visible; padding-top: 0px;">       }</pre><!--CRLF--><pre style="border-bottom-style: none; text-align: left; padding-bottom: 0px; line-height: 12pt; border-right-style: none; background-color: #f4f4f4; margin: 0em; padding-left: 0px; width: 100%; padding-right: 0px; font-family: 'Courier New', courier, monospace; direction: ltr; border-top-style: none; color: black; font-size: 8pt; border-left-style: none; overflow: visible; padding-top: 0px;">&nbsp;</pre><!--CRLF--><pre style="border-bottom-style: none; text-align: left; padding-bottom: 0px; line-height: 12pt; border-right-style: none; background-color: white; margin: 0em; padding-left: 0px; width: 100%; padding-right: 0px; font-family: 'Courier New', courier, monospace; direction: ltr; border-top-style: none; color: black; font-size: 8pt; border-left-style: none; overflow: visible; padding-top: 0px;">       <span style="color: #0000ff;">public</span> <span style="color: #0000ff;">void</span> BeginRequest()</pre><!--CRLF--><pre style="border-bottom-style: none; text-align: left; padding-bottom: 0px; line-height: 12pt; border-right-style: none; background-color: #f4f4f4; margin: 0em; padding-left: 0px; width: 100%; padding-right: 0px; font-family: 'Courier New', courier, monospace; direction: ltr; border-top-style: none; color: black; font-size: 8pt; border-left-style: none; overflow: visible; padding-top: 0px;">       {</pre><!--CRLF--><pre style="border-bottom-style: none; text-align: left; padding-bottom: 0px; line-height: 12pt; border-right-style: none; background-color: white; margin: 0em; padding-left: 0px; width: 100%; padding-right: 0px; font-family: 'Courier New', courier, monospace; direction: ltr; border-top-style: none; color: black; font-size: 8pt; border-left-style: none; overflow: visible; padding-top: 0px;">           var articles = DataAccess.GetArticles(100, 300);</pre><!--CRLF--><pre style="border-bottom-style: none; text-align: left; padding-bottom: 0px; line-height: 12pt; border-right-style: none; background-color: #f4f4f4; margin: 0em; padding-left: 0px; width: 100%; padding-right: 0px; font-family: 'Courier New', courier, monospace; direction: ltr; border-top-style: none; color: black; font-size: 8pt; border-left-style: none; overflow: visible; padding-top: 0px;">           <span style="color: #008000;">// Data binding</span></pre><!--CRLF--><pre style="border-bottom-style: none; text-align: left; padding-bottom: 0px; line-height: 12pt; border-right-style: none; background-color: white; margin: 0em; padding-left: 0px; width: 100%; padding-right: 0px; font-family: 'Courier New', courier, monospace; direction: ltr; border-top-style: none; color: black; font-size: 8pt; border-left-style: none; overflow: visible; padding-top: 0px;">       }   </pre><!--CRLF--><pre style="border-bottom-style: none; text-align: left; padding-bottom: 0px; line-height: 12pt; border-right-style: none; background-color: #f4f4f4; margin: 0em; padding-left: 0px; width: 100%; padding-right: 0px; font-family: 'Courier New', courier, monospace; direction: ltr; border-top-style: none; color: black; font-size: 8pt; border-left-style: none; overflow: visible; padding-top: 0px;">   }</pre><!--CRLF--></div></div>
 <p>This is the kind of un-testable code that we started moving towards using Dependency Injection to solve in languages that have the notion of strongly defined types and constructors and the means for doing such things. </p>
 <p>We can immediately remove a coupling problem here and increase testability by injecting those dependencies via the constructor like so:</p>
@@ -120,46 +82,32 @@
 <p>It’s not <em>quite</em> the same thing as this, there are a number of places in the framework where had the framework been built around the notion of composition in the first place we wouldn’t need all those calls – but really, I can’t say I have too huge a problem with this either, it’s not an awful compromise around a framework that has already gone down an awkward path and has needed to rectify it in a simple and backwards compatible a manner as possible. </p>
 <p><strong>Another side note</strong></p>
 <p>I’m not entirely sure that creating our entire application hierarchy with an IOC container is actually a Good Thing, and I’m moving away from it in my more recent explorations – but that’s a discussion best left to the GOOS group and for another time.</p>
-	</div>
-      <div id="links">
-        <a href="/">Index</a>
-        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="mailto:robashton@codeofrob.com">Respond</a>
-      </div>
+	
+  </div>
+  <footer>
+    <p class="respond">Comments are long gone, but you can <a href="mailto:robashton@codeofrob.com">email me</a> if you've got something to say.</p>
+    <details class="comments"><summary>9 comments from the old blog</summary><ol><li><p class="comment-author">Frank Quednau <span>2/2/2011 6:32 PM</span></p><div class="comment-body">Especially in infrastructure cruft there shouldn't be much of an issue to look up a service in some container. I once introduced a more crude but maybe similar infrastructure piece over here: http://realfiction.net/go/137 . Looking at its age I don't know if I'd still do that. Looking at what happens in your code, I'd probably call the Command a message and define a message handler. Then I'm in the lingo of MemBus, which also has schemes to find handlers but which may delegate finding a handler to a container ;)But hey, as long as one can justify and put decisions in context, I'm fine.</div></li>
+<li><p class="comment-author">Mikael Östberg <span>2/2/2011 6:57 PM</span></p><div class="comment-body">I actually think it's pretty smelly to inject the container. The main reason is, as you stated yourself; &quot;we can’t know from looking at the class from the outside what it needs from the container&quot;.Wouldn't be better to stick with the constructor injection pattern which clearly shows what the dependencies are? Just inject the handlers as a IEnumerable and lookup the one you need based on T.</div></li>
+<li><p class="comment-author">robashton <span>2/2/2011 7:01 PM</span></p><div class="comment-body">What does that actually give me other than more code to write?</div></li>
+<li><p class="comment-author">robashton <span>2/2/2011 7:26 PM</span></p><div class="comment-body">Frank :: The above is just a very rudimentary example where it was the easiest way to get commands + handlers into that project - there are other times when we might wish to do this, finding validators, model binders, etc etc</div></li>
+<li><p class="comment-author">Mike McG <span>2/5/2011 7:38 PM</span></p><div class="comment-body">Interesting article and I share the concern about instantiating the entire application per request. But regarding injection of your dependency injection mechanism, IMHO, blech... Sure, like all smells, this can be justified away. But let's explore that smell. You've thrown away a significant defensive-coding mechanism (a junior developer can now grab any service he knows about, without expressing this in the constructor) and cohesion-encouraging mechanism (having all that accessibility without the smell of constructor parameter bloat leads to responsibility-creep), and it makes it even more difficult to understand the dependencies than &quot;traditional&quot; usage of a container.  In terms of project management, this technique carries the significant implication that only trusted, experienced, expensive  developers should work on this code.Also, I think you've overstated the cost in creating a ICommandRegistry abstraction, that has a simple implementation around the container in the application package (where all knowledge of the container should be isolated).</div></li>
+<li><p class="comment-author">Yoann <span>2/23/2011 3:26 PM</span></p><div class="comment-body">Now, that's spooky I was just about to write something similar to this. ServiceLocator injected by DI which in turns uses the container to get the components your need. I am not sure if I understand McG's point about defensive code; what's to stop any developer to bloat the constructor anyway? I think this pattern could be useful in facade type objects where it would need to access several other sub components. As for understanding the dependencies of a class by just looking at it, sure, I guess that makes sense, but then again looking at a constructor set of arguments won't tell you how those are used.</div></li>
+<li><p class="comment-author">WishCow <span>3/22/2011 2:06 PM</span></p><div class="comment-body">I'm confused. One of the main selling points of using a DIC is, that you will produce (it will help you produce) code that is easier to debug and understand by making classes more decoupled.Now, if there are objects, that need to create other objects, based on runtime parameters, you will haveto pass the DIC around, which means, you have now introduced coupling to the DIC, invalidating the point above.Or is this the whole point, that is better to be coupled to a DIC, instead of &quot;random&quot; objects?I honestly don't get it :s</div></li>
+<li><p class="comment-author">robashton <span>3/24/2011 9:52 AM</span></p><div class="comment-body">WishCow - If you have objects that need to be created dynamically based on some variable in the application, then you need to create those objects.Those objects are going to have dependencies, and those dependencies are going to have dependencies - it makes sense to call into the container to construct those objects.There are other ways of achieving this, but this is the simplest and this is the only point I am making here.Using an IOC container as a service location in_general is wrong, but for this kind of thing it can generally be accepted.</div></li>
+<li><p class="comment-author">canada goose dame jakke <span>10/28/2011 9:44 AM</span></p><div class="comment-body">the article is very nice and an eye opener.</div></li></ol></details>
+    <nav class="older-newer"><a rel="prev" href="/entries/my-ddd9-experience-and-slides-from-my-talks.html"><span>Older</span>My DDD9 Experience (and slides from my talks)</a><a rel="next" href="/entries/why-webgl-and-node.js-and-websockets-are-important.html"><span>Newer</span>Why WebGL and node.js (and websockets) are important</a></nav>
+  </footer>
+</article>
 
-        <!--=== Copyright ===-->
-          <div class="container">
-            <div class="row-fluid">
-              <div class="span6">
-                <p class="terms">2020 © Rob Ashton. ALL Rights Reserved.</p>
-              </div>
-            </div><!--/row-fluid-->
-          </div><!--/container-->
-
-        <!-- JS Global Compulsory -->
-        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-        <!-- JS Implementing Plugins -->
-        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-        <!-- JS Page Level -->
-        <script type="text/javascript" src="/assets/js/app.js"></script>
-        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
-        <script type="text/javascript">
-jQuery(document).ready(function() {
-    App.init();
-    App.initFancybox();
-    App.initSliders();
-    Index.initParallaxSlider();
-    });
-        </script>
-        <!--[if lt IE 9]>
-    <script src="assets/js/respond.js"></script>
-<![endif]-->
-        </body>
-        </html>
-
+  </main>
+  <footer class="site">
+    <p>
+      <a href="mailto:robashton@codeofrob.com">robashton@codeofrob.com</a>
+      <a href="https://github.com/robashton">GitHub</a>
+      <a href="/rss.xml">RSS</a>
+      <a href="/testimonials.html">Nice things people have said</a>
+      <a href="/crowdsourced.html">The old homepage</a>
+    </p>
+  </footer>
+</body>
+</html>

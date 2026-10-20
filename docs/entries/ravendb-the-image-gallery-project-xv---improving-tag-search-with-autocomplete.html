@@ -1,74 +1,36 @@
-<!doctype html> <!--[if ie 7]> <html lang="en" class="ie7"> <![endif]-->
-<!--[if ie 8]> <html lang="en" class="ie8"> <![endif]-->
-<!--[if ie 9]> <html lang="en" class="ie9"> <![endif]-->
-<!--[if !ie]><!-->
-<html lang="en"> <!--<![endif]-->
+<!doctype html>
+<html lang="en-GB">
 <head>
-    <title id="title">RavenDB-The Image Gallery Project (XV) - Improving Tag Search with AutoComplete</title>
-    <meta charset="utf-8">
-    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="Description" content="Rob Ashton's blog, Purescript, Erlang, Purerl, Javascript, Software Design, etc"/> 
-    <meta name="author" content="Rob Ashton">
-    <link rel="alternate" type="application/atom+xml" href="http://feed.codeofrob.com/RobAshton" title="Rob Ashton's blog" />
-    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/assets/css/style.css">
-    <link rel="stylesheet" href="/assets/css/headers/header1.css">
-    <link rel="stylesheet" href="/assets/css/gruvbox-light.css">
-    <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap-responsive.min.css">
-    <link rel="stylesheet" href="/assets/css/style_responsive.css">
-    <link rel="shortcut icon" href="/favicon.ico">
-    <link rel="stylesheet" href="/assets/plugins/font-awesome/css/font-awesome.css">
-    <link rel="stylesheet" href="/assets/css/themes/default.css">
-    <link rel="stylesheet" type="text/css" href="/style.css"></link>
-    <link rel="stylesheet" type="text/css" href="/github.css"></link>
-    <script type="text/javascript" src="/assets/js/jquery-1.8.2.min.js"></script>
-    <script type="text/javascript">
-      var _gaq = _gaq || [];
-      _gaq.push(['_setAccount', 'UA-11207442-1']);
-      _gaq.push(['_setDomainName', 'codeofrob.com']);
-      _gaq.push(['_trackPageview']);
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RavenDB-The Image Gallery Project (XV) - Improving Tag Search with AutoComplete - Rob Ashton</title>
+  <meta name="description" content="Rob Ashton's blog. Erlang, Purescript, live video, and whatever else I've been getting annoyed about.">
+  <meta name="author" content="Rob Ashton">
+  <link rel="alternate" type="application/rss+xml" href="/rss.xml" title="Rob Ashton's blog">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap">
+  <link rel="stylesheet" href="/css/site.css">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  
+</head>
+<body>
+  <header class="site">
+    <a class="name" href="/">Rob Ashton</a>
+    <nav>
+      <a href="/blog.html">Writing</a>
+      <a href="/projects.html">Projects</a>
+      <a href="/speaking.html">Talks</a>
+    </nav>
+  </header>
+  <main>
+<article class="post">
+  <header>
+    <h1>RavenDB-The Image Gallery Project (XV) - Improving Tag Search with AutoComplete</h1>
+    <p class="meta"><time datetime="2010-10-24">24 October 2010</time></p>
+  </header>
+  <div class="post-body">
 
-      (function() {
-        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-      })();
-    </script>
-  </head>
-
-  <body>
-    <div class="header">
-        <div class="container">
-            <div class="logo">
-             <h2><a href="/index.html">Rob Ashton</a></h2>
-            </div>
-            <div class="navbar">
-                <div class="navbar-inner">
-                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                    </a>
-                    <div class="nav-collapse collapse">
-                        <ul class="nav top-2">
-                          <li>
-                                <a href="/">Home</a>
-                            </li>
-                            <li>
-                                <a href="/blog.html">Blog</a>
-                            </li>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <body>
-    <div id="blog-entry">
-      <h1 id="post-title">RavenDB-The Image Gallery Project (XV) - Improving Tag Search with AutoComplete</h1>
-      <h6>Published on <span class="date">2010-10-24</span></h6>
-      <div id="post">
 		<p>In the last entry we set up a basic search as you type search, but the user experience was still left rather wanting – what we could do with is the ability to get a list of tags starting with the current text, and for an added degree of complexity it would be nice if the tags were sorted by how many times they were used as well, so the most common ones appeared first.</p>  <p><strong>This calls for a Map/Reduce Index</strong></p>  <p>The great thing about indexes is that they don’t necessarily have to just map data into indexes, they can also pick a field or a collection of fields to group the mapped data by, and optionally perform some calculations at the same time. You don’t have to understand how this works in order to use it and I therefore won’t get into too much detail on that front.</p>  <p>What we need:</p>  <ul>   <li>All of the unique tags in the system </li>    <li>A count of how many times that tag appears in the system </li> </ul>  <p>It is quite clear that the ‘tag’ is the field we’ll group by, and every time we come across a tag we need to add ‘1’ to a total.</p>  <p><strong>Solving this with an ordinary LINQ query</strong></p>  <p>Assuming we had a collection of ImageDocuments in a list called images like so:</p>  <div class="csharpcode">   <pre class="alt">List&lt;ImageDocument&gt; images = GetAllTheImagesFromSomewhere();</pre>
 </div>
 <style type="text/css">![CDATA[
@@ -794,51 +756,31 @@
 
 <p>Setting this up in my already created textbox using jQuery Autocomplete, I get a awesome user experience like this:</p>
 
-<p><a href="http://codeofrob.com/images/codeofrob_com/WindowsLiveWriter/RavenDBTheImageGalleryProjectXVIImprovin_122DC/image_2.png"><img style="background-image: none; border-right-width: 0px; margin: ;padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px;" title="image" border="0" alt="image" src="http://codeofrob.com/images/codeofrob_com/WindowsLiveWriter/RavenDBTheImageGalleryProjectXVIImprovin_122DC/image_thumb.png" width="391" height="285"></a></p>
+<p><a href="/images/codeofrob_com/WindowsLiveWriter/RavenDBTheImageGalleryProjectXVIImprovin_122DC/image_2.png"><img style="background-image: none; border-right-width: 0px; margin: ;padding-left: 0px; padding-right: 0px; display: inline; border-top-width: 0px; border-bottom-width: 0px; border-left-width: 0px; padding-top: 0px;" title="image" border="0" alt="image" src="/images/codeofrob_com/WindowsLiveWriter/RavenDBTheImageGalleryProjectXVIImprovin_122DC/image_thumb.png" width="391" height="285"></a></p>
 
 <p><strong>The great thing about doing this is…</strong></p>
 
 <p>We can run this query over and over again, it’s looking up a pre-computed index and that’s a cheap operation – we’re getting really good performance out of RavenDB and not really having to learn anything&nbsp; too different from what we’ve learned from doing LINQ in the past.</p>
-	</div>
-      <div id="links">
-        <a href="/">Index</a>
-        <a href="http://feed.codeofrob.com/RobAshton">Subscribe</a>
-        <a href="mailto:robashton@codeofrob.com">Respond</a>
-      </div>
+	
+  </div>
+  <footer>
+    <p class="respond">Comments are long gone, but you can <a href="mailto:robashton@codeofrob.com">email me</a> if you've got something to say.</p>
+    <details class="comments"><summary>3 comments from the old blog</summary><ol><li><p class="comment-author">Ryan Heath <span>10/24/2010 5:40 PM</span></p><div class="comment-body">Why does the mapping has Count = 1 selected?In the reduce part it is not used.Or must the mapping part have the same fields selected as the reduce part?// Ryan</div></li>
+<li><p class="comment-author">Rob Ashton <span>10/24/2010 6:26 PM</span></p><div class="comment-body">That's exactly it, the shape of the Map should be the same as the Reduce.Technically at the moment, this isn't true - but it will become true sooner or later so it's good practise for now.Perhaps an edit is needed to point this out.</div></li>
+<li><p class="comment-author">Walter <span>11/18/2010 9:07 PM</span></p><div class="comment-body">This workshop is great. I was fiddeling for almost a week now with a map/reduce index that i couldn't get to work. After i finished the workshop i finally got it and found the mistake. *cheers* and thanks!</div></li></ol></details>
+    <nav class="older-newer"><a rel="prev" href="/entries/ravendb---the-image-gallery-project-xiv---implementing-a-real-time-tag-search.html"><span>Older</span>RavenDB - The Image Gallery Project (XIV) - Implementing a real-time tag search</a><a rel="next" href="/entries/oredev---post-conference-review.html"><span>Newer</span>Oredev - Post conference review</a></nav>
+  </footer>
+</article>
 
-        <!--=== Copyright ===-->
-          <div class="container">
-            <div class="row-fluid">
-              <div class="span6">
-                <p class="terms">2020 © Rob Ashton. ALL Rights Reserved.</p>
-              </div>
-            </div><!--/row-fluid-->
-          </div><!--/container-->
-
-        <!-- JS Global Compulsory -->
-        <script type="text/javascript" src="/assets/js/modernizr.custom.js"></script>
-        <script type="text/javascript" src="/assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-        <!-- JS Implementing Plugins -->
-        <script type="text/javascript" src="/assets/plugins/flexslider/jquery.flexslider-min.js"></script>
-        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/modernizr.js"></script>
-        <script type="text/javascript" src="/assets/plugins/parallax-slider/js/jquery.cslider.js"></script>
-        <script type="text/javascript" src="/assets/plugins/back-to-top.js"></script>
-        <script type="text/javascript" src="/assets/plugins/jquery.sticky.js"></script>
-        <script type="text/javascript" src="/assets/plugins/fancybox/source/jquery.fancybox.pack.js"></script>
-        <!-- JS Page Level -->
-        <script type="text/javascript" src="/assets/js/app.js"></script>
-        <script type="text/javascript" src="/assets/js/pages/index.js"></script>
-        <script type="text/javascript">
-jQuery(document).ready(function() {
-    App.init();
-    App.initFancybox();
-    App.initSliders();
-    Index.initParallaxSlider();
-    });
-        </script>
-        <!--[if lt IE 9]>
-    <script src="assets/js/respond.js"></script>
-<![endif]-->
-        </body>
-        </html>
-
+  </main>
+  <footer class="site">
+    <p>
+      <a href="mailto:robashton@codeofrob.com">robashton@codeofrob.com</a>
+      <a href="https://github.com/robashton">GitHub</a>
+      <a href="/rss.xml">RSS</a>
+      <a href="/testimonials.html">Nice things people have said</a>
+      <a href="/crowdsourced.html">The old homepage</a>
+    </p>
+  </footer>
+</body>
+</html>

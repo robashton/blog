@@ -1,0 +1,513 @@
+		<p><font face="Arial"><strong><em>Note: The interfaces have been updated since this entry was written, and there is now Linq query support built into the .NET client, I’ve updated these posts to use the LuceneQuery syntax but that’s probably not the preferred way of doing things</em></strong></font></p>  <p>There will be plenty more of these to talk about as I carry on developing this application against RavenDB, but there are a few immediate concepts that I thought would be worth writing about to do with the basic manner in which you interact with RavenDB.</p>  <p><strong>DocumentSession vs DocumentStore</strong></p>  <p>This is the most basic consideration:</p>  <ul>   <li>When do you create a DocumentStore </li>    <li>When do you create a DocumentSession </li> </ul>  <p>The simple answer, is you create a DocumentStore on application start-up, and you create a document session for every unit of work following that.</p>  <p>In an MS MVC web application, this would be </p>  <ul>   <li>Create a DocumentStore in Application_Start </li>    <li>Create a DocumentSession on BeginRequest </li>    <li>Destroy the DocumentSession on EndRequest </li> </ul>  <p><strong>Creating Indices</strong></p>  <p>Because every example written as a tutorial of how to use RavenDB will no doubt include index creation as a part of it, the temptation will be there to get into the habit of invoking the code to create indexes every time your application is run (Or simply forget that you started off this way and leave the code in there).</p>  <div class="csharpcode">   <pre class="alt"><span class="lnum">   1:  </span>documentStore.DatabaseCommands.PutIndex(</pre>
+
+  <pre><span class="lnum">   2:  </span>    <span class="str">"BookByTitle"</span>,</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>    <span class="kwrd">new</span> IndexDefinition&lt;Book, Book&gt;()</pre>
+
+  <pre><span class="lnum">   4:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>        Map = docs =&gt; from doc <span class="kwrd">in</span> docs</pre>
+
+  <pre><span class="lnum">   6:  </span>                      <span class="kwrd">where</span> doc.Title != <span class="kwrd">null</span></pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>                      select <span class="kwrd">new</span></pre>
+
+  <pre><span class="lnum">   8:  </span>                      {</pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>                          Title = doc.Title</pre>
+
+  <pre><span class="lnum">  10:  </span>                      },</pre>
+
+  <pre class="alt"><span class="lnum">  11:  </span>        Stores = { { x =&gt; x.Title, FieldStorage.Yes } }</pre>
+
+  <pre><span class="lnum">  12:  </span>    });</pre>
+</div>
+<style type="text/css"><![CDATA[
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>As data is added to the system or modified, RavenDB will (in its own time) run that dirty data across those indexes, and the application will use those indexes to pull the data out for display and manipulation purposes.</p>
+
+<p>If an index is re-created, all of that indexed data becomes obsolete, and thus RavenDB must re-run *<strong>all</strong>* of the data in the system against that index. If your application is re-creating indexes or simply creating indexes on the fly as a regular action then performance will suffer.</p>
+
+<p><em>The best practise is to treat these indices as a management function, something that is done once when the document database is first created – and then updated as part of maintenance/upgrades – like database changes in a  traditional system (only somewhat easier!).</em></p>
+
+<p>I have a simple script to create all the indexes in a blank, freshly created RavenDB instance so while I’m developing against the application I can start from scratch again anytime. The important thing of note is that I don’t run this every time I start the application up – just when I’ve made changes to those indexes.</p>
+
+<p>I might talk about this in a future blog post as I’ve ended up with a nice structure that involves disposing of the magic strings that form the names of the indexes in RavenDB and that can’t be a bad thing.</p>
+
+<p><strong>Saving new objects</strong></p>
+
+<p>This actually goes for most operations such as deletion, updates to objects etc – but saving objects is probably  more complete proposal from this collection. None of this is too dissimilar to the considerations we’d apply when working against a traditional RDBMS and an ORM, but it’s worth re-iterating for those who are unfamiliar with the concepts.</p>
+
+<p>Consider a simple repository for entities in our system whose interface looks something like this.</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">interface</span> IBookRepository</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        Book Get(<span class="kwrd">string</span> id);</pre>
+
+  <pre><span class="lnum">   4:  </span>        <span class="kwrd">void</span> Save(Book book);</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>    }</pre>
+</div>
+<style type="text/css"><![CDATA[
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style><style type="text/css"><![CDATA[
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>A sample implementation of this repository might look like this:</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>    <span class="kwrd">public</span> <span class="kwrd">class</span> BookRepository : IBookRepository</pre>
+
+  <pre><span class="lnum">   2:  </span>    {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>        <span class="kwrd">private</span> IDocumentSession mDocumentSession;</pre>
+
+  <pre><span class="lnum">   4:  </span> </pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>        <span class="kwrd">public</span> BookRepository(IDocumentSession documentSession)</pre>
+
+  <pre><span class="lnum">   6:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">   7:  </span>            mDocumentSession = documentSession;</pre>
+
+  <pre><span class="lnum">   8:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">   9:  </span>        <span class="kwrd">public</span> Book Get(<span class="kwrd">string</span> id)</pre>
+
+  <pre><span class="lnum">  10:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">  11:  </span>            <span class="kwrd">return</span> mDocumentSession.Load&lt;Book&gt;(id);</pre>
+
+  <pre><span class="lnum">  12:  </span>        }</pre>
+
+  <pre class="alt"><span class="lnum">  13:  </span> </pre>
+
+  <pre><span class="lnum">  14:  </span>        <span class="kwrd">public</span> <span class="kwrd">void</span> Save(Book book)</pre>
+
+  <pre class="alt"><span class="lnum">  15:  </span>        {</pre>
+
+  <pre><span class="lnum">  16:  </span>            mDocumentSession.Store(book);</pre>
+
+  <pre class="alt"><span class="lnum">  17:  </span>        }</pre>
+
+  <pre><span class="lnum">  18:  </span>    }</pre>
+</div>
+<style type="text/css"><![CDATA[
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p />
+<style type="text/css"><![CDATA[
+
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>Ignoring the rest of the repository, there are decisions to be made at this point about what the Save method should actually do.</p>
+
+<p>Consider a basic use of the repository like so:</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>        <span class="kwrd">public</span> <span class="kwrd">void</span> PublishBook(Book book)</pre>
+
+  <pre><span class="lnum">   2:  </span>        {</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>            mRepository.Save(book);</pre>
+
+  <pre><span class="lnum">   4:  </span>            mEventInvoker.RaiseEvent(<span class="kwrd">new</span> BookPublishedEvent(book.Id));</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>        }</pre>
+</div>
+
+<div class="csharpcode"> </div>
+
+<p />
+<style type="text/css"><![CDATA[
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>Ignoring the obvious (like this publish method isn’t actually publishing a book!), our problem here is that the created book does not yet have an Id because we haven’t called SaveChanges yet, and yet we’re attempting to use this Id as the argument for another action in our application.</p>
+
+<p>The proposed fix? Change the repository so we call SaveChanges of course!</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span><span class="kwrd">public</span> <span class="kwrd">void</span> Save(Book book)</pre>
+
+  <pre><span class="lnum">   2:  </span>{</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>    mDocumentSession.Store(book);</pre>
+
+  <pre><span class="lnum">   4:  </span>    mDocumentSession.SaveChanges();</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>}</pre>
+</div>
+<style type="text/css"><![CDATA[
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>That appears to have fixed the problem, but in actual fact if we were using IDocumentSession to control our unit of work, calling SaveChanges just broke that because all the changes (including others made across the rest of the system) were just flushed across to the server.</p>
+
+<p>We can fix that by wrapping our whole unit of work inside of a  TransactionScope (which RavenDB respects),  but we’ve still got one problem we need to be aware of:</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span><span class="kwrd">foreach</span> (Book book <span class="kwrd">in</span> booksToCreate)</pre>
+
+  <pre><span class="lnum">   2:  </span>{</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>    mRepository.Save(book);</pre>
+
+  <pre><span class="lnum">   4:  </span>}</pre>
+
+  <p />
+</div>
+<style type="text/css"><![CDATA[
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>Now we’re saving a collection of books, let’s say there are 100 of them – that’s 100 calls to SaveChanges, which is 100 calls across the wire, and 100 calls to ‘whatever RavenDB does when you push an object to RavenDB’ (It’s expensive okay?).</p>
+
+<p><em>That’s not to say you don’t do use this hammer to solve the problem, but you should think about it and do what makes sense in your application.</em></p>
+
+<ul>
+  <li>You could still add more interfaces/methods specifically for batch operations, and still call SaveChanges at that level </li>
+
+  <li>You could use your own client-side key generation code (RavenDB allows this) – and perhaps adopt something like HiLo against the Type of the document – thus negating the need to call SaveChanges at all until everything has been done that needs doing </li>
+</ul>
+
+<p>I’m probably going to experiment with the second option and write a blog entry once I’ve worked out what is I want to achieve.</p>
+
+<p><strong><em>Update: I have since written a HiLo generator, and Oren has integrated this so HiLo is the default generator for RavenDB, this means a call to SaveChanges is not needed in order to get the id for an item so this bullet point is now almost irrelevant unless you override this behaviour to use keys generated by the server</em></strong></p>
+
+<p><strong>Stale Data</strong></p>
+
+<p>Let’s say we have a top level page on our website which displays the top 20 books by popularity in a certain category. The following query is executed</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>Book[] categoryBooks = documentSession.LuceneQuery&lt;Book&gt;(<span class="str">"BookByCategory"</span>)</pre>
+
+  <pre><span class="lnum">   2:  </span>                        .WaitForNonStaleResults()</pre>
+
+  <pre class="alt"><span class="lnum">   3:  </span>                        .Where(String.Format(<span class="str">"Category:{0}"</span>, category))</pre>
+
+  <pre><span class="lnum">   4:  </span>                        .Take(20)</pre>
+
+  <pre class="alt"><span class="lnum">   5:  </span>                        .OrderBy(<span class="str">"Popularity"</span>).ToArray();</pre>
+</div>
+<style type="text/css"><![CDATA[
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p>The temptation is there to always use that call WaitforNonStaleResults because most demo code will do this as a matter of course (because invoking this will deterministically say “give me back the results I expect for this demo”).</p>
+
+<p>The problem is, WaitForNonStaleResults will do exactly what it says, it will wait until the results coming back are no longer stale – which means your page request will hang, which means you won’t have a responsive application – and the whole point of using a database like RavenDB is that you want the application to be responsive!</p>
+
+<p><em>There is a good reason that WaitForNonStaleResults is not the default – consider when you start writing it what it is you actually want. In this example, it really doesn’t matter if the data being displayed on this high traffic top level page is a bit out of date, and the call simply is not needed.</em></p>
+
+<p><strong>Paging</strong></p>
+
+<p>Let’s say there are 100,000 books in the document store and we invoke the following code:</p>
+
+<div class="csharpcode">
+  <pre class="alt"><span class="lnum">   1:  </span>Book[] books = documentSession.LuceneQuery&lt;Book&gt;()</pre>
+
+  <pre><span class="lnum">   2:  </span>                         .ToArray();</pre>
+</div>
+<style type="text/css"><![CDATA[
+
+
+
+
+
+
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }]]></style>
+
+<p />
+
+<p>How many books do you expect for there to be in that collection? 100,000? If 100,000 objects were returned into that collection, how long would it take? What would you be doing to those 100,000 objects? How much memory would they require to hold in memory all together like that? Yeah, it’s unlikely that you’d ever write the above code in your production application, because bringing back all the objects is rarely what the developer actually intends.</p>
+
+<p>Thankfully RavenDB safeguards against this kind of sloppy code and automatically limits the number of results returned back. Both the .NET client and server have this behaviour built into them and this means you’ll only get (at the moment), 128 objects coming back for the above query. This is equally true for all types of queries, including queries against indices with where clauses and orderings and everything else you might want to put in a query.</p>
+
+<p>Currently the server itself will only let you page 1024 objects at one time, so you can’t be lazy and make a call to Take(100000) because it won’t let you. I’ve actually got an extension method which *does* bring back *all* the objects for testing purposes, but I’ll leave that one out of this blog entry for fear of people actually using it!</p>
+
+<p><em>Just be aware that paging is there to help you and don’t be surprised when you don’t get all the documents back when doing a blanket query. Use paging properly!</em></p>
