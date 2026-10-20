@@ -316,3 +316,10 @@ Done (uncommitted, staged in the working tree):
 
 Still to confirm with Rob: the homepage copy as a whole; "then a freelancer" ordering; Pinto/Stetson
 wording; the jokes in the projects copy ("most starred thing I own", "Cookbook, which nobody reads").
+
+## 10. Shipped
+
+Pushed as 1d906751 on 2026-10-20 and live on codeofrob.com within about 30s. Checked live: pages, odd-character
+URLs, the restored 2010 post, and the .aspx redirects (301 to slug.aspx/, then a meta refresh). hire.html returns 404 as intended.
+Afterwards, Rob changed the homepage framing to "I design and build products" (ChatGPT's point about not leading
+with "programmer"). Next step: Rob gets ChatGPT to review the live site.

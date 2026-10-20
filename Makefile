@@ -16,7 +16,7 @@ STATICS  := $(patsubst input/static/%.markdown,docs/%.html,$(wildcard input/stat
 RAW      := $(patsubst input/raw/%,docs/%,$(wildcard input/raw/*))
 
 .PHONY: all rebuild serve new
-all: build/posts.stamp docs/index.html docs/blog.html docs/rss.xml build/redirects.stamp $(STATICS) $(RAW)
+all: build/posts.stamp docs/index.html docs/blog.html docs/rss.xml build/redirects.stamp docs/sitemap.xml $(STATICS) $(RAW)
 
 # All posts in one go, but only the ones whose files are in $? get re-rendered
 build/posts.stamp: $(POST_SRC) $(NAV) $(LAYOUT) input/source/post.html
@@ -31,6 +31,10 @@ docs/blog.html: build/index.json input/source/blog.html $(LAYOUT)
 
 docs/rss.xml: build/index.json $(POST_SRC) tools/site.js
 	$(SITE) rss
+	@touch $@
+
+docs/sitemap.xml: build/index.json tools/site.js
+	$(SITE) sitemap
 	@touch $@
 
 build/redirects.stamp: build/index.json tools/site.js

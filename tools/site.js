@@ -77,8 +77,19 @@ function layout(values) {
   return fill(read(path.join(SOURCE, 'layout.html')), Object.assign({
     description: "Rob Ashton's blog. Erlang, Purescript, live video, and whatever else I've been getting annoyed about.",
     head: '',
+    ogtype: 'website',
+    ogtitle: values.title,
+    canonical: escapeHtml(SITE + (values.url || '/')),
     year: new Date().getUTCFullYear()
   }, values))
+}
+
+// First bit of prose in a post, for the description/link previews
+function excerpt(html) {
+  const text = html.replace(/<(script|style|pre)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim()
+  return escapeHtml(text.length > 200 ? text.slice(0, 200).replace(/\s+\S*$/, '') + '...' : text)
 }
 
 // ---------------------------------------------------------------------------
@@ -191,7 +202,10 @@ function renderPost(post, index) {
     comments: renderComments(post.id),
     nav: renderNav(post.id)
   })
-  fs.writeFileSync(path.join(OUT, post.url), layout({ title: escapeHtml(post.title) + ' - Rob Ashton', content: html }), 'utf8')
+  fs.writeFileSync(path.join(OUT, post.url), layout({
+    title: escapeHtml(post.title) + ' - Rob Ashton', ogtitle: escapeHtml(post.title), ogtype: 'article',
+    description: excerpt(body), url: encodeURI(post.url), content: html
+  }), 'utf8')
 }
 
 function cmdPosts(files) {
@@ -222,7 +236,7 @@ function cmdHome() {
   const index = loadIndex()
   const recent = index.slice(-8).reverse()
   const content = fill(read(path.join(SOURCE, 'home.html')), { recent: postList(recent) })
-  fs.writeFileSync(path.join(OUT, 'index.html'), layout({ title: 'Rob Ashton', content: content }), 'utf8')
+  fs.writeFileSync(path.join(OUT, 'index.html'), layout({ title: 'Rob Ashton', url: '/', description: excerpt((content.match(/<p>[\s\S]*?<\/p>/) || [''])[0]), content: content }), 'utf8')
 }
 
 function cmdBlog() {
@@ -232,7 +246,7 @@ function cmdBlog() {
   const byYear = Object.keys(years).sort().reverse().map(y =>
     '<section class="year"><h3 id="y' + y + '">' + y + '</h3>\n' + postList(years[y]) + '</section>').join('\n')
   const content = fill(read(path.join(SOURCE, 'blog.html')), { byyear: byYear, count: index.length })
-  fs.writeFileSync(path.join(OUT, 'blog.html'), layout({ title: 'Writing - Rob Ashton', content: content }), 'utf8')
+  fs.writeFileSync(path.join(OUT, 'blog.html'), layout({ title: 'Writing - Rob Ashton', url: '/blog.html', content: content }), 'utf8')
 }
 
 function cmdRss() {
@@ -276,12 +290,24 @@ function cmdRedirects() {
   console.log('wrote ' + n + ' redirect page' + (n === 1 ? '' : 's'))
 }
 
+function cmdSitemap() {
+  const index = loadIndex()
+  const statics = fs.readdirSync('input/static').map(f => '/' + f.replace(/\.(markdown|md)$/, '.html'))
+  const newest = index.length ? index[index.length - 1].date.slice(0, 10) : ''
+  const urls = [['/', newest], ['/blog.html', newest]].concat(statics.map(u => [u, '']))
+    .concat(index.map(p => [encodeURI(p.url), p.date.slice(0, 10)]))
+  const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+    urls.map(([u, d]) => '<url><loc>' + escapeHtml(SITE + u) + '</loc>' + (d ? '<lastmod>' + d + '</lastmod>' : '') + '</url>').join('\n') +
+    '\n</urlset>\n'
+  writeIfChanged(path.join(OUT, 'sitemap.xml'), xml)
+}
+
 function cmdStatic(src, dest) {
   let body = read(src)
   if (/\.(markdown|md)$/.test(src)) body = marked(body)
   const h1 = body.match(/<h1[^>]*>([\s\S]*?)<\/h1>/)
   const title = h1 ? h1[1].replace(/<[^>]*>/g, '').trim() + ' - Rob Ashton' : 'Rob Ashton'
-  fs.writeFileSync(dest, layout({ title: title, content: '<article class="page">\n' + body + '\n</article>' }), 'utf8')
+  fs.writeFileSync(dest, layout({ title: title, url: '/' + path.basename(dest), content: '<article class="page">\n' + body + '\n</article>' }), 'utf8')
 }
 
 // ---------------------------------------------------------------------------
@@ -302,7 +328,7 @@ function cmdNew(title, dateStr) {
 const [cmd, ...args] = process.argv.slice(2)
 const commands = {
   index: cmdIndex, posts: () => cmdPosts(args), home: cmdHome, blog: cmdBlog, rss: cmdRss,
-  redirects: cmdRedirects, static: () => cmdStatic(args[0], args[1]), new: () => cmdNew(args[0], args[1])
+  redirects: cmdRedirects, sitemap: cmdSitemap, static: () => cmdStatic(args[0], args[1]), new: () => cmdNew(args[0], args[1])
 }
 if (!commands[cmd]) {
   console.error('unknown command: ' + cmd)
